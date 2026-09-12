@@ -13,7 +13,10 @@ npm-debug.log*
 bot.log
 
 # minecraft server runtime
-minecraft/**/world*/
+# 주의: minecraft/**/world*/ 로 쓰면 자바 패키지 디렉터리(.../home/world/)까지
+# 잡아먹습니다. 실제로 PlazaBuilder.java 가 커밋에서 빠졌던 적이 있어 경로를 좁혔습니다.
+minecraft/servers/*/world*/
+minecraft/servers/*/DIM*/
 minecraft/**/plugins/**/*.jar
 minecraft/**/cache/
 minecraft/**/libraries/
@@ -74,3 +77,6 @@ minecraft/servers/*/plugins/RucCore/messages_*.yml
 
 # 허브 월드는 플러그인이 코드로 생성합니다 (PlazaBuilder). 커밋 불필요.
 minecraft/servers/*/hub/
+
+# 학습용 참고 맵 (329MB, 타인 저작물). 저장소에 넣지 않습니다.
+mapfile/

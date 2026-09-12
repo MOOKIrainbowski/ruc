@@ -80,7 +80,7 @@ public class RucHome extends JavaPlugin {
         applyWorldRules(world);
 
         // 광장이 아직 없으면 짓습니다 (스폰 지점 아래 블록으로 판단).
-        if (world.getBlockAt(0, PlazaBuilder.PLAZA_Y - 1, 0).getType().isAir()) {
+        if (world.getBlockAt(0, PlazaBuilder.groundY() - 1, 0).getType().isAir()) {
             getLogger().info("광장 생성 중…");
             builder.buildAll(world);
             selector.spawnNpcs(world);
