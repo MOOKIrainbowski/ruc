@@ -1,0 +1,70 @@
+prefix: "&a[Ruc]&r "
+
+general:
+  player-only: "&cThis command can only be used in game."
+  no-permission: "&cYou don't have permission."
+  player-not-found: "&cCould not find '%player%'."
+  unknown-command: "&cUnknown command."
+  reloaded: "&aConfiguration reloaded."
+
+lang:
+  usage: "&cUsage: /ruclang <ko|en>"
+  changed: "&aDisplay language set to English."
+  unsupported: "&cUnsupported language. (ko, en)"
+
+economy:
+  balance-self: "&fBalance: &a%amount% %symbol%"
+  balance-other: "&f%player%'s balance: &a%amount% %symbol%"
+  insufficient: "&cNot enough Ruc. (need: %needed%, have: %balance%)"
+  received: "&aReceived %amount% %symbol%."
+  paid: "&eSpent %amount% %symbol%."
+
+xp:
+  status: "&fLv.&a%level% &7| &fXP &a%current%&7/&f%required% &7(%percent%%)"
+  gained: "&8+%amount% XP"
+  level-up: "&a&lLevel up! &fLv.%old% → &a&lLv.%new%"
+  max-level: "&6You have reached the maximum level."
+
+tpa:
+  usage: "&cUsage: /tpa <player>"
+  self: "&cYou cannot send a request to yourself."
+  sent: "&aTeleport request sent to %player%. (expires in %seconds%s)"
+  received: "&e%player% wants to teleport to you. &a/tpaccept &7or &c/tpdeny"
+  received-here: "&e%player% wants you to teleport to them. &a/tpaccept &7or &c/tpdeny"
+  no-request: "&cYou have no pending request."
+  accepted: "&aRequest accepted."
+  accepted-by: "&a%player% accepted your request."
+  denied: "&cRequest denied."
+  denied-by: "&c%player% denied your request."
+  cancelled: "&cRequest cancelled."
+  expired: "&7Teleport request expired."
+  already-pending: "&cYou already have a pending request. Cancel it first."
+  warmup: "&eTeleporting in %seconds%s. Don't move."
+  warmup-cancelled: "&cTeleport cancelled because you moved."
+  cooldown: "&cYou can use this again in %seconds%s."
+  teleported: "&aTeleported."
+
+scoreboard:
+  level: "&fLv.&a%level% &7%bar% &f%percent%%"
+  kda: "&fK &a%kills% &7/ &fD &c%deaths% &7/ &fA &e%assists%"
+  ping: "&fPing &7%dot% &f%tier%"
+  online: "&fOnline &a%online% &7/ &f%max%"
+  balance: "&f%amount% &a%symbol%"
+  reputation: "&fRep %color%%tier%"
+  server: "&f%server%"
+
+ping:
+  excellent: "Excellent"
+  good: "Good"
+  fair: "Fair"
+  weak: "Weak"
+  poor: "Needs work"
+
+reputation:
+  green: "Green"
+  yellow: "Yellow"
+  red: "Red"
+  purple: "Purple"
+  blue: "Blue"
+  indigo: "Indigo"
+  dark: "Dark"

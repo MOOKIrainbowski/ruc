@@ -1,0 +1,44 @@
+name: RucCore
+version: '${version}'
+main: kr.rucserver.core.RucCore
+api-version: '1.21'
+author: Ruc Server
+description: 러크 서버 네트워크 공용 시스템 — Ruc 화폐, 자체 XP, 평판, 스코어보드
+softdepend: []
+
+commands:
+  tpa:
+    description: 상대에게 내가 이동하는 텔레포트를 요청합니다.
+    usage: /tpa <player>
+    aliases: [tpask]
+  tpahere:
+    description: 상대를 내 위치로 부르는 텔레포트를 요청합니다.
+    usage: /tpahere <player>
+  tpaccept:
+    description: 받은 텔레포트 요청을 수락합니다.
+    usage: /tpaccept
+    aliases: [tpyes, 수락]
+  tpdeny:
+    description: 받은 텔레포트 요청을 거절합니다.
+    usage: /tpdeny
+    aliases: [tpno, 거절]
+  tpcancel:
+    description: 내가 보낸 텔레포트 요청을 취소합니다.
+    usage: /tpcancel
+  ruc:
+    description: 보유한 Ruc를 확인합니다.
+    usage: /ruc [player]
+    aliases: [money, 재화]
+  level:
+    description: 현재 레벨과 경험치를 확인합니다.
+    usage: /level
+    aliases: [lv, 레벨]
+  ruclang:
+    description: 표시 언어를 변경합니다. (ko / en)
+    usage: /ruclang <ko|en>
+    aliases: [언어]
+
+permissions:
+  ruccore.admin:
+    description: RucCore 관리 권한
+    default: op

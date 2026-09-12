@@ -19,6 +19,24 @@ minecraft/**/cache/
 minecraft/**/libraries/
 minecraft/**/logs/
 minecraft/**/*.jar
+# Gradle 래퍼 jar은 예외 — 이게 없으면 클론 후 빌드가 불가능합니다
+!minecraft/plugins/RucCore/gradle/wrapper/gradle-wrapper.jar
+
+# Paper/Velocity가 실행 중 만들어내는 것들
+minecraft/servers/*/config/
+minecraft/servers/*/versions/
+minecraft/servers/*/eula.txt
+minecraft/servers/*/ops.json
+minecraft/servers/*/whitelist.json
+minecraft/servers/*/permissions.yml
+minecraft/servers/*/help.yml
+minecraft/servers/*/bukkit.yml
+minecraft/servers/*/spigot.yml
+minecraft/servers/*/commands.yml
+minecraft/proxy/logs/
+minecraft/proxy/forwarding.secret
+minecraft/proxy/velocity.toml.bak
+minecraft/servers/*/plugins/RucCore/data*.db
 minecraft/**/crash-reports/
 minecraft/**/banned-*.json
 minecraft/**/usercache.json
