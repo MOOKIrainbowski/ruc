@@ -9,13 +9,21 @@
 // 부계정을 만들려면 전화번호 인증된 새 디스코드 계정이 필요해집니다.
 
 const { Rcon } = require('rcon-client');
-const { EmbedBuilder, SlashCommandBuilder } = require('discord.js');
+const { EmbedBuilder, SlashCommandBuilder, MessageFlags } = require('discord.js');
 
 // ── 설정 ──────────────────────────────────────────────────────────────
 
-const RCON_HOST = process.env.RUC_RCON_HOST || '127.0.0.1';
-const RCON_PORT = parseInt(process.env.RUC_RCON_PORT || '25576', 10);
-const RCON_PW = process.env.RUC_RCON_PW || '';
+// ⚠️ 모듈 최상단에서 process.env 를 읽으면 안 됩니다.
+// 이 파일이 dotenv.config() 보다 먼저 require 되면 값이 비어 있게 되고,
+// "RUC_RCON_PW가 설정되지 않았습니다" 로 오인하게 됩니다.
+// 호출 시점에 읽어서 require 순서에 의존하지 않도록 합니다.
+function rconConfig() {
+    return {
+        host: process.env.RUC_RCON_HOST || '127.0.0.1',
+        port: parseInt(process.env.RUC_RCON_PORT || '25576', 10),
+        password: process.env.RUC_RCON_PW || '',
+    };
+}
 
 /** 디스코드 계정 최소 나이 (D10) — MOOKI 보안 모듈의 기존 기준과 동일 */
 const MIN_ACCOUNT_AGE_DAYS = 7;
@@ -76,16 +84,17 @@ function clearAttempts(userId) {
  * @returns {Promise<string>} RucCore가 돌려준 결과 코드
  */
 async function callServer(code, discordId, discordName) {
-    if (!RCON_PW) {
+    const cfg = rconConfig();
+    if (!cfg.password) {
         throw new Error('RUC_RCON_PW가 .env에 설정되지 않았습니다.');
     }
 
     let rcon;
     try {
         rcon = await Rcon.connect({
-            host: RCON_HOST,
-            port: RCON_PORT,
-            password: RCON_PW,
+            host: cfg.host,
+            port: cfg.port,
+            password: cfg.password,
             timeout: 5000,
         });
 
@@ -156,7 +165,7 @@ const verifyCommand = new SlashCommandBuilder()
 
 async function handleVerify(interaction) {
     // 본인에게만 보이게 — 코드가 채널에 남지 않도록
-    await interaction.deferReply({ ephemeral: true });
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
 
     const userId = interaction.user.id;
 

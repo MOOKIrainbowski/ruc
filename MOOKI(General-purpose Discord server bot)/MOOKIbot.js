@@ -6,9 +6,11 @@ const {
 const fs = require('fs');
 const path = require('path');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
-const { verifyCommand, handleVerify } = require('./verification');
 
 require('dotenv').config({ path: path.join(__dirname, '.env') });
+
+// dotenv 이후에 require 해야 합니다 (아래 모듈이 환경변수를 사용)
+const { verifyCommand, handleVerify } = require('./verification');
 
 const REACTION_FILE = path.join(__dirname, 'reaction_roles.json');
 const ECONOMY_FILE  = path.join(__dirname, 'economy_data.json');
