@@ -91,20 +91,36 @@ foreach ($s in $Servers) {
 }
 
 # ── 플러그인 빌드 & 배치 ────────────────────────────────────────────────
-Write-Host "`n[3/4] RucCore 플러그인 빌드" -ForegroundColor Cyan
-Push-Location "$Root\plugins\RucCore"
+Write-Host "`n[3/4] 플러그인 빌드" -ForegroundColor Cyan
+
+# 멀티 프로젝트 루트에서 한 번에 빌드합니다 (RucCore + RucHome + 이후 추가 모듈).
+Push-Location "$Root\plugins"
 try {
     & java -classpath "gradle\wrapper\gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain --no-daemon -q build
-    if ($LASTEXITCODE -ne 0) { throw "RucCore 빌드 실패" }
+    if ($LASTEXITCODE -ne 0) { throw "플러그인 빌드 실패" }
 } finally {
     Pop-Location
 }
 
+# 모든 서버에 올릴 공용 플러그인
 $jar = Get-ChildItem "$Root\plugins\RucCore\build\libs\RucCore-*.jar" | Select-Object -First 1
 foreach ($s in $Servers) {
     Copy-Item $jar.FullName "$Root\servers\$s\plugins\RucCore.jar" -Force
 }
-Write-Host "  RucCore.jar 4개 서버에 배치 완료"
+Write-Host "  RucCore.jar -> 4개 서버"
+
+# 서버별 전용 모듈 (해당 서버에만 배치)
+$moduleMap = @{ "RucHome" = "home" }
+foreach ($module in $moduleMap.Keys) {
+    $dir = "$Root\plugins\$module\build\libs"
+    if (-not (Test-Path $dir)) { continue }
+    $mjar = Get-ChildItem "$dir\$module-*.jar" -ErrorAction SilentlyContinue | Select-Object -First 1
+    if ($mjar) {
+        $target = $moduleMap[$module]
+        Copy-Item $mjar.FullName "$Root\servers\$target\plugins\$module.jar" -Force
+        Write-Host "  $module.jar -> $target"
+    }
+}
 
 # ── EULA 안내 ───────────────────────────────────────────────────────────
 Write-Host "`n[4/4] 남은 작업" -ForegroundColor Cyan

@@ -67,16 +67,32 @@ proxies:
 | `/tpa` `/tpahere` `/tpaccept` `/tpdeny` `/tpcancel` | §3.3 | ✅ |
 | 한국어/영어 (`/언어`) | §6.3 | ✅ |
 | 평판 7티어 표시 | §3.7 | ✅ (점수 변동 로직은 Phase 7) |
-| 디스코드 인증 게이트 | D10 | ✅ (런타임 미검증) |
+| 디스코드 인증 게이트 | D10 | ✅ 런타임 검증 완료 |
+
+**RucHome (v0.1.0)** — 홈 서버 전용
+
+| 기능 | 명세 | 상태 |
+|---|---|---|
+| 허브 전용 빈 월드 + 광장 생성 | §2.3 | ✅ |
+| PvP 불가 · 블록 파괴/설치 불가 | §2.3 | ✅ |
+| 어드벤처 · 낙하데미지 없음 · 항상 낮/맑음 · 배고픔 고정 | D1 | ✅ |
+| 서버 선택 NPC 3체 | D1 | ✅ |
+| 나침반 GUI (5번 슬롯) | D1 | ✅ |
+| 인증 격리 섬 (광장에서 512블록) | D10 | ✅ |
+| 정보 보드 · 랭킹 벽 · 튜토리얼 | D1 | ⬜ |
 
 ### 빌드
 
+Gradle 멀티 프로젝트입니다. 루트는 `plugins/` 이고, 모듈이 늘어나면 `settings.gradle.kts` 에 추가합니다.
+
 ```powershell
-cd plugins\RucCore
+cd plugins
 java -classpath "gradle\wrapper\gradle-wrapper.jar" org.gradle.wrapper.GradleWrapperMain build
 ```
 
-결과물: `build/libs/RucCore-0.1.0.jar` (약 7MB — JDBC 드라이버 포함)
+결과물:
+- `RucCore/build/libs/RucCore-0.1.0.jar` — 약 7MB (JDBC 드라이버 포함). 4개 서버 전부에 배치
+- `RucHome/build/libs/RucHome-0.1.0.jar` — 약 23KB. 홈 서버에만 배치
 
 ### 데이터베이스
 

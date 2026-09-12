@@ -68,3 +68,36 @@ tpa:
   warmup-seconds: 3
   # 기본 쿨타임 (초). 후원 등급별 단축은 D7에서 적용
   cooldown-seconds: 60
+
+# ── 디스코드 인증 (D10) ────────────────────────────────────────────────
+# 미인증 플레이어는 홈 서버 인증 구역에 격리되어 이동·채팅·상호작용이 막힙니다.
+# 접속 자체는 허용해서 서버 분위기는 보여주되, 피해를 줄 수단은 전부 차단합니다.
+verification:
+  enabled: true
+
+  # 인증 구역 위치. 홈 광장 맵을 적용한 뒤 실제 좌표로 바꾸세요.
+  area:
+    world: hub
+    x: 0.5
+    y: 64.0
+    z: 512.5
+    yaw: 0.0
+    pitch: 0.0
+    # 이 반경을 벗어나면 즉시 되돌립니다
+    radius: 11.0
+
+  code:
+    length: 6
+    expire-seconds: 600        # 10분
+    resend-cooldown-seconds: 60
+
+  # 인증 완료를 감지하는 주기 (틱). 미인증자에 대해서만 돕니다.
+  poll-interval-ticks: 60
+
+  # 미인증 상태에서도 허용할 명령어
+  allowed-commands:
+    - "인증"
+    - "verify"
+    - "help"
+    - "언어"
+    - "ruclang"

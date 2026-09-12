@@ -1,0 +1,18 @@
+name: RucHome
+version: '${version}'
+main: kr.rucserver.home.RucHome
+api-version: '1.21'
+author: Ruc Server
+description: 러크 서버 홈(허브) — 광장, 서버 선택, 안전 규칙
+depend: [RucCore]
+
+commands:
+  hub:
+    description: (관리) 광장 재생성 / NPC 재배치 / 스폰 이동
+    usage: /hub <build|npc|spawn>
+    permission: ruchome.admin
+
+permissions:
+  ruchome.admin:
+    description: 허브 관리 권한 (블록 설치·파괴 예외 포함)
+    default: op

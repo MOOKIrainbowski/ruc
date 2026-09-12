@@ -20,7 +20,7 @@ minecraft/**/libraries/
 minecraft/**/logs/
 minecraft/**/*.jar
 # Gradle 래퍼 jar은 예외 — 이게 없으면 클론 후 빌드가 불가능합니다
-!minecraft/plugins/RucCore/gradle/wrapper/gradle-wrapper.jar
+!minecraft/plugins/gradle/wrapper/gradle-wrapper.jar
 
 # Paper/Velocity가 실행 중 만들어내는 것들
 minecraft/servers/*/config/
@@ -71,3 +71,6 @@ minecraft/servers/*/plugins/spark/
 minecraft/servers/*/version_history.json
 # 메시지 파일은 jar에서 자동 추출됩니다. 원본은 plugins/RucCore/src/main/resources
 minecraft/servers/*/plugins/RucCore/messages_*.yml
+
+# 허브 월드는 플러그인이 코드로 생성합니다 (PlazaBuilder). 커밋 불필요.
+minecraft/servers/*/hub/
