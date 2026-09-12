@@ -63,3 +63,11 @@ desktop.ini
 # server.properties 에는 rcon.password 가 들어갑니다.
 # 템플릿(.example)만 추적하고 실제 파일은 setup.ps1 이 생성합니다.
 minecraft/servers/*/server.properties
+
+# Paper가 실행 중 생성하는 것들
+minecraft/servers/*/plugins/.paper-remapped/
+minecraft/servers/*/plugins/bStats/
+minecraft/servers/*/plugins/spark/
+minecraft/servers/*/version_history.json
+# 메시지 파일은 jar에서 자동 추출됩니다. 원본은 plugins/RucCore/src/main/resources
+minecraft/servers/*/plugins/RucCore/messages_*.yml

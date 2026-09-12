@@ -73,8 +73,10 @@ foreach ($s in $Servers) {
         $pw = ([Convert]::ToBase64String($bytes) -replace '[+/=]', '')
         $pw = $pw.Substring(0, [Math]::Min(28, $pw.Length))
 
-        (Get-Content $template -Raw).Replace('__GENERATED_AT_SETUP__', $pw) |
-            Set-Content $props -Encoding utf8 -NoNewline
+        # BOM 없이 써야 합니다 — 자바 프로퍼티 파서가 BOM을 키의 일부로 읽습니다.
+        $generated = (Get-Content $template -Raw).Replace('__GENERATED_AT_SETUP__', $pw)
+        [System.IO.File]::WriteAllText($props, $generated,
+            (New-Object System.Text.UTF8Encoding($false)))
 
         if ($s -eq "home") {
             Write-Host "  $s : server.properties 생성 (RCON 비밀번호 새로 발급)" -ForegroundColor Yellow

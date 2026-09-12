@@ -14,10 +14,16 @@ if ($answer -ne "yes") {
     exit 1
 }
 
+# ⚠️ BOM 없이 써야 합니다.
+# PowerShell 5.1의 Set-Content -Encoding utf8 은 BOM을 붙이는데, 자바 프로퍼티
+# 파서가 BOM을 키 이름의 일부로 읽어서 'eula' 가 아니라 '﻿eula' 가 됩니다.
+# 그러면 동의가 인식되지 않고 서버가 계속 EULA를 요구합니다.
+$noBom = New-Object System.Text.UTF8Encoding($false)
+
 foreach ($s in @("home","raid","war","peace")) {
     $dir = "$Root\servers\$s"
     New-Item -ItemType Directory -Force -Path $dir | Out-Null
-    Set-Content -Path "$dir\eula.txt" -Value "eula=true" -Encoding utf8
+    [System.IO.File]::WriteAllText("$dir\eula.txt", "eula=true`n", $noBom)
     Write-Host "  $s : eula=true"
 }
 Write-Host "완료. 이제 scripts\start-home.ps1 로 서버를 실행할 수 있습니다." -ForegroundColor Green
