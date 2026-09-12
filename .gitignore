@@ -1,0 +1,38 @@
+# secrets
+.env
+.env.local
+*.env
+!.env.example
+
+# node
+node_modules/
+npm-debug.log*
+
+# logs / runtime data
+*.log
+bot.log
+
+# minecraft server runtime
+minecraft/**/world*/
+minecraft/**/plugins/**/*.jar
+minecraft/**/cache/
+minecraft/**/libraries/
+minecraft/**/logs/
+minecraft/**/*.jar
+minecraft/**/crash-reports/
+minecraft/**/banned-*.json
+minecraft/**/usercache.json
+
+# java build
+build/
+.gradle/
+
+# web
+web/.next/
+web/out/
+web/.vercel/
+
+# os
+Thumbs.db
+desktop.ini
+.DS_Store

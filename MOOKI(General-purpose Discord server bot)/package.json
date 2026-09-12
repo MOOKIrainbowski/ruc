@@ -1,0 +1,14 @@
+{
+  "name": "mookibot",
+  "version": "1.0.0",
+  "description": "Rustcraft Discord Bot",
+  "main": "MOOKIbot.js",
+  "scripts": {
+    "start": "node MOOKIbot.js"
+  },
+  "dependencies": {
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5",
+    "@napi-rs/canvas": "^0.1.58"
+  }
+}

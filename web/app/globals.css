@@ -1,0 +1,201 @@
+@import "tailwindcss";
+
+/* ── Galmuri (SIL OFL 1.1, © Lee Minseo / quiple) ────────────────────
+   한글을 지원하는 픽셀 폰트. 영문 전용 픽셀 폰트(Silkscreen 등)는 한글이
+   깨지므로, 한국어가 기본 언어인 이 사이트에서는 Galmuri가 사실상 유일한
+   선택지입니다. 라틴 글리프까지 한 벌에 들어 있어 KO/EN 모두 커버됩니다.
+   CDN 대신 자체 호스팅 — 외부 의존성이 없고 @import 순서 문제도 없습니다. */
+
+@font-face {
+  font-family: "Galmuri11";
+  src: url("/fonts/Galmuri11.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: "Galmuri11";
+  src: url("/fonts/Galmuri11-Bold.woff2") format("woff2");
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@theme {
+  /* 브랜드 — §7.1 */
+  --color-ruc-50:  #f4fbe3;
+  --color-ruc-100: #e6f6bf;
+  --color-ruc-200: #d3ee8c;
+  --color-ruc-300: #bad953;  /* 명세 지정 */
+  --color-ruc-400: #93e93e;  /* 명세 지정 */
+  --color-ruc-500: #7bc92c;
+  --color-ruc-600: #5d9e1f;
+  --color-ruc-700: #467a1a;
+  --color-ruc-800: #2f5212;
+  --color-ruc-900: #1a2f0a;
+
+  --font-pixel: "Galmuri11", ui-monospace, "Courier New", monospace;
+  --font-pixel-lg: "Galmuri11", ui-monospace, "Courier New", monospace;
+}
+
+:root {
+  color-scheme: dark;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  font-family: var(--font-pixel);
+  color: #eef5e0;
+  background-color: #0a1207;
+  /* 픽셀 폰트는 안티앨리어싱이 들어가면 흐려집니다. */
+  -webkit-font-smoothing: none;
+  font-smooth: never;
+  letter-spacing: 0.01em;
+  overflow-x: hidden;
+}
+
+/* ── 배경 (§7.6) — candidate_2, 블러 처리 ───────────────────────── */
+
+.bg-layer {
+  position: fixed;
+  inset: -4rem; /* 블러 가장자리가 비치지 않도록 화면보다 크게 */
+  z-index: -2;
+  background-image: url("/bg.jpg");
+  background-size: cover;
+  background-position: center;
+  /* 블러는 충분히 주되 밝기는 살립니다 — 이 사진이 안 보이면 §7.6의 의미가 없습니다. */
+  filter: blur(13px) saturate(1.3) brightness(0.92);
+  transform: scale(1.06);
+}
+
+.bg-tint {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  /* 위쪽은 사진이 잘 보이게 얇게, 아래로 갈수록 짙게 — 본문 텍스트 가독성 확보 */
+  background:
+    radial-gradient(120% 80% at 50% 0%, rgba(147, 233, 62, 0.12) 0%, transparent 55%),
+    linear-gradient(
+      180deg,
+      rgba(8, 18, 6, 0.30) 0%,
+      rgba(8, 16, 6, 0.48) 30%,
+      rgba(7, 14, 5, 0.82) 65%,
+      rgba(5, 11, 4, 0.94) 100%
+    );
+}
+
+/* ── 글래스모피즘 (§7.5) ────────────────────────────────────────── */
+
+.glass {
+  background: rgba(255, 255, 255, 0.055);
+  backdrop-filter: blur(14px) saturate(1.3);
+  -webkit-backdrop-filter: blur(14px) saturate(1.3);
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.38),
+    inset 0 1px 0 rgba(255, 255, 255, 0.14);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.085);
+  backdrop-filter: blur(22px) saturate(1.4);
+  -webkit-backdrop-filter: blur(22px) saturate(1.4);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow:
+    0 10px 40px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+/* 상단 네비 — "반투명 프로스티드 플라스틱" (§7.3) */
+.glass-nav {
+  background: rgba(14, 26, 10, 0.52);
+  backdrop-filter: blur(20px) saturate(1.6);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.3);
+}
+
+.glass-hover {
+  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+}
+.glass-hover:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(186, 217, 83, 0.38);
+  transform: translateY(-2px);
+}
+
+/* ── 타이포 강조 (§7.5 "강한 타이포그래피") ─────────────────────── */
+
+.headline {
+  font-family: var(--font-pixel-lg);
+  font-weight: 700;
+  line-height: 1.12;
+  letter-spacing: -0.01em;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, 0.55), 0 0 28px rgba(147, 233, 62, 0.18);
+}
+
+.accent {
+  color: var(--color-ruc-400);
+  text-shadow: 0 0 18px rgba(147, 233, 62, 0.5);
+}
+
+.eyebrow {
+  font-size: 0.75rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--color-ruc-300);
+  opacity: 0.9;
+}
+
+/* ── 상태 표시등 ────────────────────────────────────────────────── */
+
+.dot {
+  width: 0.5rem;
+  height: 0.5rem;
+  border-radius: 9999px;
+  flex: none;
+}
+.dot-on {
+  background: var(--color-ruc-400);
+  box-shadow: 0 0 10px rgba(147, 233, 62, 0.9);
+  animation: pulse 2.2s ease-in-out infinite;
+}
+.dot-off {
+  background: #6b7280;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.45; }
+}
+
+/* 픽셀 느낌의 이미지 렌더링 — 아이콘이 뭉개지지 않게 */
+.pixelated {
+  image-rendering: pixelated;
+}
+
+::selection {
+  background: rgba(147, 233, 62, 0.3);
+}
+
+/* 스크롤바 */
+::-webkit-scrollbar { width: 10px; }
+::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }
+::-webkit-scrollbar-thumb {
+  background: rgba(186, 217, 83, 0.3);
+  border-radius: 0;
+}
+::-webkit-scrollbar-thumb:hover { background: rgba(186, 217, 83, 0.5); }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

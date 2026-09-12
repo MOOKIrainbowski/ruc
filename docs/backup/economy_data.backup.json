@@ -1,0 +1,65 @@
+{
+    "users": {
+        "741663245752074300": {
+            "money": 1110,
+            "inventory": [],
+            "companies": [],
+            "lastCheckIn": 1769861895162,
+            "streak": 1
+        },
+        "1312228400596914231": {
+            "money": 111131,
+            "inventory": [],
+            "companies": [],
+            "lastCheckIn": 1770210435840,
+            "streak": 1
+        },
+        "1282630203138379821": {
+            "money": 1000116255,
+            "inventory": [],
+            "companies": [
+                "테슷트"
+            ],
+            "lastCheckIn": 1770336381817,
+            "streak": 2
+        },
+        "1308422787836153918": {
+            "money": 1110,
+            "inventory": [],
+            "companies": [],
+            "lastCheckIn": 1770209423759,
+            "streak": 1
+        },
+        "1122028779599040553": {
+            "money": 106110,
+            "inventory": [],
+            "companies": [
+                "스티브스티브"
+            ],
+            "lastCheckIn": 1770210154530,
+            "streak": 1
+        }
+    },
+    "companies": {
+        "테슷트": {
+            "owner": "1282630203138379821",
+            "stockPrice": 96,
+            "history": [
+                100,
+                102,
+                96
+            ],
+            "isPublic": true
+        },
+        "스티브스티브": {
+            "owner": "1122028779599040553",
+            "stockPrice": 102,
+            "history": [
+                100,
+                102
+            ],
+            "isPublic": true
+        }
+    },
+    "market_index": 100
+}
