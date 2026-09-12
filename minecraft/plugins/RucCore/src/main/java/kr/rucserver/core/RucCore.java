@@ -2,14 +2,17 @@ package kr.rucserver.core;
 
 import kr.rucserver.core.command.CoreCommands;
 import kr.rucserver.core.listener.PlayerListener;
+import kr.rucserver.core.listener.VerificationListener;
 import kr.rucserver.core.service.EconomyService;
 import kr.rucserver.core.service.MessageService;
 import kr.rucserver.core.service.PlayerDataService;
 import kr.rucserver.core.service.ScoreboardService;
 import kr.rucserver.core.service.TpaService;
+import kr.rucserver.core.service.VerificationService;
 import kr.rucserver.core.service.XpService;
 import kr.rucserver.core.storage.Database;
 import kr.rucserver.core.storage.PlayerRepository;
+import kr.rucserver.core.storage.VerificationRepository;
 import org.bukkit.GameRule;
 import org.bukkit.World;
 import org.bukkit.entity.Player;
@@ -34,6 +37,7 @@ public class RucCore extends JavaPlugin {
     private XpService xp;
     private ScoreboardService scoreboards;
     private TpaService tpa;
+    private VerificationService verification;
 
     @Override
     public void onEnable() {
@@ -55,12 +59,16 @@ public class RucCore extends JavaPlugin {
         xp = new XpService(this, messages);
         scoreboards = new ScoreboardService(this, messages, xp);
         tpa = new TpaService(this, messages);
+        verification = new VerificationService(this, messages,
+                new VerificationRepository(database));
 
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
+        getServer().getPluginManager().registerEvents(new VerificationListener(this), this);
         new CoreCommands(this, messages).register();
 
         applyGlobalRules();
         scoreboards.start();
+        verification.startPolling();
 
         // 리로드로 켜진 경우 이미 접속해 있는 사람들 처리
         for (Player player : getServer().getOnlinePlayers()) {
@@ -76,6 +84,7 @@ public class RucCore extends JavaPlugin {
     @Override
     public void onDisable() {
         if (scoreboards != null) scoreboards.stop();
+        if (verification != null) verification.stop();
 
         // 종료 시에는 비동기로 넘기면 스케줄러가 이미 멈춰서 저장이 유실됩니다.
         // 여기서만 동기로 저장합니다.
@@ -112,4 +121,5 @@ public class RucCore extends JavaPlugin {
     public XpService getXp() { return xp; }
     public ScoreboardService getScoreboards() { return scoreboards; }
     public TpaService getTpa() { return tpa; }
+    public VerificationService getVerification() { return verification; }
 }

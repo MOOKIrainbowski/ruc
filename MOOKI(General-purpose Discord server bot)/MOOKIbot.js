@@ -6,6 +6,7 @@ const {
 const fs = require('fs');
 const path = require('path');
 const { createCanvas, loadImage } = require('@napi-rs/canvas');
+const { verifyCommand, handleVerify } = require('./verification');
 
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -353,6 +354,9 @@ client.once('ready', async () => {
             .addIntegerOption(o => o.setName('금액').setDescription('지급할 RUC 금액').setRequired(true)),
         new SlashCommandBuilder().setName('프로필').setDescription('경제 프로필 카드를 생성합니다.')
             .addUserOption(o => o.setName('유저').setDescription('프로필을 볼 유저 (선택)').setRequired(false)),
+
+        // 디스코드 ↔ 마크 계정 인증 (D10)
+        verifyCommand,
     ];
 
     try {
@@ -376,6 +380,11 @@ client.on('interactionCreate', async interaction => {
             const userId = user.id;
 
             // ── 티켓 명령어 ──────────────────────────────────────────
+            if (commandName === '인증') {
+                await handleVerify(interaction);
+                return;
+            }
+
             if (commandName === 'ticket') {
                 // /ticket 입력 시 바로 팝업창(모달) 오픈 — 유형 선택 포함
                 const modal = new ModalBuilder()

@@ -38,6 +38,11 @@ public class PlayerListener implements Listener {
         plugin.getPlayerData().loadAsync(player, () -> {
             if (!player.isOnline()) return;
             plugin.getScoreboards().attach(player);
+
+            // D10 — 미인증이면 인증 구역에 격리하고 코드를 발급합니다.
+            if (plugin.getVerification().requiresVerification(player)) {
+                plugin.getVerification().beginVerification(player);
+            }
         });
     }
 
@@ -45,6 +50,7 @@ public class PlayerListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
         plugin.getTpa().clear(player.getUniqueId());
+        plugin.getVerification().cleanup(player.getUniqueId());
         plugin.getPlayerData().unloadAsync(player.getUniqueId());
     }
 

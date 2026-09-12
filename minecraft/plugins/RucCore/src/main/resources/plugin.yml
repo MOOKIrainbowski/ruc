@@ -37,6 +37,19 @@ commands:
     description: 표시 언어를 변경합니다. (ko / en)
     usage: /ruclang <ko|en>
     aliases: [언어]
+  verify:
+    description: 디스코드 인증 코드를 확인하거나 새로 받습니다.
+    usage: /verify
+    aliases: [인증]
+  verifyapprove:
+    description: (스태프) 플레이어를 수동으로 인증 승인합니다.
+    usage: /verifyapprove <player>
+    aliases: [인증승인]
+    permission: ruccore.admin
+  rucverify:
+    description: (콘솔/RCON 전용) 디스코드 봇이 인증 코드를 검증할 때 씁니다.
+    usage: /rucverify <code> <discordId> <discordName>
+    permission: ruccore.admin
 
 permissions:
   ruccore.admin:

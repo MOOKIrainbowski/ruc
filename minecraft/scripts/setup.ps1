@@ -61,7 +61,31 @@ foreach ($s in $Servers) {
     $dir = "$Root\servers\$s"
     New-Item -ItemType Directory -Force -Path "$dir\plugins" | Out-Null
     Copy-Item $paperJar "$dir\paper.jar" -Force
-    Write-Host "  $s 준비됨"
+
+    # server.properties 는 rcon.password 를 담고 있어 git에서 제외됩니다.
+    # 템플릿에서 만들어내되, 비밀번호는 서버마다 새로 생성합니다.
+    $props = "$dir\server.properties"
+    $template = "$dir\server.properties.example"
+
+    if ((Test-Path $template) -and (-not (Test-Path $props))) {
+        $bytes = New-Object byte[] 24
+        [System.Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+        $pw = ([Convert]::ToBase64String($bytes) -replace '[+/=]', '')
+        $pw = $pw.Substring(0, [Math]::Min(28, $pw.Length))
+
+        (Get-Content $template -Raw).Replace('__GENERATED_AT_SETUP__', $pw) |
+            Set-Content $props -Encoding utf8 -NoNewline
+
+        if ($s -eq "home") {
+            Write-Host "  $s : server.properties 생성 (RCON 비밀번호 새로 발급)" -ForegroundColor Yellow
+            Write-Host "    .env 의 RUC_RCON_PW 를 아래 값으로 맞추세요:" -ForegroundColor Yellow
+            Write-Host "    $pw" -ForegroundColor White
+        } else {
+            Write-Host "  $s 준비됨"
+        }
+    } else {
+        Write-Host "  $s 준비됨"
+    }
 }
 
 # ── 플러그인 빌드 & 배치 ────────────────────────────────────────────────

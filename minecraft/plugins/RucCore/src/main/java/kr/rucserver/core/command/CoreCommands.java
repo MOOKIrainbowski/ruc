@@ -4,6 +4,7 @@ import kr.rucserver.core.RucCore;
 import kr.rucserver.core.model.RucPlayer;
 import kr.rucserver.core.service.EconomyService;
 import kr.rucserver.core.service.MessageService;
+import kr.rucserver.core.service.VerificationService;
 import org.bukkit.Bukkit;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
@@ -34,7 +35,8 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
     /** plugin.yml에 등록된 명령어들을 이 핸들러에 연결합니다. */
     public void register() {
         for (String name : List.of("tpa", "tpahere", "tpaccept", "tpdeny",
-                "tpcancel", "ruc", "level", "ruclang")) {
+                "tpcancel", "ruc", "level", "ruclang",
+                "verify", "verifyapprove", "rucverify")) {
             var command = plugin.getCommand(name);
             if (command == null) {
                 plugin.getLogger().warning("plugin.yml에 '" + name + "' 명령어가 없습니다.");
@@ -48,6 +50,12 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
     @Override
     public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command,
                              @NotNull String label, @NotNull String[] args) {
+
+        // rucverify는 RCON(콘솔)에서 디스코드 봇이 호출하므로
+        // 플레이어 전용 검사보다 먼저 처리합니다.
+        if (command.getName().equalsIgnoreCase("rucverify")) {
+            return handleRconVerify(sender, args);
+        }
 
         if (!(sender instanceof Player player)) {
             sender.sendMessage("이 명령어는 게임 안에서만 사용할 수 있습니다.");
@@ -126,6 +134,35 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
                 player.sendMessage(messages.prefixed(requested, "lang.changed"));
             }
 
+            case "verify" -> {
+                RucPlayer data = plugin.getPlayerData().get(player);
+                if (data == null) return true;
+                if (data.isVerified()) {
+                    player.sendMessage(messages.prefixed(lang, "verify.already-verified"));
+                    return true;
+                }
+                plugin.getVerification().issueCode(player, true);
+            }
+
+            case "verifyapprove" -> {
+                if (args.length < 1) {
+                    player.sendMessage(messages.prefixed(lang, "verify.staff-usage"));
+                    return true;
+                }
+                Player target = Bukkit.getPlayerExact(args[0]);
+                if (target == null) {
+                    player.sendMessage(messages.prefixed(lang, "general.player-not-found",
+                            "player", args[0]));
+                    return true;
+                }
+                if (plugin.getVerification().approveManually(target, player.getName())) {
+                    player.sendMessage(messages.prefixed(lang, "verify.staff-approved",
+                            "player", target.getName()));
+                } else {
+                    player.sendMessage(messages.prefixed(lang, "verify.already-verified"));
+                }
+            }
+
             default -> {
                 return false;
             }
@@ -152,6 +189,39 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
             }
         }
         return Collections.emptyList();
+    }
+
+    /**
+     * RCON 전용 — 디스코드 봇(MOOKI)이 인증 코드를 검증할 때 호출합니다.
+     *
+     * MOOKI는 Node.js라 자바 임베디드 DB(H2)를 직접 읽을 수 없습니다. 그래서
+     * 이미 .env에 있던 RCON을 연동 통로로 씁니다. 운영에서 MySQL로 바꿔도
+     * 이 경로는 그대로 동작합니다.
+     *
+     * 응답은 "RUCVERIFY <RESULT>" 한 줄로 내보내서 봇이 파싱하기 쉽게 합니다.
+     */
+    private boolean handleRconVerify(CommandSender sender, String[] args) {
+        if (sender instanceof Player) {
+            sender.sendMessage("이 명령어는 콘솔에서만 사용할 수 있습니다.");
+            return true;
+        }
+        if (args.length < 2) {
+            sender.sendMessage("RUCVERIFY ERROR usage: /rucverify <code> <discordId> [discordName]");
+            return true;
+        }
+
+        String code = args[0];
+        String discordId = args[1];
+        String discordName = args.length >= 3 ? args[2] : discordId;
+
+        // RCON 호출은 메인 스레드에서 들어오므로 DB 작업을 여기서 직접 하면
+        // 서버가 멈춥니다. 다만 RCON은 응답을 동기로 기대하기 때문에,
+        // 짧은 대기로 결과를 받아 돌려줍니다.
+        VerificationService.Result result =
+                plugin.getVerification().verify(code, discordId, discordName);
+
+        sender.sendMessage("RUCVERIFY " + result.name());
+        return true;
     }
 
     private List<String> filter(List<String> options, String prefix) {

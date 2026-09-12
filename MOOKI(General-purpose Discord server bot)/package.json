@@ -7,8 +7,10 @@
     "start": "node MOOKIbot.js"
   },
   "dependencies": {
+    "@napi-rs/canvas": "^0.1.58",
     "discord.js": "^14.16.3",
     "dotenv": "^16.4.5",
-    "@napi-rs/canvas": "^0.1.58"
+    "mysql2": "^3.24.4",
+    "rcon-client": "^4.2.5"
   }
 }
