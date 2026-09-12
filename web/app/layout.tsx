@@ -4,15 +4,15 @@ import "./globals.css";
 export const metadata: Metadata = {
   metadataBase: new URL("https://ruc-server.vercel.app"),
   title: {
-    default: "러크 서버 — 4개의 세계, 하나의 경제",
+    default: "러크 서버",
     template: "%s · 러크 서버",
   },
   description:
-    "홈 · 레이드 · 국가전 · 평화. 네 개의 마인크래프트 서버가 하나의 화폐 Ruc로 이어집니다. 전투 능력치는 팔지 않습니다.",
+    "홈 · 약탈 · 국가전 · 평화. 네 개의 서버가 하나의 화폐 Ruc로 이어집니다.",
   icons: { icon: "/icon.png", apple: "/icon.png" },
   openGraph: {
-    title: "러크 서버 — 4개의 세계, 하나의 경제",
-    description: "홈 · 레이드 · 국가전 · 평화. 네 개의 서버, 하나의 경제.",
+    title: "러크 서버",
+    description: "홈 · 약탈 · 국가전 · 평화. 네 개의 서버, 하나의 경제.",
     images: ["/icon.png"],
     type: "website",
   },

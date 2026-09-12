@@ -1,9 +1,9 @@
 import Landing from "@/components/Landing";
 
 export const metadata = {
-  title: "Ruc Server — Four worlds, one economy",
+  title: { absolute: "Ruc Server" },
   description:
-    "Home, Raid, Nation War, Peace. Four Minecraft servers joined by one currency. Combat power is not for sale.",
+    "Home, Raiding Server, Nation War, Peace. Four servers joined by one currency.",
 };
 
 export default function Page() {
