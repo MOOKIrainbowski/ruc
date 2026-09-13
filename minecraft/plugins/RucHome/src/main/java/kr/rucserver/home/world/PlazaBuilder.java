@@ -185,12 +185,17 @@ public class PlazaBuilder {
         boolean wedgeEdge = wf < 0.10 || wf > 0.90;
         if (wedgeEdge && d > 4) return Material.DEEPSLATE_BRICKS;
 
-        // 3) 사각 격자 인세트 — 6칸 주기로 석영 사각 테두리
+        // 3) 사각 격자 인세트 — 석영으로 밝은 격자를 그립니다
         int gx = Math.floorMod(x, 9), gz = Math.floorMod(z, 9);
         boolean inset = (gx == 0 || gz == 0);
         boolean insetCorner = (gx == 0 && gz == 0);
-        if (insetCorner && d > 6) return Material.CHISELED_STONE_BRICKS;
-        if (inset && d > 6) return Material.SMOOTH_QUARTZ;
+        if (insetCorner && d > 6) return Material.CHISELED_QUARTZ_BLOCK;
+        if (inset && d > 6) return Palette.mix(Palette.QUARTZ_MIX, x, z);
+        // 격자 안쪽 — 가문비 데크 패널을 띄엄띄엄
+        if (d > 10 && gx >= 3 && gx <= 6 && gz >= 3 && gz <= 6
+                && Palette.noise(x >> 2, z >> 2) > 0.62) {
+            return Palette.mix(Palette.TIMBER_MIX, x, z);
+        }
 
         // 4) 바탕 — 쐐기별로 프리즈머린 / 석재를 교대
         if ((wedge & 1) == 0) {
@@ -333,6 +338,10 @@ public class PlazaBuilder {
                     m = Material.POLISHED_BLACKSTONE;
                 }
                 if ((int) d % 6 == 0) m = Palette.mix(Palette.TUFF_MIX, x, z);
+                // 석영 띠 — 밝은 선이 회색 바다를 끊어줍니다
+                if ((int) d % 6 == 3) m = Palette.mix(Palette.QUARTZ_MIX, x, z);
+                // 가문비 데크 — 성벽 바로 안쪽 한 줄
+                if (d > WALL_IN - 3) m = Palette.mix(Palette.TIMBER_MIX, x, z);
 
                 Brush.set(world, x, RING_TOP, z, m);
                 for (int yy = RING_TOP - 1; yy > FOUND_TOP; yy--) {
@@ -425,7 +434,10 @@ public class PlazaBuilder {
 
     private Material wallMaterial(int x, int y, int z, int rel, double inner, boolean tower) {
         if (rel <= 2) return Palette.mix(Palette.DARK_MIX, x, y, z);       // 기단
-        if (rel == 8 || rel == 14) return Material.POLISHED_BLACKSTONE;    // 층 띠
+        if (rel == 8 || rel == 14) return Material.POLISHED_BLACKSTONE;    // 어두운 층 띠
+        if (rel == 9 || rel == 15) return Palette.mix(Palette.QUARTZ_MIX, x, y, z);  // 밝은 층 띠
+        if (rel == 6 && Palette.noise(x, y, z) > 0.5)
+            return Palette.mix(Palette.TIMBER_MIX, x, y, z);               // 목재 보
         if (tower && inner > 0.3 && inner < 0.7) return Palette.mix(Palette.TUFF_MIX, x, y, z);
         if (inner < 0.35) return Palette.mix(Palette.RUIN_MIX, x, y, z);   // 안쪽은 폐허 질감
         if (inner < 0.7) return Palette.mix(Palette.WALL_MIX, x, y, z);
@@ -447,10 +459,21 @@ public class PlazaBuilder {
                     int z = (int) Math.round(dz * r + pz * o);
                     int ao = Math.abs(o);
 
-                    Material floor = ao > GATE_HALF
-                            ? Material.POLISHED_BLACKSTONE
-                            : (((r + o) & 1) == 0 ? Material.STONE_BRICKS : Material.STONE_BRICKS);
-                    if (ao <= GATE_HALF && r % 8 == 0) floor = Material.DEEPSLATE_BRICKS;
+                    // 관문으로 가는 길은 포장이 아니라 흙길입니다.
+                    // 돌바닥이 광장부터 파빌리온까지 이어지면 단조로워서,
+                    // 다진 흙에 자갈·포졸·거친흙을 섞어 질감을 줍니다.
+                    Material floor;
+                    if (ao > GATE_HALF + 1) {
+                        floor = Palette.mix(Palette.EARTH_EDGE, x, z);
+                    } else if (ao > GATE_HALF - 1) {
+                        // 길섶 — 자갈로 경계를 냅니다
+                        floor = Palette.noise(x, 3, z) > 0.45
+                                ? Material.GRAVEL : Palette.mix(Palette.EARTH_EDGE, x, z);
+                    } else {
+                        floor = Palette.mix(Palette.EARTH_PATH, x, z);
+                        // 이따금 디딤돌
+                        if (Palette.noise(x, 11, z) > 0.90) floor = Material.COBBLESTONE;
+                    }
                     Brush.set(world, x, RING_TOP, z, floor);
                     for (int yy = RING_TOP - 1; yy > FOUND_TOP; yy--) {
                         Brush.set(world, x, yy, z, Material.COBBLED_DEEPSLATE);
@@ -522,147 +545,182 @@ public class PlazaBuilder {
     // ── 중앙 랜드마크 ──────────────────────────────────────────────────
 
     /**
-     * 대형 분수.
+     * 대형 분수 — 광장의 랜드마크.
      *
-     * 이전에는 세로로 선 포털 링을 세웠는데, 위에서 내려다보면 방사형 룬과
-     * 겹쳐 해시계처럼 보였습니다. 랜드마크로는 읽히지 않아 같은 규모의
-     * 분수로 교체합니다.
-     *
-     * 3단 수반 구조 — 위 수반이 넘쳐 아래로 떨어지고, 맨 아래 수조에 고입니다.
-     * 물줄기가 실제로 이어져야 "작동하는" 분수로 보입니다.
+     * 보강한 것
+     *  - 수조를 팔각으로 (정원은 기계적으로 보입니다)
+     *  - 석영을 수반 본체로 올려 회색 일색을 깼습니다
+     *  - 가문비 데크 보행단과 난간, 처마를 둘러 목재 질감을 넣었습니다
+     *  - 단마다 물이 실제로 넘쳐 아래로 이어집니다
+     *  - 사자머리 대신 석영 토수구 8개, 수조 안 물풀과 디딤돌
      */
     private void buildCenterpiece(World world) {
-        layout.reserve("fountain", 0, 0, 14, 0);
+        layout.reserve("fountain", 0, 0, 15, 0);
 
-        final int baseY = T1_TOP + 1;      // 광장 바닥 바로 위
+        final int baseY = T1_TOP + 1;
 
-        // ── 1단: 하부 수조 (반지름 12) ────────────────────────────────
-        for (int dx = -13; dx <= 13; dx++) {
-            for (int dz = -13; dz <= 13; dz++) {
-                double d = Math.hypot(dx, dz);
-                if (d > 13) continue;
+        // ── 1단: 팔각 하부 수조 ───────────────────────────────────────
+        for (int dx = -15; dx <= 15; dx++) {
+            for (int dz = -15; dz <= 15; dz++) {
+                double d = octagon(dx, dz);
+                if (d > 14) continue;
 
-                if (d > 12) {
-                    // 바깥 테두리 — 앉을 수 있는 계단 단
+                if (d > 13) {
+                    // 바깥 계단 단 — 앉는 자리
                     Brush.stairs(world, dx, baseY, dz, Material.STONE_BRICK_STAIRS,
                             Brush.facing(dx, dz, true), false);
                     Brush.set(world, dx, baseY - 1, dz, Material.COBBLESTONE);
-                } else if (d > 10.5) {
-                    // 수조 벽 — 두 겹
+                } else if (d > 11.6) {
+                    // 가문비 데크 보행단
+                    Brush.set(world, dx, baseY, dz, Palette.mix(Palette.TIMBER_MIX, dx, dz));
+                    Brush.set(world, dx, baseY - 1, dz, Material.COBBLESTONE);
+                } else if (d > 10.2) {
+                    // 수조 벽 — 석영 갓돌
                     Brush.set(world, dx, baseY, dz,
                             Palette.mix(Palette.RUIN_MIX, dx, baseY, dz));
-                    Brush.set(world, dx, baseY + 1, dz, ((dx + dz) & 1) == 0
-                            ? Material.CHISELED_STONE_BRICKS : Material.STONE_BRICKS);
+                    Brush.set(world, dx, baseY + 1, dz,
+                            Palette.mix(Palette.QUARTZ_MIX, dx, baseY + 1, dz));
                 } else {
-                    // 수조 바닥 + 물
+                    // 수조 바닥 — 석영·조약돌 체크 + 물
                     Brush.set(world, dx, baseY, dz, ((dx + dz) & 1) == 0
-                            ? Material.COBBLESTONE : Material.STONE_BRICKS);
+                            ? Material.SMOOTH_QUARTZ : Material.COBBLESTONE);
                     Brush.water(world, dx, baseY + 1, dz);
+                    // 물속 디딤돌과 수초
+                    if (Palette.noise(dx, 17, dz) > 0.93) {
+                        Brush.set(world, dx, baseY + 1, dz, Material.MOSSY_COBBLESTONE);
+                    } else if (Palette.noise(dx, 23, dz) > 0.95) {
+                        Brush.set(world, dx, baseY + 2, dz, Material.LILY_PAD);
+                    }
                 }
             }
         }
 
-        // 수조 가장자리 조명 기둥 8개
+        // 수조 둘레 가문비 난간 + 등 (팔각 모서리)
         for (int deg = 0; deg < 360; deg += 45) {
             double rad = Math.toRadians(deg);
-            int x = (int) Math.round(Math.cos(rad) * 11.6);
-            int z = (int) Math.round(Math.sin(rad) * 11.6);
-            for (int y = baseY + 2; y <= baseY + 4; y++) {
+            int x = (int) Math.round(Math.cos(rad) * 12.6);
+            int z = (int) Math.round(Math.sin(rad) * 12.6);
+            for (int y = baseY + 1; y <= baseY + 4; y++) {
                 Brush.pillar(world, x, y, z, Material.SPRUCE_LOG, Axis.Y);
             }
-            Brush.set(world, x, baseY + 5, z, Material.GLOWSTONE);
+            Brush.set(world, x, baseY + 5, z, Palette.mix(Palette.QUARTZ_MIX, x, baseY, z));
             Brush.set(world, x, baseY + 6, z, Material.SPRUCE_SLAB);
+            Brush.set(world, x, baseY + 4, z, Material.LANTERN);
+
+            // 기둥 사이 난간
+            double rad2 = Math.toRadians(deg + 22.5);
+            int mx = (int) Math.round(Math.cos(rad2) * 12.6);
+            int mz = (int) Math.round(Math.sin(rad2) * 12.6);
+            Brush.set(world, mx, baseY + 1, mz, Material.SPRUCE_FENCE);
+            Brush.set(world, mx, baseY + 2, mz, Material.SPRUCE_FENCE);
         }
 
-        // ── 2단: 중간 받침 + 수반 (반지름 7) ──────────────────────────
-        final int midY = baseY + 5;
+        // ── 2단: 중간 받침 + 수반 ─────────────────────────────────────
+        final int midY = baseY + 6;
         for (int y = baseY + 1; y < midY; y++) {
-            Brush.disc(world, 0, y, 0, 6.4, Palette.mix(Palette.WALL_MIX, 0, y, 0));
+            // 받침 — 석영 몸통에 석재 띠
+            Material body = (y - baseY) % 3 == 0
+                    ? Material.CHISELED_STONE_BRICKS
+                    : Palette.mix(Palette.QUARTZ_MIX, 0, y, 0);
+            Brush.disc(world, 0, y, 0, 6.4, body);
             Brush.ring(world, 0, y, 0, 5.4, 6.4, Material.COBBLESTONE);
         }
-        for (int dx = -8; dx <= 8; dx++) {
-            for (int dz = -8; dz <= 8; dz++) {
+        for (int dx = -9; dx <= 9; dx++) {
+            for (int dz = -9; dz <= 9; dz++) {
                 double d = Math.hypot(dx, dz);
-                if (d > 7.6) continue;
-                if (d > 6.4) {
-                    Brush.stairs(world, dx, midY, dz, Material.STONE_BRICK_STAIRS,
+                if (d > 8.2) continue;
+                if (d > 7.0) {
+                    // 처마 — 가문비 계단을 바깥으로
+                    Brush.stairs(world, dx, midY, dz, Material.SPRUCE_STAIRS,
                             Brush.facing(dx, dz, false), false);
-                } else if (d > 5.2) {
-                    Brush.set(world, dx, midY, dz, Material.CHISELED_STONE_BRICKS);
+                } else if (d > 5.6) {
+                    Brush.set(world, dx, midY, dz,
+                            Palette.mix(Palette.QUARTZ_MIX, dx, midY, dz));
                 } else {
-                    Brush.set(world, dx, midY, dz, Material.STONE_BRICKS);
+                    Brush.set(world, dx, midY, dz, Material.SMOOTH_QUARTZ);
                     Brush.water(world, dx, midY + 1, dz);
                 }
             }
         }
-        // 4방향 배수구 — 여기로 물이 아래 수조까지 떨어집니다
-        for (int[] o : new int[][]{{6, 0}, {-6, 0}, {0, 6}, {0, -6}}) {
-            Brush.set(world, o[0], midY, o[1], Material.AIR);
-            Brush.water(world, o[0], midY, o[1]);
-            for (int y = midY - 1; y > baseY + 1; y--) {
-                Brush.water(world, o[0], y, o[1]);
+        // 토수구 8개 — 여기로 물이 아래 수조까지 떨어집니다
+        for (int deg = 0; deg < 360; deg += 45) {
+            double rad = Math.toRadians(deg);
+            int x = (int) Math.round(Math.cos(rad) * 6.2);
+            int z = (int) Math.round(Math.sin(rad) * 6.2);
+            Brush.set(world, x, midY, z, Material.QUARTZ_BRICKS);
+            Brush.water(world, x, midY + 1, z);
+            for (int y = midY; y > baseY + 1; y--) {
+                Brush.water(world, x, y, z);
             }
         }
 
-        // ── 3단: 상부 받침 + 수반 (반지름 4) ──────────────────────────
-        final int topY = midY + 5;
+        // ── 3단: 상부 받침 + 수반 ─────────────────────────────────────
+        final int topY = midY + 6;
         for (int y = midY + 1; y < topY; y++) {
-            Brush.disc(world, 0, y, 0, 3.4, Palette.mix(Palette.WALL_MIX, 0, y, 0));
+            Brush.disc(world, 0, y, 0, 3.4,
+                    (y - midY) % 3 == 0 ? Material.CHISELED_QUARTZ_BLOCK
+                                        : Material.QUARTZ_PILLAR);
             Brush.ring(world, 0, y, 0, 2.4, 3.4, Material.DEEPSLATE_BRICKS);
         }
-        for (int dx = -5; dx <= 5; dx++) {
-            for (int dz = -5; dz <= 5; dz++) {
+        for (int dx = -6; dx <= 6; dx++) {
+            for (int dz = -6; dz <= 6; dz++) {
                 double d = Math.hypot(dx, dz);
-                if (d > 4.6) continue;
-                if (d > 3.6) {
-                    Brush.stairs(world, dx, topY, dz, Material.COBBLESTONE_STAIRS,
+                if (d > 5.2) continue;
+                if (d > 4.2) {
+                    Brush.stairs(world, dx, topY, dz, Material.SPRUCE_STAIRS,
                             Brush.facing(dx, dz, false), false);
-                } else if (d > 2.6) {
-                    Brush.set(world, dx, topY, dz, Material.CHISELED_STONE_BRICKS);
+                } else if (d > 3.0) {
+                    Brush.set(world, dx, topY, dz, Material.QUARTZ_BRICKS);
                 } else {
-                    Brush.set(world, dx, topY, dz, Material.STONE_BRICKS);
+                    Brush.set(world, dx, topY, dz, Material.SMOOTH_QUARTZ);
                     Brush.water(world, dx, topY + 1, dz);
                 }
             }
         }
-        for (int[] o : new int[][]{{3, 0}, {-3, 0}, {0, 3}, {0, -3}}) {
-            Brush.set(world, o[0], topY, o[1], Material.AIR);
-            Brush.water(world, o[0], topY, o[1]);
-            for (int y = topY - 1; y > midY + 1; y--) {
-                Brush.water(world, o[0], y, o[1]);
+        for (int deg = 0; deg < 360; deg += 90) {
+            double rad = Math.toRadians(deg);
+            int x = (int) Math.round(Math.cos(rad) * 3.4);
+            int z = (int) Math.round(Math.sin(rad) * 3.4);
+            Brush.water(world, x, topY + 1, z);
+            for (int y = topY; y > midY + 1; y--) {
+                Brush.water(world, x, y, z);
             }
         }
 
         // ── 첨탑 ──────────────────────────────────────────────────────
         final int spireY = topY + 1;
-        for (int y = spireY; y <= spireY + 7; y++) {
+        for (int y = spireY; y <= spireY + 9; y++) {
             int rel = y - spireY;
-            if (rel < 5) {
+            if (rel < 6) {
                 Brush.disc(world, 0, y, 0, 1.4,
-                        rel % 2 == 0 ? Material.STONE_BRICKS : Material.COBBLESTONE);
+                        rel % 2 == 0 ? Material.QUARTZ_PILLAR : Material.CHISELED_QUARTZ_BLOCK);
             } else {
-                Brush.set(world, 0, y, 0, Material.CHISELED_STONE_BRICKS);
+                Brush.set(world, 0, y, 0, Material.SMOOTH_QUARTZ);
+            }
+            // 가문비 버팀대
+            if (rel == 2 || rel == 5) {
+                for (int[] o : new int[][]{{2, 0}, {-2, 0}, {0, 2}, {0, -2}}) {
+                    Brush.set(world, o[0], y, o[1], Material.SPRUCE_SLAB);
+                }
             }
         }
-        // 꼭대기에서 솟는 물
-        Brush.set(world, 0, spireY + 8, 0, Material.GLOWSTONE);
-        Brush.water(world, 0, spireY + 9, 0);
-        for (int y = spireY + 8; y > topY + 1; y--) {
-            for (int[] o : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-                if (y == spireY + 8) Brush.water(world, o[0], y, o[1]);
-            }
+        Brush.set(world, 0, spireY + 10, 0, Material.GLOWSTONE);
+        Brush.water(world, 0, spireY + 11, 0);
+        for (int[] o : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            Brush.water(world, o[0], spireY + 10, o[1]);
         }
 
-        // 상부 받침 둘레 가문비 난간 — 석재 일색을 깹니다
-        for (int deg = 0; deg < 360; deg += 30) {
-            double rad = Math.toRadians(deg);
-            int x = (int) Math.round(Math.cos(rad) * 6.2);
-            int z = (int) Math.round(Math.sin(rad) * 6.2);
-            Brush.set(world, x, midY + 1, z, Material.SPRUCE_FENCE);
-            if (deg % 90 == 45 % 90) {
-                Brush.set(world, x, midY + 2, z, Material.LANTERN);
-            }
+        // 첨탑에 매단 등
+        for (int[] o : new int[][]{{2, 0}, {-2, 0}, {0, 2}, {0, -2}}) {
+            Brush.set(world, o[0], spireY + 8, o[1], Material.IRON_CHAIN);
+            Brush.set(world, o[0], spireY + 7, o[1], Material.LANTERN);
         }
+    }
+
+    /** 팔각형 거리. 정원보다 덜 기계적으로 보입니다. */
+    private double octagon(int dx, int dz) {
+        double ax = Math.abs(dx), az = Math.abs(dz);
+        return Math.max(Math.max(ax, az), (ax + az) * 0.72);
     }
     // ── 서버 이동 구역 ─────────────────────────────────────────────────
 
@@ -700,9 +758,11 @@ public class PlazaBuilder {
 
                 Material floor;
                 if (d > r - 1.5) floor = Material.DEEPSLATE_BRICKS;
-                else if (d > r - 3) floor = Material.STONE_BRICKS;
+                else if (d > r - 3) floor = Palette.mix(Palette.QUARTZ_MIX, x, z);
                 else if (Math.floorMod(dx, 5) == 0 || Math.floorMod(dz, 5) == 0)
-                    floor = Material.SMOOTH_QUARTZ;
+                    floor = Palette.mix(Palette.QUARTZ_MIX, x, z);
+                else if (Palette.noise(x >> 1, 7, z >> 1) > 0.72)
+                    floor = Palette.mix(Palette.TIMBER_MIX, x, z);
                 else floor = Palette.gradient(Palette.MASONRY_RAMP,
                             0.2 + Palette.noise(x, z) * 0.7, x, z);
 

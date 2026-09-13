@@ -63,11 +63,48 @@ public final class Palette {
             Material.CALCITE,
     };
 
-    /** 목재 포인트 — 가문비. 석재 일색을 깨는 용도로만 씁니다. */
+    /** 목재 — 가문비. 바닥·난간·지붕에 두루 씁니다. */
     public static final Material[] TIMBER_MIX = {
             Material.SPRUCE_PLANKS,
-            Material.SPRUCE_LOG,
+            Material.SPRUCE_PLANKS,
+            Material.SPRUCE_PLANKS,
             Material.STRIPPED_SPRUCE_LOG,
+            Material.SPRUCE_LOG,
+    };
+
+    /** 석영 — 밝은 강조. 회색 일색을 깨는 주 수단입니다. */
+    public static final Material[] QUARTZ_MIX = {
+            Material.SMOOTH_QUARTZ,
+            Material.QUARTZ_BLOCK,
+            Material.QUARTZ_BRICKS,
+            Material.CHISELED_QUARTZ_BLOCK,
+            Material.QUARTZ_PILLAR,
+    };
+
+    /**
+     * 흙길 — 관문으로 가는 길에 씁니다.
+     * 포장 일색이면 단조로워서, 다진 흙길에 자갈·포졸·거친흙을 섞습니다.
+     */
+    public static final Material[] EARTH_PATH = {
+            Material.DIRT_PATH,
+            Material.DIRT_PATH,
+            Material.DIRT_PATH,
+            Material.COARSE_DIRT,
+            Material.COARSE_DIRT,
+            Material.PODZOL,
+            Material.ROOTED_DIRT,
+            Material.GRAVEL,
+            Material.PACKED_MUD,
+    };
+
+    /** 길 가장자리 — 더 거칠게. */
+    public static final Material[] EARTH_EDGE = {
+            Material.COARSE_DIRT,
+            Material.GRAVEL,
+            Material.PODZOL,
+            Material.ROOTED_DIRT,
+            Material.MOSS_BLOCK,
+            Material.MUD,
     };
 
     // ── 벽면 질감 ────────────────────────────────────────────────────
