@@ -62,10 +62,51 @@ public class Database {
         hikari.setConnectionTimeout(10_000);
         hikari.setMaxLifetime(600_000);
 
-        this.dataSource = new HikariDataSource(hikari);
+        openWithRetry(hikari, section.getInt("connect-retries", 6));
         logger.info("DB 연결됨 (" + (mysql ? "MySQL" : "H2 로컬") + ")");
 
         createSchema();
+    }
+
+    /**
+     * 연결을 재시도하며 엽니다.
+     *
+     * 4개 서버가 같은 H2 파일을 공유하는데, 동시에 기동하면 서로 잠금 파일을
+     * 만들려다 부딪혀 한두 개가 {@code FileLock.waitUntilOld} 에서 죽습니다
+     * (AUTO_SERVER 의 알려진 경쟁 상황). 먼저 연 쪽이 서버가 되고 나면 나머지는
+     * 정상적으로 붙으므로, 잠깐 기다렸다 다시 시도하면 해결됩니다.
+     *
+     * 운영의 MySQL 에서도 같은 재시도가 재시작 직후의 연결 거부를 흡수합니다.
+     */
+    private void openWithRetry(HikariConfig hikari, int attempts) throws SQLException {
+        long backoff = 1000;
+        for (int attempt = 1; ; attempt++) {
+            try {
+                this.dataSource = new HikariDataSource(hikari);
+                // 풀 생성만으로는 부족합니다. 실제로 한 번 열어 봐야 압니다.
+                try (Connection probe = dataSource.getConnection()) {
+                    probe.isValid(5);
+                }
+                return;
+            } catch (Exception e) {
+                if (dataSource != null) {
+                    dataSource.close();
+                    dataSource = null;
+                }
+                if (attempt >= attempts) {
+                    throw new SQLException("DB 연결 실패 (" + attempts + "회 시도)", e);
+                }
+                logger.warning("DB 연결 실패 " + attempt + "/" + attempts
+                        + " — " + backoff + "ms 후 재시도합니다. (" + e.getMessage() + ")");
+                try {
+                    Thread.sleep(backoff);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    throw new SQLException("DB 연결 대기 중 중단됨", interrupted);
+                }
+                backoff = Math.min(backoff * 2, 8000);
+            }
+        }
     }
 
     private void createSchema() throws SQLException {

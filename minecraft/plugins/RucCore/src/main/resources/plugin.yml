@@ -46,6 +46,10 @@ commands:
     usage: /verifyapprove <player>
     aliases: [인증승인]
     permission: ruccore.admin
+  menu:
+    description: 네트워크 메뉴를 엽니다. (웅크린 채 F 키와 동일)
+    usage: /menu
+    aliases: [메뉴, 서버, servers]
   rucxp:
     description: (스태프) 경험치를 지급합니다. 레벨업 점검용.
     usage: /rucxp <양> [닉네임]

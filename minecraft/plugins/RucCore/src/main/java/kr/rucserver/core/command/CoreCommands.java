@@ -36,7 +36,7 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
     public void register() {
         for (String name : List.of("tpa", "tpahere", "tpaccept", "tpdeny",
                 "tpcancel", "ruc", "level", "ruclang",
-                "verify", "verifyapprove", "rucverify", "rucxp")) {
+                "verify", "verifyapprove", "rucverify", "rucxp", "menu")) {
             var command = plugin.getCommand(name);
             if (command == null) {
                 plugin.getLogger().warning("plugin.yml에 '" + name + "' 명령어가 없습니다.");
@@ -114,6 +114,8 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
                 if (data == null) return true;
                 player.sendMessage(plugin.getXp().statusLine(player, data));
             }
+
+            case "menu" -> plugin.getMenus().openMain(player);
 
             case "rucxp" -> {
                 if (!sender.hasPermission("ruccore.admin")) {

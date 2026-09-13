@@ -92,3 +92,55 @@ verify:
   staff-approved: "&aManually approved %player%."
   staff-usage: "&cUsage: /verifyapprove <player>"
   system-down: "&eVerification is temporarily unavailable. Please try again shortly."
+# ── Network menu (Phase 3.5) ──────────────────────────────────────────
+menu:
+  title: "&8Ruc Network"
+  back: "&7◀ Back"
+
+  server:
+    home-name: "&a&lHome"
+    home-lore: "&7The plaza, shops, and where it starts|&7No combat · safe zone"
+    raid-name: "&c&lRaiding"
+    raid-lore: "&7Open PvP · full drop on death|&cCombat logging means execution"
+    war-name: "&6&lNation War"
+    war-lore: "&7Found a guild and fight for land|&7Nation members only"
+    peace-name: "&b&lPeace"
+    peace-lore: "&7Direct and indirect kills blocked|&7Building and gathering"
+    count: "&7Online &f%count%"
+    click: "&e▶ Click to travel"
+    here: "&a✔ You are on this server"
+    already-here: "&eYou are already on this server."
+    connecting: "&7Connecting to &f%server%&7…"
+
+  profile:
+    name: "&f&l%player%"
+    loading: "&7Loading…"
+    lore: "&7Level &a%level% &7(&f%xp%&7/&f%required% &7· %percent%%)|&7Balance &a%ruc% %symbol%|&7Reputation %repcolor%%reptier%|&7K &a%kills% &7/ D &c%deaths% &7/ A &e%assists%|&8Click for details in chat"
+
+  verify:
+    done-name: "&a&lVerified"
+    done-lore: "&7Your Discord account is linked|&7You have full access"
+    todo-name: "&c&lVerification required"
+    todo-lore: "&7Finish Discord verification|&7to use the servers|&e▶ Click to get a code"
+
+  language:
+    name: "&f&lLanguage / 언어"
+    lore: "&7Currently &a%current%|&e▶ Click to switch to &f%next%"
+
+  spawn:
+    name: "&f&lGo to spawn"
+    lore: "&7Teleport to this server's spawn|&8The Raiding server has a warmup"
+
+  close:
+    name: "&c&lClose"
+
+  help:
+    name: "&f&lHelp"
+    lore: "&7Server rules and key commands|&e▶ Click"
+    title: "&8Help"
+    combat-name: "&c&lCombat rules"
+    combat-lore: "&7Raiding tags you for 15 seconds|&cDisconnecting while tagged means|&cforced death, all items and XP gone|&7Travel commands are blocked while tagged"
+    travel-name: "&b&lTravelling"
+    travel-lore: "&7Sneak and press &fF &7to open this menu|&7Or use the command: &f/menu|&7On Home, the compass works too"
+    economy-name: "&a&lEconomy and progress"
+    economy-lore: "&7Ruc is shared across every server|&7Custom XP is separate from vanilla|&fUse /ruc &7and &f/level"

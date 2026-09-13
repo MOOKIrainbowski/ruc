@@ -47,6 +47,8 @@ minecraft/servers/*/console.log
 # Java 25 를 요구해 쓸 수 없는 4.x 스냅샷 보관본
 minecraft/proxy/*.jar.bak
 minecraft/servers/*/plugins/RucCore/data*.db
+minecraft/servers/shared/
+minecraft/servers/*/plugins/RucCore/*.db.old
 minecraft/**/crash-reports/
 minecraft/**/banned-*.json
 minecraft/**/usercache.json

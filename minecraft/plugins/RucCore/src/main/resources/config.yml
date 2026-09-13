@@ -12,8 +12,12 @@ database:
   # mysql = 운영용. VPS로 옮길 때 이것으로 변경
   type: h2
 
-  # type: h2 일 때만 사용. 플러그인 폴더 기준 상대 경로
-  h2-file: "data"
+  # type: h2 일 때만 사용. 플러그인 폴더 기준 상대 경로.
+  #
+  # 4개 서버가 같은 파일을 봅니다 (AUTO_SERVER=TRUE 라 여러 프로세스가 열 수 있습니다).
+  # 서버마다 DB 를 따로 두면 §3.1 "Ruc 는 모든 서버 공용"이 깨지고, 홈에서 인증한
+  # 사람이 약탈로 건너가면 그쪽에서는 미인증자가 됩니다.
+  h2-file: "../../../shared/ruc"
 
   # type: mysql 일 때만 사용
   mysql:
@@ -55,6 +59,27 @@ scoreboard:
   # 갱신 주기 (틱). 20틱 = 1초
   update-interval: 20
   title: "&a&lRUC SERVER"
+
+# ── 네트워크 메뉴 (Phase 3.5) ──────────────────────────────────────────
+menu:
+  # 웅크린 채 F 를 누르면 메뉴가 열립니다.
+  #
+  # 서버는 클라이언트의 임의 키를 볼 수 없습니다. 바닐라에서 F 는 "손에 든
+  # 아이템 교체"라 패킷이 오고, 그것과 웅크림 상태를 합쳐 Shift + F 로 씁니다.
+  # 모드·리소스팩 없이 되는 유일한 방법입니다.
+  #
+  # F 를 다른 키로 바꿔 쓰는 사람을 위해 /메뉴 명령도 함께 제공합니다.
+  shift-f-enabled: true
+
+network:
+  # 메뉴에 표시할 서버 목록. velocity.toml 의 [servers] 키와 같아야 합니다.
+  servers:
+    - home
+    - raid
+    - war
+    - peace
+  # 서버별 접속 인원을 다시 물어보는 주기 (틱). 20틱 = 1초
+  count-refresh-ticks: 200
 
 # §2.2 전역 규칙 — 경험치바 근처에 좌표가 표시되지 않도록 합니다.
 # reducedDebugInfo 게임룰을 켜서 F3 좌표를 가리고,

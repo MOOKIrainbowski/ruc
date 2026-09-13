@@ -92,3 +92,55 @@ verify:
   staff-approved: "&a%player% 님을 수동 승인했습니다."
   staff-usage: "&c사용법: /인증승인 <닉네임>"
   system-down: "&e인증 시스템 점검 중입니다. 잠시 후 다시 시도해 주세요."
+# ── 네트워크 메뉴 (Phase 3.5) ─────────────────────────────────────────
+menu:
+  title: "&8러크 네트워크"
+  back: "&7◀ 돌아가기"
+
+  server:
+    home-name: "&a&l홈"
+    home-lore: "&7광장과 상점, 모든 것의 출발점|&7전투 없음 · 안전 지역"
+    raid-name: "&c&l약탈"
+    raid-lore: "&7자유 PvP · 사망 시 전부 드랍|&c전투 중 접속 종료 시 처형"
+    war-name: "&6&l국가전"
+    war-lore: "&7길드를 세워 영토를 다툽니다|&7국가 소속만 입장 가능"
+    peace-name: "&b&l평화"
+    peace-lore: "&7직접·간접 살해 전면 차단|&7건축과 채집 중심"
+    count: "&7접속 중 &f%count%명"
+    click: "&e▶ 클릭해서 이동"
+    here: "&a✔ 지금 이 서버에 있습니다"
+    already-here: "&e이미 이 서버에 있습니다."
+    connecting: "&7%server% &f서버로 이동합니다…"
+
+  profile:
+    name: "&f&l%player%"
+    loading: "&7불러오는 중…"
+    lore: "&7레벨 &a%level% &7(&f%xp%&7/&f%required% &7· %percent%%)|&7보유 &a%ruc% %symbol%|&7평판 %repcolor%%reptier%|&7K &a%kills% &7/ D &c%deaths% &7/ A &e%assists%|&8클릭하면 채팅으로 자세히"
+
+  verify:
+    done-name: "&a&l인증 완료"
+    done-lore: "&7디스코드 계정이 연동되어 있습니다|&7모든 서버를 이용할 수 있습니다"
+    todo-name: "&c&l인증 필요"
+    todo-lore: "&7디스코드 인증을 마쳐야|&7서버를 이용할 수 있습니다|&e▶ 클릭해서 코드 받기"
+
+  language:
+    name: "&f&l언어 / Language"
+    lore: "&7현재 &a%current%|&e▶ 클릭해서 &f%next% &e로 변경"
+
+  spawn:
+    name: "&f&l스폰으로"
+    lore: "&7이 서버의 스폰 지점으로 이동합니다|&8약탈 서버에서는 시전 시간이 있습니다"
+
+  close:
+    name: "&c&l닫기"
+
+  help:
+    name: "&f&l도움말"
+    lore: "&7서버 규칙과 주요 명령어|&e▶ 클릭"
+    title: "&8도움말"
+    combat-name: "&c&l전투 규칙"
+    combat-lore: "&7약탈 서버는 전투 태그 15초|&c태그 상태로 나가면 재접속 시|&c강제 사망 + 아이템·경험치 전부 소멸|&7태그 중에는 이동 명령이 막힙니다"
+    travel-name: "&b&l서버 이동"
+    travel-lore: "&7웅크린 채 &fF &7키로 이 메뉴를 엽니다|&7명령어로도 됩니다: &f/메뉴|&7홈에서는 나침반으로도 이동할 수 있습니다"
+    economy-name: "&a&l경제와 성장"
+    economy-lore: "&7Ruc 는 모든 서버에서 공용입니다|&7자체 경험치는 바닐라와 별개입니다|&f/재화 &7· &f/레벨 &7로 확인하세요"

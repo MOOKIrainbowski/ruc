@@ -1,9 +1,12 @@
 package kr.rucserver.core;
 
 import kr.rucserver.core.command.CoreCommands;
+import kr.rucserver.core.listener.MenuListener;
 import kr.rucserver.core.listener.PlayerListener;
 import kr.rucserver.core.listener.VerificationListener;
+import kr.rucserver.core.menu.MenuService;
 import kr.rucserver.core.service.BonusRegistry;
+import kr.rucserver.core.service.NetworkService;
 import kr.rucserver.core.service.EconomyService;
 import kr.rucserver.core.service.MessageService;
 import kr.rucserver.core.service.PlayerDataService;
@@ -40,6 +43,8 @@ public class RucCore extends JavaPlugin {
     private ScoreboardService scoreboards;
     private TpaService tpa;
     private VerificationService verification;
+    private NetworkService network;
+    private MenuService menus;
 
     @Override
     public void onEnable() {
@@ -65,7 +70,13 @@ public class RucCore extends JavaPlugin {
         verification = new VerificationService(this, messages,
                 new VerificationRepository(database));
 
+        // 프록시 통신과 메뉴는 4개 서버 공통이라 Core가 소유합니다.
+        network = new NetworkService(this);
+        network.start();
+        menus = new MenuService(this, messages);
+
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
+        getServer().getPluginManager().registerEvents(new MenuListener(this), this);
         getServer().getPluginManager().registerEvents(new VerificationListener(this), this);
         new CoreCommands(this, messages).register();
 
@@ -88,6 +99,7 @@ public class RucCore extends JavaPlugin {
     public void onDisable() {
         if (scoreboards != null) scoreboards.stop();
         if (verification != null) verification.stop();
+        if (network != null) network.stop();
 
         // 종료 시에는 비동기로 넘기면 스케줄러가 이미 멈춰서 저장이 유실됩니다.
         // 여기서만 동기로 저장합니다.
@@ -126,4 +138,6 @@ public class RucCore extends JavaPlugin {
     public ScoreboardService getScoreboards() { return scoreboards; }
     public TpaService getTpa() { return tpa; }
     public VerificationService getVerification() { return verification; }
+    public NetworkService getNetwork() { return network; }
+    public MenuService getMenus() { return menus; }
 }

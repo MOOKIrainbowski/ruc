@@ -23,9 +23,14 @@ function Start-Backend($name, $xms, $xmx) {
         -ArgumentList ($Enc + @("-Xms$xms", "-Xmx$xmx", "-jar", "paper.jar", "nogui"))
 }
 
+# 4개가 같은 H2 파일을 공유하므로 한꺼번에 띄우면 잠금 경쟁이 납니다.
+# RucCore 가 재시도로 흡수하긴 하지만, 애초에 어긋나게 띄우는 편이 깔끔합니다.
 Start-Backend "home"  "1G"   "2G"
+Start-Sleep -Seconds 6
 Start-Backend "raid"  "1G"   "2G"
+Start-Sleep -Seconds 4
 Start-Backend "war"   "512M" "1G"
+Start-Sleep -Seconds 4
 Start-Backend "peace" "512M" "1G"
 
 Write-Host ""
