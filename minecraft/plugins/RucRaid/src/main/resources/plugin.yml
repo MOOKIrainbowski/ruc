@@ -24,8 +24,8 @@ commands:
     usage: /delhome
     aliases: [홈삭제]
   raid:
-    description: (스태프) 드래곤 알 회수 / 처형 취소 / 상태 확인
-    usage: /raid <egg|pardon|status>
+    description: (스태프) 드래곤 알 회수 / 처형 취소 / 상태 확인 / 전투 태그 테스트
+    usage: /raid <egg|pardon|status|tag>
     permission: rucraid.admin
 
 permissions:

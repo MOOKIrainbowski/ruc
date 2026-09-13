@@ -67,6 +67,19 @@ public class CombatTagService {
         }
     }
 
+    /**
+     * 상대 없이 태그를 겁니다. 스태프 테스트 전용입니다.
+     *
+     * §2.4 는 플레이어끼리 싸워야 태그가 붙으므로, 사람이 한 명뿐인 환경에서는
+     * 규칙 전체를 확인할 방법이 없습니다. 그 구멍만 메우는 용도입니다.
+     */
+    public void tagManually(Player player, String opponentName) {
+        long until = System.currentTimeMillis() + durationMillis;
+        tags.put(player.getUniqueId(), new Tag(until, player.getUniqueId(), opponentName));
+        plugin.msg().send(player, "combat.entered",
+                "seconds", String.valueOf(durationMillis / 1000));
+    }
+
     public boolean isTagged(UUID uuid) {
         Tag tag = tags.get(uuid);
         if (tag == null) return false;

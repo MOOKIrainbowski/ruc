@@ -49,3 +49,4 @@ staff:
   egg-failed: "&c제단 월드를 찾지 못했습니다. config를 확인하세요."
   pardoned: "&a%player% 님의 처형 예약을 취소했습니다."
   status: "&f드래곤 알 소지자: &e%holder% &7| &f전투 중: &c%tagged%명"
+  tagged: "&e%player% 님에게 전투 태그를 걸었습니다. 지금 접속을 끊으면 처형됩니다."

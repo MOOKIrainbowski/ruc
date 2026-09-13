@@ -8,4 +8,4 @@ if (-not (Test-Path "$dir\eula.txt")) {
 }
 
 Set-Location $dir
-& java -Xms1G -Xmx2G -jar paper.jar --nogui
+& java -Dstdout.encoding=UTF-8 -Dstderr.encoding=UTF-8 -Dfile.encoding=UTF-8 -Xms1G -Xmx2G -jar paper.jar --nogui

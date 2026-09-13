@@ -62,7 +62,7 @@ public class RaidCommands implements CommandExecutor {
             return true;
         }
         if (args.length == 0) {
-            sender.sendMessage("§c사용법: /raid <egg|pardon|status>");
+            sender.sendMessage("§c사용법: /raid <egg|pardon|status|tag>");
             return true;
         }
 
@@ -82,6 +82,19 @@ public class RaidCommands implements CommandExecutor {
                 OfflinePlayer target = Bukkit.getOfflinePlayer(args[1]);
                 plugin.getExecutions().pardon(target.getUniqueId(),
                         () -> plugin.msg().send(sender, "staff.pardoned", "player", args[1]));
+            }
+            case "tag" -> {
+                // §2.4 는 2인 교전이 있어야 태그가 붙습니다. 혼자 점검할 때
+                // 그 전제를 대신 만들어 주는 명령입니다.
+                Player target = args.length >= 2
+                        ? Bukkit.getPlayerExact(args[1])
+                        : (sender instanceof Player p ? p : null);
+                if (target == null) {
+                    sender.sendMessage("§c사용법: /raid tag [닉네임] — 대상이 접속 중이어야 합니다.");
+                    return true;
+                }
+                plugin.getCombatTags().tagManually(target, "테스트");
+                plugin.msg().send(sender, "staff.tagged", "player", target.getName());
             }
             case "status" -> {
                 var holder = plugin.getEggs().getHolder();

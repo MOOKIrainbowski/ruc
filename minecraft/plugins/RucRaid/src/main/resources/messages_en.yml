@@ -49,3 +49,4 @@ staff:
   egg-failed: "&cAltar world not found. Check the config."
   pardoned: "&aCancelled the pending execution for %player%."
   status: "&fDragon Egg holder: &e%holder% &7| &fIn combat: &c%tagged%"
+  tagged: "&eApplied a combat tag to %player%. Disconnecting now triggers execution."
