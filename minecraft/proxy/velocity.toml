@@ -3,67 +3,68 @@
 # 플레이어는 이 프록시 하나에만 접속하고, 여기서 4개 서버로 분배됩니다.
 # 백엔드 서버(25566~25569)는 절대 외부에 노출하면 안 됩니다 — 방화벽에서
 # 25565만 열어두세요. 백엔드가 열려 있으면 D10의 인증 체계가 우회됩니다.
-
-config-version = "2.7"
-
+config-version = "2.8"
 bind = "0.0.0.0:25565"
-
-motd = "<green><bold>러크 서버</bold></green>\n<gray>4개의 세계, 하나의 경제</gray>"
-
+motd = """
+<green><bold>러크 서버</bold></green>
+<gray>4개의 세계, 하나의 경제</gray>"""
 show-max-players = 100
-
 # ⚠️ 반드시 true. false(오프라인 모드)로 두면 UUID를 위조할 수 있어서
 # 디스코드 인증(D10)이 통째로 무력화됩니다.
 online-mode = true
-
 force-key-authentication = true
-
 prevent-client-proxy-connections = false
-
 # 백엔드에 플레이어 정보를 서명해서 전달합니다.
 # 각 Paper 서버의 config/paper-global.yml 에서 velocity.enabled: true 로 맞추고
 # forwarding.secret 파일의 값을 동일하게 넣어야 합니다.
 player-info-forwarding-mode = "modern"
 forwarding-secret-file = "forwarding.secret"
-
 announce-forge = false
-
 kick-existing-players = false
-
 ping-passthrough = "disabled"
-
 enable-player-address-logging = true
+forced-hosts = {}
 
 [servers]
-# §2.3 — 모든 플레이어는 홈 서버에 먼저 도착합니다.
-home  = "127.0.0.1:25566"
-raid  = "127.0.0.1:25567"
-war   = "127.0.0.1:25568"
-peace = "127.0.0.1:25569"
+	# §2.3 — 모든 플레이어는 홈 서버에 먼저 도착합니다.
+	home = "127.0.0.1:25566"
+	raid = "127.0.0.1:25567"
+	war = "127.0.0.1:25568"
+	peace = "127.0.0.1:25569"
+	# 접속 시 시도할 순서. 홈만 두어 "무조건 홈부터" 규칙을 강제합니다.
+	try = ["home"]
 
-# 접속 시 시도할 순서. 홈만 두어 "무조건 홈부터" 규칙을 강제합니다.
-try = ["home"]
-
-[forced-hosts]
 # 도메인별 강제 라우팅이 필요해지면 여기에 추가합니다.
-
 [advanced]
-compression-threshold = 256
-compression-level = -1
-login-ratelimit = 3000
-connection-timeout = 5000
-read-timeout = 30000
-haproxy-protocol = false
-tcp-fast-open = false
-bungee-plugin-message-channel = true
-show-ping-requests = false
-failover-on-unexpected-server-disconnect = true
-announce-proxy-commands = true
-log-command-executions = false
-log-player-connections = true
+	compression-threshold = 256
+	compression-level = -1
+	login-ratelimit = 3000
+	connection-timeout = 5000
+	read-timeout = 30000
+	haproxy-protocol = false
+	tcp-fast-open = false
+	bungee-plugin-message-channel = true
+	show-ping-requests = false
+	failover-on-unexpected-server-disconnect = true
+	announce-proxy-commands = true
+	log-command-executions = false
+	log-player-connections = true
 
 [query]
-enabled = false
-port = 25565
-map = "Ruc Server"
-show-plugins = false
+	enabled = false
+	port = 25565
+	map = "Ruc Server"
+	show-plugins = false
+
+[packet-limiter]
+	#Size of the moving time window in seconds used to calculate average rates.
+	#A larger window tolerates short bursts while still enforcing the configured limits over time.
+	interval = 7
+	#Maximum average number of packets per second a client may send. -1 disables this check.
+	packets-per-second = -1
+	#Maximum average number of compressed (on-wire) bytes per second a client may send. -1 disables this check.
+	bytes-per-second = -1
+	#Maximum average number of decompressed bytes per second a client may send.
+	#Protects against compression bomb attacks where small packets expand to excessive sizes after decompression.
+	#-1 disables this check.
+	decompressed-bytes-per-second = 5242880

@@ -36,7 +36,7 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
     public void register() {
         for (String name : List.of("tpa", "tpahere", "tpaccept", "tpdeny",
                 "tpcancel", "ruc", "level", "ruclang",
-                "verify", "verifyapprove", "rucverify")) {
+                "verify", "verifyapprove", "rucverify", "rucxp")) {
             var command = plugin.getCommand(name);
             if (command == null) {
                 plugin.getLogger().warning("plugin.yml에 '" + name + "' 명령어가 없습니다.");
@@ -115,6 +115,34 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
                 player.sendMessage(plugin.getXp().statusLine(player, data));
             }
 
+            case "rucxp" -> {
+                if (!sender.hasPermission("ruccore.admin")) {
+                    player.sendMessage(messages.prefixed(
+                            plugin.getPlayerData().languageOf(player), "xp.no-permission"));
+                    return true;
+                }
+                if (args.length < 1) {
+                    sender.sendMessage("§c사용법: /rucxp <양> [닉네임]");
+                    return true;
+                }
+                long amount;
+                try {
+                    amount = Long.parseLong(args[0]);
+                } catch (NumberFormatException e) {
+                    sender.sendMessage("§c숫자를 입력하세요.");
+                    return true;
+                }
+                Player target = args.length >= 2 ? Bukkit.getPlayerExact(args[1]) : player;
+                if (target == null) {
+                    sender.sendMessage("§c대상이 접속 중이 아닙니다.");
+                    return true;
+                }
+                plugin.getXp().grant(target, amount);
+                RucPlayer td = plugin.getPlayerData().get(target);
+                sender.sendMessage("§a" + target.getName() + " → +" + amount + " XP"
+                        + (td == null ? "" : " (현재 Lv." + td.getLevel()
+                           + " " + td.getXp() + "/" + plugin.getXp().requiredXp(td.getLevel()) + ")"));
+            }
             case "ruclang" -> {
                 if (args.length < 1) {
                     player.sendMessage(messages.prefixed(lang, "lang.usage"));

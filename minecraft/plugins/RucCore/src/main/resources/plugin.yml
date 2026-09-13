@@ -46,6 +46,11 @@ commands:
     usage: /verifyapprove <player>
     aliases: [인증승인]
     permission: ruccore.admin
+  rucxp:
+    description: (스태프) 경험치를 지급합니다. 레벨업 점검용.
+    usage: /rucxp <양> [닉네임]
+    aliases: [경험치지급]
+    permission: ruccore.admin
   rucverify:
     description: (콘솔/RCON 전용) 디스코드 봇이 인증 코드를 검증할 때 씁니다.
     usage: /rucverify <code> <discordId> <discordName>

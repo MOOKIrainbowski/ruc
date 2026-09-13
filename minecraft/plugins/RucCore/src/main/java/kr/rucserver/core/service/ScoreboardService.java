@@ -173,13 +173,20 @@ public class ScoreboardService {
         return lines;
     }
 
-    /** 10칸짜리 진행바. */
+    /**
+     * 10칸짜리 진행바.
+     *
+     * 반올림을 쓰면 95%에서 이미 10칸이 다 차서, 레벨업이 안 되는 것처럼 보입니다.
+     * 내림을 써야 "막대가 꽉 참 = 레벨업 직전"이 실제와 맞습니다.
+     */
     private String progressBar(double progress) {
-        int filled = (int) Math.round(progress * 10);
-        StringBuilder sb = new StringBuilder("&a");
+        int filled = (int) Math.floor(progress * 10);
+        if (filled > 10) filled = 10;
+        if (filled < 0) filled = 0;
+
+        StringBuilder sb = new StringBuilder();
         for (int i = 0; i < 10; i++) {
-            if (i == filled) sb.append("&8");
-            sb.append("▰");
+            sb.append(i < filled ? "&a" : "&8").append("▰");
         }
         return sb.toString();
     }

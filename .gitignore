@@ -39,6 +39,13 @@ minecraft/servers/*/commands.yml
 minecraft/proxy/logs/
 minecraft/proxy/forwarding.secret
 minecraft/proxy/velocity.toml.bak
+# Velocity 가 기동 시 만드는 런타임 디렉터리
+minecraft/proxy/lang/
+minecraft/proxy/plugins/
+minecraft/proxy/console.log
+minecraft/servers/*/console.log
+# Java 25 를 요구해 쓸 수 없는 4.x 스냅샷 보관본
+minecraft/proxy/*.jar.bak
 minecraft/servers/*/plugins/RucCore/data*.db
 minecraft/**/crash-reports/
 minecraft/**/banned-*.json

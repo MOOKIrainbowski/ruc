@@ -39,6 +39,10 @@ public class PlayerListener implements Listener {
             if (!player.isOnline()) return;
             plugin.getScoreboards().attach(player);
 
+            // 저장된 경험치가 이미 요구치를 넘었다면 여기서 레벨을 따라잡습니다.
+            // 레벨업 판정이 award() 안에만 있으면 다음 획득까지 멈춰 있습니다.
+            plugin.getXp().catchUp(player);
+
             // D10 — 미인증이면 인증 구역에 격리하고 코드를 발급합니다.
             if (plugin.getVerification().requiresVerification(player)) {
                 plugin.getVerification().beginVerification(player);

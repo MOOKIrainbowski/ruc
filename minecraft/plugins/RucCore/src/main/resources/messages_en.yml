@@ -23,6 +23,7 @@ xp:
   status: "&fLv.&a%level% &7| &fXP &a%current%&7/&f%required% &7(%percent%%)"
   gained: "&8+%amount% XP"
   level-up: "&a&lLevel up! &fLv.%old% → &a&lLv.%new%"
+  no-permission: "&cYou do not have permission."
   max-level: "&6You have reached the maximum level."
 
 tpa:
