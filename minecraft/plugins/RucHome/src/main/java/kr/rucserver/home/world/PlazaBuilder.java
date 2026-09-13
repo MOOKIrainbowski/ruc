@@ -42,7 +42,7 @@ public class PlazaBuilder {
 
     // ── 반경 ───────────────────────────────────────────────────────────
     private static final int PLAZA_R = 26;
-    private static final int WALK_R = 36;
+    private static final int WALK_R = 29;   // 석재 과다(29.7%)라 축소. 참고 맵은 15%
     private static final int FACADE_IN = 36;
     private static final int FACADE_OUT = 44;
     private static final int TERRACE_R = 56;
@@ -71,11 +71,12 @@ public class PlazaBuilder {
         buildWalkway(world);
         buildTerrace(world);
         buildOuterGrounds(world);
-        buildFacade(world);
+        buildGardenGrounds(world);   // 정원 섬 — 꿀렘 로비 팔레트 반영
+        buildPonds(world);
         buildGates(world);
         buildChambers(world);
-        buildMonument(world);
-        buildGardens(world);
+        buildStructures(world);      // 분수 · 쉼터 · 집 2채
+        buildGrove(world);           // 벚나무 숲
         buildLampPosts(world);
         buildVerificationCourtyard(world);
     }
@@ -693,6 +694,149 @@ public class PlazaBuilder {
                 }
             }
         }
+    }
+
+
+    // ── 정원 섬 (꿀렘 로비 스타일) ─────────────────────────────────────
+
+    /**
+     * 광장 바깥 ~ 테라스 구간을 정원으로 바꿉니다.
+     *
+     * `mapfile/꿀렘 로비` 실측 팔레트: 물 22% / 잔디 19% / 캐노피 26% / 석재 15%.
+     * 돌 광장이 아니라 정원 섬이고, 석재는 길과 중앙 단상에만 씁니다.
+     * 기존 파사드 링(석벽)을 걷어내고 그 자리를 흙과 풀로 덮습니다.
+     */
+    private void buildGardenGrounds(World world) {
+        for (int x = -TERRACE_R; x <= TERRACE_R; x++) {
+            for (int z = -TERRACE_R; z <= TERRACE_R; z++) {
+                double d = Math.sqrt(x * x + z * z);
+                if (d <= WALK_R || d > TERRACE_R) continue;
+
+                int deg = (int) ((Math.toDegrees(Math.atan2(z, x)) + 360) % 360);
+
+                // 4방향 축 길은 돌로 남깁니다 (십자 동선)
+                if (onAxisPath(x, z)) {
+                    Material road = Palette.noise(x, z) > 0.7
+                            ? Material.STONE_BRICKS : Material.SMOOTH_STONE;
+                    if (Palette.noise(x, 3, z) > 0.88) road = Material.MOSSY_STONE_BRICKS;
+                    world.getBlockAt(x, RIM_TOP, z).setType(road, false);
+                    continue;
+                }
+
+                // 나머지는 잔디 지반
+                world.getBlockAt(x, RIM_TOP, z).setType(groundSurface(x, z), false);
+                world.getBlockAt(x, PLAZA_TOP, z).setType(Material.DIRT, false);
+
+                // 지피식물
+                Block above = world.getBlockAt(x, RIM_TOP + 1, z);
+                if (!above.getType().isAir()) continue;
+                double n = Palette.noise(x, 17, z);
+                if (n > 0.90) above.setType(Material.SHORT_GRASS, false);
+                else if (n > 0.86) above.setType(Material.TALL_GRASS, false);
+                else if (n > 0.83) above.setType(flower(x, z), false);
+                else if (n > 0.80) above.setType(Material.FERN, false);
+            }
+        }
+    }
+
+    /** 십자 축 길 위인가. 폭 7. */
+    private boolean onAxisPath(int x, int z) {
+        return (Math.abs(x) <= 3 && Math.abs(z) > PLAZA_R - 2)
+            || (Math.abs(z) <= 3 && Math.abs(x) > PLAZA_R - 2);
+    }
+
+    private Material flower(int x, int z) {
+        double n = Palette.noise(x, 23, z);
+        if (n > 0.85) return Material.OXEYE_DAISY;
+        if (n > 0.70) return Material.DANDELION;
+        if (n > 0.55) return Material.CORNFLOWER;
+        if (n > 0.40) return Material.AZURE_BLUET;
+        return Material.POPPY;
+    }
+
+    /**
+     * 사분면 연못 4개.
+     * 참고 맵에서 물이 표면의 22%를 차지합니다 — 정원의 주역입니다.
+     */
+    private void buildPonds(World world) {
+        // 참고 맵에서 물이 표면의 22%입니다. 연못을 8개로 늘리고 크기도 키웁니다.
+        int[] angles = {30, 60, 120, 150, 210, 240, 300, 330};
+        for (int deg : angles) {
+            double rad = Math.toRadians(deg);
+            double rr = (deg % 60 == 0) ? 40 : 52;   // 안팎으로 엇갈리게 배치
+            int cx = (int) Math.round(Math.cos(rad) * rr);
+            int cz = (int) Math.round(Math.sin(rad) * rr);
+
+            for (int dx = -17; dx <= 17; dx++) {
+                for (int dz = -17; dz <= 17; dz++) {
+                    // 불규칙한 연못 윤곽 — 정원은 원형이면 안 됩니다
+                    double d = Math.sqrt(dx * dx + dz * dz);
+                    double edge = 11.0 + Palette.noise((cx + dx) >> 1, (cz + dz) >> 1) * 5.0;
+                    if (d > edge) continue;
+
+                    int x = cx + dx, z = cz + dz;
+                    if (onAxisPath(x, z)) continue;
+                    double dd = Math.sqrt(x * x + z * z);
+                    if (dd <= WALK_R + 2 || dd > FOUND_R - 8) continue;
+
+                    if (d > edge - 1.4) {
+                        // 물가 — 자갈과 이끼
+                        world.getBlockAt(x, RIM_TOP, z).setType(
+                                Palette.noise(x, 5, z) > 0.5 ? Material.GRAVEL
+                                        : Material.MOSS_BLOCK, false);
+                        world.getBlockAt(x, RIM_TOP + 1, z).setType(Material.AIR, false);
+                    } else {
+                        // 수면은 지반과 같은 높이 (한 칸 파냅니다)
+                        world.getBlockAt(x, RIM_TOP + 1, z).setType(Material.AIR, false);
+                        setWater(world.getBlockAt(x, RIM_TOP, z));
+                        world.getBlockAt(x, PLAZA_TOP, z).setType(
+                                Palette.noise(x, 9, z) > 0.6 ? Material.GRAVEL
+                                        : Material.DIRT, false);
+                        // 수련
+                        if (Palette.noise(x, 41, z) > 0.93) {
+                            world.getBlockAt(x, RIM_TOP + 1, z).setType(Material.LILY_PAD, false);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    /** 벚나무 숲 — 참고 맵의 분홍·흰 캐노피에 해당합니다. */
+    private void buildGrove(World world) {
+        for (int deg = 0; deg < 360; deg += 4) {
+            double rad = Math.toRadians(deg);
+            for (int ring = 0; ring < 7; ring++) {
+                double r = WALK_R + 3 + ring * 5.0 + Palette.noise(deg, ring) * 4;
+                int x = (int) Math.round(Math.cos(rad) * r);
+                int z = (int) Math.round(Math.sin(rad) * r);
+
+                if (onAxisPath(x, z)) continue;
+                if (Palette.noise(x, ring + 50, z) < 0.52) continue;
+                if (world.getBlockAt(x, RIM_TOP, z).getType() != Material.GRASS_BLOCK
+                        && world.getBlockAt(x, RIM_TOP, z).getType() != Material.MOSS_BLOCK) continue;
+                // 위가 막혀 있으면 (이미 나무) 건너뜁니다
+                if (!world.getBlockAt(x, RIM_TOP + 2, z).getType().isAir()) continue;
+
+                Structures.cherryTree(world, x, RIM_TOP, z,
+                        5 + (int) (Palette.noise(x, z) * 4));
+            }
+        }
+    }
+
+    /** 분수 · 쉼터 · 집 2채 배치. */
+    private void buildStructures(World world) {
+        // 중앙 분수 — 광장 한가운데
+        Structures.fountain(world, 0, PLAZA_TOP, 0);
+
+        // 쉼터(정자) — 북쪽 축 길 끝
+        Structures.gazebo(world, 0, RIM_TOP, -48);
+
+        // 농부의 집 — 북동 사분면 (연못과 겹치지 않는 자리)
+        Structures.farmerHouse(world, 30, RIM_TOP, -30);
+
+        // 목조 주택 — 북서 사분면
+        Structures.woodenHouse(world, -32, RIM_TOP, -28);
     }
 
     // ── 보조 ───────────────────────────────────────────────────────────
