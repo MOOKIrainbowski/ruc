@@ -10,8 +10,11 @@ import org.bukkit.Material;
  *   - 화강암 · 섬록암 · 안산암 전부 (원석/광택/계단/슬랩 포함)
  *
  * 대체로 쓰는 축:
- *   프리즈머린 3종 · 석재벽돌 4종 · 석영 5종 · 심층암 4종 · 블랙스톤 4종
- *   응회암 4종 · 사암 · 진흙벽돌 · 테라코타 · 엔드스톤/퍼퍼(관문용)
+ *   - 프리즈머린 등 바다/청록 계열 (허브 분위기와 겉돌아 제거)
+ *
+ * 주 재료:
+ *   조약돌 · 심층암벽돌 · 석재벽돌 4종 · 돌 · 가문비 목재
+ *   보조: 석영 · 블랙스톤 · 응회암 · 사암 · 진흙벽돌 · 테라코타
  *
  * 그라데이션은 좌표 해시 디더링으로 섞습니다. 두 재료를 딱 자르면 경계선이
  * 보이지만, 전환 구간을 흩뿌리면 자연스럽게 이어집니다.
@@ -36,23 +39,35 @@ public final class Palette {
             Material.QUARTZ_BLOCK,
     };
 
-    // ── 프리즈머린 램프 (바닥 모자이크 주축) ─────────────────────────
-    public static final Material[] PRISMARINE_RAMP = {
-            Material.DARK_PRISMARINE,
-            Material.PRISMARINE,
-            Material.PRISMARINE_BRICKS,
+    // ── 석공 램프 (바닥 모자이크 주축) ───────────────────────────────
+    // 프리즈머린 계열은 청록이 강해 허브 분위기와 겉돌아 걷어냈습니다.
+    // 요청대로 조약돌 · 심층암벽돌 · 석재벽돌 · 돌 계열로 대체합니다.
+    public static final Material[] MASONRY_RAMP = {
+            Material.DEEPSLATE_BRICKS,
+            Material.POLISHED_DEEPSLATE,
+            Material.COBBLESTONE,
+            Material.STONE_BRICKS,
+            Material.STONE,
+            Material.SMOOTH_STONE,
     };
 
-    /** 바닥 모자이크 — 프리즈머린 3종 + 석재벽돌 + 석영을 섞습니다. */
+    /** 바닥 모자이크. */
     public static final Material[] MOSAIC = {
-            Material.PRISMARINE_BRICKS,
-            Material.PRISMARINE,
-            Material.DARK_PRISMARINE,
             Material.STONE_BRICKS,
+            Material.COBBLESTONE,
+            Material.DEEPSLATE_BRICKS,
+            Material.STONE,
             Material.SMOOTH_QUARTZ,
-            Material.QUARTZ_BRICKS,
             Material.CHISELED_STONE_BRICKS,
+            Material.MOSSY_COBBLESTONE,
             Material.CALCITE,
+    };
+
+    /** 목재 포인트 — 가문비. 석재 일색을 깨는 용도로만 씁니다. */
+    public static final Material[] TIMBER_MIX = {
+            Material.SPRUCE_PLANKS,
+            Material.SPRUCE_LOG,
+            Material.STRIPPED_SPRUCE_LOG,
     };
 
     // ── 벽면 질감 ────────────────────────────────────────────────────
@@ -102,14 +117,6 @@ public final class Palette {
             Material.WHITE_TERRACOTTA,
     };
 
-    /** 관문·기념물용 — 신비로운 톤. */
-    public static final Material[] ARCANE_RAMP = {
-            Material.POLISHED_BLACKSTONE_BRICKS,
-            Material.DEEPSLATE_TILES,
-            Material.END_STONE_BRICKS,
-            Material.PURPUR_BLOCK,
-            Material.AMETHYST_BLOCK,
-    };
 
     public static final Material[] FOUNDATION_RAMP = {
             Material.DEEPSLATE,

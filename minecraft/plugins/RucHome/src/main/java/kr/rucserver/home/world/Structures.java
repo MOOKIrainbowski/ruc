@@ -124,8 +124,8 @@ public final class Structures {
                                 Brush.facing(dx, dz, true), false);
                     } else {
                         Brush.set(world, x, yy, z, d > rr - 1
-                                ? Material.DARK_PRISMARINE
-                                : (((dx + dz) & 1) == 0 ? Material.PRISMARINE_BRICKS
+                                ? Material.DEEPSLATE_BRICKS
+                                : (((dx + dz) & 1) == 0 ? Material.STONE_BRICKS
                                                         : Material.SMOOTH_QUARTZ));
                     }
                 }
@@ -164,7 +164,7 @@ public final class Structures {
                 }
             }
         }
-        Brush.set(world, cx, beamY + 6, cz, Material.SEA_LANTERN);
+        Brush.set(world, cx, beamY + 6, cz, Material.GLOWSTONE);
 
         // 내부 — 화로와 앉는 계단
         Brush.set(world, cx, floorY + 1, cz, Material.CAMPFIRE);
