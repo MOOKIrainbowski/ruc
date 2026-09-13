@@ -221,6 +221,11 @@ public class PlazaBuilder {
                     Brush.stairs(world, x, lowerY + 1, z, Material.STONE_BRICK_STAIRS,
                             Brush.facing(x, z, true), false);
                 }
+                // 단 턱에 늘어진 잎 — 직선 모서리를 흐립니다
+                if (Palette.noise(x, 53, z) > 0.88) {
+                    Brush.setIfAir(world, x, topY + 1, z,
+                            Palette.mix(Palette.LEAF_MIX, x, topY, z));
+                }
             }
         }
     }
@@ -403,6 +408,11 @@ public class PlazaBuilder {
                     Brush.set(world, x, RING_TOP + height + 1, z,
                             Palette.mix(Palette.RUIN_MIX, x, height, z));
                     Brush.set(world, x, RING_TOP + height + 2, z, Material.POLISHED_BLACKSTONE_BRICK_SLAB);
+                    // 흉벽 틈에 내려앉은 잎
+                    if (Palette.noise(x, 41, z) > 0.80) {
+                        Brush.setIfAir(world, x, RING_TOP + height + 3, z,
+                                Palette.mix(Palette.LEAF_MIX, x, height, z));
+                    }
                 }
 
                 // 탑 꼭대기 조명
@@ -425,12 +435,35 @@ public class PlazaBuilder {
                             Brush.vine(world, x, vy - k, z, Brush.facing(x, z, false));
                         }
                     }
+                    // 벽 틈에서 자란 덤불 — 폐허 느낌을 살립니다
+                    if (Palette.noise(x, 29, z) > 0.86) {
+                        int ly = RING_TOP + 3 + (int) (Palette.noise(x, 5, z) * 7);
+                        leafPuff(world, x, ly, z, 1.4 + Palette.noise(x, z) * 0.9);
+                    }
                 }
             }
         }
     }
 
     private int k(int v) { return v; }
+
+    /**
+     * 작은 잎 덤불. 구가 아니라 노이즈로 갉은 덩어리라 인공적으로 보이지 않습니다.
+     * 이미 블록이 있는 자리는 건드리지 않습니다.
+     */
+    private void leafPuff(World world, int cx, int cy, int cz, double r) {
+        int ri = (int) Math.ceil(r) + 1;
+        for (int dx = -ri; dx <= ri; dx++) {
+            for (int dz = -ri; dz <= ri; dz++) {
+                for (int dy = -ri; dy <= ri; dy++) {
+                    double d = Math.sqrt(dx * dx + dz * dz + dy * dy * 1.8);
+                    if (d > r + Palette.noise(cx + dx, cy + dy, cz + dz) * 1.1 - 0.3) continue;
+                    Brush.setIfAir(world, cx + dx, cy + dy, cz + dz,
+                            Palette.mix(Palette.LEAF_MIX, cx + dx, cy + dy, cz + dz));
+                }
+            }
+        }
+    }
 
     private Material wallMaterial(int x, int y, int z, int rel, double inner, boolean tower) {
         if (rel <= 2) return Palette.mix(Palette.DARK_MIX, x, y, z);       // 기단
@@ -488,7 +521,15 @@ public class PlazaBuilder {
                         if (r % 7 == 0) {
                             Brush.set(world, x, RING_TOP + 2, z, Material.POLISHED_BLACKSTONE);
                             Brush.set(world, x, RING_TOP + 3, z, Material.LANTERN);
+                        } else if (Palette.noise(x, 61, z) > 0.62) {
+                            // 길가 덤불
+                            leafPuff(world, x, RING_TOP + 2, z, 1.3);
                         }
+                    }
+                    // 길 위에 떨어진 잎·풀
+                    if (ao <= GATE_HALF && Palette.noise(x, 67, z) > 0.90) {
+                        Brush.setIfAir(world, x, RING_TOP + 1, z,
+                                Palette.mix(Palette.UNDERGROWTH, x, z));
                     }
                 }
             }
@@ -545,28 +586,31 @@ public class PlazaBuilder {
     // ── 중앙 랜드마크 ──────────────────────────────────────────────────
 
     /**
-     * 대형 분수 — 광장의 랜드마크.
+     * 대형 분수 — 잎과 석영으로 짠 정원 분수.
      *
-     * 보강한 것
-     *  - 수조를 팔각으로 (정원은 기계적으로 보입니다)
-     *  - 석영을 수반 본체로 올려 회색 일색을 깼습니다
-     *  - 가문비 데크 보행단과 난간, 처마를 둘러 목재 질감을 넣었습니다
-     *  - 단마다 물이 실제로 넘쳐 아래로 이어집니다
-     *  - 사자머리 대신 석영 토수구 8개, 수조 안 물풀과 디딤돌
+     * 재료를 둘로 좁혔습니다. 석영은 수반과 기둥(밝고 매끈한 골격),
+     * 잎은 그 골격을 감싸는 살입니다. 석재는 기단과 테두리에만 남겨
+     * 두 재료가 주인공이 되게 했습니다.
+     *
+     * 잎을 쓰는 방식
+     *   - 수반 테두리를 따라 늘어진 잎 (딱딱한 원을 흐림)
+     *   - 단 사이를 감는 잎 띠
+     *   - 첨탑을 타고 오르는 잎
+     *   - 팔각 모서리의 토피어리 4쌍
+     * 전부 노이즈로 두께를 흩뜨려 다듬은 울타리처럼 보이지 않게 합니다.
      */
     private void buildCenterpiece(World world) {
-        layout.reserve("fountain", 0, 0, 15, 0);
+        layout.reserve("fountain", 0, 0, 16, 0);
 
         final int baseY = T1_TOP + 1;
 
         // ── 1단: 팔각 하부 수조 ───────────────────────────────────────
-        for (int dx = -15; dx <= 15; dx++) {
-            for (int dz = -15; dz <= 15; dz++) {
+        for (int dx = -16; dx <= 16; dx++) {
+            for (int dz = -16; dz <= 16; dz++) {
                 double d = octagon(dx, dz);
                 if (d > 14) continue;
 
                 if (d > 13) {
-                    // 바깥 계단 단 — 앉는 자리
                     Brush.stairs(world, dx, baseY, dz, Material.STONE_BRICK_STAIRS,
                             Brush.facing(dx, dz, true), false);
                     Brush.set(world, dx, baseY - 1, dz, Material.COBBLESTONE);
@@ -576,63 +620,78 @@ public class PlazaBuilder {
                     Brush.set(world, dx, baseY - 1, dz, Material.COBBLESTONE);
                 } else if (d > 10.2) {
                     // 수조 벽 — 석영 갓돌
-                    Brush.set(world, dx, baseY, dz,
-                            Palette.mix(Palette.RUIN_MIX, dx, baseY, dz));
+                    Brush.set(world, dx, baseY, dz, Material.SMOOTH_QUARTZ);
                     Brush.set(world, dx, baseY + 1, dz,
                             Palette.mix(Palette.QUARTZ_MIX, dx, baseY + 1, dz));
+                    // 갓돌 위로 늘어진 잎 — 둘레를 띄엄띄엄
+                    if (Palette.noise(dx, 71, dz) > 0.52) {
+                        Brush.setIfAir(world, dx, baseY + 2, dz,
+                                Palette.mix(Palette.LEAF_MIX, dx, baseY, dz));
+                        if (Palette.noise(dx, 73, dz) > 0.72) {
+                            Brush.setIfAir(world, dx, baseY + 3, dz,
+                                    Palette.mix(Palette.LEAF_MIX, dx, baseY + 1, dz));
+                        }
+                    }
                 } else {
-                    // 수조 바닥 — 석영·조약돌 체크 + 물
                     Brush.set(world, dx, baseY, dz, ((dx + dz) & 1) == 0
-                            ? Material.SMOOTH_QUARTZ : Material.COBBLESTONE);
+                            ? Material.SMOOTH_QUARTZ : Material.QUARTZ_BRICKS);
                     Brush.water(world, dx, baseY + 1, dz);
-                    // 물속 디딤돌과 수초
-                    if (Palette.noise(dx, 17, dz) > 0.93) {
-                        Brush.set(world, dx, baseY + 1, dz, Material.MOSSY_COBBLESTONE);
-                    } else if (Palette.noise(dx, 23, dz) > 0.95) {
+                    if (Palette.noise(dx, 23, dz) > 0.94) {
                         Brush.set(world, dx, baseY + 2, dz, Material.LILY_PAD);
                     }
                 }
             }
         }
 
-        // 수조 둘레 가문비 난간 + 등 (팔각 모서리)
-        for (int deg = 0; deg < 360; deg += 45) {
+        // 팔각 모서리 토피어리 — 석영 화분 + 잎 덤불
+        for (int deg = 45; deg < 360; deg += 90) {
             double rad = Math.toRadians(deg);
-            int x = (int) Math.round(Math.cos(rad) * 12.6);
-            int z = (int) Math.round(Math.sin(rad) * 12.6);
+            int x = (int) Math.round(Math.cos(rad) * 12.4);
+            int z = (int) Math.round(Math.sin(rad) * 12.4);
+            for (int y = baseY + 1; y <= baseY + 2; y++) {
+                Brush.set(world, x, y, z, Material.QUARTZ_BRICKS);
+            }
+            Brush.set(world, x, baseY + 3, z, Material.CHISELED_QUARTZ_BLOCK);
+            leafBall(world, x, baseY + 5, z, 2.3);
+        }
+
+        // 정방향 4곳 — 등 기둥
+        for (int deg = 0; deg < 360; deg += 90) {
+            double rad = Math.toRadians(deg);
+            int x = (int) Math.round(Math.cos(rad) * 12.4);
+            int z = (int) Math.round(Math.sin(rad) * 12.4);
             for (int y = baseY + 1; y <= baseY + 4; y++) {
                 Brush.pillar(world, x, y, z, Material.SPRUCE_LOG, Axis.Y);
             }
-            Brush.set(world, x, baseY + 5, z, Palette.mix(Palette.QUARTZ_MIX, x, baseY, z));
-            Brush.set(world, x, baseY + 6, z, Material.SPRUCE_SLAB);
+            Brush.set(world, x, baseY + 5, z, Material.QUARTZ_PILLAR);
             Brush.set(world, x, baseY + 4, z, Material.LANTERN);
-
-            // 기둥 사이 난간
-            double rad2 = Math.toRadians(deg + 22.5);
-            int mx = (int) Math.round(Math.cos(rad2) * 12.6);
-            int mz = (int) Math.round(Math.sin(rad2) * 12.6);
-            Brush.set(world, mx, baseY + 1, mz, Material.SPRUCE_FENCE);
-            Brush.set(world, mx, baseY + 2, mz, Material.SPRUCE_FENCE);
+            Brush.setIfAir(world, x, baseY + 6, z, Material.FLOWERING_AZALEA_LEAVES);
         }
 
         // ── 2단: 중간 받침 + 수반 ─────────────────────────────────────
         final int midY = baseY + 6;
         for (int y = baseY + 1; y < midY; y++) {
-            // 받침 — 석영 몸통에 석재 띠
-            Material body = (y - baseY) % 3 == 0
-                    ? Material.CHISELED_STONE_BRICKS
-                    : Palette.mix(Palette.QUARTZ_MIX, 0, y, 0);
-            Brush.disc(world, 0, y, 0, 6.4, body);
-            Brush.ring(world, 0, y, 0, 5.4, 6.4, Material.COBBLESTONE);
+            Brush.disc(world, 0, y, 0, 6.4,
+                    (y - baseY) % 3 == 0 ? Material.QUARTZ_BRICKS
+                                         : Palette.mix(Palette.QUARTZ_MIX, 0, y, 0));
+            Brush.ring(world, 0, y, 0, 5.4, 6.4, Material.SMOOTH_QUARTZ);
+            // 받침을 감는 잎 띠 — 두 층마다
+            if ((y - baseY) % 2 == 1) {
+                leafBand(world, y, 6.6, 0.45);
+            }
         }
         for (int dx = -9; dx <= 9; dx++) {
             for (int dz = -9; dz <= 9; dz++) {
                 double d = Math.hypot(dx, dz);
                 if (d > 8.2) continue;
                 if (d > 7.0) {
-                    // 처마 — 가문비 계단을 바깥으로
-                    Brush.stairs(world, dx, midY, dz, Material.SPRUCE_STAIRS,
+                    Brush.stairs(world, dx, midY, dz, Material.SMOOTH_QUARTZ_STAIRS,
                             Brush.facing(dx, dz, false), false);
+                    // 처마 밑 늘어진 잎
+                    if (Palette.noise(dx, 79, dz) > 0.58) {
+                        Brush.setIfAir(world, dx, midY - 1, dz,
+                                Palette.mix(Palette.LEAF_MIX, dx, midY, dz));
+                    }
                 } else if (d > 5.6) {
                     Brush.set(world, dx, midY, dz,
                             Palette.mix(Palette.QUARTZ_MIX, dx, midY, dz));
@@ -642,14 +701,13 @@ public class PlazaBuilder {
                 }
             }
         }
-        // 토수구 8개 — 여기로 물이 아래 수조까지 떨어집니다
+        // 토수구 8개
         for (int deg = 0; deg < 360; deg += 45) {
             double rad = Math.toRadians(deg);
             int x = (int) Math.round(Math.cos(rad) * 6.2);
             int z = (int) Math.round(Math.sin(rad) * 6.2);
             Brush.set(world, x, midY, z, Material.QUARTZ_BRICKS);
-            Brush.water(world, x, midY + 1, z);
-            for (int y = midY; y > baseY + 1; y--) {
+            for (int y = midY + 1; y > baseY + 1; y--) {
                 Brush.water(world, x, y, z);
             }
         }
@@ -660,15 +718,19 @@ public class PlazaBuilder {
             Brush.disc(world, 0, y, 0, 3.4,
                     (y - midY) % 3 == 0 ? Material.CHISELED_QUARTZ_BLOCK
                                         : Material.QUARTZ_PILLAR);
-            Brush.ring(world, 0, y, 0, 2.4, 3.4, Material.DEEPSLATE_BRICKS);
+            if ((y - midY) % 2 == 1) leafBand(world, y, 3.6, 0.5);
         }
         for (int dx = -6; dx <= 6; dx++) {
             for (int dz = -6; dz <= 6; dz++) {
                 double d = Math.hypot(dx, dz);
                 if (d > 5.2) continue;
                 if (d > 4.2) {
-                    Brush.stairs(world, dx, topY, dz, Material.SPRUCE_STAIRS,
+                    Brush.stairs(world, dx, topY, dz, Material.SMOOTH_QUARTZ_STAIRS,
                             Brush.facing(dx, dz, false), false);
+                    if (Palette.noise(dx, 83, dz) > 0.55) {
+                        Brush.setIfAir(world, dx, topY - 1, dz,
+                                Palette.mix(Palette.LEAF_MIX, dx, topY, dz));
+                    }
                 } else if (d > 3.0) {
                     Brush.set(world, dx, topY, dz, Material.QUARTZ_BRICKS);
                 } else {
@@ -681,42 +743,68 @@ public class PlazaBuilder {
             double rad = Math.toRadians(deg);
             int x = (int) Math.round(Math.cos(rad) * 3.4);
             int z = (int) Math.round(Math.sin(rad) * 3.4);
-            Brush.water(world, x, topY + 1, z);
-            for (int y = topY; y > midY + 1; y--) {
+            for (int y = topY + 1; y > midY + 1; y--) {
                 Brush.water(world, x, y, z);
             }
         }
 
-        // ── 첨탑 ──────────────────────────────────────────────────────
+        // ── 첨탑 — 석영 기둥을 잎이 타고 오릅니다 ─────────────────────
         final int spireY = topY + 1;
         for (int y = spireY; y <= spireY + 9; y++) {
             int rel = y - spireY;
             if (rel < 6) {
                 Brush.disc(world, 0, y, 0, 1.4,
-                        rel % 2 == 0 ? Material.QUARTZ_PILLAR : Material.CHISELED_QUARTZ_BLOCK);
+                        rel % 2 == 0 ? Material.QUARTZ_PILLAR : Material.SMOOTH_QUARTZ);
             } else {
                 Brush.set(world, 0, y, 0, Material.SMOOTH_QUARTZ);
             }
-            // 가문비 버팀대
-            if (rel == 2 || rel == 5) {
-                for (int[] o : new int[][]{{2, 0}, {-2, 0}, {0, 2}, {0, -2}}) {
-                    Brush.set(world, o[0], y, o[1], Material.SPRUCE_SLAB);
-                }
+            // 나선으로 감아 오르는 잎
+            double ang = Math.toRadians(rel * 62.0);
+            int lx = (int) Math.round(Math.cos(ang) * 2.0);
+            int lz = (int) Math.round(Math.sin(ang) * 2.0);
+            Brush.setIfAir(world, lx, y, lz,
+                    Palette.mix(Palette.LEAF_MIX, lx, y, lz));
+            if (rel % 3 == 0) {
+                Brush.setIfAir(world, -lx, y, -lz,
+                        Palette.mix(Palette.LEAF_MIX, -lx, y, -lz));
             }
         }
-        Brush.set(world, 0, spireY + 10, 0, Material.GLOWSTONE);
-        Brush.water(world, 0, spireY + 11, 0);
-        for (int[] o : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
-            Brush.water(world, o[0], spireY + 10, o[1]);
-        }
 
-        // 첨탑에 매단 등
-        for (int[] o : new int[][]{{2, 0}, {-2, 0}, {0, 2}, {0, -2}}) {
-            Brush.set(world, o[0], spireY + 8, o[1], Material.IRON_CHAIN);
-            Brush.set(world, o[0], spireY + 7, o[1], Material.LANTERN);
+        // 꼭대기 — 잎 관 위로 솟는 물
+        leafBall(world, 0, spireY + 10, 0, 2.6);
+        Brush.set(world, 0, spireY + 10, 0, Material.GLOWSTONE);
+        Brush.set(world, 0, spireY + 11, 0, Material.CHISELED_QUARTZ_BLOCK);
+        Brush.water(world, 0, spireY + 12, 0);
+        for (int[] o : new int[][]{{1, 0}, {-1, 0}, {0, 1}, {0, -1}}) {
+            Brush.water(world, o[0], spireY + 11, o[1]);
         }
     }
 
+    /** 지정 높이에서 원 둘레를 따라 잎을 띄엄띄엄 두릅니다. */
+    private void leafBand(World world, int y, double radius, double density) {
+        for (int deg = 0; deg < 360; deg += 6) {
+            double rad = Math.toRadians(deg);
+            int x = (int) Math.round(Math.cos(rad) * radius);
+            int z = (int) Math.round(Math.sin(rad) * radius);
+            if (Palette.noise(x, y, z) > density) continue;
+            Brush.setIfAir(world, x, y, z, Palette.mix(Palette.LEAF_MIX, x, y, z));
+        }
+    }
+
+    /** 토피어리 — 잎 공. 노이즈로 갉아 다듬은 티가 덜 나게. */
+    private void leafBall(World world, int cx, int cy, int cz, double r) {
+        int ri = (int) Math.ceil(r) + 1;
+        for (int dx = -ri; dx <= ri; dx++) {
+            for (int dz = -ri; dz <= ri; dz++) {
+                for (int dy = -ri; dy <= ri; dy++) {
+                    double d = Math.sqrt(dx * dx + dz * dz + dy * dy * 1.25);
+                    if (d > r + Palette.noise(cx + dx, cy + dy, cz + dz) * 0.9 - 0.25) continue;
+                    Brush.setIfAir(world, cx + dx, cy + dy, cz + dz,
+                            Palette.mix(Palette.LEAF_MIX, cx + dx, cy + dy, cz + dz));
+                }
+            }
+        }
+    }
     /** 팔각형 거리. 정원보다 덜 기계적으로 보입니다. */
     private double octagon(int dx, int dz) {
         double ax = Math.abs(dx), az = Math.abs(dz);

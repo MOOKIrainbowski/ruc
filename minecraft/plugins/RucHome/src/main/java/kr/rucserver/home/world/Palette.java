@@ -72,6 +72,31 @@ public final class Palette {
             Material.SPRUCE_LOG,
     };
 
+    /**
+     * 잎 — 석재 구조물에 생명감을 더합니다.
+     *
+     * 한 종류만 쓰면 인공 울타리처럼 보입니다. 진달래잎(짙고 덤불진 느낌)을
+     * 주로 쓰고 참나무·가문비를 섞어 색과 밀도에 변화를 줍니다.
+     * 꽃 핀 진달래잎은 드물게 넣어야 포인트가 됩니다.
+     */
+    public static final Material[] LEAF_MIX = {
+            Material.AZALEA_LEAVES,
+            Material.AZALEA_LEAVES,
+            Material.AZALEA_LEAVES,
+            Material.OAK_LEAVES,
+            Material.OAK_LEAVES,
+            Material.SPRUCE_LEAVES,
+            Material.FLOWERING_AZALEA_LEAVES,
+    };
+
+    /** 이끼·덩굴과 함께 쓰는 낮은 식생. */
+    public static final Material[] UNDERGROWTH = {
+            Material.MOSS_CARPET,
+            Material.SHORT_GRASS,
+            Material.FERN,
+            Material.AZURE_BLUET,
+    };
+
     /** 석영 — 밝은 강조. 회색 일색을 깨는 주 수단입니다. */
     public static final Material[] QUARTZ_MIX = {
             Material.SMOOTH_QUARTZ,
