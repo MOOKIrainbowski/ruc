@@ -1,0 +1,102 @@
+# RucRaid 설정 — 약탈 서버 (§2.4)
+#
+# 화폐·경험치·언어 같은 공용 설정은 RucCore/config.yml 에 있습니다.
+# 여기는 약탈 서버에만 해당하는 것만 둡니다.
+
+# 이 서버에서 약탈 규칙이 적용될 월드 목록.
+# 비워 두면 world / world_nether / world_the_end 를 씁니다.
+worlds:
+  - world
+  - world_nether
+  - world_the_end
+
+# 자연 회복. 끄면 회복이 음식이 아니라 물약·황금사과 관리 문제가 되어
+# 교전이 길어지지 않습니다. 약탈 서버 기본값은 off 입니다.
+natural-regeneration: false
+
+# ── 전투 (§2.4) ────────────────────────────────────────────────────────
+combat:
+  # 마지막 피해 이후 이 시간 동안 "전투 중"으로 간주합니다.
+  tag-seconds: 15
+
+  # 전투 중 접속 종료를 전체 공지할지. 공지하면 상대가 상황을 납득하고,
+  # 재접속 시점의 처형도 같은 맥락에서 읽힙니다.
+  announce-logout: true
+
+  # 재접속 후 몇 틱 뒤에 처형할지. 청크 로딩과 Core 데이터 로드를 기다립니다.
+  # 너무 짧으면 자체 XP 가 아직 로드되지 않아 소멸 처리가 늦어집니다.
+  execution-delay-ticks: 40
+
+  # 처형 시 레벨까지 1로 되돌릴지.
+  # 기본은 false — 레벨은 수십 시간짜리 누적이라, 한 번의 콤벳로그로 지우면
+  # 처벌이 아니라 "그냥 그만두는" 사유가 됩니다. XP 는 항상 0이 됩니다.
+  execution-resets-level: false
+
+  # 전투 중 사용할 수 없는 명령어. 이걸 막지 않으면 처형 규칙이 무의미합니다.
+  # /plugin:command 형태의 우회는 코드에서 함께 걸러집니다.
+  blocked-commands:
+    - home
+    - 홈
+    - spawn
+    - 스폰
+    - tpa
+    - tpask
+    - tpahere
+    - tpaccept
+    - tpyes
+    - 수락
+    - warp
+    - back
+    - hub
+    - server
+    - lobby
+    - 로비
+
+# ── 텔레포트 ───────────────────────────────────────────────────────────
+teleport:
+  # 시전 시간. 즉시 이동이면 불리해지는 순간 눌러 빠져나갑니다.
+  warmup-seconds: 5
+  # 시전 완료 후 다음 사용까지 대기 시간.
+  cooldown-seconds: 30
+
+# /spawn 목적지. use-custom 이 false 면 월드의 기본 스폰을 씁니다.
+spawn:
+  use-custom: false
+  world: world
+  x: 0.5
+  y: 80.0
+  z: 0.5
+  yaw: 0.0
+  pitch: 0.0
+
+# ── 드래곤 알 (D3) ─────────────────────────────────────────────────────
+# 네트워크 전역에 레이드 1개 + 평화 1개, 총 2개만 존재합니다.
+# 강력하되 숨길 수 없어야 하므로, 모든 이득에 추적당하는 대가가 붙습니다.
+dragon-egg:
+  enabled: true
+
+  # 최초 1회 여기에 배치됩니다. 이미 배치된 적이 있으면 다시 놓지 않습니다
+  # (누군가 들고 있는 상태를 "없음"으로 오해해 개수가 늘어나는 것을 막습니다).
+  # 분실 시 스태프가 /raid egg 로 회수합니다.
+  altar:
+    world: world
+    x: 0
+    z: 0
+    # -1 이면 지표면에 맞춥니다. 고정값을 허공에 두면 알이 그대로 떨어집니다
+    # (드래곤 알은 모래처럼 중력을 받습니다).
+    y: -1
+    # 흑요석 받침과 기둥을 함께 짓습니다. 알만 풀밭에 두면 랜드마크로 읽히지
+    # 않고, 밑을 파면 굴러떨어집니다.
+    build: true
+
+  # 이득
+  bonus-health: 4.0            # 하트 2칸
+  ruc-bonus-percent: 15
+  xp-bonus-percent: 10
+  regen-after-combat-seconds: 10   # 비전투 10초 경과 시 재생 I
+
+  # 대가
+  glow-interval-seconds: 30    # 30초마다 위치 노출
+  glow-duration-seconds: 6
+  reveal-radius: 200           # 이 반경 안의 전원에게 알림
+  announce-interval-minutes: 1440   # 하루 1회 전 서버 공지

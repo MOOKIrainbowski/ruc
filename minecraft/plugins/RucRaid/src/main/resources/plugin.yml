@@ -1,0 +1,43 @@
+name: RucRaid
+version: '${version}'
+main: kr.rucserver.raid.RucRaid
+api-version: '1.21'
+author: Ruc Server
+description: 러크 약탈 서버 — 전투 로그 처형, 홈/스폰, 드래곤 알
+depend: [RucCore]
+
+commands:
+  spawn:
+    description: 서버 스폰으로 이동합니다.
+    usage: /spawn
+    aliases: [스폰]
+  sethome:
+    description: 현재 위치를 홈으로 지정합니다.
+    usage: /sethome
+    aliases: [셋홈, 홈설정]
+  home:
+    description: 지정한 홈으로 이동합니다.
+    usage: /home
+    aliases: [홈]
+  delhome:
+    description: 지정한 홈을 삭제합니다.
+    usage: /delhome
+    aliases: [홈삭제]
+  raid:
+    description: (스태프) 드래곤 알 회수 / 처형 취소 / 상태 확인
+    usage: /raid <egg|pardon|status>
+    permission: rucraid.admin
+
+permissions:
+  rucraid.admin:
+    description: 약탈 서버 관리 권한
+    default: op
+  rucraid.bypass.combat:
+    description: 전투 태그가 붙지 않습니다 (관전·운영용)
+    default: false
+  rucraid.bypass.warmup:
+    description: 텔레포트 시전 시간을 건너뜁니다
+    default: op
+  rucraid.bypass.cooldown:
+    description: 텔레포트 쿨타임을 무시합니다
+    default: op

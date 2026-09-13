@@ -59,6 +59,9 @@ public class XpService {
     public void award(Player player, long amount, boolean announce) {
         if (amount <= 0) return;
 
+        // 드래곤 알 등 외부 배수 (D3). 등록된 것이 없으면 amount 그대로입니다.
+        amount = plugin.getBonuses().applyXp(player.getUniqueId(), amount);
+
         RucPlayer data = plugin.getPlayerData().get(player);
         if (data == null) return;              // 아직 로드 중
         if (data.getLevel() >= maxLevel) return;

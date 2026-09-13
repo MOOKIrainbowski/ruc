@@ -74,6 +74,7 @@ minecraft/servers/*/plugins/spark/
 minecraft/servers/*/version_history.json
 # 메시지 파일은 jar에서 자동 추출됩니다. 원본은 plugins/RucCore/src/main/resources
 minecraft/servers/*/plugins/RucCore/messages_*.yml
+minecraft/servers/*/plugins/RucRaid/messages_*.yml
 
 # 허브 월드는 플러그인이 코드로 생성합니다 (PlazaBuilder). 커밋 불필요.
 minecraft/servers/*/hub/

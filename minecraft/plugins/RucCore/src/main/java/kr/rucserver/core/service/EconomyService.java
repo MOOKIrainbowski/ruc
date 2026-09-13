@@ -59,6 +59,17 @@ public class EconomyService {
     }
 
     /**
+     * 벌어들인 보상 지급. 드래곤 알 같은 획득량 배수(D3)가 여기에만 적용됩니다.
+     *
+     * deposit()이 아니라 별도 메서드로 둔 이유: transfer()가 deposit()을 쓰기 때문에
+     * deposit에 배수를 넣으면 알 소지자에게 송금했다 돌려받는 것만으로 화폐가
+     * 늘어납니다. "번 돈"과 "받은 돈"을 분리해야 합니다.
+     */
+    public boolean reward(UUID uuid, long amount) {
+        return deposit(uuid, plugin.getBonuses().applyRuc(uuid, amount));
+    }
+
+    /**
      * 송금. 둘 다 접속 중이어야 합니다.
      * 차감이 성공한 뒤에만 지급하므로 중간에 실패해도 화폐가 복사되지 않습니다.
      */

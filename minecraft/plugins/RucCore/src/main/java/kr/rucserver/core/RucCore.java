@@ -3,6 +3,7 @@ package kr.rucserver.core;
 import kr.rucserver.core.command.CoreCommands;
 import kr.rucserver.core.listener.PlayerListener;
 import kr.rucserver.core.listener.VerificationListener;
+import kr.rucserver.core.service.BonusRegistry;
 import kr.rucserver.core.service.EconomyService;
 import kr.rucserver.core.service.MessageService;
 import kr.rucserver.core.service.PlayerDataService;
@@ -34,6 +35,7 @@ public class RucCore extends JavaPlugin {
     private PlayerDataService playerData;
     private MessageService messages;
     private EconomyService economy;
+    private BonusRegistry bonuses;
     private XpService xp;
     private ScoreboardService scoreboards;
     private TpaService tpa;
@@ -55,6 +57,7 @@ public class RucCore extends JavaPlugin {
         }
 
         playerData = new PlayerDataService(this, new PlayerRepository(database));
+        bonuses = new BonusRegistry();
         economy = new EconomyService(this);
         xp = new XpService(this, messages);
         scoreboards = new ScoreboardService(this, messages, xp);
@@ -118,6 +121,7 @@ public class RucCore extends JavaPlugin {
     public PlayerDataService getPlayerData() { return playerData; }
     public MessageService getMessages() { return messages; }
     public EconomyService getEconomy() { return economy; }
+    public BonusRegistry getBonuses() { return bonuses; }
     public XpService getXp() { return xp; }
     public ScoreboardService getScoreboards() { return scoreboards; }
     public TpaService getTpa() { return tpa; }

@@ -1,0 +1,51 @@
+# Raiding Server strings (English)
+prefix: "&8[&cRaid&8] &r"
+
+combat:
+  entered: "&cIn combat! &7Disconnecting within %seconds%s means execution."
+  actionbar: "&c⚔ In combat &f%seconds%s &7— leaving now costs you everything"
+  left: "&aYou are out of combat."
+  blocked: "&cNot usable while in combat. &7(%seconds%s left)"
+  logout-announce: "&e%player% &7disconnected during combat. &8They will be executed on return."
+
+execution:
+  title: "&4&lEXECUTED"
+  subtitle: "&fYou disconnected during combat"
+  chat: "&cYou were executed for combat logging. &7(opponent: %opponent%) &fAll items and XP are gone."
+  unknown-opponent: "unknown"
+
+home:
+  set: "&aHome set. &7(%x%, %y%, %z%)"
+  set-failed: "&cCould not save your home. Please contact staff."
+  deleted: "&aHome deleted."
+  none: "&cNo home set. Use &f/sethome &cfirst."
+  wrong-world: "&cYou cannot set a home in this world."
+  world-missing: "&cThe world your home was in (%world%) could not be found."
+  warmup: "&7Teleporting home in %seconds%s. &fDo not move."
+  arrived: "&aWelcome home."
+
+spawn:
+  warmup: "&7Teleporting to spawn in %seconds%s. &fDo not move."
+  arrived: "&aArrived at spawn."
+
+teleport:
+  countdown: "&bTeleporting in %seconds%s &7— moving cancels it"
+  cancelled: "&cTeleport cancelled."
+  cooldown: "&cUsable again in %seconds%s."
+  already-warming: "&cA teleport is already in progress."
+
+egg:
+  no-storage: "&cThe Dragon Egg cannot be placed in any container."
+  dropped-on-death: "&cYou dropped the Dragon Egg."
+  exposed: "&eThe Dragon Egg reveals your position"
+  nearby: "&dYou sense the Dragon Egg nearby &7— %player%"
+  announce: "&5&l[Dragon Egg] &fCurrent holder: &e%player%"
+  announce-none: "&5&l[Dragon Egg] &7No one is holding it."
+  returned: "&5The Dragon Egg has returned to its altar."
+
+staff:
+  no-permission: "&cYou do not have permission."
+  egg-respawned: "&aDragon Egg placed at the altar."
+  egg-failed: "&cAltar world not found. Check the config."
+  pardoned: "&aCancelled the pending execution for %player%."
+  status: "&fDragon Egg holder: &e%holder% &7| &fIn combat: &c%tagged%"
