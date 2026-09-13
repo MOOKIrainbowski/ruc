@@ -3,68 +3,59 @@ package kr.rucserver.home.world;
 import org.bukkit.Material;
 
 /**
- * 블록 팔레트와 그라데이션.
+ * 허브 팔레트.
  *
- * docs/04-MAP-DESIGN.md 에서 뽑은 원칙 — "베이스 한 계열 + 변형, 강조는 희소하게" —
- * 를 지키되, 단조로움을 피하려고 **그라데이션 램프**를 씁니다.
+ * 금지 (요청):
+ *   - 구리 계열 전부 (구리/잘린구리/산화·풍화 변형)
+ *   - 화강암 · 섬록암 · 안산암 전부 (원석/광택/계단/슬랩 포함)
  *
- * 그라데이션이 핵심입니다. 두 재료를 딱 잘라 붙이면 경계선이 보이지만,
- * 해시 노이즈로 디더링하면 자연스럽게 섞입니다. 손으로 지은 맵이 좋아 보이는
- * 이유의 상당 부분이 이 "섞임"에 있습니다.
+ * 대체로 쓰는 축:
+ *   프리즈머린 3종 · 석재벽돌 4종 · 석영 5종 · 심층암 4종 · 블랙스톤 4종
+ *   응회암 4종 · 사암 · 진흙벽돌 · 테라코타 · 엔드스톤/퍼퍼(관문용)
+ *
+ * 그라데이션은 좌표 해시 디더링으로 섞습니다. 두 재료를 딱 자르면 경계선이
+ * 보이지만, 전환 구간을 흩뿌리면 자연스럽게 이어집니다.
  */
 public final class Palette {
 
     private Palette() {}
 
-    // ── 회색 석재 램프 (어두움 → 밝음) ───────────────────────────────
-    // 바닥 그라데이션의 주축입니다.
+    // ── 석재 램프 (어두움 → 밝음) ────────────────────────────────────
     public static final Material[] STONE_RAMP = {
             Material.DEEPSLATE_TILES,
             Material.POLISHED_DEEPSLATE,
+            Material.DEEPSLATE_BRICKS,
             Material.COBBLED_DEEPSLATE,
             Material.TUFF_BRICKS,
             Material.POLISHED_TUFF,
-            Material.ANDESITE,
-            Material.POLISHED_ANDESITE,
+            Material.STONE_BRICKS,
             Material.STONE,
             Material.SMOOTH_STONE,
-            Material.DIORITE,
-            Material.POLISHED_DIORITE,
             Material.CALCITE,
             Material.SMOOTH_QUARTZ,
+            Material.QUARTZ_BLOCK,
     };
 
-    // ── 따뜻한 램프 (벽면 대비용) ────────────────────────────────────
-    public static final Material[] WARM_RAMP = {
-            Material.PACKED_MUD,
-            Material.MUD_BRICKS,
-            Material.BRICKS,
-            Material.GRANITE,
-            Material.POLISHED_GRANITE,
-            Material.BROWN_TERRACOTTA,
-            Material.TERRACOTTA,
-            Material.LIGHT_GRAY_TERRACOTTA,
-            Material.WHITE_TERRACOTTA,
+    // ── 프리즈머린 램프 (바닥 모자이크 주축) ─────────────────────────
+    public static final Material[] PRISMARINE_RAMP = {
+            Material.DARK_PRISMARINE,
+            Material.PRISMARINE,
+            Material.PRISMARINE_BRICKS,
     };
 
-    // ── 구리 산화 램프 (지붕) ────────────────────────────────────────
-    // 산화 구리의 청록은 브랜드 그린과 이어집니다. 지붕에 쓰면
-    // 회색 석재 벽과 확실히 분리되면서도 튀지 않습니다.
-    public static final Material[] COPPER_RAMP = {
-            Material.COPPER_BLOCK,
-            Material.EXPOSED_COPPER,
-            Material.WEATHERED_COPPER,
-            Material.OXIDIZED_COPPER,
+    /** 바닥 모자이크 — 프리즈머린 3종 + 석재벽돌 + 석영을 섞습니다. */
+    public static final Material[] MOSAIC = {
+            Material.PRISMARINE_BRICKS,
+            Material.PRISMARINE,
+            Material.DARK_PRISMARINE,
+            Material.STONE_BRICKS,
+            Material.SMOOTH_QUARTZ,
+            Material.QUARTZ_BRICKS,
+            Material.CHISELED_STONE_BRICKS,
+            Material.CALCITE,
     };
 
-    public static final Material[] COPPER_CUT_RAMP = {
-            Material.CUT_COPPER,
-            Material.EXPOSED_CUT_COPPER,
-            Material.WEATHERED_CUT_COPPER,
-            Material.OXIDIZED_CUT_COPPER,
-    };
-
-    // ── 벽면 석재 (질감 섞기용) ──────────────────────────────────────
+    // ── 벽면 질감 ────────────────────────────────────────────────────
     public static final Material[] WALL_MIX = {
             Material.STONE_BRICKS,
             Material.STONE_BRICKS,
@@ -72,6 +63,25 @@ public final class Palette {
             Material.CRACKED_STONE_BRICKS,
             Material.MOSSY_STONE_BRICKS,
             Material.CHISELED_STONE_BRICKS,
+    };
+
+    /** 폐허 느낌 — 이끼와 균열을 더 많이. */
+    public static final Material[] RUIN_MIX = {
+            Material.MOSSY_STONE_BRICKS,
+            Material.MOSSY_STONE_BRICKS,
+            Material.CRACKED_STONE_BRICKS,
+            Material.STONE_BRICKS,
+            Material.COBBLED_DEEPSLATE,
+            Material.MOSSY_COBBLESTONE,
+    };
+
+    /** 어두운 기단·테두리. */
+    public static final Material[] DARK_MIX = {
+            Material.POLISHED_BLACKSTONE_BRICKS,
+            Material.POLISHED_BLACKSTONE_BRICKS,
+            Material.BLACKSTONE,
+            Material.POLISHED_BLACKSTONE,
+            Material.DEEPSLATE_BRICKS,
     };
 
     public static final Material[] TUFF_MIX = {
@@ -82,7 +92,25 @@ public final class Palette {
             Material.CHISELED_TUFF_BRICKS,
     };
 
-    /** 기반부 — 밑에서 올려다봐도 자연스럽게. */
+    /** 따뜻한 대비 (구리·화강암 대체). */
+    public static final Material[] WARM_RAMP = {
+            Material.PACKED_MUD,
+            Material.MUD_BRICKS,
+            Material.BRICKS,
+            Material.SMOOTH_SANDSTONE,
+            Material.CUT_SANDSTONE,
+            Material.WHITE_TERRACOTTA,
+    };
+
+    /** 관문·기념물용 — 신비로운 톤. */
+    public static final Material[] ARCANE_RAMP = {
+            Material.POLISHED_BLACKSTONE_BRICKS,
+            Material.DEEPSLATE_TILES,
+            Material.END_STONE_BRICKS,
+            Material.PURPUR_BLOCK,
+            Material.AMETHYST_BLOCK,
+    };
+
     public static final Material[] FOUNDATION_RAMP = {
             Material.DEEPSLATE,
             Material.COBBLED_DEEPSLATE,
@@ -91,9 +119,8 @@ public final class Palette {
             Material.STONE,
     };
 
-    // ── 해시 노이즈 ──────────────────────────────────────────────────
+    // ── 노이즈 ───────────────────────────────────────────────────────
 
-    /** 좌표 기반 결정적 노이즈 0.0~1.0. 같은 좌표면 항상 같은 값. */
     public static double noise(int x, int z) {
         int h = x * 374761393 + z * 668265263;
         h = (h ^ (h >>> 13)) * 1274126177;
@@ -101,7 +128,6 @@ public final class Palette {
         return (h & 0x7fffffff) / (double) 0x7fffffff;
     }
 
-    /** 3D 버전 — 벽면 질감에 씁니다. */
     public static double noise(int x, int y, int z) {
         int h = x * 374761393 + y * 1103515245 + z * 668265263;
         h = (h ^ (h >>> 13)) * 1274126177;
@@ -109,20 +135,25 @@ public final class Palette {
         return (h & 0x7fffffff) / (double) 0x7fffffff;
     }
 
+    /** 부드러운 값 노이즈 — 유기적인 윤곽에 씁니다. */
+    public static double smooth(double x, double z, double scale) {
+        double sx = x / scale, sz = z / scale;
+        int x0 = (int) Math.floor(sx), z0 = (int) Math.floor(sz);
+        double fx = sx - x0, fz = sz - z0;
+        double u = fx * fx * (3 - 2 * fx), v = fz * fz * (3 - 2 * fz);
+
+        double n00 = noise(x0, z0), n10 = noise(x0 + 1, z0);
+        double n01 = noise(x0, z0 + 1), n11 = noise(x0 + 1, z0 + 1);
+        return (n00 * (1 - u) + n10 * u) * (1 - v) + (n01 * (1 - u) + n11 * u) * v;
+    }
+
     // ── 그라데이션 ───────────────────────────────────────────────────
 
-    /**
-     * 램프에서 위치 t(0~1)에 해당하는 재료를 디더링해서 고릅니다.
-     *
-     * 경계에서 두 재료가 확률적으로 섞이므로 딱 잘린 줄이 생기지 않습니다.
-     */
     public static Material gradient(Material[] ramp, double t, int x, int z) {
         t = Math.max(0, Math.min(1, t));
         double pos = t * (ramp.length - 1);
         int i = (int) Math.floor(pos);
-        double frac = pos - i;
-
-        int idx = (noise(x, z) < frac) ? i + 1 : i;
+        int idx = (noise(x, z) < pos - i) ? i + 1 : i;
         return ramp[Math.max(0, Math.min(ramp.length - 1, idx))];
     }
 
@@ -130,20 +161,15 @@ public final class Palette {
         t = Math.max(0, Math.min(1, t));
         double pos = t * (ramp.length - 1);
         int i = (int) Math.floor(pos);
-        double frac = pos - i;
-
-        int idx = (noise(x, y, z) < frac) ? i + 1 : i;
+        int idx = (noise(x, y, z) < pos - i) ? i + 1 : i;
         return ramp[Math.max(0, Math.min(ramp.length - 1, idx))];
     }
 
-    /** 가중치 없이 섞기 — 같은 톤의 변형들을 흩뿌릴 때. */
     public static Material mix(Material[] set, int x, int y, int z) {
-        int i = (int) (noise(x, y, z) * set.length);
-        return set[Math.min(set.length - 1, i)];
+        return set[Math.min(set.length - 1, (int) (noise(x, y, z) * set.length))];
     }
 
     public static Material mix(Material[] set, int x, int z) {
-        int i = (int) (noise(x, z) * set.length);
-        return set[Math.min(set.length - 1, i)];
+        return set[Math.min(set.length - 1, (int) (noise(x, z) * set.length))];
     }
 }

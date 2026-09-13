@@ -4,6 +4,7 @@ import kr.rucserver.home.listener.HubRulesListener;
 import kr.rucserver.home.listener.SelectorListener;
 import kr.rucserver.home.service.ServerSelector;
 import kr.rucserver.home.service.VoidGuard;
+import kr.rucserver.home.service.AmbienceService;
 import kr.rucserver.home.world.PlazaBuilder;
 import kr.rucserver.home.world.VoidGenerator;
 import org.bukkit.Bukkit;
@@ -31,12 +32,14 @@ public class RucHome extends JavaPlugin {
     private World hubWorld;
     private ServerSelector selector;
     private VoidGuard voidGuard;
-    private final PlazaBuilder builder = new PlazaBuilder();
+    private AmbienceService ambience;
+    private PlazaBuilder builder;
 
     @Override
     public void onEnable() {
         saveDefaultConfig();
 
+        builder = new PlazaBuilder(getLogger());
         selector = new ServerSelector(this);
 
         hubWorld = prepareHubWorld();
@@ -56,12 +59,16 @@ public class RucHome extends JavaPlugin {
         voidGuard = new VoidGuard(this);
         voidGuard.start();
 
+        ambience = new AmbienceService(this);
+        ambience.start();
+
         getLogger().info("RucHome 활성화 완료 (월드: " + hubWorld.getName() + ")");
     }
 
     @Override
     public void onDisable() {
         if (voidGuard != null) voidGuard.stop();
+        if (ambience != null) ambience.stop();
         getLogger().info("RucHome 비활성화");
     }
 
