@@ -1,0 +1,37 @@
+prefix: "&b[평화]&r "
+
+# 홈·스폰·텔레포트 키는 Core 의 공용 HomeService 가 씁니다.
+# 약탈 서버와 같은 키 이름이어야 합니다 — 로직이 한 곳이기 때문입니다.
+home:
+  set: "&a홈을 지정했습니다. &7(%x%, %y%, %z%)"
+  set-failed: "&c홈을 저장하지 못했습니다. 스태프에게 문의해 주세요."
+  deleted: "&a홈을 삭제했습니다."
+  none: "&c지정된 홈이 없습니다. &f/셋홈 &c으로 먼저 지정하세요."
+  wrong-world: "&c이 월드에서는 홈을 지정할 수 없습니다."
+  world-missing: "&c홈이 있던 월드(%world%)를 찾을 수 없습니다."
+  warmup: "&7%seconds%초 후 홈으로 이동합니다. &f움직이지 마세요."
+  arrived: "&a홈에 도착했습니다."
+
+spawn:
+  warmup: "&7%seconds%초 후 스폰으로 이동합니다. &f움직이지 마세요."
+  arrived: "&a스폰에 도착했습니다."
+
+teleport:
+  countdown: "&b이동까지 %seconds%초 &7— 움직이면 취소됩니다"
+  cancelled: "&c이동이 취소되었습니다."
+  cooldown: "&c%seconds%초 후에 다시 사용할 수 있습니다."
+  already-warming: "&c이미 이동을 준비 중입니다."
+
+peace:
+  # 보호가 걸렸을 때
+  protected: "&b평화 서버에서는 이렇게 죽지 않습니다"
+  blocked: "&c이 서버에서는 다른 플레이어를 죽일 수 없습니다."
+
+  # 스태프 알림 · 기록 조회
+  incident-alert: "&c&l[테러 탐지] &f%actor% &7→ &f%victim% &8(%kind%)"
+  log-no-permission: "&c권한이 없습니다."
+  log-header: "&8&m        &r &c&l살해 시도 기록 (%count%건) &8&m        "
+  log-row: "&8%time% &f%actor% &7→ &f%victim% &8%kind% &7%world% %x%,%y%,%z%"
+  log-total: "&7%player% 님의 누적 기록: &c%count%건"
+  log-empty: "&7기록이 없습니다."
+  log-empty-player: "&7%player% 님의 기록이 없습니다."

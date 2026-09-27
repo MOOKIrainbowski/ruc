@@ -19,6 +19,7 @@ import kr.rucserver.core.service.VerificationService;
 import kr.rucserver.core.service.XpService;
 import kr.rucserver.core.storage.Database;
 import kr.rucserver.core.storage.GuildRepository;
+import kr.rucserver.core.storage.HomeRepository;
 import kr.rucserver.core.storage.PlayerRepository;
 import kr.rucserver.core.storage.VerificationRepository;
 import org.bukkit.GameRule;
@@ -44,6 +45,7 @@ public class RucCore extends JavaPlugin {
     private EconomyService economy;
     private BonusRegistry bonuses;
     private GuildService guilds;
+    private HomeRepository homes;
     private XpService xp;
     private ScoreboardService scoreboards;
     private TpaService tpa;
@@ -86,6 +88,17 @@ public class RucCore extends JavaPlugin {
             return;
         }
         guilds = new GuildService(this, messages, guildRepository);
+
+        // ruc_home 은 약탈·평화 두 서버가 같이 씁니다(§3.3). 테이블 주인을
+        // 한쪽 모듈에 두면 컬럼을 고칠 때 어느 쪽인지 알 수 없게 됩니다.
+        homes = new HomeRepository(database);
+        try {
+            homes.createSchema();
+        } catch (SQLException e) {
+            getLogger().log(Level.SEVERE, "홈 테이블 생성에 실패했습니다. 플러그인을 비활성화합니다.", e);
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
 
         // 프록시 통신과 메뉴는 4개 서버 공통이라 Core가 소유합니다.
         network = new NetworkService(this);
@@ -157,6 +170,7 @@ public class RucCore extends JavaPlugin {
     public MessageService getMessages() { return messages; }
     public EconomyService getEconomy() { return economy; }
     public GuildService getGuilds() { return guilds; }
+    public HomeRepository getHomeRepository() { return homes; }
     public BonusRegistry getBonuses() { return bonuses; }
     public XpService getXp() { return xp; }
     public ScoreboardService getScoreboards() { return scoreboards; }

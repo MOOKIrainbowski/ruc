@@ -1,28 +1,25 @@
 package kr.rucserver.raid.listener;
 
+import kr.rucserver.core.util.DamageOrigin;
 import kr.rucserver.raid.RucRaid;
-import org.bukkit.entity.AreaEffectCloud;
 import org.bukkit.entity.Entity;
 import org.bukkit.entity.LivingEntity;
 import org.bukkit.entity.Player;
-import org.bukkit.entity.Projectile;
-import org.bukkit.entity.Tameable;
-import org.bukkit.entity.TNTPrimed;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDamageByEntityEvent;
 import org.bukkit.event.entity.EntityDamageEvent;
 import org.bukkit.event.entity.PotionSplashEvent;
-import org.bukkit.projectiles.ProjectileSource;
 
 /**
  * 전투 태그를 붙이는 지점.
  *
  * 직접 타격만 보면 원거리 딜러와 폭발 딜러가 태그를 피해갑니다. 그래서
  * 화살·물약·TNT·길들인 동물까지 <b>최초 가해자</b>를 역추적해 태그합니다.
- * (평화 서버 §2.5의 간접 살해 차단도 같은 역추적을 쓰므로, 이 로직은 나중에
- * 공용으로 올릴 수 있게 한 곳에 모아 두었습니다.)
+ *
+ * 역추적 자체는 {@link DamageOrigin}(RucCore) 으로 옮겼습니다. 평화 서버(§2.5)가
+ * 같은 판정을 "막기" 위해 쓰기 때문입니다.
  */
 public class CombatListener implements Listener {
 
@@ -66,41 +63,13 @@ public class CombatListener implements Listener {
     }
 
     /**
-     * 피해를 준 엔티티의 최초 가해 플레이어를 찾습니다.
+     * 피해를 준 엔티티의 최초 가해 플레이어.
      *
-     * 화살 → 쏜 사람, 물약 → 던진 사람, TNT → 점화한 사람,
-     * 길들인 늑대 → 주인. 체인이 한 단계 더 깊을 수 있어 재귀합니다
-     * (예: 플레이어가 점화한 TNT가 띄운 화살).
+     * 실제 판정은 {@link DamageOrigin} 에 있습니다. 평화 서버(§2.5)가 같은
+     * 역추적을 "막기" 위해 쓰므로 규칙을 한 곳에 두었습니다 — 두 군데에 적히면
+     * 반드시 한쪽만 고쳐집니다.
      */
     public static Player rootPlayer(Entity damager) {
-        return rootPlayer(damager, 0);
-    }
-
-    private static Player rootPlayer(Entity damager, int depth) {
-        if (damager == null || depth > 4) return null;
-
-        if (damager instanceof Player player) return player;
-
-        if (damager instanceof Projectile projectile) {
-            ProjectileSource shooter = projectile.getShooter();
-            if (shooter instanceof Entity entity) return rootPlayer(entity, depth + 1);
-            return null;
-        }
-
-        if (damager instanceof TNTPrimed tnt) {
-            return rootPlayer(tnt.getSource(), depth + 1);
-        }
-
-        if (damager instanceof AreaEffectCloud cloud) {
-            ProjectileSource source = cloud.getSource();
-            if (source instanceof Entity entity) return rootPlayer(entity, depth + 1);
-            return null;
-        }
-
-        if (damager instanceof Tameable tameable && tameable.getOwner() instanceof Player owner) {
-            return owner;
-        }
-
-        return null;
+        return DamageOrigin.rootPlayer(damager);
     }
 }

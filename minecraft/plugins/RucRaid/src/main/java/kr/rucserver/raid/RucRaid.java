@@ -70,7 +70,7 @@ public class RucRaid extends JavaPlugin {
 
         combatTags = new CombatTagService(this);
         executions = new ExecutionService(this, repository, serverId);
-        homes = new HomeService(this, repository, serverId);
+        homes = new HomeService(this, core.getHomeRepository(), serverId);
         eggs = new DragonEggService(this, repository, serverId);
 
         getServer().getPluginManager().registerEvents(new CombatListener(this), this);

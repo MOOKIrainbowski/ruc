@@ -1,0 +1,35 @@
+prefix: "&b[Peace]&r "
+
+# home / spawn / teleport keys are consumed by Core's shared HomeService.
+# They must match the raid server's key names — the logic lives in one place.
+home:
+  set: "&aHome set. &7(%x%, %y%, %z%)"
+  set-failed: "&cCould not save your home. Please tell a staff member."
+  deleted: "&aHome deleted."
+  none: "&cYou have no home set. Use &f/sethome &cfirst."
+  wrong-world: "&cYou cannot set a home in this world."
+  world-missing: "&cThe world your home was in (%world%) could not be found."
+  warmup: "&7Teleporting home in %seconds%s. &fDo not move."
+  arrived: "&aArrived home."
+
+spawn:
+  warmup: "&7Teleporting to spawn in %seconds%s. &fDo not move."
+  arrived: "&aArrived at spawn."
+
+teleport:
+  countdown: "&b%seconds%s until teleport &7— moving cancels it"
+  cancelled: "&cTeleport cancelled."
+  cooldown: "&cAvailable again in %seconds%s."
+  already-warming: "&cYou are already teleporting."
+
+peace:
+  protected: "&bOn the peace server you do not die like this"
+  blocked: "&cYou cannot kill other players on this server."
+
+  incident-alert: "&c&l[TERROR] &f%actor% &7→ &f%victim% &8(%kind%)"
+  log-no-permission: "&cYou do not have permission."
+  log-header: "&8&m        &r &c&lBlocked kill attempts (%count%) &8&m        "
+  log-row: "&8%time% &f%actor% &7→ &f%victim% &8%kind% &7%world% %x%,%y%,%z%"
+  log-total: "&7Total records for %player%: &c%count%"
+  log-empty: "&7No records."
+  log-empty-player: "&7No records for %player%."
