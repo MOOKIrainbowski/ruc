@@ -662,6 +662,79 @@ public class GuildService {
         });
     }
 
+    /** 국가 여부를 운영자가 직접 지정합니다. 점검용 — 인원 변동 시 다시 계산됩니다. */
+    public void forceNation(int guildId, boolean nation, Consumer<Boolean> callback) {
+        runAsync(() -> {
+            boolean ok = true;
+            try {
+                repository.setNation(guildId, nation);
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.WARNING, "국가 플래그 변경 실패", e);
+                ok = false;
+            }
+            boolean result = ok;
+            refreshAsync(() -> callback.accept(result));
+        });
+    }
+
+    /** 캐시를 즉시 다시 읽습니다. 다른 서버의 변경을 기다리지 않고 확인할 때. */
+    public void forceRefresh(Runnable after) {
+        refreshAsync(after);
+    }
+
+    /**
+     * 시즌 정산 (§3.5 — 랭킹에 따른 차등 보상).
+     *
+     * 순위별 보상을 길드 <b>금고</b>에 넣습니다. 길드원 개인에게 직접 주지 않는
+     * 이유: 시즌 끝에 접속하지 않은 사람의 잔고를 DB 로 직접 써야 하는데, 그건
+     * 접속 중 캐시와 충돌합니다. 금고에 넣으면 길드장이 분배할 수 있고, 기여도
+     * 기록도 그대로 남습니다.
+     *
+     * 되돌릴 수 없는 일괄 작업이라 호출부에서 확인을 받도록 되어 있습니다.
+     */
+    public void settleSeason(Consumer<List<SeasonPayout>> callback) {
+        List<Guild> ranked = ranking();
+        if (ranked.isEmpty()) { callback.accept(List.of()); return; }
+
+        List<Long> tiers = plugin.getConfig().getLongList("guild.season.rewards");
+        long participation = plugin.getConfig().getLong("guild.season.participation", 10000);
+        boolean resetPoints = plugin.getConfig().getBoolean("guild.season.reset-points", true);
+        long now = System.currentTimeMillis();
+
+        // 순위와 보상액을 먼저 확정합니다. 비동기 안에서 ranking() 을 다시 부르면
+        // 그사이 점수가 변해 순위가 흔들릴 수 있습니다.
+        List<SeasonPayout> payouts = new ArrayList<>();
+        for (int i = 0; i < ranked.size(); i++) {
+            Guild guild = ranked.get(i);
+            long reward = i < tiers.size() ? tiers.get(i) : participation;
+            payouts.add(new SeasonPayout(guild.getId(), guild.getName(), i + 1,
+                    guild.getPoints(), reward));
+        }
+
+        runAsync(() -> {
+            // 되돌릴 수 없고 화폐가 움직이는 작업이라 로그에 남깁니다. RCON 은
+            // 비동기 결과를 응답으로 실어 보내지 못하므로, 콘솔에서 실행한
+            // 운영자가 무엇이 일어났는지 확인할 수 있는 곳이 로그뿐입니다.
+            plugin.getLogger().info("시즌 정산 시작 — 대상 " + payouts.size() + "개 길드"
+                    + (resetPoints ? " (점수 초기화)" : " (점수 유지)"));
+
+            for (SeasonPayout payout : payouts) {
+                try {
+                    repository.settleSeason(payout.guildId(), payout.reward(), resetPoints, now);
+                    plugin.getLogger().info(String.format("  %d위 %s (%d점) → 금고 +%d",
+                            payout.rank(), payout.guildName(), payout.points(), payout.reward()));
+                } catch (SQLException e) {
+                    plugin.getLogger().log(Level.WARNING,
+                            "시즌 정산 실패: " + payout.guildName(), e);
+                }
+            }
+            plugin.getLogger().info("시즌 정산 완료");
+            refreshAsync(() -> callback.accept(payouts));
+        });
+    }
+
+    public record SeasonPayout(int guildId, String guildName, int rank, long points, long reward) {}
+
     // ── 주간 보상 (§3.5) ──────────────────────────────────────────────
 
     /**

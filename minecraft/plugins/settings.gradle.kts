@@ -4,3 +4,6 @@ rootProject.name = "RucPlugins"
 include("RucCore")
 include("RucHome")
 include("RucRaid")
+
+// 프록시(Velocity) 플러그인. 백엔드 모듈과 API 가 다릅니다.
+include("RucGate")

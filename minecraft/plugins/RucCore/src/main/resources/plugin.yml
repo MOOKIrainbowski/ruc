@@ -63,6 +63,11 @@ commands:
     description: 길드를 만들고 관리합니다. 길드원이 모이면 국가가 됩니다.
     usage: /길드 <창설|초대|수락|탈퇴|추방|임명|강등|위임|금고|정보|랭킹|해산>
     aliases: [길드, g, 국가, nation]
+  guildadmin:
+    description: (스태프) 길드 운영 — 목록·점수·국가 지정·시즌 정산. 콘솔에서도 됩니다.
+    usage: /길드관리 <목록|정보|점수|국가|시즌마감|새로고침>
+    aliases: [길드관리, gadmin]
+    permission: ruccore.admin
 
 permissions:
   ruccore.admin:

@@ -221,6 +221,27 @@ public class GuildRepository {
         }
     }
 
+    /**
+     * 시즌 정산을 한 문장으로 처리합니다.
+     *
+     * 읽어서 고쳐 쓰는 방식을 피한 이유가 두 가지입니다. 금고는 다른 서버에서도
+     * 동시에 움직이므로 캐시 값으로 덮어쓰면 그 입금이 사라지고, 캐시 객체를
+     * 제자리에서 고치면 스코어보드가 읽는 중인 스냅샷을 건드립니다.
+     */
+    public void settleSeason(int guildId, long reward, boolean resetPoints, long now)
+            throws SQLException {
+        String sql = resetPoints
+                ? "UPDATE ruc_guild SET bank = bank + ?, points = 0, last_season_at = ? WHERE id = ?"
+                : "UPDATE ruc_guild SET bank = bank + ?, last_season_at = ? WHERE id = ?";
+        try (Connection conn = database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, reward);
+            ps.setLong(2, now);
+            ps.setInt(3, guildId);
+            ps.executeUpdate();
+        }
+    }
+
     /** 길드 해산. 소속과 초대장도 같이 지웁니다. */
     public void delete(int guildId) throws SQLException {
         try (Connection conn = database.getConnection()) {

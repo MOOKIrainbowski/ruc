@@ -18,9 +18,13 @@ subprojects {
         maven("https://repo.papermc.io/repository/maven-public/")
     }
 
-    dependencies {
-        // Paper 1.21.11 — §6.2 "안정 우선" 결정 (1.21 계열 최신 STABLE)
-        "compileOnly"("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    // RucGate 는 Bukkit 이 아니라 Velocity 플러그인이라 paper-api 를 넣지 않습니다.
+    // 넣어 두면 프록시에는 없는 Bukkit 클래스를 실수로 쓰고도 컴파일이 통과합니다.
+    if (project.name != "RucGate") {
+        dependencies {
+            // Paper 1.21.11 — §6.2 "안정 우선" 결정 (1.21 계열 최신 STABLE)
+            "compileOnly"("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+        }
     }
 
     extensions.configure<JavaPluginExtension> {

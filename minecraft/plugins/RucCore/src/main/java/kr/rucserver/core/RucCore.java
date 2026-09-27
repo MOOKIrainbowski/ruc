@@ -1,6 +1,7 @@
 package kr.rucserver.core;
 
 import kr.rucserver.core.command.CoreCommands;
+import kr.rucserver.core.command.GuildAdminCommands;
 import kr.rucserver.core.command.GuildCommands;
 import kr.rucserver.core.listener.MenuListener;
 import kr.rucserver.core.listener.PlayerListener;
@@ -96,6 +97,7 @@ public class RucCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new VerificationListener(this), this);
         new CoreCommands(this, messages).register();
         new GuildCommands(this, messages).register();
+        new GuildAdminCommands(this).register();
 
         applyGlobalRules();
         scoreboards.start();
