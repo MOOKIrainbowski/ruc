@@ -44,6 +44,9 @@ minecraft/proxy/lang/
 minecraft/proxy/plugins/
 minecraft/proxy/console.log
 minecraft/servers/*/console.log
+# run-network.sh 가 자식 프로세스의 출력을 여기로 보냅니다 (console.log 와 같은 성격)
+minecraft/proxy/console.out
+minecraft/servers/*/console.out
 # Java 25 를 요구해 쓸 수 없는 4.x 스냅샷 보관본
 minecraft/proxy/*.jar.bak
 minecraft/servers/*/plugins/RucCore/data*.db
@@ -84,6 +87,7 @@ minecraft/servers/*/version_history.json
 # 메시지 파일은 jar에서 자동 추출됩니다. 원본은 plugins/RucCore/src/main/resources
 minecraft/servers/*/plugins/RucCore/messages_*.yml
 minecraft/servers/*/plugins/RucRaid/messages_*.yml
+minecraft/servers/*/plugins/RucWar/messages_*.yml
 
 # 허브 월드는 플러그인이 코드로 생성합니다 (PlazaBuilder). 커밋 불필요.
 minecraft/servers/*/hub/
