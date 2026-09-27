@@ -3,6 +3,7 @@ package kr.rucserver.core.listener;
 import kr.rucserver.core.RucCore;
 import kr.rucserver.core.menu.MenuHolder;
 import kr.rucserver.core.menu.MenuService;
+import kr.rucserver.core.menu.Pages;
 import kr.rucserver.core.model.RucPlayer;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
@@ -62,6 +63,7 @@ public class MenuListener implements Listener {
             case HELP -> {
                 if (event.getRawSlot() == 22) plugin.getMenus().openMain(player);
             }
+            case MAILBOX -> handleMailbox(player, holder, event.getRawSlot());
             default -> { }
         }
     }
@@ -72,6 +74,34 @@ public class MenuListener implements Listener {
         if (event.getView().getTopInventory().getHolder() instanceof MenuHolder) {
             event.setCancelled(true);
         }
+    }
+
+    /**
+     * 우편함 클릭 (Phase 5.5).
+     *
+     * 어떤 우편인지는 홀더의 슬롯→id 대응에서 읽습니다. 화면에 그려진 아이템을
+     * 보고 판단하지 않습니다 — 아이템은 표시용 사본이고, 그것으로 우편을
+     * 식별하면 같은 아이템이 두 통 있을 때 어느 쪽인지 알 수 없습니다.
+     */
+    private void handleMailbox(Player player, MenuHolder holder, int slot) {
+        int page = holder.getPage();
+
+        if (slot == Pages.SLOT_PREV) {
+            if (page > 0) plugin.getMailbox().open(player, page - 1);
+            return;
+        }
+        if (slot == Pages.SLOT_NEXT) {
+            plugin.getMailbox().open(player, page + 1);
+            return;
+        }
+        if (slot == Pages.SLOT_ACTION) {
+            plugin.getMailbox().claimAll(player, page);
+            return;
+        }
+
+        long id = holder.idAt(slot);
+        if (id < 0) return;                 // 테두리나 빈 칸
+        plugin.getMailbox().claim(player, id, page);
     }
 
     private void handleMain(Player player, int slot) {
@@ -117,6 +147,8 @@ public class MenuListener implements Listener {
             }
 
             case MenuService.SLOT_HELP -> plugin.getMenus().openHelp(player);
+
+            case MenuService.SLOT_MAILBOX -> plugin.getMailbox().open(player, 0);
 
             case MenuService.SLOT_VERIFY -> {
                 player.closeInventory();

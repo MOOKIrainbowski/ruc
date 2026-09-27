@@ -11,6 +11,7 @@ import kr.rucserver.core.service.BonusRegistry;
 import kr.rucserver.core.service.NetworkService;
 import kr.rucserver.core.service.EconomyService;
 import kr.rucserver.core.service.GuildService;
+import kr.rucserver.core.service.MailboxService;
 import kr.rucserver.core.service.MessageService;
 import kr.rucserver.core.service.PlayerDataService;
 import kr.rucserver.core.service.ScoreboardService;
@@ -20,6 +21,7 @@ import kr.rucserver.core.service.XpService;
 import kr.rucserver.core.storage.Database;
 import kr.rucserver.core.storage.GuildRepository;
 import kr.rucserver.core.storage.HomeRepository;
+import kr.rucserver.core.storage.MailboxRepository;
 import kr.rucserver.core.storage.PlayerRepository;
 import kr.rucserver.core.storage.VerificationRepository;
 import org.bukkit.GameRule;
@@ -46,6 +48,7 @@ public class RucCore extends JavaPlugin {
     private BonusRegistry bonuses;
     private GuildService guilds;
     private HomeRepository homes;
+    private MailboxService mailbox;
     private XpService xp;
     private ScoreboardService scoreboards;
     private TpaService tpa;
@@ -100,6 +103,20 @@ public class RucCore extends JavaPlugin {
             return;
         }
 
+        // 우편함은 네트워크 전역입니다(Phase 5.5). 홈에서 받은 보상을 약탈에서
+        // 꺼내야 하고, 유저 상점(Phase 10)의 구매품은 접속 위치와 무관하게
+        // 도착해야 합니다. 여기가 실패하면 보상 지급 경로가 통째로 사라지므로
+        // 길드·홈과 같은 기준으로 기동을 멈춥니다.
+        MailboxRepository mailRepository = new MailboxRepository(database);
+        try {
+            mailRepository.createSchema();
+        } catch (SQLException e) {
+            getLogger().log(Level.SEVERE, "우편 테이블 생성에 실패했습니다. 플러그인을 비활성화합니다.", e);
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        mailbox = new MailboxService(this, messages, mailRepository);
+
         // 프록시 통신과 메뉴는 4개 서버 공통이라 Core가 소유합니다.
         network = new NetworkService(this);
         network.start();
@@ -116,6 +133,7 @@ public class RucCore extends JavaPlugin {
         scoreboards.start();
         verification.startPolling();
         guilds.start();
+        mailbox.start();
 
         // 리로드로 켜진 경우 이미 접속해 있는 사람들 처리
         for (Player player : getServer().getOnlinePlayers()) {
@@ -123,6 +141,7 @@ public class RucCore extends JavaPlugin {
                 if (!player.isOnline()) return;
                 scoreboards.attach(player);
                 guilds.onJoin(player);
+                mailbox.notifyUnclaimed(player);
             });
         }
 
@@ -135,6 +154,7 @@ public class RucCore extends JavaPlugin {
         if (scoreboards != null) scoreboards.stop();
         if (verification != null) verification.stop();
         if (guilds != null) guilds.stop();
+        if (mailbox != null) mailbox.stop();
         if (network != null) network.stop();
 
         // 종료 시에는 비동기로 넘기면 스케줄러가 이미 멈춰서 저장이 유실됩니다.
@@ -171,6 +191,7 @@ public class RucCore extends JavaPlugin {
     public EconomyService getEconomy() { return economy; }
     public GuildService getGuilds() { return guilds; }
     public HomeRepository getHomeRepository() { return homes; }
+    public MailboxService getMailbox() { return mailbox; }
     public BonusRegistry getBonuses() { return bonuses; }
     public XpService getXp() { return xp; }
     public ScoreboardService getScoreboards() { return scoreboards; }

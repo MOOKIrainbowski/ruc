@@ -3,6 +3,7 @@ package kr.rucserver.core.command;
 import kr.rucserver.core.RucCore;
 import kr.rucserver.core.model.RucPlayer;
 import kr.rucserver.core.service.EconomyService;
+import kr.rucserver.core.service.MailboxService;
 import kr.rucserver.core.service.MessageService;
 import kr.rucserver.core.service.VerificationService;
 import org.bukkit.Bukkit;
@@ -11,12 +12,15 @@ import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
 import org.bukkit.command.TabCompleter;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.jetbrains.annotations.NotNull;
 
+import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Locale;
+import java.util.logging.Level;
 
 /**
  * RucCore가 등록하는 명령어 전부를 한 곳에서 처리합니다.
@@ -36,7 +40,8 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
     public void register() {
         for (String name : List.of("tpa", "tpahere", "tpaccept", "tpdeny",
                 "tpcancel", "ruc", "level", "ruclang",
-                "verify", "verifyapprove", "rucverify", "rucxp", "menu", "levelup")) {
+                "verify", "verifyapprove", "rucverify", "rucxp", "menu", "levelup",
+                "mailbox", "mailsend")) {
             var command = plugin.getCommand(name);
             if (command == null) {
                 plugin.getLogger().warning("plugin.yml에 '" + name + "' 명령어가 없습니다.");
@@ -89,6 +94,10 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
                 }
                 plugin.getTpa().request(player, target, here);
             }
+
+            case "mailbox" -> plugin.getMailbox().open(player, 0);
+
+            case "mailsend" -> handleMailSend(player, args);
 
             case "tpaccept" -> plugin.getTpa().accept(player);
             case "tpdeny" -> plugin.getTpa().deny(player);
@@ -309,11 +318,17 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
     }
 
     /**
-     * {@code /ruc give <닉네임> <금액>} — Ruc 를 즉시 지급합니다.
+     * {@code /ruc give <닉네임> <금액>} — Ruc 를 지급합니다.
      *
-     * 대상이 <b>접속 중이어야</b> 합니다. 미접속자의 잔고를 DB 로 직접 쓰면
-     * 그 사람이 다른 서버에 접속해 있을 때 그쪽 캐시가 나중에 저장되면서
-     * 지급이 사라집니다 (EconomyService 의 주석과 같은 이유).
+     * <h2>접속 중이 아니면 우편으로 갑니다 (Phase 5.5)</h2>
+     * 미접속자의 잔고를 DB 로 직접 쓰면, 그 사람이 <b>다른 서버</b>에 접속해
+     * 있을 때 그쪽 캐시가 나중에 저장되면서 지급이 조용히 사라집니다
+     * (EconomyService 의 주석과 같은 이유). 우편은 다른 테이블이라 그 경쟁에
+     * 끼지 않습니다 — 받는 사람이 직접 꺼낼 때 잔고에 더해집니다.
+     *
+     * {@code Bukkit.getPlayerExact} 는 <b>이 서버</b>의 접속자만 봅니다. 다른
+     * 서버에 있는 사람은 여기서 null 이 되어 우편 경로를 타는데, 그게 정확히
+     * 우리가 원하는 동작입니다.
      *
      * {@code give} 를 닉네임보다 먼저 보므로, 'give' 라는 이름을 가진 사람의
      * 잔고는 {@code /ruc} 로 조회할 수 없습니다. 그 대가로 하위 명령이
@@ -329,13 +344,6 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
             return true;
         }
 
-        Player target = Bukkit.getPlayerExact(args[1]);
-        if (target == null) {
-            sender.sendMessage(messages.prefixed(langOf(sender), "general.player-not-found",
-                    "player", args[1]));
-            return true;
-        }
-
         long amount;
         try {
             // 1,000,000 처럼 쉼표를 넣어도 받습니다. 큰 금액을 다루는 명령입니다.
@@ -347,6 +355,12 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
         }
         if (amount <= 0) {
             sender.sendMessage(messages.prefixed(langOf(sender), "admin.amount-positive"));
+            return true;
+        }
+
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null) {
+            mailRuc(sender, args[1], amount);
             return true;
         }
 
@@ -373,6 +387,131 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
         plugin.getLogger().info("[스태프] " + sender.getName() + " → " + target.getName()
                 + " Ruc +" + amount);
         return true;
+    }
+
+    /**
+     * 접속 중이 아닌 사람에게 Ruc 를 우편으로 보냅니다.
+     *
+     * 이름으로 찾으므로 한 번도 접속한 적 없는 사람에게는 보낼 수 없습니다.
+     * 오타를 우편함에 쌓아 두는 것보다 "그런 사람은 없다" 고 답하는 쪽이 낫습니다.
+     */
+    private void mailRuc(CommandSender sender, String name, long amount) {
+        String lang = langOf(sender);
+        String symbol = plugin.getEconomy().symbol();
+
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            RucPlayer found = lookup(name);
+            if (found == null) {
+                Bukkit.getScheduler().runTask(plugin, () -> sender.sendMessage(
+                        messages.prefixed(lang, "general.player-not-found", "player", name)));
+                return;
+            }
+
+            String resolved = found.getName();
+            plugin.getMailbox().sendRuc(found.getUuid(), amount, sender.getName(), "staff",
+                    result -> {
+                        if (result == MailboxService.Result.OK) {
+                            sender.sendMessage(messages.prefixed(lang, "admin.ruc-give-mailed",
+                                    "player", resolved,
+                                    "amount", EconomyService.format(amount),
+                                    "symbol", symbol));
+                            plugin.getLogger().info("[스태프] " + sender.getName() + " -> "
+                                    + resolved + " 우편 Ruc +" + amount);
+                        } else if (result == MailboxService.Result.FULL) {
+                            sender.sendMessage(messages.prefixed(lang, "mailbox.target-full",
+                                    "player", resolved));
+                        } else {
+                            sender.sendMessage(messages.prefixed(lang, "mailbox.error"));
+                        }
+                    });
+        });
+    }
+
+    /**
+     * {@code /mailsend <닉네임>} — 손에 든 아이템을 그 사람의 우편함으로.
+     *
+     * 유저 상점(Phase 10)이 열리기 전까지 아이템 우편을 쓰는 유일한 경로이고,
+     * 동시에 우편함이 제대로 도는지 확인하는 수단입니다. 이벤트 보상을 손으로
+     * 지급할 때도 이것으로 됩니다.
+     */
+    private void handleMailSend(Player sender, String[] args) {
+        String lang = plugin.getPlayerData().languageOf(sender);
+
+        if (!sender.hasPermission("ruccore.admin")) {
+            sender.sendMessage(messages.prefixed(lang, "general.no-permission"));
+            return;
+        }
+        if (args.length < 1) {
+            sender.sendMessage(messages.prefixed(lang, "mailbox.send-usage"));
+            return;
+        }
+
+        ItemStack hand = sender.getInventory().getItemInMainHand();
+        if (hand.getType().isAir()) {
+            sender.sendMessage(messages.prefixed(lang, "mailbox.send-empty-hand"));
+            return;
+        }
+
+        // 손의 아이템을 먼저 비웁니다. 발송이 비동기라 넣고 나서 지우면 그 사이에
+        // 같은 아이템을 또 보낼 수 있고, 그건 복사입니다.
+        ItemStack payload = hand.clone();
+        sender.getInventory().setItemInMainHand(null);
+
+        String name = args[0];
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            RucPlayer found = lookup(name);
+            if (found == null) {
+                Bukkit.getScheduler().runTask(plugin, () -> {
+                    sender.sendMessage(messages.prefixed(lang, "general.player-not-found",
+                            "player", name));
+                    giveBack(sender, payload);
+                });
+                return;
+            }
+
+            String resolved = found.getName();
+            plugin.getMailbox().sendItem(found.getUuid(), payload, sender.getName(), "staff",
+                    result -> {
+                        if (result == MailboxService.Result.OK) {
+                            sender.sendMessage(messages.prefixed(lang, "mailbox.send-done",
+                                    "player", resolved));
+                            plugin.getLogger().info("[스태프] " + sender.getName() + " -> "
+                                    + resolved + " 우편 아이템 " + payload.getType());
+                            return;
+                        }
+                        if (result == MailboxService.Result.FULL) {
+                            sender.sendMessage(messages.prefixed(lang, "mailbox.target-full",
+                                    "player", resolved));
+                        } else {
+                            sender.sendMessage(messages.prefixed(lang, "mailbox.error"));
+                        }
+                        giveBack(sender, payload);
+                    });
+        });
+    }
+
+    /** 닉네임으로 저장된 플레이어를 찾습니다. 비동기에서만 부르세요. */
+    private RucPlayer lookup(String name) {
+        try {
+            return plugin.getPlayerData().getRepository().findByName(name);
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "닉네임 조회 실패: " + name, e);
+            return null;
+        }
+    }
+
+    /** 발송이 실패했을 때 손에서 뺀 아이템을 돌려줍니다. */
+    private void giveBack(Player player, ItemStack item) {
+        if (!player.isOnline()) {
+            // 퇴장했다면 본인 우편함으로 보냅니다. 바닥에 떨어뜨리면 그 자리가
+            // 어디였는지 아무도 모릅니다.
+            plugin.getMailbox().sendItem(player.getUniqueId(), item, "시스템", "return", null);
+            return;
+        }
+        for (ItemStack leftover : player.getInventory().addItem(item).values()) {
+            plugin.getMailbox().sendItem(player.getUniqueId(), leftover,
+                    "시스템", "return", null);
+        }
     }
 
     /** 발신자의 표시 언어. 콘솔은 서버 기본값을 씁니다. */

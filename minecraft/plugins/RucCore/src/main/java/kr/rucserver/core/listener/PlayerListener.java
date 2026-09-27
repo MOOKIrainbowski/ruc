@@ -46,6 +46,10 @@ public class PlayerListener implements Listener {
             // 길드원 이름 사본 갱신 + 주간 보상 정산 (§3.5).
             plugin.getGuilds().onJoin(player);
 
+            // 안 받은 우편 알림 (Phase 5.5). 서버를 옮길 때도 PlayerJoinEvent 가
+            // 다시 오므로, 네트워크 안을 돌아다니는 동안에도 알게 됩니다.
+            plugin.getMailbox().notifyUnclaimed(player);
+
             // D10 — 미인증이면 인증 구역에 격리하고 코드를 발급합니다.
             if (plugin.getVerification().requiresVerification(player)) {
                 plugin.getVerification().beginVerification(player);

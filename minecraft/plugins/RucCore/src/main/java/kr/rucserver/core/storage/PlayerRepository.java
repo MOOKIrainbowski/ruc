@@ -44,6 +44,27 @@ public class PlayerRepository {
         }
     }
 
+    /**
+     * 닉네임으로 찾기. 미접속자에게 우편을 보낼 때 씁니다.
+     *
+     * 이름은 바뀔 수 있고 UNIQUE 도 아닙니다 — 누가 개명하면 같은 이름의 행이
+     * 둘 생길 수 있습니다. 그래서 <b>마지막 접속이 가장 최근인 행</b>을 씁니다.
+     * "지금 그 이름을 쓰는 사람" 에 가장 가까운 답입니다.
+     */
+    public RucPlayer findByName(String name) throws SQLException {
+        String sql = """
+                SELECT * FROM ruc_player WHERE LOWER(name) = LOWER(?)
+                ORDER BY last_seen DESC LIMIT 1
+                """;
+        try (Connection conn = database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, name);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? map(rs) : null;
+            }
+        }
+    }
+
     public void save(RucPlayer p) throws SQLException {
         // H2를 MySQL 모드로 띄웠기 때문에 이 구문이 양쪽에서 동일하게 동작합니다.
         String sql = """

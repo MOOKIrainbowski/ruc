@@ -128,6 +128,10 @@ menu:
     name: "&f&lLanguage / 언어"
     lore: "&7Currently &a%current%|&e▶ Click to switch to &f%next%"
 
+  mailbox:
+    name: "&6&lMailbox"
+    lore: "&7Where rewards and traded items arrive|&7Kept for up to 30 days|&e▶ Click to open"
+
   spawn:
     name: "&f&lGo to spawn"
     lore: "&7Teleport to this server's spawn|&8The Raiding server has a warmup"
@@ -149,6 +153,53 @@ menu:
 # ── Staff correction commands (OP only) ───────────────────────────────
 # /levelup and /ruc give open every progression gate.
 # Permission node: ruccore.admin (default: op)
+# ── Mailbox (Phase 5.5) ───────────────────────────────────────────────
+mailbox:
+  title: "&8Mailbox &7(%page%/%pages%)"
+  empty-name: "&7No mail"
+  empty-lore: "&8Rewards and traded items|&8will pile up here"
+
+  entry-ruc-name: "&a&l%amount% %symbol%"
+  entry-ruc: "&7Amount &a%amount% %symbol%"
+  entry-sender: "&7From &f%sender%"
+  entry-reason: "&7Reason &f%reason%"
+  entry-remain: "&7Expires in &e%remain%"
+  entry-click: "&e▶ Click to claim"
+
+  prev: "&7◀ Previous"
+  next: "&7Next ▶"
+  claim-all-name: "&a&lClaim all"
+  claim-all-lore: "&7Claims as much as your|&7free inventory slots allow"
+  claim-all-done: "&aClaimed %count% item(s)."
+  claim-all-left: "&7%count% left. Free up space and open it again."
+
+  claimed: "&aClaimed."
+  claimed-ruc: "&aReceived %amount% %symbol%."
+  arrived: "&eNew mail arrived. Use &f/mailbox&e."
+  join-notice: "&eYou have &f%count% &eunclaimed mail. &f/mailbox"
+  gone: "&cThat mail is already claimed or expired."
+  inventory-full: "&cNo free inventory slot. Free at least one and try again."
+  error: "&cSomething went wrong with your mail. Please tell the staff."
+  target-full: "&c%player%'s mailbox is full."
+
+  send-usage: "&7Usage: &f/mailsend <player> &7(sends the item in your hand)"
+  send-empty-hand: "&cHold an item in your main hand first."
+  send-done: "&aSent to %player%'s mailbox."
+
+  remain-days: "%days%d %hours%h"
+  remain-hours: "%hours%h %minutes%m"
+  remain-minutes: "%minutes%m"
+
+  reason:
+    staff: "Staff grant"
+    shop: "Shop purchase"
+    sale: "Shop sale"
+    reward: "Reward"
+    guild: "Guild reward"
+    guide: "Guide reward"
+    gift: "Gift"
+    return: "Returned"
+
 admin:
   levelup-usage: "&cUsage: /levelup <player> <level> &7(1-%max%, lowering works too)"
   levelup-done: "&aSet %player% to &fLv.%level%&a."
@@ -156,6 +207,7 @@ admin:
   level-set-notify: "&eAn admin adjusted your level. &fLv.%old% → &a&lLv.%new%"
 
   ruc-give-usage: "&cUsage: /ruc give <player> <amount>"
+  ruc-give-mailed: "&a%player% is offline, so &f%amount% %symbol% &awas sent by mail."
   ruc-give-done: "&aGave %player% &f%amount% %symbol%&a. &7(balance %balance%)"
 
   not-a-number: "&c'%value%' is not a number."

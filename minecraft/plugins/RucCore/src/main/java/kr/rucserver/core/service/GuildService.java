@@ -791,7 +791,18 @@ public class GuildService {
 
             runSync(() -> {
                 // 보상은 "번 돈" 이므로 reward() 로 줍니다 — 드래곤 알 배수가 걸립니다.
-                plugin.getEconomy().reward(uuid, reward);
+                //
+                // 실패하는 경우가 있습니다: claimWeekly 로 "받았음" 을 찍은 뒤
+                // 여기까지 오는 사이에 그 사람이 나가면 캐시가 사라져 reward()
+                // 가 false 를 돌려줍니다. 그러면 그 주 보상이 조용히 없어집니다.
+                // 그 몫은 우편으로 보냅니다 (Phase 5.5) — 배수는 여기서 직접
+                // 곱해서 접속 중에 받은 것과 금액이 같게 맞춥니다.
+                if (!plugin.getEconomy().reward(uuid, reward)) {
+                    plugin.getMailbox().sendRuc(uuid,
+                            plugin.getBonuses().applyRuc(uuid, reward),
+                            guild.getName(), "guild", null);
+                    return;
+                }
                 Player online = Bukkit.getPlayer(uuid);
                 if (online != null) {
                     online.sendMessage(messages.prefixed(

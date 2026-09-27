@@ -41,6 +41,10 @@ public class MenuService {
     public static final int SLOT_PROFILE = 20;
     public static final int SLOT_VERIFY = 22;
     public static final int SLOT_LANGUAGE = 24;
+
+    // 기능 줄. 28 · 30 · 32 · 34 로 좌우 대칭입니다.
+    // 34 는 유저 상점(Phase 10), 26 은 가이드(Phase 11) 자리로 비워 둡니다.
+    public static final int SLOT_MAILBOX = 28;
     public static final int SLOT_SPAWN = 30;
     public static final int SLOT_HELP = 32;
     public static final int SLOT_CLOSE = 40;
@@ -204,6 +208,13 @@ public class MenuService {
                 split(messages.raw(lang, "menu.language.lore")
                         .replace("%current%", lang)
                         .replace("%next%", next))));
+
+        // ── 우편함 (Phase 5.5). 안 받은 우편 수는 여기서 세지 않습니다 —
+        // 메뉴를 열 때마다 사람마다 DB 를 한 번 더 때리게 되고, 그 수치는
+        // 접속 알림과 우편함 화면에서 이미 보입니다.
+        inv.setItem(SLOT_MAILBOX, item(Material.CHEST,
+                messages.raw(lang, "menu.mailbox.name"),
+                loreOf(lang, "menu.mailbox.lore")));
 
         // ── 스폰 이동
         inv.setItem(SLOT_SPAWN, item(Material.RECOVERY_COMPASS,
