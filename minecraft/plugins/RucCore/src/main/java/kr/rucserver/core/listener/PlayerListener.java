@@ -43,6 +43,9 @@ public class PlayerListener implements Listener {
             // 레벨업 판정이 award() 안에만 있으면 다음 획득까지 멈춰 있습니다.
             plugin.getXp().catchUp(player);
 
+            // 길드원 이름 사본 갱신 + 주간 보상 정산 (§3.5).
+            plugin.getGuilds().onJoin(player);
+
             // D10 — 미인증이면 인증 구역에 격리하고 코드를 발급합니다.
             if (plugin.getVerification().requiresVerification(player)) {
                 plugin.getVerification().beginVerification(player);

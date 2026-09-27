@@ -59,6 +59,10 @@ commands:
     description: (콘솔/RCON 전용) 디스코드 봇이 인증 코드를 검증할 때 씁니다.
     usage: /rucverify <code> <discordId> <discordName>
     permission: ruccore.admin
+  guild:
+    description: 길드를 만들고 관리합니다. 길드원이 모이면 국가가 됩니다.
+    usage: /길드 <창설|초대|수락|탈퇴|추방|임명|강등|위임|금고|정보|랭킹|해산>
+    aliases: [길드, g, 국가, nation]
 
 permissions:
   ruccore.admin:

@@ -1,6 +1,7 @@
 package kr.rucserver.core.service;
 
 import kr.rucserver.core.RucCore;
+import kr.rucserver.core.model.Guild;
 import kr.rucserver.core.model.RucPlayer;
 import net.kyori.adventure.text.Component;
 import org.bukkit.Bukkit;
@@ -165,7 +166,17 @@ public class ScoreboardService {
                 .replace("%color%", tier.color())
                 .replace("%tier%", messages.raw(lang, "reputation." + tier.key())));
 
-        // 7줄 — 현재 서버
+        // 7줄 — 소속 길드 / 국가 (§3.5). 무소속이면 줄 자체를 넣지 않습니다 —
+        // "무소속" 을 계속 띄우면 사이드바에서 가장 쓸모없는 줄이 됩니다.
+        Guild guild = plugin.getGuilds().of(player);
+        if (guild != null) {
+            lines.add(messages.raw(lang, "scoreboard.guild")
+                    .replace("%dot%", messages.raw(lang, guild.isNation()
+                            ? "guild.status.nation" : "guild.status.guild"))
+                    .replace("%guild%", guild.getName()));
+        }
+
+        // 8줄 — 현재 서버
         lines.add(messages.raw(lang, "scoreboard.server")
                 .replace("%server%", plugin.getConfig()
                         .getString("server-display-name", "홈")));

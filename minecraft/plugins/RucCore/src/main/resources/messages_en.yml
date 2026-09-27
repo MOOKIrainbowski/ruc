@@ -52,6 +52,7 @@ scoreboard:
   online: "&fOnline &a%online% &7/ &f%max%"
   balance: "&f%amount% &a%symbol%"
   reputation: "&fRep %color%%tier%"
+  guild: "&f%dot%&f %guild%"
   server: "&f%server%"
 
 ping:
@@ -144,3 +145,113 @@ menu:
     travel-lore: "&7Sneak and press &fF &7to open this menu|&7Or use the command: &f/menu|&7On Home, the compass works too"
     economy-name: "&a&lEconomy and progress"
     economy-lore: "&7Ruc is shared across every server|&7Custom XP is separate from vanilla|&fUse /ruc &7and &f/level"
+
+# ── Guild / Nation (§3.5, §2.6) ──────────────────────────────────────
+guild:
+  rank:
+    master: "&6Guild Master"
+    vice: "&eVice Master"
+    member: "&fMember"
+
+  status:
+    guild: "&fGuild"
+    nation: "&b&lNation"
+
+  dot:
+    online: "&a●"
+    offline: "&8●"
+
+  created: "&aFounded guild &f%guild% &7[%tag%]&a."
+  nation-hint: "&7Recruit &f%count% &7more to be recognised as a &bNation&7. (needs %threshold%)"
+  nation-promoted: "&b&lNATION! &f%guild% &7reached %count% members and is now a &bNation&7."
+  disband-confirm: "&cDisband for good? Type &f/guild disband %guild%&c. This cannot be undone."
+  disbanded: "&cDisbanded &f%guild%&c. Remaining bank funds were returned to you."
+  disbanded-notice: "&cYour guild &f%guild% &chas been disbanded."
+
+  invite-sent: "&aInvited %player%."
+  invited: "&e%player% invited you to the guild &f%guild%&e."
+  invited-how: "&7Accept with &f/guild accept %guild%"
+  joined: "&aJoined the guild &f%guild%&a."
+  left: "&eYou left the guild."
+  kick-done: "&aKicked %player%."
+  kicked-notice: "&cYou were kicked from &f%guild%&c."
+  member-joined: "&a%player% joined the guild."
+  member-left: "&e%player% left the guild."
+  member-kicked: "&c%player% was kicked."
+
+  rank-set: "&aSet %player% to %rank%&a."
+  rank-changed: "&e%player% is now %rank%&e."
+  transfer-done: "&aTransferred leadership to %player%. You are now Vice Master."
+  master-transferred: "&6%player% is the new Guild Master."
+
+  bank-balance: "&fGuild bank: &a%amount% %symbol%"
+  bank-deposited: "&aDeposited %amount% %symbol% into the guild bank."
+  bank-withdrawn: "&aWithdrew %amount% %symbol% from the guild bank."
+
+  weekly-paid: "&aWeekly guild reward: &f%amount% %symbol% &a(%guild%)"
+
+  info-header: "&8&m        &r &a&l%guild% &8&m        "
+  info-tag: "&7Tag: &f%tag%"
+  info-status: "&7Type: %status% &8| &7Members: &f%count%&7/%max%"
+  info-to-nation: "&7To Nation: &f%count% more &7(needs %threshold%)"
+  info-bank: "&7Bank: &a%amount% %symbol%"
+  info-points: "&7Season points: &e%points%"
+  info-members-header: "&7Members:"
+  info-member-row: "  %dot% &f%player% &7- %rank% &8(contrib %contribution%)"
+
+  top-header: "&8&m        &r &a&lGuild Ranking &8&m        "
+  top-row: "&7%rank%. &f%guild% &7[%tag%] &8| %status% &8| &7%count% &8| &e%points% pts"
+  none-yet: "&7No guilds have been founded yet."
+
+  no-invites: "&7You have no pending invites."
+  invites-header: "&7Pending invites:"
+  invites-row: "  &f%guild% &7- %player% &8(%minutes%m left)"
+
+  usage:
+    create: "&cUsage: /guild create <name> <tag> &7(Lv.%level%+, %cost% %symbol%)"
+    invite: "&cUsage: /guild invite <player>"
+    accept: "&cUsage: /guild accept <guild>"
+    kick: "&cUsage: /guild kick <player>"
+    promote: "&cUsage: /guild promote <player> &7(to Vice Master)"
+    demote: "&cUsage: /guild demote <player> &7(to Member)"
+    transfer: "&cUsage: /guild transfer <player>"
+    bank: "&cUsage: /guild bank <deposit|withdraw> <amount>"
+
+  help:
+    header: "&8&m        &r &a&lGuild Help &8&m        "
+    create: "&f/guild create <name> <tag> &7- Lv.%level%+, %cost% %symbol%"
+    invite: "&f/guild invite <player> &7- Vice Master or above"
+    accept: "&f/guild accept <guild> &7- accept an invite (&f/guild invites&7)"
+    leave: "&f/guild leave &7- masters must transfer first"
+    kick: "&f/guild kick <player> &7- lower ranks only"
+    rank: "&f/guild promote|demote|transfer <player> &7- master only"
+    bank: "&f/guild bank [deposit|withdraw] <amount> &7- withdraw needs Vice+"
+    info: "&f/guild info [guild] &7- members, bank, points"
+    top: "&f/guild top &7- season point ranking"
+    disband: "&f/guild disband <name> &7- master only, irreversible"
+
+  result:
+    ok: "&aDone."
+    already-in-guild: "&cYou are already in a guild. Leave it first."
+    not-in-guild: "&cYou are not in a guild."
+    no-such-guild: "&cNo such guild."
+    no-permission: "&cYour rank is not high enough."
+    name-taken: "&cThat guild name is already taken."
+    tag-taken: "&cThat tag is already taken."
+    name-invalid: "&cGuild names must be 2-12 letters, digits or Hangul."
+    tag-invalid: "&cTags must be 2-4 letters, digits or Hangul."
+    level-too-low: "&cYour level is too low. (Lv.%level%+)"
+    not-enough-ruc: "&cNot enough Ruc. (need %cost% %symbol%)"
+    not-enough-bank: "&cThe guild bank does not have that much."
+    invalid-amount: "&cEnter a valid amount."
+    guild-full: "&cThe guild is full. (max %max%)"
+    target-offline: "&cThat player is offline. Invites can only be sent to online players."
+    target-already-in-guild: "&cThat player is already in another guild."
+    target-not-member: "&cThat player is not in your guild."
+    no-invite: "&cYou have no invite from that guild."
+    cannot-target-self: "&cYou cannot target yourself."
+    is-master: "&cThe Guild Master cannot leave. Transfer or disband first."
+    rank-too-high: "&cYou cannot do that to an equal or higher rank."
+    use-transfer: "&cLeadership can only move via &f/guild transfer&c."
+    no-change: "&cThey already hold that rank."
+    error: "&cSomething went wrong. Please try again shortly."
