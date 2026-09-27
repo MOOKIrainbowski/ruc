@@ -10,6 +10,7 @@ import kr.rucserver.core.listener.PlayerListener;
 import kr.rucserver.core.listener.VerificationListener;
 import kr.rucserver.core.menu.MenuService;
 import kr.rucserver.core.service.BonusRegistry;
+import kr.rucserver.core.service.DiscordRelayService;
 import kr.rucserver.core.service.NetworkService;
 import kr.rucserver.core.service.EconomyService;
 import kr.rucserver.core.service.GuildService;
@@ -54,6 +55,7 @@ public class RucCore extends JavaPlugin {
     private HomeRepository homes;
     private MailboxService mailbox;
     private TitleService titles;
+    private DiscordRelayService relay;
     private XpService xp;
     private ScoreboardService scoreboards;
     private TpaService tpa;
@@ -135,6 +137,10 @@ public class RucCore extends JavaPlugin {
         }
         titles = new TitleService(this, titleRepository);
 
+        // 디스코드 중계 (Phase 6-3). 웹훅 URL 이 곧 채널이라 서버별 채널
+        // 매핑은 각 서버 config.yml 의 webhook-url 하나로 끝납니다.
+        relay = new DiscordRelayService(this);
+
         // 프록시 통신과 메뉴는 4개 서버 공통이라 Core가 소유합니다.
         network = new NetworkService(this);
         network.start();
@@ -155,6 +161,7 @@ public class RucCore extends JavaPlugin {
         guilds.start();
         mailbox.start();
         titles.start();
+        relay.start();
 
         // 리로드로 켜진 경우 이미 접속해 있는 사람들 처리
         for (Player player : getServer().getOnlinePlayers()) {
@@ -178,6 +185,7 @@ public class RucCore extends JavaPlugin {
         if (guilds != null) guilds.stop();
         if (mailbox != null) mailbox.stop();
         if (titles != null) titles.stop();
+        if (relay != null) relay.stop();
         if (network != null) network.stop();
 
         // 종료 시에는 비동기로 넘기면 스케줄러가 이미 멈춰서 저장이 유실됩니다.
@@ -216,6 +224,7 @@ public class RucCore extends JavaPlugin {
     public HomeRepository getHomeRepository() { return homes; }
     public MailboxService getMailbox() { return mailbox; }
     public TitleService getTitles() { return titles; }
+    public DiscordRelayService getRelay() { return relay; }
     public BonusRegistry getBonuses() { return bonuses; }
     public XpService getXp() { return xp; }
     public ScoreboardService getScoreboards() { return scoreboards; }

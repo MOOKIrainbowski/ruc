@@ -168,6 +168,10 @@ title:
   unknown-key: "&c'%title%' 은 설정에 없는 칭호입니다."
   grant-usage: "&7사용법: &f/titlegrant <닉네임> <칭호키> [staff|purchase|guide]"
   grant-done: "&a%player% 님에게 '%title%' 칭호를 부여했습니다."
+  revoke-usage: "&7사용법: &f/titlerevoke <닉네임> <칭호키|all>"
+  revoke-done: "&a%player% 님의 '%title%' 칭호를 회수했습니다. &7(디스코드 역할에서 온 칭호는 다음 동기화에 다시 붙습니다)"
+  revoke-all-done: "&a%player% 님의 칭호 %count%개를 전부 회수했습니다. &7(디스코드 역할에서 온 칭호는 다음 동기화에 다시 붙습니다)"
+  revoke-none: "&7%player% 님은 '%title%' 칭호를 가지고 있지 않습니다."
   source:
     discord: "디스코드"
     purchase: "후원"

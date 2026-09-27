@@ -86,6 +86,15 @@ commands:
     usage: /titlegrant <닉네임> <칭호키> [source]
     aliases: [칭호부여]
     permission: ruccore.admin
+  rucrelay:
+    description: (콘솔/RCON 전용) 디스코드 발언을 인게임에 중계합니다.
+    usage: /rucrelay <발신자> <내용...>
+    permission: ruccore.admin
+  titlerevoke:
+    description: (스태프) 칭호를 회수합니다. all 이면 전부. 디스코드 칭호는 다음 동기화에 다시 붙습니다.
+    usage: /titlerevoke <닉네임> <칭호키|all>
+    aliases: [칭호회수, 칭호삭제]
+    permission: ruccore.admin
   guild:
     description: 길드를 만들고 관리합니다. 길드원이 모이면 국가가 됩니다.
     usage: /길드 <창설|초대|수락|탈퇴|추방|임명|강등|위임|금고|정보|랭킹|해산>

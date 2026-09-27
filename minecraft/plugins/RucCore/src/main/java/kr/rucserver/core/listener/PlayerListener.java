@@ -16,6 +16,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerAdvancementDoneEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -34,6 +35,9 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+
+        // 디스코드 중계 (§4.1 — 입퇴장은 임베드로).
+        plugin.getRelay().relayJoin(player);
 
         plugin.getPlayerData().loadAsync(player, () -> {
             if (!player.isOnline()) return;
@@ -64,6 +68,7 @@ public class PlayerListener implements Listener {
     @EventHandler
     public void onQuit(PlayerQuitEvent event) {
         Player player = event.getPlayer();
+        plugin.getRelay().relayQuit(player);
         plugin.getTpa().clear(player.getUniqueId());
         plugin.getVerification().cleanup(player.getUniqueId());
         plugin.getTitles().unload(player.getUniqueId());
@@ -79,6 +84,20 @@ public class PlayerListener implements Listener {
 
         long amount = plugin.getConfig().getLong("xp.reward.advancement", 80);
         plugin.getXp().award(event.getPlayer(), amount, true);
+
+        plugin.getRelay().relayAdvancement(event.getPlayer(), key);
+    }
+
+    /**
+     * 플레이어 사망 → 디스코드 (§4.1 시스템 알림).
+     *
+     * {@code EntityDeathEvent} 와 따로 두는 이유: 사망 <b>메시지</b>는
+     * PlayerDeathEvent 에만 있습니다. 아래 onDeath 는 경험치·통계를 다루고,
+     * 이쪽은 알림만 다룹니다.
+     */
+    @EventHandler(priority = EventPriority.MONITOR, ignoreCancelled = true)
+    public void onPlayerDeath(PlayerDeathEvent event) {
+        plugin.getRelay().relayDeath(event.getEntity(), event.deathMessage());
     }
 
     /**

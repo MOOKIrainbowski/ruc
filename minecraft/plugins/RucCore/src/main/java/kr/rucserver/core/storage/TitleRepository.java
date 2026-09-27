@@ -101,6 +101,24 @@ public class TitleRepository {
     }
 
     /**
+     * 그 사람의 칭호를 전부 회수합니다.
+     *
+     * {@code source} 를 가리지 않습니다. 스태프가 "이 사람 칭호 다 떼" 라고
+     * 할 때 쓰는 것이라 유료·가이드 칭호도 포함됩니다 — 그래서 명령 쪽에서
+     * 로그를 남깁니다. 디스코드에서 온 것은 다음 동기화에 다시 붙습니다.
+     *
+     * @return 회수한 칭호 수
+     */
+    public int revokeAll(UUID uuid) throws SQLException {
+        try (Connection conn = database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "DELETE FROM ruc_title WHERE uuid = ?")) {
+            ps.setString(1, uuid.toString());
+            return ps.executeUpdate();
+        }
+    }
+
+    /**
      * 디스코드에서 온 칭호를 {@code keep} 에 있는 것만 남기고 회수합니다.
      *
      * <b>{@code source = 'discord'} 조건이 이 메서드의 핵심입니다.</b> 이것이

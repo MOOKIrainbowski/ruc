@@ -12,6 +12,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 // dotenv 이후에 require 해야 합니다 (아래 모듈이 환경변수를 사용)
 const { verifyCommand, handleVerify } = require('./verification');
 const titles = require('./titles');
+const relay = require('./relay');
 
 const REACTION_FILE = path.join(__dirname, 'reaction_roles.json');
 const ECONOMY_FILE  = path.join(__dirname, 'economy_data.json');
@@ -384,6 +385,7 @@ client.once('ready', async () => {
             console.warn('⚠️ GUILD_ID 로 서버를 찾지 못했습니다. 칭호 동기화를 건너뜁니다.');
         } else {
             titles.logRoles(guild);
+            relay.logConfig();
 
             // 기동 직후 한 번 훑습니다. 봇이 꺼져 있는 동안 바뀐 역할이
             // 이벤트로는 오지 않기 때문입니다.
@@ -874,6 +876,15 @@ client.on('interactionCreate', async interaction => {
 
 client.on('messageCreate', safeListener('messageCreate', async message => {
     if (message.author.bot || !message.guild) return;
+
+    // ── 디스코드 → 인게임 중계 (Phase 6-3) ─────────────────────────
+    // 위의 author.bot 검사가 무한 루프를 막습니다. 플러그인이 웹훅으로 쓴
+    // 글도 bot 이라서 여기서 걸러지고, 그러지 않으면 서버와 디스코드가
+    // 같은 문장을 영원히 되돌립니다.
+    //
+    // await 하지 않습니다 — RCON 왕복을 기다리면 그 채널의 보안 검사와
+    // 티켓 감지가 그만큼 늦어집니다.
+    relay.onMessage(message).catch(err => console.error('[중계]', err));
 
     const member = message.guild.members.cache.get(message.author.id);
     const isStaff = member?.permissions.has(PermissionsBitField.Flags.ManageMessages);

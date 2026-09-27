@@ -168,6 +168,10 @@ title:
   unknown-key: "&c'%title%' is not a configured title."
   grant-usage: "&7Usage: &f/titlegrant <player> <titleKey> [staff|purchase|guide]"
   grant-done: "&aGranted '%title%' to %player%."
+  revoke-usage: "&7Usage: &f/titlerevoke <player> <titleKey|all>"
+  revoke-done: "&aRevoked '%title%' from %player%. &7(Discord-sourced titles come back on the next sync)"
+  revoke-all-done: "&aRevoked all %count% title(s) from %player%. &7(Discord-sourced titles come back on the next sync)"
+  revoke-none: "&7%player% does not have the '%title%' title."
   source:
     discord: "Discord"
     purchase: "Sponsor"

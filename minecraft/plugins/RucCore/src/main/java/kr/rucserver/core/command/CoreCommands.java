@@ -41,7 +41,7 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
         for (String name : List.of("tpa", "tpahere", "tpaccept", "tpdeny",
                 "tpcancel", "ruc", "level", "ruclang",
                 "verify", "verifyapprove", "rucverify", "rucxp", "menu", "levelup",
-                "mailbox", "mailsend")) {
+                "mailbox", "mailsend", "rucrelay")) {
             var command = plugin.getCommand(name);
             if (command == null) {
                 plugin.getLogger().warning("plugin.yml에 '" + name + "' 명령어가 없습니다.");
@@ -60,6 +60,10 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
         // 플레이어 전용 검사보다 먼저 처리합니다.
         if (command.getName().equalsIgnoreCase("rucverify")) {
             return handleRconVerify(sender, args);
+        }
+
+        if (command.getName().equalsIgnoreCase("rucrelay")) {
+            return handleRconRelay(sender, args);
         }
 
         // 스태프 보정 명령도 콘솔·RCON 에서 써야 합니다. 게임에 들어가지 못하는
@@ -512,6 +516,54 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
             plugin.getMailbox().sendItem(player.getUniqueId(), leftover,
                     "시스템", "return", null);
         }
+    }
+
+    /**
+     * {@code /rucrelay <발신자> <내용...>} — 디스코드 발언을 인게임에 뿌립니다.
+     *
+     * <h2>내용은 명령 파서를 거치지 않습니다</h2>
+     * {@code /say} 를 쓰면 안 됩니다. {@code /say} 는 대상 선택자를 해석해서
+     * {@code @a} 나 {@code @e[...]} 를 넣으면 플레이어 이름으로 펼쳐집니다.
+     * {@code /tellraw} 는 더 나쁩니다 — 디스코드 쪽 사람이 쓴 글이 JSON 으로
+     * 해석되면 클릭 이벤트까지 심을 수 있습니다.
+     *
+     * 여기서는 args 를 그냥 문자열로 이어 붙여 {@code Component.text()} 로
+     * 감쌉니다. 색코드도, 태그도, 선택자도 살아나지 않습니다.
+     *
+     * 응답은 {@code RUCRELAY <결과>} 한 줄입니다 (다른 RCON 명령과 같은 규격).
+     */
+    private boolean handleRconRelay(CommandSender sender, String[] args) {
+        if (sender instanceof Player) {
+            sender.sendMessage("이 명령어는 콘솔에서만 사용할 수 있습니다.");
+            return true;
+        }
+        // 점검: 웹훅이 살아 있는지 확인합니다. 인자가 test 하나뿐일 때만.
+        if (args.length == 1 && args[0].equalsIgnoreCase("test")) {
+            if (!plugin.getRelay().isEnabled()) {
+                sender.sendMessage("RUCRELAY DISABLED relay.enabled 또는 webhook-url 을 확인하세요");
+                return true;
+            }
+            plugin.getRelay().sendTest(sender.getName());
+            sender.sendMessage("RUCRELAY TEST_QUEUED 대기 "
+                    + plugin.getRelay().pending() + "건 — 채널을 확인하세요");
+            return true;
+        }
+
+        if (args.length < 2) {
+            sender.sendMessage("RUCRELAY ERROR usage: /rucrelay <발신자> <내용...> | /rucrelay test");
+            return true;
+        }
+        if (!plugin.getConfig().getBoolean("relay.discord-to-game", true)) {
+            sender.sendMessage("RUCRELAY DISABLED");
+            return true;
+        }
+
+        String author = args[0];
+        String message = String.join(" ", java.util.Arrays.copyOfRange(args, 1, args.length));
+
+        plugin.getRelay().broadcastFromDiscord(author, message);
+        sender.sendMessage("RUCRELAY OK");
+        return true;
     }
 
     /** 발신자의 표시 언어. 콘솔은 서버 기본값을 씁니다. */

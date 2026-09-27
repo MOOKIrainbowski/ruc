@@ -8,7 +8,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 
 /**
- * 채팅 한 줄의 모양 (Phase 6).
+ * 채팅 한 줄의 모양과 디스코드 중계 (Phase 6-2 · 6-3).
  *
  * 요구사항의 형식은 <b>[머리] [칭호] [닉네임]: [내용]</b> 입니다.
  *
@@ -32,6 +32,11 @@ public class ChatListener implements Listener {
 
     @EventHandler(priority = EventPriority.NORMAL, ignoreCancelled = true)
     public void onChat(AsyncChatEvent event) {
+        // 중계는 채팅 포맷과 별개로 돌아야 합니다. chat.enabled 를 꺼도
+        // 디스코드로는 가야 하고(반대도 마찬가지), 무엇보다 이 이벤트가
+        // 발언을 정확한 값으로 볼 수 있는 유일한 자리입니다 (§6.33).
+        plugin.getRelay().relayChat(event.getPlayer(), event.message());
+
         if (!plugin.getConfig().getBoolean("chat.enabled", true)) return;
 
         // renderer 는 보는 사람마다 한 번씩 불립니다. 접두부는 보는 사람과

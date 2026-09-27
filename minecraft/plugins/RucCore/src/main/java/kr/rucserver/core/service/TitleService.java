@@ -440,6 +440,46 @@ public class TitleService {
         return true;
     }
 
+    /**
+     * 칭호를 회수합니다. <b>블로킹입니다.</b>
+     *
+     * {@code key} 가 null 이면 <b>전부</b> 회수합니다.
+     *
+     * 부여와 달리 설정에 정의된 키인지 확인하지 않습니다. 설정에서 칭호를
+     * 지운 뒤에도 DB 에는 행이 남아 있고(§표시에서만 걸러집니다), 그 행을
+     * 치울 수단이 있어야 합니다.
+     *
+     * @return 회수한 칭호 수. -1 은 실패.
+     */
+    public int revokeBlocking(UUID uuid, String key) {
+        int removed;
+        try {
+            if (key == null) {
+                removed = repository.revokeAll(uuid);
+            } else {
+                // 있었는지 알아야 "없는 칭호를 뗐다" 는 거짓 보고를 피할 수 있습니다.
+                boolean owned = false;
+                for (TitleRepository.Row row : repository.list(uuid)) {
+                    if (row.key().equals(key)) { owned = true; break; }
+                }
+                if (!owned) return 0;
+                repository.revoke(uuid, key);
+                removed = 1;
+            }
+        } catch (SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "칭호 회수 실패: " + uuid, e);
+            return -1;
+        }
+
+        String resolved = resolveBlocking(uuid);
+        displayed.put(uuid, resolved == null ? "" : resolved);
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            Player online = Bukkit.getPlayer(uuid);
+            if (online != null) applyTabList(online);
+        });
+        return removed;
+    }
+
     /** 칭호를 직접 부여합니다 (가이드 완주 · 후원). <b>블로킹입니다.</b> */
     public boolean grantBlocking(UUID uuid, String key, String source) {
         if (!definitions.containsKey(key)) return false;

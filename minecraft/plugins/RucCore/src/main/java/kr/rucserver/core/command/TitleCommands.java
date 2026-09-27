@@ -29,6 +29,7 @@ import java.util.logging.Level;
  *   <li>{@code /ructitle} — <b>RCON 전용.</b> 디스코드 봇이 역할 변경을
  *       알려 줄 때 씁니다. {@code /rucverify} 와 같은 통로입니다.</li>
  *   <li>{@code /titlegrant} — 스태프가 직접 부여합니다 (가이드·후원 수동 처리).</li>
+ *   <li>{@code /titlerevoke} — 스태프가 회수합니다. {@code all} 이면 전부.</li>
  * </ul>
  */
 public class TitleCommands implements CommandExecutor, TabCompleter {
@@ -42,7 +43,7 @@ public class TitleCommands implements CommandExecutor, TabCompleter {
     }
 
     public void register() {
-        for (String name : List.of("title", "ructitle", "titlegrant")) {
+        for (String name : List.of("title", "ructitle", "titlegrant", "titlerevoke")) {
             var command = plugin.getCommand(name);
             if (command == null) {
                 plugin.getLogger().warning("plugin.yml에 '" + name + "' 명령어가 없습니다.");
@@ -63,6 +64,9 @@ public class TitleCommands implements CommandExecutor, TabCompleter {
             }
             case "titlegrant" -> {
                 return handleGrant(sender, args);
+            }
+            case "titlerevoke" -> {
+                return handleRevoke(sender, args);
             }
             default -> {
                 if (!(sender instanceof Player player)) {
@@ -283,6 +287,71 @@ public class TitleCommands implements CommandExecutor, TabCompleter {
         return true;
     }
 
+    /**
+     * {@code /titlerevoke <닉네임> <칭호키|all>}
+     *
+     * {@code /titlegrant} 의 반대입니다. 잘못 준 칭호를 떼거나, 제재로 칭호를
+     * 거둘 때 씁니다.
+     *
+     * <h2>source 를 가리지 않습니다</h2>
+     * 디스코드에서 온 칭호도 뗄 수 있지만, <b>다음 동기화에 다시 붙습니다</b> —
+     * 출처가 디스코드인 칭호의 진실은 디스코드 역할이기 때문입니다. 영구히
+     * 떼려면 디스코드에서 역할을 빼야 합니다. 이 명령으로 떼는 것이 의미 있는
+     * 것은 유료(purchase)·가이드(guide)·운영(staff) 칭호입니다.
+     *
+     * 화폐를 움직이는 명령처럼 로그를 남깁니다. 유료 칭호를 뗐다는 것은
+     * 나중에 반드시 문의가 들어오는 종류의 일입니다.
+     */
+    private boolean handleRevoke(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("ruccore.admin")) {
+            sender.sendMessage(messages.prefixed(langOf(sender), "general.no-permission"));
+            return true;
+        }
+        if (args.length < 2) {
+            sender.sendMessage(messages.prefixed(langOf(sender), "title.revoke-usage"));
+            return true;
+        }
+
+        String name = args[0];
+        boolean all = args[1].equalsIgnoreCase("all") || args[1].equals("전체");
+        String key = all ? null : args[1];
+
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            var data = lookup(name);
+            if (data == null) {
+                Bukkit.getScheduler().runTask(plugin, () -> sender.sendMessage(
+                        messages.prefixed(langOf(sender), "general.player-not-found",
+                                "player", name)));
+                return;
+            }
+
+            int removed = plugin.getTitles().revokeBlocking(data.getUuid(), key);
+
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (removed < 0) {
+                    sender.sendMessage(messages.prefixed(langOf(sender), "title.error"));
+                    return;
+                }
+                if (removed == 0) {
+                    sender.sendMessage(messages.prefixed(langOf(sender), "title.revoke-none",
+                            "player", data.getName(), "title", args[1]));
+                    return;
+                }
+                sender.sendMessage(messages.prefixed(langOf(sender),
+                        all ? "title.revoke-all-done" : "title.revoke-done",
+                        "player", data.getName(), "title", args[1],
+                        "count", String.valueOf(removed)));
+            });
+
+            if (removed > 0) {
+                plugin.getLogger().info("[스태프] " + sender.getName() + " -> "
+                        + data.getName() + " 칭호 회수 "
+                        + (all ? "전체 " + removed + "개" : key));
+            }
+        });
+        return true;
+    }
+
     private kr.rucserver.core.model.RucPlayer lookup(String name) {
         try {
             return plugin.getPlayerData().getRepository().findByName(name);
@@ -311,6 +380,24 @@ public class TitleCommands implements CommandExecutor, TabCompleter {
                 options.add(definition.key());
             }
             return filter(options, args[0]);
+        }
+        if (command.getName().equalsIgnoreCase("titlerevoke")) {
+            if (args.length == 1) {
+                List<String> names = new ArrayList<>();
+                for (Player p : Bukkit.getOnlinePlayers()) names.add(p.getName());
+                return filter(names, args[0]);
+            }
+            if (args.length == 2) {
+                // 보유 목록은 DB 조회라 탭 완성에서 못 씁니다 (메인 스레드).
+                // 정의된 키 전체 + all 을 냅니다.
+                List<String> keys = new ArrayList<>();
+                keys.add("all");
+                for (TitleService.Definition definition : plugin.getTitles().definitions()) {
+                    keys.add(definition.key());
+                }
+                return filter(keys, args[1]);
+            }
+            return List.of();
         }
         if (command.getName().equalsIgnoreCase("titlegrant")) {
             if (args.length == 1) {
