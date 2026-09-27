@@ -1,0 +1,89 @@
+prefix: "&c[국가전]&r "
+
+war:
+  # ── 전쟁 시간대 ──────────────────────────────────────────────────
+  opened: "&c&l개전! &f지금부터 %end% 까지 코어를 설치하고 영토를 빼앗을 수 있습니다."
+  closed: "&7종전. 살아남은 코어의 영토가 확정됩니다."
+  opening-soon: "&e%minutes%분 후 개전합니다."
+  title-opened: "&c&l개전"
+  subtitle-opened: "&f영토 보호가 풀렸습니다"
+  title-closed: "&7&l종전"
+  subtitle-closed: "&f방어에 성공한 코어가 영토를 얻습니다"
+
+  status-open: "&c전쟁 중입니다. &f종전까지 %minutes%분"
+  status-closed: "&7평시입니다. &f전쟁 시간대: %schedule% &7(%minutes%분 후)"
+
+  # ── 코어 설치 ────────────────────────────────────────────────────
+  core-placed: "&c%guild% &f길드가 &e%site% &f거점에 코어를 설치했습니다!"
+  core-placed-self: "&a%site% 거점에 코어를 설치했습니다. &f종전(%minutes%분 후)까지 지키면 영토가 됩니다."
+  core-not-a-site: "&c코어는 지정된 거점에만 설치할 수 있습니다. &7거점: %sites%"
+  core-war-closed: "&c코어는 전쟁 시간대에만 설치할 수 있습니다. &7%schedule% &8(%minutes%분 후)"
+  core-no-guild: "&c길드에 소속되어 있지 않습니다."
+  core-not-nation: "&c국가로 인정된 길드만 코어를 설치할 수 있습니다."
+  core-no-permission: "&c길드장·부길드장만 코어를 설치할 수 있습니다."
+  core-wrong-guild: "&c다른 길드의 코어입니다. 설치할 수 없습니다."
+  core-site-taken: "&c이 거점에는 이미 코어가 있습니다. 먼저 부숴야 합니다."
+  core-limit: "&c길드가 가질 수 있는 코어는 최대 %max%개입니다."
+  core-error: "&c코어를 설치할 수 없습니다."
+  core-place-taken: "&c거점을 다른 길드가 먼저 차지했습니다. 코어는 돌려받았습니다."
+
+  core-destroyed: "&c&l코어 파괴! &e%site% &f거점의 &c%guild% &f코어가 &c%attacker% &f에게 파괴되었습니다."
+  core-break-closed: "&c코어는 전쟁 시간대에만 부술 수 있습니다. &7%schedule%"
+  core-no-container: "&c코어는 상자에 넣을 수 없습니다."
+  core-no-drop: "&c코어는 버릴 수 없습니다. 분실을 막기 위한 제한입니다."
+
+  territory-confirmed: "&a&l영토 확정! &c%guild% &f길드가 &e%site% &f거점을 지켜냈습니다."
+
+  # ── 영토 ─────────────────────────────────────────────────────────
+  territory-protected: "&c%guild% 길드의 영토입니다. &7전쟁 시간대(%schedule%)에만 손댈 수 있습니다."
+  neutral-protected: "&c스폰 중립 구역에서는 건축할 수 없습니다."
+  entering-territory: "&c▶ %guild% 영토"
+  entering-neutral: "&a▶ 중립 구역"
+  entering-wild: "&7▶ 무주지"
+
+  # ── /전쟁 ────────────────────────────────────────────────────────
+  status-header: "&8&m        &r &c&l국가전 현황 &8&m        "
+  status-schedule: "&7전쟁 시간대: &f%schedule%"
+  status-now-open: "&c● 개전 중 &7— 종전까지 %minutes%분"
+  status-now-closed: "&7● 평시 &7— 개전까지 %minutes%분"
+  status-sites-header: "&7거점:"
+  status-site-free: "  &8● &f%site% &7- 비어 있음 &8(%x%, %z%)"
+  status-site-held: "  &a● &f%site% &7- &c%guild% &7영토 &8(%x%, %z%)"
+  status-site-contested: "  &e● &f%site% &7- &c%guild% &7방어 중 &8(%x%, %z%)"
+  status-no-guild: "&7소속 길드가 없습니다. &f/길드"
+  status-mine: "&7내 국가: &f%guild% &8| &7코어 &f%cores%&7/%max% &8| &7금고 &a%bank% %symbol%"
+  status-here: "&7현재 위치: &f%owner%"
+  status-here-wild: "무주지"
+
+  # ── /tp [코어명] ─────────────────────────────────────────────────
+  warp-no-guild: "&c길드에 소속되어 있지 않습니다."
+  warp-no-core: "&c이동할 코어가 없습니다. 먼저 거점에 코어를 설치하세요."
+  warp-not-yours: "&c우리 국가의 거점이 아닙니다. &7보유: %sites%"
+  warp-pick: "&7코어가 여러 개입니다. &f/tp <거점> &7- 보유: %sites%"
+  warp-already: "&c이미 이동 중입니다."
+  warp-cooldown: "&c%seconds%초 후에 다시 사용할 수 있습니다."
+  warp-warmup: "&7%site% 거점으로 이동합니다. &f%seconds%초 &7- 움직이면 취소됩니다."
+  warp-countdown: "&e이동까지 %seconds%초"
+  warp-cancelled: "&c이동이 취소되었습니다."
+  warp-arrived: "&a%site% 거점에 도착했습니다."
+  warp-core-gone: "&c이동하려던 코어가 파괴되었습니다."
+
+  # ── 국가창고 (§3.3) ──────────────────────────────────────────────
+  storage-title: "&8국가창고 - %guild%"
+  storage-no-guild: "&c길드에 소속되어 있지 않습니다."
+  storage-loading: "&7창고를 불러오는 중입니다. 잠시만 기다려 주세요."
+  storage-error: "&c창고를 열 수 없습니다. 운영자에게 알려 주세요."
+
+  # ── 국가 인장 (D2) ───────────────────────────────────────────────
+  merchant-name: "&6인장 상인"
+  merchant-greet: "&6[인장 상인] &f국가 인장을 &a%price% %symbol% &f에 팝니다."
+  merchant-no-guild: "&7  길드에 소속되어야 살 수 있습니다."
+  merchant-bank: "&7  길드 금고: &a%bank% %symbol%"
+  merchant-how: "&7  구매: &f/인장구매"
+  merchant-master-only: "&7  길드장만 구매할 수 있습니다."
+
+  seal-no-guild: "&c길드에 소속되어 있지 않습니다."
+  seal-master-only: "&c국가 인장은 길드장만 구매할 수 있습니다."
+  seal-not-enough: "&c길드 금고가 부족합니다. (필요: %price% %symbol% / 보유: %bank% %symbol%)"
+  seal-inventory-full: "&c인벤토리에 빈 칸이 없습니다."
+  seal-bought: "&a국가 인장을 구매했습니다. &7(-%price% %symbol%, 길드 금고)"

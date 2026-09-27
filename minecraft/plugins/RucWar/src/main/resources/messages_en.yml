@@ -1,0 +1,89 @@
+prefix: "&c[War]&r "
+
+war:
+  # ── War window ───────────────────────────────────────────────────
+  opened: "&c&lWAR IS OPEN! &fUntil %end% you can place cores and take territory."
+  closed: "&7War has ended. Surviving cores now hold their territory."
+  opening-soon: "&eWar opens in %minutes% minutes."
+  title-opened: "&c&lWAR"
+  subtitle-opened: "&fTerritory protection is lifted"
+  title-closed: "&7&lCEASEFIRE"
+  subtitle-closed: "&fDefended cores claim their land"
+
+  status-open: "&cWar is open. &f%minutes% minutes until ceasefire"
+  status-closed: "&7Peacetime. &fWar window: %schedule% &7(in %minutes% min)"
+
+  # ── Core placement ───────────────────────────────────────────────
+  core-placed: "&c%guild% &fplaced a core at &e%site%&f!"
+  core-placed-self: "&aCore placed at %site%. &fHold it until ceasefire (%minutes% min) to claim the land."
+  core-not-a-site: "&cCores can only be placed at designated sites. &7Sites: %sites%"
+  core-war-closed: "&cCores can only be placed during the war window. &7%schedule% &8(in %minutes% min)"
+  core-no-guild: "&cYou are not in a guild."
+  core-not-nation: "&cOnly guilds recognised as Nations can place cores."
+  core-no-permission: "&cOnly the Guild Master or Vice Master can place cores."
+  core-wrong-guild: "&cThis core belongs to another guild."
+  core-site-taken: "&cThis site already holds a core. Destroy it first."
+  core-limit: "&cA guild may hold at most %max% cores."
+  core-error: "&cThe core cannot be placed here."
+  core-place-taken: "&cAnother guild claimed the site first. Your core was returned."
+
+  core-destroyed: "&c&lCORE DESTROYED! &e%site% &f— &c%guild%&f's core fell to &c%attacker%&f."
+  core-break-closed: "&cCores can only be destroyed during the war window. &7%schedule%"
+  core-no-container: "&cCores cannot be stored in containers."
+  core-no-drop: "&cCores cannot be dropped. This prevents accidental loss."
+
+  territory-confirmed: "&a&lTERRITORY HELD! &c%guild% &fdefended &e%site%&f."
+
+  # ── Territory ────────────────────────────────────────────────────
+  territory-protected: "&cThis is %guild% territory. &7Only reachable during the war window (%schedule%)."
+  neutral-protected: "&cBuilding is disabled in the spawn neutral zone."
+  entering-territory: "&c▶ %guild% territory"
+  entering-neutral: "&a▶ Neutral zone"
+  entering-wild: "&7▶ Unclaimed"
+
+  # ── /warstatus ───────────────────────────────────────────────────
+  status-header: "&8&m        &r &c&lWar Status &8&m        "
+  status-schedule: "&7War window: &f%schedule%"
+  status-now-open: "&c● OPEN &7— %minutes% min to ceasefire"
+  status-now-closed: "&7● Peacetime &7— %minutes% min to war"
+  status-sites-header: "&7Sites:"
+  status-site-free: "  &8● &f%site% &7- free &8(%x%, %z%)"
+  status-site-held: "  &a● &f%site% &7- &c%guild% &7holds &8(%x%, %z%)"
+  status-site-contested: "  &e● &f%site% &7- &c%guild% &7defending &8(%x%, %z%)"
+  status-no-guild: "&7You have no guild. &f/guild"
+  status-mine: "&7Your nation: &f%guild% &8| &7Cores &f%cores%&7/%max% &8| &7Bank &a%bank% %symbol%"
+  status-here: "&7You are standing in: &f%owner%"
+  status-here-wild: "unclaimed land"
+
+  # ── /tp [core] ───────────────────────────────────────────────────
+  warp-no-guild: "&cYou are not in a guild."
+  warp-no-core: "&cYou have no core to travel to. Place one at a site first."
+  warp-not-yours: "&cThat site is not yours. &7You hold: %sites%"
+  warp-pick: "&7You hold several cores. &f/tp <site> &7- yours: %sites%"
+  warp-already: "&cYou are already travelling."
+  warp-cooldown: "&cAvailable again in %seconds%s."
+  warp-warmup: "&7Travelling to %site%. &f%seconds%s &7- moving cancels it."
+  warp-countdown: "&e%seconds%s until travel"
+  warp-cancelled: "&cTravel cancelled."
+  warp-arrived: "&aArrived at %site%."
+  warp-core-gone: "&cThe core you were travelling to was destroyed."
+
+  # ── Nation storage (§3.3) ────────────────────────────────────────
+  storage-title: "&8Nation Storage - %guild%"
+  storage-no-guild: "&cYou are not in a guild."
+  storage-loading: "&7Loading the storage. Please wait a moment."
+  storage-error: "&cThe storage could not be opened. Please tell an admin."
+
+  # ── Nation Seal (D2) ─────────────────────────────────────────────
+  merchant-name: "&6Seal Merchant"
+  merchant-greet: "&6[Seal Merchant] &fI sell the Nation Seal for &a%price% %symbol%&f."
+  merchant-no-guild: "&7  You must belong to a guild to buy one."
+  merchant-bank: "&7  Guild bank: &a%bank% %symbol%"
+  merchant-how: "&7  Buy with: &f/buyseal"
+  merchant-master-only: "&7  Only the Guild Master may buy one."
+
+  seal-no-guild: "&cYou are not in a guild."
+  seal-master-only: "&cOnly the Guild Master can buy a Nation Seal."
+  seal-not-enough: "&cThe guild bank is short. (need %price% %symbol% / have %bank% %symbol%)"
+  seal-inventory-full: "&cYour inventory is full."
+  seal-bought: "&aNation Seal purchased. &7(-%price% %symbol% from the guild bank)"

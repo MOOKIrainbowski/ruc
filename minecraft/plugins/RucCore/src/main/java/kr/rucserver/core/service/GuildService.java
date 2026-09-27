@@ -629,6 +629,25 @@ public class GuildService {
     }
 
     /**
+     * 금고에 직접 넣습니다. 플레이어를 거치지 않는 환불·보상에 씁니다.
+     *
+     * {@link #depositBank} 와 달리 개인 지갑에서 빼지 않고 기여도도 올리지
+     * 않습니다 — 되돌리는 것이므로 기여로 잡으면 환불을 반복해 기여도를
+     * 올릴 수 있습니다.
+     */
+    public void depositBankDirect(int guildId, long amount) {
+        if (amount <= 0) return;
+        runAsync(() -> {
+            try {
+                repository.addBank(guildId, amount);
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE,
+                        "길드 금고 환불 실패 (길드 " + guildId + ", " + amount + ")", e);
+            }
+        });
+    }
+
+    /**
      * 금고에서 비용을 차감합니다. 국가 인장 구매(D2)처럼 길드 재원으로 사는 것에 씁니다.
      *
      * 성공 여부를 비동기로만 알 수 있으므로, 결과를 받은 뒤에 물건을 주세요.

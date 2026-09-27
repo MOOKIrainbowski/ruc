@@ -1,0 +1,39 @@
+name: RucWar
+version: '${version}'
+main: kr.rucserver.war.RucWar
+api-version: '1.21'
+author: Ruc Server
+description: 러크 국가전 서버 — 코어, 영토, 전쟁 시간대, 국가창고
+depend: [RucCore]
+
+commands:
+  nationstorage:
+    description: 국가(길드) 공용 창고를 엽니다.
+    usage: /국가창고
+    aliases: [국가창고, storage, 길드창고]
+  coretp:
+    description: 자기 국가의 코어로 이동합니다. 거점 이름이 아니면 바닐라 /tp 로 넘깁니다.
+    usage: /tp [코어명]
+    aliases: [tp, 코어이동]
+  warstatus:
+    description: 전쟁 시간대와 거점·영토 현황을 봅니다.
+    usage: /전쟁
+    aliases: [전쟁, war, 영토]
+  buyseal:
+    description: 국가 인장을 구매합니다. 길드장만, 길드 금고에서 차감됩니다.
+    usage: /인장구매
+    aliases: [인장구매, 인장]
+
+permissions:
+  rucwar.admin:
+    description: 국가전 서버 관리 권한
+    default: op
+  rucwar.bypass.territory:
+    description: 영토 보호와 코어 파괴 제한을 무시합니다 (운영용)
+    default: op
+  rucwar.bypass.warmup:
+    description: 코어 이동 시전 시간을 건너뜁니다
+    default: op
+  rucwar.bypass.cooldown:
+    description: 코어 이동 쿨타임을 무시합니다
+    default: op
