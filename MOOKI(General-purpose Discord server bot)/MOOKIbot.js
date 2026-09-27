@@ -11,6 +11,7 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // dotenv 이후에 require 해야 합니다 (아래 모듈이 환경변수를 사용)
 const { verifyCommand, handleVerify } = require('./verification');
+const titles = require('./titles');
 
 const REACTION_FILE = path.join(__dirname, 'reaction_roles.json');
 const ECONOMY_FILE  = path.join(__dirname, 'economy_data.json');
@@ -359,6 +360,9 @@ client.once('ready', async () => {
 
         // 디스코드 ↔ 마크 계정 인증 (D10)
         verifyCommand,
+
+        // 디스코드 역할 → 마크 칭호 (Phase 6)
+        titles.titleSyncCommand,
     ];
 
     try {
@@ -366,6 +370,28 @@ client.once('ready', async () => {
         console.log('✅ 슬래시 명령어 등록 완료.');
     } catch (e) {
         console.error('❌ 슬래시 명령어 등록 실패:', e);
+    }
+
+    // ── 칭호 동기화 (Phase 6) ────────────────────────────────────────
+    //
+    // 역할 ID 를 콘솔에 찍는 이유: RucCore 의 config.yml 은 역할 이름이 아니라
+    // **ID** 를 요구합니다 (이름은 바뀌고, 공백·쉼표가 들어가 RCON 인자로 실을
+    // 수 없습니다). ID 는 디스코드 UI 에서 개발자 모드를 켜야 보이는 값이라
+    // 여기에 찍어 두면 설정을 채울 때 콘솔만 보면 됩니다.
+    if (GUILD_ID) {
+        const guild = await client.guilds.fetch(GUILD_ID).catch(() => null);
+        if (!guild) {
+            console.warn('⚠️ GUILD_ID 로 서버를 찾지 못했습니다. 칭호 동기화를 건너뜁니다.');
+        } else {
+            titles.logRoles(guild);
+
+            // 기동 직후 한 번 훑습니다. 봇이 꺼져 있는 동안 바뀐 역할이
+            // 이벤트로는 오지 않기 때문입니다.
+            await titles.sweep(guild, false);
+            titles.startSweeping(guild);
+        }
+    } else {
+        console.warn('⚠️ GUILD_ID 가 .env 에 없습니다. 칭호 동기화를 건너뜁니다.');
     }
 });
 
@@ -384,6 +410,11 @@ client.on('interactionCreate', async interaction => {
             // ── 티켓 명령어 ──────────────────────────────────────────
             if (commandName === '인증') {
                 await handleVerify(interaction);
+                return;
+            }
+
+            if (commandName === '칭호동기화') {
+                await titles.handleTitleSync(interaction);
                 return;
             }
 
@@ -920,6 +951,16 @@ client.on('guildMemberAdd', safeListener('guildMemberAdd', async member => {
             `<@${member.id}> (**${member.user.tag}**)의 계정이 생성된 지 **${ageDays}일**밖에 되지 않았습니다.`,
             0xFFAA00);
     }
+}));
+
+// ─── 역할 변경 → 마크 칭호 동기화 (Phase 6) ───────────────────────────────────
+//
+// guildMemberUpdate 는 닉네임 변경·타임아웃·아바타 변경으로도 옵니다.
+// titles.onMemberUpdate 가 "칭호와 연결된 역할이 실제로 바뀐 경우" 만 걸러서
+// RCON 을 엽니다 — 그러지 않으면 마크 서버가 이유 없이 두드려 맞습니다.
+
+client.on('guildMemberUpdate', safeListener('guildMemberUpdate', async (oldMember, newMember) => {
+    await titles.onMemberUpdate(oldMember, newMember);
 }));
 
 // ─── 리액션 롤 이벤트 ──────────────────────────────────────────────────────────

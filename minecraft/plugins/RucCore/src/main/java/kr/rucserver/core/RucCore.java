@@ -3,6 +3,8 @@ package kr.rucserver.core;
 import kr.rucserver.core.command.CoreCommands;
 import kr.rucserver.core.command.GuildAdminCommands;
 import kr.rucserver.core.command.GuildCommands;
+import kr.rucserver.core.command.TitleCommands;
+import kr.rucserver.core.listener.ChatListener;
 import kr.rucserver.core.listener.MenuListener;
 import kr.rucserver.core.listener.PlayerListener;
 import kr.rucserver.core.listener.VerificationListener;
@@ -15,6 +17,7 @@ import kr.rucserver.core.service.MailboxService;
 import kr.rucserver.core.service.MessageService;
 import kr.rucserver.core.service.PlayerDataService;
 import kr.rucserver.core.service.ScoreboardService;
+import kr.rucserver.core.service.TitleService;
 import kr.rucserver.core.service.TpaService;
 import kr.rucserver.core.service.VerificationService;
 import kr.rucserver.core.service.XpService;
@@ -23,6 +26,7 @@ import kr.rucserver.core.storage.GuildRepository;
 import kr.rucserver.core.storage.HomeRepository;
 import kr.rucserver.core.storage.MailboxRepository;
 import kr.rucserver.core.storage.PlayerRepository;
+import kr.rucserver.core.storage.TitleRepository;
 import kr.rucserver.core.storage.VerificationRepository;
 import org.bukkit.GameRule;
 import org.bukkit.World;
@@ -49,6 +53,7 @@ public class RucCore extends JavaPlugin {
     private GuildService guilds;
     private HomeRepository homes;
     private MailboxService mailbox;
+    private TitleService titles;
     private XpService xp;
     private ScoreboardService scoreboards;
     private TpaService tpa;
@@ -117,6 +122,19 @@ public class RucCore extends JavaPlugin {
         }
         mailbox = new MailboxService(this, messages, mailRepository);
 
+        // 칭호도 네트워크 전역입니다(Phase 6). 디스코드 역할이 출처라
+        // 서버마다 다른 칭호가 나오면 안 됩니다. 봇의 RCON 은 한 서버로만
+        // 들어오고, 나머지 서버는 주기 갱신으로 따라잡습니다.
+        TitleRepository titleRepository = new TitleRepository(database);
+        try {
+            titleRepository.createSchema();
+        } catch (SQLException e) {
+            getLogger().log(Level.SEVERE, "칭호 테이블 생성에 실패했습니다. 플러그인을 비활성화합니다.", e);
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        titles = new TitleService(this, titleRepository);
+
         // 프록시 통신과 메뉴는 4개 서버 공통이라 Core가 소유합니다.
         network = new NetworkService(this);
         network.start();
@@ -125,15 +143,18 @@ public class RucCore extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new PlayerListener(this), this);
         getServer().getPluginManager().registerEvents(new MenuListener(this), this);
         getServer().getPluginManager().registerEvents(new VerificationListener(this), this);
+        getServer().getPluginManager().registerEvents(new ChatListener(this), this);
         new CoreCommands(this, messages).register();
         new GuildCommands(this, messages).register();
         new GuildAdminCommands(this).register();
+        new TitleCommands(this, messages).register();
 
         applyGlobalRules();
         scoreboards.start();
         verification.startPolling();
         guilds.start();
         mailbox.start();
+        titles.start();
 
         // 리로드로 켜진 경우 이미 접속해 있는 사람들 처리
         for (Player player : getServer().getOnlinePlayers()) {
@@ -142,6 +163,7 @@ public class RucCore extends JavaPlugin {
                 scoreboards.attach(player);
                 guilds.onJoin(player);
                 mailbox.notifyUnclaimed(player);
+                titles.loadAsync(player);
             });
         }
 
@@ -155,6 +177,7 @@ public class RucCore extends JavaPlugin {
         if (verification != null) verification.stop();
         if (guilds != null) guilds.stop();
         if (mailbox != null) mailbox.stop();
+        if (titles != null) titles.stop();
         if (network != null) network.stop();
 
         // 종료 시에는 비동기로 넘기면 스케줄러가 이미 멈춰서 저장이 유실됩니다.
@@ -192,6 +215,7 @@ public class RucCore extends JavaPlugin {
     public GuildService getGuilds() { return guilds; }
     public HomeRepository getHomeRepository() { return homes; }
     public MailboxService getMailbox() { return mailbox; }
+    public TitleService getTitles() { return titles; }
     public BonusRegistry getBonuses() { return bonuses; }
     public XpService getXp() { return xp; }
     public ScoreboardService getScoreboards() { return scoreboards; }

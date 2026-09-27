@@ -153,6 +153,27 @@ menu:
 # ── Staff correction commands (OP only) ───────────────────────────────
 # /levelup and /ruc give open every progression gate.
 # Permission node: ruccore.admin (default: op)
+# ── Titles (Phase 6) ──────────────────────────────────────────────────
+title:
+  disabled: "&7Titles are disabled."
+  error: "&cSomething went wrong with your title. Please tell the staff."
+  list-header: "&8&m                    &r &6Titles &8&m                    "
+  list-empty: "&7You have no titles yet. Discord roles grant them automatically."
+  list-entry: "&8 ▸ %title% &8(&7%key% &8· &7%source%&8) &e[click to select]"
+  list-current: "&a ▶ %title% &8(&7%key% &8· &7%source%&8) &a← shown"
+  list-auto: "&8 ▸ &7Auto &8(highest-priority title) &e[click]"
+  selected: "&aTitle changed."
+  auto-on: "&aBack to automatic. Your highest title will be shown."
+  not-owned: "&cYou do not own the '%title%' title. Use &7/title&c to see the list."
+  unknown-key: "&c'%title%' is not a configured title."
+  grant-usage: "&7Usage: &f/titlegrant <player> <titleKey> [staff|purchase|guide]"
+  grant-done: "&aGranted '%title%' to %player%."
+  source:
+    discord: "Discord"
+    purchase: "Sponsor"
+    guide: "Guide"
+    staff: "Staff"
+
 # ── Mailbox (Phase 5.5) ───────────────────────────────────────────────
 mailbox:
   title: "&8Mailbox &7(%page%/%pages%)"

@@ -90,6 +90,134 @@ mailbox:
   # "보상이 안 왔다" 는 문의에 근거가 있어야 합니다.
   purge-interval-minutes: 60
 
+
+# ── 칭호 · 채팅 (Phase 6) ──────────────────────────────────────────────
+# 요구사항: 디스코드 서버에서 가진 "최상위 역할" 을 마크 닉네임 앞에 표시.
+#
+# 역할 → 칭호 판정은 이 설정이 합니다. 봇은 그 사람이 가진 역할 ID 를 그대로
+# 넘기고, 무엇이 더 높은지는 priority 가 정합니다. 판정을 봇에 두면 우선순위가
+# 두 군데에 적히고, 한쪽만 고쳐졌을 때 "디스코드에서는 관리자인데 게임에서는
+# 일반" 이 됩니다.
+#
+# ⚠️ discord-role 에는 역할 **ID** 를 넣습니다 (이름이 아닙니다).
+#    역할 이름은 바뀌지만 ID 는 바뀌지 않고, 이름에는 공백·쉼표가 들어가
+#    RCON 인자로 실어 보낼 수 없습니다.
+#    ID 는 MOOKI 를 켜면 콘솔에 전부 찍힙니다 ("[역할] <이름> = <ID>").
+#
+# display 는 MiniMessage 문법입니다 — 메시지 파일의 레거시 색코드(&a)와 다릅니다.
+# 그라디언트가 필요해서입니다 (요구사항: 관리자·유료 칭호는 공들여 디자인).
+titles:
+  enabled: true
+
+  # 다른 서버에서 일어난 칭호 변경을 따라잡는 주기 (초).
+  # 봇의 RCON 은 한 서버로만 들어오므로, 이 갱신이 없으면 나머지 세 서버는
+  # 칭호가 바뀐 것을 영원히 모릅니다.
+  refresh-seconds: 30
+
+  definitions:
+    # ── 스태프 (§3.2) ───────────────────────────────────────────────
+    owner:
+      display: "<gradient:#ffd166:#ff6b6b><bold>[ 수장 ]</bold></gradient>"
+      priority: 1000
+      discord-role: ""
+    admin:
+      display: "<gradient:#ff6b6b:#c77dff><bold>[ 관리자 ]</bold></gradient>"
+      priority: 950
+      discord-role: ""
+    manager:
+      display: "<gradient:#c77dff:#7aa2ff><bold>[ 매니저 ]</bold></gradient>"
+      priority: 900
+      discord-role: ""
+    moderator:
+      display: "<color:#7aa2ff><bold>[ 중재자 ]</bold></color>"
+      priority: 850
+      discord-role: ""
+    helper:
+      display: "<color:#5bc0be><bold>[ 헬퍼 ]</bold></color>"
+      priority: 800
+      discord-role: ""
+    builder:
+      display: "<color:#b08968>[ 건축가 ]</color>"
+      priority: 700
+      discord-role: ""
+    designer:
+      display: "<color:#f4a3c1>[ 디자이너 ]</color>"
+      priority: 690
+      discord-role: ""
+
+    # ── 후원 등급 (D7) — Phase 8 에서 결제와 연결됩니다 ──────────────
+    # 지금은 정의만 둡니다. 역할 ID 를 채우면 즉시 동작합니다.
+    elite:
+      display: "<gradient:#f9f871:#ffffff:#f9f871><bold>[ ELITE ]</bold></gradient>"
+      priority: 600
+      discord-role: ""
+    premium:
+      display: "<gradient:#a0e7e5:#b4f8c8><bold>[ PREMIUM ]</bold></gradient>"
+      priority: 580
+      discord-role: ""
+    prime:
+      display: "<gradient:#ffb5a7:#fcd5ce><bold>[ PRIME ]</bold></gradient>"
+      priority: 560
+      discord-role: ""
+    mvp:
+      display: "<color:#ffd166><bold>[ MVP ]</bold></color>"
+      priority: 540
+      discord-role: ""
+    svip:
+      display: "<color:#a0c4ff>[ SVIP ]</color>"
+      priority: 520
+      discord-role: ""
+    vip:
+      display: "<color:#9bf6ff>[ VIP ]</color>"
+      priority: 500
+      discord-role: ""
+
+    # ── 디스코드 부스트 (§5.2) ──────────────────────────────────────
+    hyper:
+      display: "<gradient:#ff7eb6:#c77dff><bold>[ HYPER ]</bold></gradient>"
+      priority: 480
+      discord-role: ""
+    rocket:
+      display: "<color:#ff7eb6>[ ROCKET ]</color>"
+      priority: 460
+      discord-role: ""
+    booster:
+      display: "<color:#f5a3ff>[ BOOSTER ]</color>"
+      priority: 440
+      discord-role: ""
+
+    # ── 가이드 완주 (Phase 11) ──────────────────────────────────────
+    # 디스코드 역할이 아니라 가이드를 끝내면 받습니다. discord-role 을 비워
+    # 두면 동기화가 이 칭호를 회수하지 않습니다 (source 가 guide 라서도 안전).
+    guide:
+      display: "<color:#93e93e>[ 가이드 ]</color>"
+      priority: 100
+      discord-role: ""
+
+# 채팅 한 줄의 모양. 요구사항: [머리] [칭호] [닉네임]: [내용]
+chat:
+  enabled: true
+
+  # MiniMessage 문법. %head% %title% %name% 이 치환됩니다.
+  # 본문(%message%)은 여기 넣지 않습니다 — 플레이어가 쓴 글을 MiniMessage 로
+  # 해석하면 <click:run_command:...> 를 채팅에 심을 수 있습니다. 본문은
+  # 접두부 뒤에 Component 로 그대로 붙습니다.
+  format: "%head%%title%<white>%name%</white><dark_gray>:</dark_gray> "
+
+  # 본문 색. 이름색(NamedTextColor) 또는 #RRGGBB.
+  message-color: "white"
+
+  # ⚠️ 스킨 머리는 바닐라 채팅에 넣을 수 없습니다.
+  #
+  # 채팅에 그릴 수 있는 그림은 리소스팩 폰트의 글리프뿐이고, 글리프는 리소스팩
+  # 안에 미리 들어 있는 정적 이미지입니다. 접속하는 사람마다 다른 스킨을
+  # 런타임에 글리프로 만들 방법이 없습니다.
+  #
+  # 디스코드 중계는 웹훅 아바타로 진짜 머리가 나옵니다. 인게임은 리소스팩(9b)이
+  # 나오면 그 글리프 문자를 여기에 넣으세요. 그때까지 비워 둡니다 — 글리프가
+  # 없는 코드포인트를 내보내면 모든 채팅 줄에 두부 문자(□)가 붙습니다.
+  head-glyph: ""
+
 network:
   # 메뉴에 표시할 서버 목록. velocity.toml 의 [servers] 키와 같아야 합니다.
   servers:

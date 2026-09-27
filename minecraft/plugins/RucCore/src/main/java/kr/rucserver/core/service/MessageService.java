@@ -1,6 +1,7 @@
 package kr.rucserver.core.service;
 
 import net.kyori.adventure.text.Component;
+import net.kyori.adventure.text.minimessage.MiniMessage;
 import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -21,6 +22,8 @@ public class MessageService {
 
     private static final LegacyComponentSerializer LEGACY =
             LegacyComponentSerializer.legacyAmpersand();
+
+    private static final MiniMessage MINI = MiniMessage.miniMessage();
 
     private final Map<String, YamlConfiguration> byLanguage = new HashMap<>();
     private final String defaultLanguage;
@@ -97,5 +100,20 @@ public class MessageService {
     /** 색코드가 들어간 임의 문자열을 Component로. */
     public static Component colorize(String text) {
         return LEGACY.deserialize(text);
+    }
+
+    /**
+     * MiniMessage 문자열을 Component로.
+     *
+     * 메시지 파일 전체는 레거시 색코드(&amp;a)를 씁니다 — 이미 수백 줄이고,
+     * 운영자가 편집하는 파일이라 문법을 바꾸면 전부 다시 써야 합니다.
+     * MiniMessage 는 <b>칭호처럼 그라디언트가 필요한 곳</b>에서만 씁니다
+     * (요구사항: 관리자·유료 칭호는 색과 서체를 공들여 디자인).
+     *
+     * <b>플레이어가 입력한 문자열에는 절대 쓰지 마세요.</b>
+     * {@code <click:run_command:...>} 같은 태그가 그대로 살아납니다.
+     */
+    public static Component mini(String text) {
+        return MINI.deserialize(text);
     }
 }

@@ -153,6 +153,27 @@ menu:
 # ── 스태프 보정 명령 (OP 전용) ─────────────────────────────────────────
 # /levelup 과 /ruc give 는 모든 성장 게이트를 여는 열쇠입니다.
 # 권한 노드는 ruccore.admin (default: op) 입니다.
+# ── 칭호 (Phase 6) ────────────────────────────────────────────────────
+title:
+  disabled: "&7칭호 기능이 꺼져 있습니다."
+  error: "&c칭호 처리 중 문제가 생겼습니다. 스태프에게 알려 주세요."
+  list-header: "&8&m                    &r &6칭호 &8&m                    "
+  list-empty: "&7보유한 칭호가 없습니다. 디스코드 역할을 받으면 자동으로 생깁니다."
+  list-entry: "&8 ▸ %title% &8(&7%key% &8· &7%source%&8) &e[클릭해서 선택]"
+  list-current: "&a ▶ %title% &8(&7%key% &8· &7%source%&8) &a← 표시 중"
+  list-auto: "&8 ▸ &7자동 &8(우선순위가 가장 높은 칭호) &e[클릭]"
+  selected: "&a칭호를 바꿨습니다."
+  auto-on: "&a칭호를 자동으로 되돌렸습니다. 가장 높은 칭호가 표시됩니다."
+  not-owned: "&c'%title%' 칭호를 가지고 있지 않습니다. &7/칭호 &c로 목록을 확인하세요."
+  unknown-key: "&c'%title%' 은 설정에 없는 칭호입니다."
+  grant-usage: "&7사용법: &f/titlegrant <닉네임> <칭호키> [staff|purchase|guide]"
+  grant-done: "&a%player% 님에게 '%title%' 칭호를 부여했습니다."
+  source:
+    discord: "디스코드"
+    purchase: "후원"
+    guide: "가이드"
+    staff: "운영"
+
 # ── 우편함 (Phase 5.5) ────────────────────────────────────────────────
 mailbox:
   title: "&8우편함 &7(%page%/%pages%)"

@@ -50,6 +50,10 @@ public class PlayerListener implements Listener {
             // 다시 오므로, 네트워크 안을 돌아다니는 동안에도 알게 됩니다.
             plugin.getMailbox().notifyUnclaimed(player);
 
+            // 칭호 캐시 + 탭 목록 (Phase 6). 채팅 한 줄마다 DB 를 보지 않으려면
+            // 접속 시점에 한 번 읽어 둬야 합니다.
+            plugin.getTitles().loadAsync(player);
+
             // D10 — 미인증이면 인증 구역에 격리하고 코드를 발급합니다.
             if (plugin.getVerification().requiresVerification(player)) {
                 plugin.getVerification().beginVerification(player);
@@ -62,6 +66,7 @@ public class PlayerListener implements Listener {
         Player player = event.getPlayer();
         plugin.getTpa().clear(player.getUniqueId());
         plugin.getVerification().cleanup(player.getUniqueId());
+        plugin.getTitles().unload(player.getUniqueId());
         plugin.getPlayerData().unloadAsync(player.getUniqueId());
     }
 
