@@ -36,7 +36,7 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
     public void register() {
         for (String name : List.of("tpa", "tpahere", "tpaccept", "tpdeny",
                 "tpcancel", "ruc", "level", "ruclang",
-                "verify", "verifyapprove", "rucverify", "rucxp", "menu")) {
+                "verify", "verifyapprove", "rucverify", "rucxp", "menu", "levelup")) {
             var command = plugin.getCommand(name);
             if (command == null) {
                 plugin.getLogger().warning("plugin.yml에 '" + name + "' 명령어가 없습니다.");
@@ -55,6 +55,16 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
         // 플레이어 전용 검사보다 먼저 처리합니다.
         if (command.getName().equalsIgnoreCase("rucverify")) {
             return handleRconVerify(sender, args);
+        }
+
+        // 스태프 보정 명령도 콘솔·RCON 에서 써야 합니다. 게임에 들어가지 못하는
+        // 상태(레벨·잔고가 막혀 있을 때)를 밖에서 풀 수 있어야 하기 때문입니다.
+        if (command.getName().equalsIgnoreCase("levelup")) {
+            return handleLevelUp(sender, args);
+        }
+        if (command.getName().equalsIgnoreCase("ruc")
+                && args.length >= 1 && args[0].equalsIgnoreCase("give")) {
+            return handleRucGive(sender, args);
         }
 
         if (!(sender instanceof Player player)) {
@@ -210,15 +220,165 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
             if (name.equals("ruclang")) {
                 return filter(List.of("ko", "en"), args[0]);
             }
+            if (name.equals("levelup")) {
+                return filter(onlineNames(sender, false), args[0]);
+            }
             if (name.equals("tpa") || name.equals("tpahere") || name.equals("ruc")) {
-                List<String> names = new ArrayList<>();
-                for (Player p : Bukkit.getOnlinePlayers()) {
-                    if (!p.equals(sender)) names.add(p.getName());
+                List<String> options = new ArrayList<>(onlineNames(sender, false));
+                // 잔고 조회 대상에 하위 명령을 함께 제안합니다. 스태프에게만
+                // 보이므로 일반 유저의 목록이 지저분해지지 않습니다.
+                if (name.equals("ruc") && sender.hasPermission("ruccore.admin")) {
+                    options.add("give");
                 }
-                return filter(names, args[0]);
+                return filter(options, args[0]);
+            }
+        }
+
+        if (args.length == 2) {
+            if (name.equals("ruc") && args[0].equalsIgnoreCase("give")
+                    && sender.hasPermission("ruccore.admin")) {
+                return filter(onlineNames(sender, true), args[1]);
+            }
+            if (name.equals("levelup")) {
+                // 흔히 쓰는 값만 제안합니다. 길드 창설 조건이 10 이라 그것을 앞에 둡니다.
+                return filter(List.of("10", "1", "20", "50",
+                        String.valueOf(plugin.getXp().getMaxLevel())), args[1]);
             }
         }
         return Collections.emptyList();
+    }
+
+    // ── 스태프 보정 명령 (OP 전용) ─────────────────────────────────────
+
+    /**
+     * {@code /levelup <닉네임> <레벨>} — 레벨을 즉시 지정합니다.
+     *
+     * 권한을 plugin.yml 에만 맡기지 않고 여기서도 확인합니다. 권한 노드를
+     * 누가 다른 플러그인에서 일반 유저에게 부여해도 이 검사는 남습니다.
+     * 화폐와 레벨은 이 서버의 모든 게이트(길드 창설, 국가전 입장)를 여는
+     * 열쇠라 한 겹으로 막을 것이 아닙니다.
+     */
+    private boolean handleLevelUp(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("ruccore.admin")) {
+            sender.sendMessage(messages.prefixed(langOf(sender), "general.no-permission"));
+            return true;
+        }
+        if (args.length < 2) {
+            sender.sendMessage(messages.prefixed(langOf(sender), "admin.levelup-usage",
+                    "max", String.valueOf(plugin.getXp().getMaxLevel())));
+            return true;
+        }
+
+        Player target = Bukkit.getPlayerExact(args[0]);
+        if (target == null) {
+            sender.sendMessage(messages.prefixed(langOf(sender), "general.player-not-found",
+                    "player", args[0]));
+            return true;
+        }
+
+        int level;
+        try {
+            level = Integer.parseInt(args[1]);
+        } catch (NumberFormatException e) {
+            sender.sendMessage(messages.prefixed(langOf(sender), "admin.not-a-number",
+                    "value", args[1]));
+            return true;
+        }
+
+        int applied = plugin.getXp().setLevel(target, level);
+        if (applied < 0) {
+            // 접속 직후라 캐시가 아직 비어 있는 상태입니다. 여기서 DB 를 직접
+            // 건드리면 잠시 뒤 로드가 끝나면서 그 값을 덮어씁니다.
+            sender.sendMessage(messages.prefixed(langOf(sender), "admin.data-not-loaded",
+                    "player", target.getName()));
+            return true;
+        }
+
+        sender.sendMessage(messages.prefixed(langOf(sender), "admin.levelup-done",
+                "player", target.getName(), "level", String.valueOf(applied)));
+
+        if (applied != level) {
+            sender.sendMessage(messages.prefixed(langOf(sender), "admin.levelup-clamped",
+                    "requested", String.valueOf(level),
+                    "max", String.valueOf(plugin.getXp().getMaxLevel())));
+        }
+
+        plugin.getLogger().info("[스태프] " + sender.getName() + " → " + target.getName()
+                + " 레벨 " + applied + " 로 설정");
+        return true;
+    }
+
+    /**
+     * {@code /ruc give <닉네임> <금액>} — Ruc 를 즉시 지급합니다.
+     *
+     * 대상이 <b>접속 중이어야</b> 합니다. 미접속자의 잔고를 DB 로 직접 쓰면
+     * 그 사람이 다른 서버에 접속해 있을 때 그쪽 캐시가 나중에 저장되면서
+     * 지급이 사라집니다 (EconomyService 의 주석과 같은 이유).
+     *
+     * {@code give} 를 닉네임보다 먼저 보므로, 'give' 라는 이름을 가진 사람의
+     * 잔고는 {@code /ruc} 로 조회할 수 없습니다. 그 대가로 하위 명령이
+     * 예측 가능하게 동작합니다.
+     */
+    private boolean handleRucGive(CommandSender sender, String[] args) {
+        if (!sender.hasPermission("ruccore.admin")) {
+            sender.sendMessage(messages.prefixed(langOf(sender), "general.no-permission"));
+            return true;
+        }
+        if (args.length < 3) {
+            sender.sendMessage(messages.prefixed(langOf(sender), "admin.ruc-give-usage"));
+            return true;
+        }
+
+        Player target = Bukkit.getPlayerExact(args[1]);
+        if (target == null) {
+            sender.sendMessage(messages.prefixed(langOf(sender), "general.player-not-found",
+                    "player", args[1]));
+            return true;
+        }
+
+        long amount;
+        try {
+            // 1,000,000 처럼 쉼표를 넣어도 받습니다. 큰 금액을 다루는 명령입니다.
+            amount = Long.parseLong(args[2].replace(",", ""));
+        } catch (NumberFormatException e) {
+            sender.sendMessage(messages.prefixed(langOf(sender), "admin.not-a-number",
+                    "value", args[2]));
+            return true;
+        }
+        if (amount <= 0) {
+            sender.sendMessage(messages.prefixed(langOf(sender), "admin.amount-positive"));
+            return true;
+        }
+
+        // deposit() 을 쓰는 이유: reward() 는 드래곤 알 배수(D3)를 타므로
+        // 운영자가 입력한 금액과 실제 지급액이 달라집니다.
+        if (!plugin.getEconomy().deposit(target.getUniqueId(), amount)) {
+            sender.sendMessage(messages.prefixed(langOf(sender), "admin.data-not-loaded",
+                    "player", target.getName()));
+            return true;
+        }
+
+        String symbol = plugin.getEconomy().symbol();
+        sender.sendMessage(messages.prefixed(langOf(sender), "admin.ruc-give-done",
+                "player", target.getName(),
+                "amount", EconomyService.format(amount),
+                "symbol", symbol,
+                "balance", EconomyService.format(
+                        plugin.getEconomy().balance(target.getUniqueId()))));
+
+        target.sendMessage(messages.prefixed(plugin.getPlayerData().languageOf(target),
+                "economy.received", "amount", EconomyService.format(amount),
+                "symbol", symbol));
+
+        plugin.getLogger().info("[스태프] " + sender.getName() + " → " + target.getName()
+                + " Ruc +" + amount);
+        return true;
+    }
+
+    /** 발신자의 표시 언어. 콘솔은 서버 기본값을 씁니다. */
+    private String langOf(CommandSender sender) {
+        if (sender instanceof Player player) return plugin.getPlayerData().languageOf(player);
+        return plugin.getConfig().getString("language.default", "ko");
     }
 
     /**
@@ -252,6 +412,16 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
 
         sender.sendMessage("RUCVERIFY " + result.name());
         return true;
+    }
+
+    /** 접속자 이름. {@code includeSelf} 가 false 면 발신자를 제외합니다. */
+    private List<String> onlineNames(CommandSender sender, boolean includeSelf) {
+        List<String> names = new ArrayList<>();
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (!includeSelf && p.equals(sender)) continue;
+            names.add(p.getName());
+        }
+        return names;
     }
 
     private List<String> filter(List<String> options, String prefix) {

@@ -26,8 +26,8 @@ commands:
     description: 내가 보낸 텔레포트 요청을 취소합니다.
     usage: /tpcancel
   ruc:
-    description: 보유한 Ruc를 확인합니다.
-    usage: /ruc [player]
+    description: 보유한 Ruc를 확인합니다. (스태프) /ruc give 로 지급합니다.
+    usage: /ruc [player] | /ruc give <player> <amount>
     aliases: [money, 재화]
   level:
     description: 현재 레벨과 경험치를 확인합니다.
@@ -50,6 +50,11 @@ commands:
     description: 네트워크 메뉴를 엽니다. (웅크린 채 F 키와 동일)
     usage: /menu
     aliases: [메뉴, 서버, servers]
+  levelup:
+    description: (스태프) 대상의 레벨을 즉시 지정합니다. 내리는 것도 됩니다.
+    usage: /levelup <player> <level>
+    aliases: [레벨설정, setlevel, 레벨업]
+    permission: ruccore.admin
   rucxp:
     description: (스태프) 경험치를 지급합니다. 레벨업 점검용.
     usage: /rucxp <양> [닉네임]

@@ -146,6 +146,22 @@ menu:
     economy-name: "&a&lEconomy and progress"
     economy-lore: "&7Ruc is shared across every server|&7Custom XP is separate from vanilla|&fUse /ruc &7and &f/level"
 
+# ── Staff correction commands (OP only) ───────────────────────────────
+# /levelup and /ruc give open every progression gate.
+# Permission node: ruccore.admin (default: op)
+admin:
+  levelup-usage: "&cUsage: /levelup <player> <level> &7(1-%max%, lowering works too)"
+  levelup-done: "&aSet %player% to &fLv.%level%&a."
+  levelup-clamped: "&7Requested %requested% was out of range; clamped to 1-%max%."
+  level-set-notify: "&eAn admin adjusted your level. &fLv.%old% → &a&lLv.%new%"
+
+  ruc-give-usage: "&cUsage: /ruc give <player> <amount>"
+  ruc-give-done: "&aGave %player% &f%amount% %symbol%&a. &7(balance %balance%)"
+
+  not-a-number: "&c'%value%' is not a number."
+  amount-positive: "&cThe amount must be at least 1."
+  data-not-loaded: "&c%player%'s data has not loaded yet. Try again shortly."
+
 # ── Guild / Nation (§3.5, §2.6) ──────────────────────────────────────
 guild:
   rank:

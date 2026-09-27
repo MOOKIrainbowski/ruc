@@ -146,6 +146,22 @@ menu:
     economy-name: "&a&l경제와 성장"
     economy-lore: "&7Ruc 는 모든 서버에서 공용입니다|&7자체 경험치는 바닐라와 별개입니다|&f/재화 &7· &f/레벨 &7로 확인하세요"
 
+# ── 스태프 보정 명령 (OP 전용) ─────────────────────────────────────────
+# /levelup 과 /ruc give 는 모든 성장 게이트를 여는 열쇠입니다.
+# 권한 노드는 ruccore.admin (default: op) 입니다.
+admin:
+  levelup-usage: "&c사용법: /levelup <닉네임> <레벨> &7(1~%max%, 내리는 것도 됩니다)"
+  levelup-done: "&a%player% 님의 레벨을 &fLv.%level% &a로 설정했습니다."
+  levelup-clamped: "&7요청한 %requested% 는 범위를 벗어나 1~%max% 안으로 맞췄습니다."
+  level-set-notify: "&e운영자가 레벨을 조정했습니다. &fLv.%old% → &a&lLv.%new%"
+
+  ruc-give-usage: "&c사용법: /ruc give <닉네임> <금액>"
+  ruc-give-done: "&a%player% 님에게 &f%amount% %symbol% &a를 지급했습니다. &7(잔고 %balance%)"
+
+  not-a-number: "&c'%value%' 은(는) 숫자가 아닙니다."
+  amount-positive: "&c금액은 1 이상이어야 합니다."
+  data-not-loaded: "&c%player% 님의 데이터가 아직 로드되지 않았습니다. 잠시 후 다시 시도하세요."
+
 # ── 길드 · 국가 (§3.5, §2.6) ──────────────────────────────────────────
 guild:
   rank:

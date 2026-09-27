@@ -161,6 +161,45 @@ public class XpService {
         }
     }
 
+    /**
+     * (스태프) 레벨을 직접 지정합니다. 테스트·운영 보정용.
+     *
+     * {@code xp} 는 <b>누적값이 아니라 현재 레벨 구간의 진행도</b>입니다
+     * ({@link #normalize}가 레벨업마다 요구치를 빼기 때문). 그래서 레벨을 옮길
+     * 때는 경험치를 먹이는 것이 아니라 레벨을 쓰고 진행도를 0으로 되돌립니다.
+     * 경험치로 밀어 올리려면 고레벨에서 천문학적인 값이 필요하고, 그 값이
+     * 진행도 칸에 남아 막대가 꽉 찬 채로 표시됩니다.
+     *
+     * 내리는 것도 허용합니다. 레벨 조건(길드 창설 등)을 다시 시험하려면
+     * 되돌릴 수단이 있어야 합니다.
+     *
+     * @return 실제로 적용된 레벨. 데이터가 아직 로드되지 않았으면 -1
+     */
+    public int setLevel(Player player, int level) {
+        RucPlayer data = plugin.getPlayerData().get(player);
+        if (data == null) return -1;
+
+        int target = Math.max(1, Math.min(maxLevel, level));
+        int oldLevel = data.getLevel();
+
+        data.setLevel(target);
+        data.setXp(0);
+        plugin.getPlayerData().saveAsync(data);
+
+        if (target == oldLevel) return target;
+
+        String lang = plugin.getPlayerData().languageOf(player);
+        player.sendMessage(messages.prefixed(lang, "admin.level-set-notify",
+                "old", String.valueOf(oldLevel),
+                "new", String.valueOf(target)));
+
+        // 올라갈 때만 소리를 냅니다. 내려가는데 레벨업 효과음이 나면 혼란스럽습니다.
+        if (target > oldLevel) {
+            player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
+        }
+        return target;
+    }
+
     /** 현재 상태를 한 줄로. /level 명령용. */
     public Component statusLine(Player player, RucPlayer data) {
         String lang = plugin.getPlayerData().languageOf(player);
