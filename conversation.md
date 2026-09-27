@@ -149,6 +149,31 @@ paper-api 를 넣지 않습니다 — 넣어 두면 프록시에 없는 Bukkit �
 | **게임룰 조회가 안 됩니다** | 1.21.11 에서 게임룰 ID 가 전부 `minecraft:snake_case` 로 바뀌었습니다. `gamerule keepInventory` 는 거부됩니다. 확실한 소스는 `world/level.dat` 의 `Data.game_rules` (`save-all flush` 후 읽기). |
 | **Material 상수를 추측하지 마세요** | `Material.CHAIN` 은 1.21.9 에서 `IRON_CHAIN` 으로 바뀌었습니다. 빌드 전에 `javap` 로 paper-api jar 를 직접 확인하는 습관이 여러 번 사고를 막았습니다. |
 
+### 5.1.1 프록시는 고아가 되기 쉽습니다 — 포트가 열려 있어도 확인하세요
+
+Velocity 에는 RCON 이 없습니다. 백엔드는 `stop` 으로 깔끔히 내릴 수 있지만
+프록시는 프로세스를 직접 죽여야 하고, 실행 스크립트만 종료하면 **프록시가
+고아로 남아 25565 를 계속 쥡니다.**
+
+그다음이 고약합니다. 새로 띄운 프록시는 `BindException: Address already in use`
+로 죽는데, **포트는 여전히 열려 있어서 겉으로는 정상으로 보입니다.** 옛 jar 로
+돌아가는 옛 프로세스가 서비스를 계속하고, 방금 배포한 플러그인은 반영되지
+않습니다. 실제로 한 번 이 상태로 한참을 보냈습니다.
+
+확인 방법 — 포트가 열렸는지가 아니라 **누가 쥐고 있는지**를 봅니다.
+
+```powershell
+Get-NetTCPConnection -LocalPort 25565 -State Listen |
+  ForEach-Object {
+    $p = Get-CimInstance Win32_Process -Filter "ProcessId=$($_.OwningProcess)"
+    "PID $($_.OwningProcess) / 시작 $($p.CreationDate)"
+  }
+```
+
+시작 시각이 방금 띄운 것과 다르면 고아입니다. `Stop-Process -Id <PID> -Force`
+로 내리고 다시 띄우세요. 프록시는 플레이어 데이터를 들고 있지 않아 강제 종료가
+안전합니다 — 백엔드는 절대 이렇게 내리지 마세요.
+
 ### 5.2 인코딩
 
 | 대상 | 규칙 |
