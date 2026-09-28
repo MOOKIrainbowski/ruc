@@ -25,18 +25,33 @@ function Start-Backend($name, $xms, $xmx) {
 
 # 4개가 같은 H2 파일을 공유하므로 한꺼번에 띄우면 잠금 경쟁이 납니다.
 # RucCore 가 재시도로 흡수하긴 하지만, 애초에 어긋나게 띄우는 편이 깔끔합니다.
-Start-Backend "home"  "1G"   "2G"
-Start-Sleep -Seconds 6
-Start-Backend "raid"  "1G"   "2G"
-Start-Sleep -Seconds 4
-Start-Backend "war"   "512M" "1G"
-Start-Sleep -Seconds 4
-Start-Backend "peace" "512M" "1G"
+# ── 축소 운영 (2026-09-28) ────────────────────────────────────────────
+#
+# 자금이 확보될 때까지 홈 + 약탈만 운영합니다. 국가전·평화는 코드와 월드가
+# 그대로 남아 있고, 아래 $Servers 에 다시 넣기만 하면 복구됩니다.
+#
+#   전체 복구:  $Servers = @("home","raid","war","peace")
+#   그리고 servers/home,raid 의 plugins/RucCore/config.yml 에서
+#   network.servers 목록에 war, peace 를 다시 넣으세요 (Shift+F 메뉴).
+#
+$Servers = @("home", "raid")
+
+$Spec = @{
+    home  = @("1G",   "2G")
+    raid  = @("1G",   "2G")
+    war   = @("512M", "1G")
+    peace = @("512M", "1G")
+}
+
+foreach ($name in $Servers) {
+    Start-Backend $name $Spec[$name][0] $Spec[$name][1]
+    Start-Sleep -Seconds 5
+}
 
 Write-Host ""
 Write-Host "백엔드가 준비될 때까지 기다립니다…" -ForegroundColor Yellow
 
-foreach ($name in @("home", "raid", "war", "peace")) {
+foreach ($name in $Servers) {
     $log = Join-Path $Root "servers\$name\logs\latest.log"
     $deadline = (Get-Date).AddMinutes(5)
     while ((Get-Date) -lt $deadline) {
