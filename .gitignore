@@ -79,6 +79,19 @@ desktop.ini
 # 템플릿(.example)만 추적하고 실제 파일은 setup.ps1 이 생성합니다.
 minecraft/servers/*/server.properties
 
+# 배포본 플러그인 설정 — 비밀이 들어갑니다.
+#
+# server.properties 를 빼 둔 것과 같은 이유입니다. 여기에는
+#   relay.webhook-url      (아는 사람은 누구나 그 채널에 글을 쓸 수 있습니다)
+#   database.mysql.password (9a 에서 MySQL 로 바꾸면 들어옵니다)
+# 가 들어갑니다. 실제로 웹훅 URL 이 커밋에 섞여 들어간 적이 있어 뺐습니다
+# (2026-09-28, 푸시 전에 발견해 되돌림).
+#
+# 형상 관리 대상은 **소스의 템플릿** 쪽입니다:
+#   minecraft/plugins/*/src/main/resources/config.yml
+minecraft/servers/*/plugins/*/config.yml
+minecraft/proxy/plugins/*/config.yml
+
 # Paper가 실행 중 생성하는 것들
 minecraft/servers/*/plugins/.paper-remapped/
 minecraft/servers/*/plugins/bStats/
