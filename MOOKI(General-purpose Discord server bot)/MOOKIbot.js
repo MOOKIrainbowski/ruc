@@ -1,7 +1,7 @@
 const {
     Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
     SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField,
-    ChannelType, InteractionType, AttachmentBuilder, Events
+    ChannelType, InteractionType, AttachmentBuilder, Events, MessageFlags
 } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
@@ -13,6 +13,8 @@ require('dotenv').config({ path: path.join(__dirname, '.env') });
 const { verifyCommand, handleVerify } = require('./verification');
 const titles = require('./titles');
 const relay = require('./relay');
+const roles = require('./roles');
+const minecraft = require('./minecraft');
 
 const REACTION_FILE = path.join(__dirname, 'reaction_roles.json');
 const ECONOMY_FILE  = path.join(__dirname, 'economy_data.json');
@@ -96,10 +98,19 @@ function saveEconomyData(data) { saveJSON(ECONOMY_FILE, data); }
 
 // ─── 보안 모듈 (Security Module) ───────────────────────────────────────────────
 
+// ⚠️ 여기에 무엇을 넣느냐가 곧 "누가 자동으로 뮤트되느냐" 입니다.
+//
+// 원래 bit.ly / tinyurl.com / .xyz/ 가 들어 있었는데, 이것들은 정상 멤버가
+// 단축 URL 하나만 올려도 **삭제 + 5분 타임아웃**이 되게 만듭니다. 피싱 지표가
+// 아니라 "흔한 도메인" 이라서 오탐이 압도적입니다. 뺐습니다.
+//
+// 남긴 것은 니트로 사칭·계정 탈취·IP 로거처럼 그 자체로 정상 용도가 거의 없는
+// 것들입니다. 단축 URL 을 막아야 한다면 뮤트가 아니라 경고로 다루세요.
 const SUSPICIOUS_LINK_PATTERNS = [
-    /discord\.gift/i, /discordnitro/i, /free-nitro/i, /steamcommunity\.ru/i,
-    /bit\.ly/i, /tinyurl\.com/i, /grabify/i, /iplogger/i, /\.xyz\//i,
-    /phishing/i, /free-steam/i
+    /discord\.gift/i, /discordnitro/i, /free-?nitro/i, /nitro-?free/i,
+    /steamcommunity\.(ru|top|click)/i, /free-?steam/i,
+    /grabify/i, /iplogger/i, /\bip-?logger\b/i,
+    /discord(app)?\.(ru|top|click|gift-?nitro)/i,
 ];
 
 const SPAM_WINDOW_MS = 5000;
@@ -318,8 +329,23 @@ function createDefaultEmbed(user) {
 
 // ─── 봇 초기화 ─────────────────────────────────────────────────────────────────
 
-client.once('ready', async () => {
+client.once(Events.ClientReady, async () => {
     console.log(`✅ 로그인 성공: ${client.user.tag}`);
+
+    // 역할 설정을 가장 먼저 검증합니다. 여기가 깨져 있으면 권한 검사와 인증
+    // 역할 부여가 통째로 잘못 도는데, 증상은 "권한이 없다" 는 문의로만
+    // 나타나서 원인을 찾기 어렵습니다.
+    try {
+        roles.load();
+        const staff = roles.ofKind('staff').map(r => r.label).join(' > ');
+        const rank = roles.ofKind('rank').map(r => r.label).join(' > ');
+        console.log(`✅ 역할 설정 로드 — 스태프: ${staff}`);
+        console.log(`✅ 역할 설정 로드 — 등급: ${rank}`);
+        console.log(`✅ 인증 시 부여할 역할: ${roles.verifiedRole().label}`);
+    } catch (e) {
+        console.error('❌ config/roles.json 을 읽지 못했습니다:', e.message);
+        console.error('   권한 검사와 인증 역할 부여가 동작하지 않습니다.');
+    }
 
     const commands = [
         // 기존 명령어
@@ -364,6 +390,10 @@ client.once('ready', async () => {
 
         // 디스코드 역할 → 마크 칭호 (Phase 6)
         titles.titleSyncCommand,
+
+        // 마크 서버 상태 · 역할 설정 점검
+        minecraft.statusCommand,
+        roles.roleAuditCommand,
     ];
 
     try {
@@ -386,6 +416,24 @@ client.once('ready', async () => {
         } else {
             titles.logRoles(guild);
             relay.logConfig();
+
+            // 설정한 역할을 실제로 부여할 수 있는 상태인지 확인합니다.
+            // 가장 흔한 사고가 "봇 역할이 Ruc 보다 아래에 있어서 부여 실패" 이고,
+            // 그건 인증을 끝낸 사람이 역할을 못 받는 형태로만 드러납니다.
+            try {
+                const audit = await roles.audit(guild);
+                const broken = audit.filter(r => !r.ok);
+                if (broken.length === 0) {
+                    console.log(`✅ 역할 점검 — ${audit.length}개 전부 정상`);
+                } else {
+                    console.warn(`⚠️ 역할 점검 — 문제 ${broken.length}건:`);
+                    for (const row of broken) {
+                        console.warn(`   ✗ ${row.label} (${row.key}) — ${row.problem}`);
+                    }
+                }
+            } catch (e) {
+                console.warn('⚠️ 역할 점검 실패:', e.message);
+            }
 
             // 기동 직후 한 번 훑습니다. 봇이 꺼져 있는 동안 바뀐 역할이
             // 이벤트로는 오지 않기 때문입니다.
@@ -417,6 +465,16 @@ client.on('interactionCreate', async interaction => {
 
             if (commandName === '칭호동기화') {
                 await titles.handleTitleSync(interaction);
+                return;
+            }
+
+            if (commandName === '서버상태') {
+                await minecraft.handleStatus(interaction);
+                return;
+            }
+
+            if (commandName === '역할점검') {
+                await roles.handleRoleAudit(interaction);
                 return;
             }
 
@@ -460,8 +518,8 @@ client.on('interactionCreate', async interaction => {
 
             // ── sendmessage (모달 기반, 멀티라인 공지) ───────────────
             if (commandName === '메시지') {
-                if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages)) {
-                    return interaction.reply({ content: '❌ 권한이 부족합니다.', ephemeral: true });
+                if (!roles.isStaff(interaction.member)) {
+                    return interaction.reply({ content: '❌ 스태프 전용 명령어입니다.', flags: MessageFlags.Ephemeral });
                 }
                 const modal = new ModalBuilder().setCustomId('modal_sendmessage').setTitle('메시지 작성');
                 modal.addComponents(
@@ -481,17 +539,17 @@ client.on('interactionCreate', async interaction => {
             // ── 경제 시스템 명령어 ────────────────────────────────────
             const requiresJoin = ['출석체크','주식','랭크','인벤토리','재화','창업','상장','인수','프로필'];
             if (requiresJoin.includes(commandName) && !economyData.users[userId]) {
-                return interaction.reply({ content: '❌ `/가입` 먼저 해주세요.', ephemeral: true });
+                return interaction.reply({ content: '❌ `/가입` 먼저 해주세요.', flags: MessageFlags.Ephemeral });
             }
 
             if (commandName === '가입') {
-                if (economyData.users[userId]) return interaction.reply({ content: '❌ 이미 가입되어 있습니다.', ephemeral: true });
+                if (economyData.users[userId]) return interaction.reply({ content: '❌ 이미 가입되어 있습니다.', flags: MessageFlags.Ephemeral });
                 economyData.users[userId] = { money: 1000, inventory: [], companies: [], lastCheckIn: 0, streak: 0 };
                 saveEconomyData(economyData);
                 return interaction.reply({ content: `✅ **${user.username}**님 가입 완료! (지원금: 1,000 RUC)` });
             }
             if (commandName === '탈퇴') {
-                if (!economyData.users[userId]) return interaction.reply({ content: '❌ 가입 정보가 없습니다.', ephemeral: true });
+                if (!economyData.users[userId]) return interaction.reply({ content: '❌ 가입 정보가 없습니다.', flags: MessageFlags.Ephemeral });
                 delete economyData.users[userId];
                 saveEconomyData(economyData);
                 return interaction.reply({ content: '✅ 탈퇴 완료.' });
@@ -499,7 +557,7 @@ client.on('interactionCreate', async interaction => {
             if (commandName === '출석체크') {
                 const u = economyData.users[userId];
                 const now = Date.now();
-                if (now - u.lastCheckIn < 86400000) return interaction.reply({ content: '⏳ 24시간 후에 다시 출석해주세요.', ephemeral: true });
+                if (now - u.lastCheckIn < 86400000) return interaction.reply({ content: '⏳ 24시간 후에 다시 출석해주세요.', flags: MessageFlags.Ephemeral });
                 u.streak = (now - u.lastCheckIn < 172800000) ? u.streak + 1 : 1;
                 u.lastCheckIn = now;
                 const reward = Math.floor(100 * calculateInflationMultiplier() * (1 + Math.min(u.streak * 0.1, 2)));
@@ -511,16 +569,16 @@ client.on('interactionCreate', async interaction => {
                 const m = economyData.users[userId].money;
                 try {
                     await user.send(`\`\`\`txt\n[ ${user.username}님의 자산 정보 ]\n\n💵 보유 RUC: ${m.toLocaleString()} RUC\n\`\`\``);
-                    return interaction.reply({ content: '✅ DM으로 재화 정보를 보냈습니다.', ephemeral: true });
-                } catch { return interaction.reply({ content: '❌ DM을 보낼 수 없습니다. DM을 열어주세요.', ephemeral: true }); }
+                    return interaction.reply({ content: '✅ DM으로 재화 정보를 보냈습니다.', flags: MessageFlags.Ephemeral });
+                } catch { return interaction.reply({ content: '❌ DM을 보낼 수 없습니다. DM을 열어주세요.', flags: MessageFlags.Ephemeral }); }
             }
             if (commandName === '인벤토리') {
                 const items = economyData.users[userId].inventory;
                 const invText = items.length > 0 ? items.map(i => `- ${i}`).join('\n') : '(비어있음)';
                 try {
                     await user.send(`\`\`\`txt\n[ ${user.username}님의 인벤토리 ]\n\n${invText}\n\`\`\``);
-                    return interaction.reply({ content: '✅ DM으로 인벤토리를 보냈습니다.', ephemeral: true });
-                } catch { return interaction.reply({ content: '❌ DM을 보낼 수 없습니다.', ephemeral: true }); }
+                    return interaction.reply({ content: '✅ DM으로 인벤토리를 보냈습니다.', flags: MessageFlags.Ephemeral });
+                } catch { return interaction.reply({ content: '❌ DM을 보낼 수 없습니다.', flags: MessageFlags.Ephemeral }); }
             }
             if (commandName === '랭크') {
                 const list = Object.entries(economyData.users).sort(([, a], [, b]) => b.money - a.money);
@@ -535,8 +593,8 @@ client.on('interactionCreate', async interaction => {
             }
             if (commandName === '창업') {
                 const name = interaction.options.getString('기업명');
-                if (economyData.companies[name]) return interaction.reply({ content: '❌ 이미 존재하는 기업명입니다.', ephemeral: true });
-                if (economyData.users[userId].money < 5000) return interaction.reply({ content: '❌ 5,000 RUC이 필요합니다.', ephemeral: true });
+                if (economyData.companies[name]) return interaction.reply({ content: '❌ 이미 존재하는 기업명입니다.', flags: MessageFlags.Ephemeral });
+                if (economyData.users[userId].money < 5000) return interaction.reply({ content: '❌ 5,000 RUC이 필요합니다.', flags: MessageFlags.Ephemeral });
                 economyData.users[userId].money -= 5000;
                 economyData.companies[name] = { owner: userId, stockPrice: 100, history: [100], isPublic: false };
                 economyData.users[userId].companies = economyData.users[userId].companies || [];
@@ -547,7 +605,7 @@ client.on('interactionCreate', async interaction => {
             if (commandName === '상장') {
                 const name = interaction.options.getString('기업명');
                 const comp = economyData.companies[name];
-                if (!comp || comp.owner !== userId) return interaction.reply({ content: '❌ 권한이 없거나 존재하지 않는 기업입니다.', ephemeral: true });
+                if (!comp || comp.owner !== userId) return interaction.reply({ content: '❌ 권한이 없거나 존재하지 않는 기업입니다.', flags: MessageFlags.Ephemeral });
                 comp.isPublic = true;
                 saveEconomyData(economyData);
                 return interaction.reply({ content: `📈 **${name}** 상장 완료!` });
@@ -555,16 +613,16 @@ client.on('interactionCreate', async interaction => {
             if (commandName === '주식') {
                 const name = interaction.options.getString('기업명');
                 const comp = economyData.companies[name];
-                if (!comp?.isPublic) return interaction.reply({ content: '❌ 찾을 수 없거나 비상장 기업입니다.', ephemeral: true });
+                if (!comp?.isPublic) return interaction.reply({ content: '❌ 찾을 수 없거나 비상장 기업입니다.', flags: MessageFlags.Ephemeral });
                 const price = updateStockPrice(name);
                 return interaction.reply({ embeds: [new EmbedBuilder().setTitle(`📊 ${name} 주가`).setDescription(`현재 가격: **${price} RUC**\n${generateTextChart(comp.history)}`).setColor(0x00CC88)] });
             }
             if (commandName === '인수') {
                 const name = interaction.options.getString('기업명');
                 const comp = economyData.companies[name];
-                if (!comp || comp.owner === userId) return interaction.reply({ content: '❌ 본인 소유이거나 기업이 없습니다.', ephemeral: true });
+                if (!comp || comp.owner === userId) return interaction.reply({ content: '❌ 본인 소유이거나 기업이 없습니다.', flags: MessageFlags.Ephemeral });
                 const price = comp.stockPrice * 100;
-                if (economyData.users[userId].money < price) return interaction.reply({ content: `❌ 자금 부족 (필요: ${price.toLocaleString()} RUC)`, ephemeral: true });
+                if (economyData.users[userId].money < price) return interaction.reply({ content: `❌ 자금 부족 (필요: ${price.toLocaleString()} RUC)`, flags: MessageFlags.Ephemeral });
                 if (economyData.users[comp.owner]) economyData.users[comp.owner].money += price;
                 economyData.users[userId].money -= price;
                 comp.owner = userId;
@@ -572,11 +630,13 @@ client.on('interactionCreate', async interaction => {
                 return interaction.reply({ content: `🤝 **${name}** 인수 완료! (-${price.toLocaleString()} RUC)` });
             }
             if (commandName === 'ruc지급') {
-                if (!interaction.member.permissions.has(PermissionsBitField.Flags.Administrator))
-                    return interaction.reply({ content: '❌ 관리자 전용 명령어입니다.', ephemeral: true });
+                // 화폐를 만들어 내는 명령입니다. 스태프 전원이 아니라
+                // Owner/Manager 만 되게 합니다 (config/roles.json 의 priority 기준).
+                if (!roles.isSeniorStaff(interaction.member))
+                    return interaction.reply({ content: '❌ Owner / Manager 전용 명령어입니다.', flags: MessageFlags.Ephemeral });
                 const target = interaction.options.getUser('유저');
                 const amount = interaction.options.getInteger('금액');
-                if (!economyData.users[target.id]) return interaction.reply({ content: `❌ ${target.username}님은 경제 시스템에 가입되어 있지 않습니다.`, ephemeral: true });
+                if (!economyData.users[target.id]) return interaction.reply({ content: `❌ ${target.username}님은 경제 시스템에 가입되어 있지 않습니다.`, flags: MessageFlags.Ephemeral });
                 economyData.users[target.id].money += amount;
                 saveEconomyData(economyData);
                 return interaction.reply({ content: `✅ **${target.username}**님에게 **${amount.toLocaleString()} RUC** 지급 완료.\n현재 잔액: ${economyData.users[target.id].money.toLocaleString()} RUC` });
@@ -584,7 +644,7 @@ client.on('interactionCreate', async interaction => {
             if (commandName === '프로필') {
                 const target = interaction.options.getUser('유저') || user;
                 const tData = economyData.users[target.id];
-                if (!tData) return interaction.reply({ content: `❌ ${target.username}님은 경제 시스템에 가입되어 있지 않습니다.`, ephemeral: true });
+                if (!tData) return interaction.reply({ content: `❌ ${target.username}님은 경제 시스템에 가입되어 있지 않습니다.`, flags: MessageFlags.Ephemeral });
                 await interaction.deferReply();
 
                 const list = Object.entries(economyData.users).sort(([, a], [, b]) => b.money - a.money);
@@ -627,10 +687,10 @@ client.on('interactionCreate', async interaction => {
                 return interaction.reply({ embeds: [embed] });
             }
             if (commandName === 'channel') {
-                if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageChannels))
-                    return interaction.reply({ content: '❌ 권한 부족', ephemeral: true });
+                if (!roles.isStaff(interaction.member))
+                    return interaction.reply({ content: '❌ 스태프 전용 명령어입니다.', flags: MessageFlags.Ephemeral });
                 sendChannels.set(interaction.guildId, interaction.options.getChannel('채널').id);
-                return interaction.reply({ content: `✅ 채널 설정 완료: **${interaction.options.getChannel('채널').name}**`, ephemeral: true });
+                return interaction.reply({ content: `✅ 채널 설정 완료: **${interaction.options.getChannel('채널').name}**`, flags: MessageFlags.Ephemeral });
             }
             if (commandName === 'add') {
                 const msgId = interaction.options.getString('message_id');
@@ -640,11 +700,13 @@ client.on('interactionCreate', async interaction => {
                 if (!reactionRoles[interaction.guildId][msgId]) reactionRoles[interaction.guildId][msgId] = {};
                 reactionRoles[interaction.guildId][msgId][emoji] = role.id;
                 fs.writeFileSync(REACTION_FILE, JSON.stringify(reactionRoles, null, 4));
-                return interaction.reply({ content: `✅ 리액션 롤 설정 완료: ${emoji} → ${role.name}`, ephemeral: true });
+                return interaction.reply({ content: `✅ 리액션 롤 설정 완료: ${emoji} → ${role.name}`, flags: MessageFlags.Ephemeral });
             }
             if (commandName === 'embedbuilder') {
                 const initialEmbed = createDefaultEmbed(interaction.user);
-                const reply = await interaction.reply({ content: `🎨 **${interaction.user.tag}** 님의 임베드 빌더입니다.`, embeds: [initialEmbed], components: createEmbedButtons(), fetchReply: true });
+                // fetchReply 옵션은 폐기됐습니다. 답장을 보낸 뒤 따로 가져옵니다.
+                await interaction.reply({ content: `🎨 **${interaction.user.tag}** 님의 임베드 빌더입니다.`, embeds: [initialEmbed], components: createEmbedButtons() });
+                const reply = await interaction.fetchReply();
                 embedBuilders.set(interaction.user.id, { embed: initialEmbed, originalMessageId: reply.id, channelId: interaction.channelId });
             }
         }
@@ -675,10 +737,10 @@ client.on('interactionCreate', async interaction => {
                 const parts = customId.split('_');
                 const ticketId = parseInt(parts[parts.length - 1]);
                 const ticket = ticketsData.tickets[ticketId];
-                if (!ticket) return interaction.reply({ content: '❌ 티켓을 찾을 수 없습니다.', ephemeral: true });
-                if (!interaction.member.permissions.has(PermissionsBitField.Flags.ManageMessages) && interaction.user.id !== ticket.creatorId)
-                    return interaction.reply({ content: '❌ 권한이 없습니다.', ephemeral: true });
-                await interaction.reply({ content: '🔒 티켓을 종료합니다...', ephemeral: true });
+                if (!ticket) return interaction.reply({ content: '❌ 티켓을 찾을 수 없습니다.', flags: MessageFlags.Ephemeral });
+                if (!roles.isStaff(interaction.member) && interaction.user.id !== ticket.creatorId)
+                    return interaction.reply({ content: '❌ 권한이 없습니다.', flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: '🔒 티켓을 종료합니다...', flags: MessageFlags.Ephemeral });
                 await closeTicket(ticketId, interaction.user.id, interaction.guild);
                 return;
             }
@@ -687,7 +749,7 @@ client.on('interactionCreate', async interaction => {
             if (customId.startsWith('ticket_read_')) {
                 const ticketId = parseInt(customId.replace('ticket_read_', ''));
                 const ticket = ticketsData.tickets[ticketId];
-                if (!ticket) return interaction.reply({ content: '❌ 티켓을 찾을 수 없습니다.', ephemeral: true });
+                if (!ticket) return interaction.reply({ content: '❌ 티켓을 찾을 수 없습니다.', flags: MessageFlags.Ephemeral });
                 ticket.notifiedUser = true;
                 saveTickets();
 
@@ -709,20 +771,20 @@ client.on('interactionCreate', async interaction => {
 
             // ── 임베드 빌더 버튼 ─────────────────────────────────────
             const draft = embedBuilders.get(interaction.user.id);
-            if (!draft) return interaction.reply({ content: '❌ 세션이 만료되었습니다. 다시 명령어를 입력하세요.', ephemeral: true });
+            if (!draft) return interaction.reply({ content: '❌ 세션이 만료되었습니다. 다시 명령어를 입력하세요.', flags: MessageFlags.Ephemeral });
 
             if (customId === 'send_embed') {
                 const chId = sendChannels.get(interaction.guildId);
-                if (!chId) return interaction.reply({ content: '❌ `/channel`로 채널을 먼저 설정하세요.', ephemeral: true });
+                if (!chId) return interaction.reply({ content: '❌ `/channel`로 채널을 먼저 설정하세요.', flags: MessageFlags.Ephemeral });
                 const ch = await client.channels.fetch(chId);
                 await ch.send({ embeds: [draft.embed] });
                 embedBuilders.delete(interaction.user.id);
-                return interaction.reply({ content: '✅ 전송 완료!', ephemeral: true });
+                return interaction.reply({ content: '✅ 전송 완료!', flags: MessageFlags.Ephemeral });
             }
             if (customId === 'cancel_builder') {
                 embedBuilders.delete(interaction.user.id);
                 await interaction.message.delete().catch(() => {});
-                return interaction.reply({ content: '🗑️ 취소되었습니다.', ephemeral: true });
+                return interaction.reply({ content: '🗑️ 취소되었습니다.', flags: MessageFlags.Ephemeral });
             }
 
             // 수정 버튼 → 모달
@@ -768,7 +830,7 @@ client.on('interactionCreate', async interaction => {
                 const type  = interaction.customId.replace('modal_ticket_', '');
                 const title = interaction.fields.getTextInputValue('ticket_title');
                 const desc  = interaction.fields.getTextInputValue('ticket_desc');
-                await interaction.deferReply({ ephemeral: true });
+                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                 const { channel } = await createTicketChannel(interaction.guild, interaction.member, type, title, desc);
                 return interaction.editReply({ content: `✅ 티켓이 생성되었습니다: ${channel}` });
             }
@@ -790,11 +852,11 @@ client.on('interactionCreate', async interaction => {
                 if (!type) {
                     return interaction.reply({
                         content: `❌ 올바른 유형을 입력해주세요.\n> 📬 \`문의\` · 🚨 \`신고\` · 💡 \`건의\``,
-                        ephemeral: true
+                        flags: MessageFlags.Ephemeral
                     });
                 }
 
-                await interaction.deferReply({ ephemeral: true });
+                await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                 const { channel } = await createTicketChannel(interaction.guild, interaction.member, type, title, desc);
                 return interaction.editReply({ content: `✅ 티켓이 생성되었습니다: ${channel}` });
             }
@@ -802,7 +864,7 @@ client.on('interactionCreate', async interaction => {
             // ── sendmessage 모달 ──────────────────────────────────────
             if (interaction.customId === 'modal_sendmessage') {
                 const chId = sendChannels.get(interaction.guildId);
-                if (!chId) return interaction.reply({ content: '❌ `/channel`로 채널을 먼저 설정하세요.', ephemeral: true });
+                if (!chId) return interaction.reply({ content: '❌ `/channel`로 채널을 먼저 설정하세요.', flags: MessageFlags.Ephemeral });
 
                 const title   = interaction.fields.getTextInputValue('msg_title');
                 const content = interaction.fields.getTextInputValue('msg_content').replace(/\\n/g, '\n');
@@ -827,12 +889,12 @@ client.on('interactionCreate', async interaction => {
 
                 const ch = await client.channels.fetch(chId);
                 await ch.send({ embeds: [embed] });
-                return interaction.reply({ content: '✅ 공지 메시지를 전송했습니다.', ephemeral: true });
+                return interaction.reply({ content: '✅ 공지 메시지를 전송했습니다.', flags: MessageFlags.Ephemeral });
             }
 
             // ── 임베드 빌더 모달 ──────────────────────────────────────
             const draft = embedBuilders.get(interaction.user.id);
-            if (!draft) return interaction.reply({ content: '❌ 세션 만료.', ephemeral: true });
+            if (!draft) return interaction.reply({ content: '❌ 세션 만료.', flags: MessageFlags.Ephemeral });
 
             const embed = draft.embed;
             if (interaction.customId === 'modal_content') {
@@ -861,14 +923,14 @@ client.on('interactionCreate', async interaction => {
                 await msg.edit({ embeds: [embed] });
                 await interaction.deferUpdate();
             } catch {
-                await interaction.reply({ content: '❌ 메시지 업데이트 실패', ephemeral: true });
+                await interaction.reply({ content: '❌ 메시지 업데이트 실패', flags: MessageFlags.Ephemeral });
             }
         }
 
     } catch (error) {
         console.error('❌ Interaction Error:', error);
         if (!interaction.replied && !interaction.deferred)
-            await interaction.reply({ content: '❌ 오류가 발생했습니다.', ephemeral: true }).catch(() => {});
+            await interaction.reply({ content: '❌ 오류가 발생했습니다.', flags: MessageFlags.Ephemeral }).catch(() => {});
     }
 });
 
@@ -887,7 +949,9 @@ client.on('messageCreate', safeListener('messageCreate', async message => {
     relay.onMessage(message).catch(err => console.error('[중계]', err));
 
     const member = message.guild.members.cache.get(message.author.id);
-    const isStaff = member?.permissions.has(PermissionsBitField.Flags.ManageMessages);
+    // 역할 기준으로 봅니다 (config/roles.json). Administrator 는 roles.isStaff
+    // 안에서 항상 통과하므로 서버 주인이 자기 봇에 막히는 일은 없습니다.
+    const isStaff = roles.isStaff(member);
 
     // ── 티켓 채널 응답 감지 ────────────────────────────────────────
     const openTicket = Object.entries(ticketsData.tickets).find(([, t]) =>
@@ -915,7 +979,9 @@ client.on('messageCreate', safeListener('messageCreate', async message => {
     }
 
     // ── 보안: 의심 링크 감지 ───────────────────────────────────────
-    if (isSuspiciousLink(message.content)) {
+    // 스팸·대량멘션과 달리 원래 스태프 예외가 없었습니다. 스태프가 피싱
+    // 사례를 공유하려고 링크를 붙이는 순간 본인이 뮤트됐습니다.
+    if (!isStaff && isSuspiciousLink(message.content)) {
         await message.delete().catch(() => {});
         await message.channel.send({ content: `⚠️ <@${message.author.id}> 의심스러운 링크가 감지되어 삭제되었습니다.` }).catch(() => {});
         await sendSecurityLog(message.guild, '의심 링크 감지', `**${message.author.tag}**가 의심 링크를 전송했습니다.\n채널: <#${message.channelId}>\n내용: \`${message.content.substring(0, 200)}\``);
@@ -1000,8 +1066,53 @@ client.on('messageReactionRemove', safeListener('messageReactionRemove', async (
     }
 }));
 
+// ─── 종료 처리 ─────────────────────────────────────────────────────────────────
+//
+// 경제·티켓 데이터는 변경 시점마다 파일에 쓰지만, 마지막 쓰기 직후 Ctrl+C 가
+// 들어오면 디스코드 연결이 끊기지 않은 채 프로세스가 사라집니다. 그러면 봇이
+// 몇 분간 "온라인" 으로 남아 있고 그동안의 명령이 전부 응답 없이 실패합니다.
+// destroy() 로 게이트웨이를 정상 종료하면 즉시 오프라인으로 바뀝니다.
+
+let shuttingDown = false;
+
+async function shutdown(signal) {
+    if (shuttingDown) return;
+    shuttingDown = true;
+
+    console.log(`\n⏹️  ${signal} — 종료합니다…`);
+    try {
+        saveJSON(ECONOMY_FILE, economyData);
+        saveJSON(TICKETS_FILE, ticketsData);
+        saveJSON(REACTION_FILE, reactionRoles);
+        console.log('   데이터 저장 완료');
+    } catch (e) {
+        console.error('   데이터 저장 실패:', e.message);
+    }
+
+    try {
+        await client.destroy();
+        console.log('   디스코드 연결 종료');
+    } catch { /* 이미 끊긴 경우 */ }
+
+    process.exit(0);
+}
+
+for (const signal of ['SIGINT', 'SIGTERM']) {
+    process.on(signal, () => { shutdown(signal); });
+}
+
 // ─── 로그인 ────────────────────────────────────────────────────────────────────
 
 const token = process.env.DISCORD_TOKEN;
-if (token) client.login(token);
-else console.error('❌ DISCORD_TOKEN이 .env에 없습니다.');
+if (!token) {
+    console.error('❌ DISCORD_TOKEN이 .env에 없습니다.');
+    process.exit(1);
+}
+
+client.login(token).catch(err => {
+    // 토큰이 틀리면 discord.js 가 조용히 재시도하지 않고 던집니다.
+    // 여기서 잡지 않으면 스택트레이스만 남고 원인이 안 보입니다.
+    console.error('❌ 디스코드 로그인 실패:', err.message);
+    console.error('   .env 의 DISCORD_TOKEN 을 확인하세요 (재발급했다면 새 값으로 교체).');
+    process.exit(1);
+});

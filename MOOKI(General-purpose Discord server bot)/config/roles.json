@@ -1,0 +1,117 @@
+{
+  "_readme": [
+    "역할 ID 는 전부 여기에만 있습니다. 코드에는 한 개도 없습니다.",
+    "",
+    "새 등급을 추가할 때: roles 에 항목 하나만 넣으면 됩니다. 코드 수정 없음.",
+    "  \"platinum\": { \"label\": \"Platinum\", \"id\": \"...\", \"kind\": \"rank\", \"priority\": 650 }",
+    "priority 를 100 단위로 띄워 둔 이유가 이것입니다 — 사이에 끼워 넣을 자리가 있어야 합니다.",
+    "",
+    "kind:  staff  = 스태프 (권한 검사 대상)",
+    "       rank   = 등급 (후원·부스트)",
+    "       member = 기본 멤버 역할 (인증 통과 시 부여)",
+    "",
+    "priority: 클수록 높습니다. 표시할 역할 하나를 골라야 할 때 이 값으로 정합니다.",
+    "managed:  디스코드가 직접 관리하는 역할 (부스터 등). 봇이 부여·회수하지 않습니다.",
+    "titleKey: 마인크래프트 칭호 키 (RucCore config.yml 의 titles.definitions).",
+    "          비어 있으면 마크 칭호와 연결되지 않습니다."
+  ],
+
+  "verifiedRole": "ruc",
+
+  "roles": {
+    "owner": {
+      "label": "Owner",
+      "id": "1414495321349951508",
+      "kind": "staff",
+      "priority": 1000,
+      "titleKey": "owner"
+    },
+    "manager": {
+      "label": "Manager",
+      "id": "1406889344890966077",
+      "kind": "staff",
+      "priority": 950,
+      "titleKey": "manager"
+    },
+    "designer": {
+      "label": "Designer",
+      "id": "1425822763867705415",
+      "kind": "staff",
+      "priority": 900,
+      "titleKey": "designer"
+    },
+    "tester": {
+      "label": "Tester",
+      "id": "1425823098602786827",
+      "kind": "staff",
+      "priority": 850,
+      "titleKey": "tester"
+    },
+
+    "elite": {
+      "label": "Elite",
+      "id": "1554021629959348285",
+      "kind": "rank",
+      "priority": 800,
+      "titleKey": "elite"
+    },
+    "premium": {
+      "label": "Premium",
+      "id": "1554021416427331584",
+      "kind": "rank",
+      "priority": 700,
+      "titleKey": "premium"
+    },
+    "prime": {
+      "label": "Prime",
+      "id": "1554021221736124464",
+      "kind": "rank",
+      "priority": 600,
+      "titleKey": "prime"
+    },
+    "mvp": {
+      "label": "MVP",
+      "id": "1554021025048567868",
+      "kind": "rank",
+      "priority": 500,
+      "titleKey": "mvp"
+    },
+    "rocket": {
+      "label": "Rocket",
+      "id": "1554015273416130620",
+      "kind": "rank",
+      "priority": 400,
+      "titleKey": "rocket"
+    },
+    "svip": {
+      "label": "SVIP",
+      "id": "1554020800246583356",
+      "kind": "rank",
+      "priority": 300,
+      "titleKey": "svip"
+    },
+    "booster": {
+      "label": "Booster",
+      "id": "1414389895111118970",
+      "kind": "rank",
+      "priority": 200,
+      "managed": true,
+      "titleKey": "booster"
+    },
+    "vip": {
+      "label": "VIP",
+      "id": "1554020486269239296",
+      "kind": "rank",
+      "priority": 100,
+      "titleKey": "vip"
+    },
+
+    "ruc": {
+      "label": "Ruc",
+      "id": "1409031305164886176",
+      "kind": "member",
+      "priority": 0,
+      "titleKey": ""
+    }
+  }
+}

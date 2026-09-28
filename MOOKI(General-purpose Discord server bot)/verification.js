@@ -10,6 +10,7 @@
 
 const { Rcon } = require('rcon-client');
 const { EmbedBuilder, SlashCommandBuilder, MessageFlags } = require('discord.js');
+const roles = require('./roles');
 
 // ── 설정 ──────────────────────────────────────────────────────────────
 
@@ -239,6 +240,41 @@ async function handleVerify(interaction) {
         .setTitle(message.title)
         .setDescription(message.body)
         .setTimestamp();
+
+    // 6) 인증 통과 → Ruc 역할 부여
+    //
+    // 역할 ID 는 config/roles.json 에만 있습니다. 여기서는 "인증용 역할" 이라고만
+    // 알고, 어떤 역할인지는 설정이 정합니다.
+    //
+    // 역할 부여가 실패해도 **인증 자체는 이미 성공**입니다 (마크 서버 DB 에
+    // 기록됐습니다). 그래서 실패를 던지지 않고 안내 문구만 덧붙입니다 —
+    // 여기서 오류를 내면 인증이 안 된 것으로 오해하고 코드를 다시 받습니다.
+    if (result === 'SUCCESS') {
+        const outcome = await roles.grantVerified(
+            interaction.member, `마인크래프트 계정 인증 (${interaction.user.tag})`);
+
+        if (outcome === 'granted') {
+            embed.addFields({
+                name: '역할 지급',
+                value: `**${roles.verifiedRole().label}** 역할을 받았습니다.`,
+            });
+        } else if (outcome === 'already') {
+            // 재인증입니다. 굳이 알릴 필요 없습니다.
+        } else {
+            const reason = outcome === 'forbidden'
+                ? '봇의 역할이 지급할 역할보다 아래에 있습니다.'
+                : outcome === 'missing'
+                    ? '설정된 역할 ID 를 서버에서 찾지 못했습니다.'
+                    : '알 수 없는 오류입니다.';
+
+            console.warn(`[인증] 역할 지급 실패 (${outcome}) — ${interaction.user.tag}: ${reason}`);
+            embed.addFields({
+                name: '⚠️ 역할 지급 실패',
+                value: '인증은 정상 처리됐지만 역할을 드리지 못했습니다.\n'
+                    + '스태프에게 문의해 주세요. (다시 인증하실 필요는 없습니다.)',
+            });
+        }
+    }
 
     return interaction.editReply({ embeds: [embed] });
 }

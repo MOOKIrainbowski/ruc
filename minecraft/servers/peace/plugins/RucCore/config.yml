@@ -197,7 +197,7 @@ titles:
     owner:
       display: "<gradient:#ffd166:#ff6b6b><bold>[ 수장 ]</bold></gradient>"
       priority: 1000
-      discord-role: ""
+      discord-role: "1414495321349951508"
     admin:
       display: "<gradient:#ff6b6b:#c77dff><bold>[ 관리자 ]</bold></gradient>"
       priority: 950
@@ -205,7 +205,7 @@ titles:
     manager:
       display: "<gradient:#c77dff:#7aa2ff><bold>[ 매니저 ]</bold></gradient>"
       priority: 900
-      discord-role: ""
+      discord-role: "1406889344890966077"
     moderator:
       display: "<color:#7aa2ff><bold>[ 중재자 ]</bold></color>"
       priority: 850
@@ -221,34 +221,38 @@ titles:
     designer:
       display: "<color:#f4a3c1>[ 디자이너 ]</color>"
       priority: 690
-      discord-role: ""
+      discord-role: "1425822763867705415"
+    tester:
+      display: "<color:#9aa0a6>[ 테스터 ]</color>"
+      priority: 680
+      discord-role: "1425823098602786827"
 
     # ── 후원 등급 (D7) — Phase 8 에서 결제와 연결됩니다 ──────────────
     # 지금은 정의만 둡니다. 역할 ID 를 채우면 즉시 동작합니다.
     elite:
       display: "<gradient:#f9f871:#ffffff:#f9f871><bold>[ ELITE ]</bold></gradient>"
       priority: 600
-      discord-role: ""
+      discord-role: "1554021629959348285"
     premium:
       display: "<gradient:#a0e7e5:#b4f8c8><bold>[ PREMIUM ]</bold></gradient>"
       priority: 580
-      discord-role: ""
+      discord-role: "1554021416427331584"
     prime:
       display: "<gradient:#ffb5a7:#fcd5ce><bold>[ PRIME ]</bold></gradient>"
       priority: 560
-      discord-role: ""
+      discord-role: "1554021221736124464"
     mvp:
       display: "<color:#ffd166><bold>[ MVP ]</bold></color>"
       priority: 540
-      discord-role: ""
+      discord-role: "1554021025048567868"
     svip:
       display: "<color:#a0c4ff>[ SVIP ]</color>"
       priority: 520
-      discord-role: ""
+      discord-role: "1554020800246583356"
     vip:
       display: "<color:#9bf6ff>[ VIP ]</color>"
       priority: 500
-      discord-role: ""
+      discord-role: "1554020486269239296"
 
     # ── 디스코드 부스트 (§5.2) ──────────────────────────────────────
     hyper:
@@ -258,11 +262,11 @@ titles:
     rocket:
       display: "<color:#ff7eb6>[ ROCKET ]</color>"
       priority: 460
-      discord-role: ""
+      discord-role: "1554015273416130620"
     booster:
       display: "<color:#f5a3ff>[ BOOSTER ]</color>"
       priority: 440
-      discord-role: ""
+      discord-role: "1414389895111118970"
 
     # ── 가이드 완주 (Phase 11) ──────────────────────────────────────
     # 디스코드 역할이 아니라 가이드를 끝내면 받습니다. discord-role 을 비워
