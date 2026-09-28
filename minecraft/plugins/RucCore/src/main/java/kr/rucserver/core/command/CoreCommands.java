@@ -41,7 +41,7 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
         for (String name : List.of("tpa", "tpahere", "tpaccept", "tpdeny",
                 "tpcancel", "ruc", "level", "ruclang",
                 "verify", "verifyapprove", "rucverify", "rucxp", "menu", "levelup",
-                "mailbox", "mailsend", "rucrelay", "rucinfo")) {
+                "mailbox", "mailsend", "rucrelay", "rucinfo", "rucreps")) {
             var command = plugin.getCommand(name);
             if (command == null) {
                 plugin.getLogger().warning("plugin.yml에 '" + name + "' 명령어가 없습니다.");
@@ -68,6 +68,10 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
 
         if (command.getName().equalsIgnoreCase("rucinfo")) {
             return handleRconInfo(sender, args);
+        }
+
+        if (command.getName().equalsIgnoreCase("rucreps")) {
+            return handleRconReputations(sender, args);
         }
 
         // 스태프 보정 명령도 콘솔·RCON 에서 써야 합니다. 게임에 들어가지 못하는
@@ -622,6 +626,72 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
                 + " first=" + data.getFirstJoin()
                 + " last=" + data.getLastSeen()
                 + " name=" + data.getName());
+        return true;
+    }
+
+    /**
+     * {@code /rucreps [offset] [limit]} — 연동자들의 평판 티어. <b>RCON 전용.</b>
+     *
+     * <h2>왜 마크가 알려 주는 쪽인가</h2>
+     * 평판의 주인은 마크 서버입니다(신고·제재로 움직입니다). 디스코드 역할은
+     * 그것을 <b>비추는</b> 것이고요. 칭호(6-1)와 정확히 반대 방향입니다.
+     *
+     * 문제는 통로입니다. RCON 은 봇 → 서버 한 방향이라 서버가 봇에게 말을 걸
+     * 수 없습니다. 그래서 <b>봇이 주기적으로 물어봅니다.</b>
+     *
+     * <h2>응답 규격</h2>
+     * <pre>
+     * RUCREPS OK total=42 next=20 1282630203138379821:red:100 ...
+     * </pre>
+     * {@code next} 가 {@code -} 면 마지막 장입니다. 한 줄에 다 담기지 않기
+     * 때문에 나눠 보냅니다 — 사람이 늘면 응답이 잘립니다.
+     */
+    private boolean handleRconReputations(CommandSender sender, String[] args) {
+        if (sender instanceof Player) {
+            sender.sendMessage("이 명령어는 콘솔에서만 사용할 수 있습니다.");
+            return true;
+        }
+
+        int offset = 0;
+        int limit = 50;
+        try {
+            if (args.length >= 1) offset = Math.max(0, Integer.parseInt(args[0]));
+            if (args.length >= 2) limit = Math.min(100, Math.max(1, Integer.parseInt(args[1])));
+        } catch (NumberFormatException e) {
+            sender.sendMessage("RUCREPS ERROR usage: /rucreps [offset] [limit]");
+            return true;
+        }
+
+        try {
+            int total = plugin.getPlayerData().getRepository().countDiscordLinked();
+            var rows = plugin.getPlayerData().getRepository()
+                    .listDiscordReputations(offset, limit);
+
+            StringBuilder sb = new StringBuilder("RUCREPS OK total=").append(total);
+            int next = offset + rows.size();
+            sb.append(" next=").append(next < total ? String.valueOf(next) : "-");
+
+            for (var row : rows) {
+                // 접속 중이면 캐시가 더 최신입니다 — 방금 신고가 확정됐는데
+                // DB 저장이 아직이면 옛 값을 보내게 됩니다.
+                int reputation = row.reputation();
+                for (Player online : Bukkit.getOnlinePlayers()) {
+                    RucPlayer cached = plugin.getPlayerData().get(online);
+                    if (cached != null && row.discordId().equals(cached.getDiscordId())) {
+                        reputation = cached.getReputation();
+                        break;
+                    }
+                }
+                sb.append(' ').append(row.discordId()).append(':')
+                        .append(kr.rucserver.core.service.ScoreboardService.ReputationTier
+                                .of(reputation).key())
+                        .append(':').append(reputation);
+            }
+            sender.sendMessage(sb.toString());
+        } catch (java.sql.SQLException e) {
+            plugin.getLogger().log(Level.SEVERE, "평판 목록 조회 실패", e);
+            sender.sendMessage("RUCREPS ERROR");
+        }
         return true;
     }
 

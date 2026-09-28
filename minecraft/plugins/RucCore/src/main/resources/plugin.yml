@@ -100,6 +100,10 @@ commands:
     usage: /신고목록
     aliases: [신고목록]
     permission: ruccore.admin
+  rucreps:
+    description: (콘솔/RCON 전용) 디스코드 연동자들의 평판 티어. 역할 동기화에 씁니다.
+    usage: /rucreps [offset] [limit]
+    permission: ruccore.admin
   rucinfo:
     description: (콘솔/RCON 전용) 플레이어 기록 요약. 신고 처리에 씁니다.
     usage: /rucinfo <닉네임>

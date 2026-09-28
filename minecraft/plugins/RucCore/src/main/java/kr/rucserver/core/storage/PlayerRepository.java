@@ -6,6 +6,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 /**
@@ -64,6 +66,53 @@ public class PlayerRepository {
             }
         }
     }
+
+    /**
+     * 디스코드를 연동한 사람들의 평판. 평판 → 역할 동기화(§3.7)가 씁니다.
+     *
+     * 전원을 한 번에 주지 않고 나눠 줍니다. RCON 응답은 한 줄이라, 사람이
+     * 늘면 한 응답에 다 담기지 않습니다. 봇이 offset 을 올려 가며 받습니다.
+     *
+     * 정렬을 uuid 로 고정하는 이유: 페이지를 넘기는 동안 순서가 흔들리면
+     * 누군가는 두 번 나오고 누군가는 빠집니다.
+     */
+    public List<DiscordReputation> listDiscordReputations(int offset, int limit)
+            throws SQLException {
+        String sql = """
+                SELECT discord_id, reputation, name FROM ruc_player
+                WHERE discord_id IS NOT NULL
+                ORDER BY uuid
+                LIMIT ? OFFSET ?
+                """;
+        try (Connection conn = database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setInt(1, limit);
+            ps.setInt(2, offset);
+            try (ResultSet rs = ps.executeQuery()) {
+                List<DiscordReputation> out = new ArrayList<>();
+                while (rs.next()) {
+                    out.add(new DiscordReputation(
+                            rs.getString("discord_id"),
+                            rs.getInt("reputation"),
+                            rs.getString("name")));
+                }
+                return out;
+            }
+        }
+    }
+
+    /** 연동한 사람 수. 봇이 몇 장을 받아야 하는지 알려면 필요합니다. */
+    public int countDiscordLinked() throws SQLException {
+        try (Connection conn = database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT COUNT(*) FROM ruc_player WHERE discord_id IS NOT NULL")) {
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
+    }
+
+    public record DiscordReputation(String discordId, int reputation, String name) { }
 
     public void save(RucPlayer p) throws SQLException {
         // H2를 MySQL 모드로 띄웠기 때문에 이 구문이 양쪽에서 동일하게 동작합니다.

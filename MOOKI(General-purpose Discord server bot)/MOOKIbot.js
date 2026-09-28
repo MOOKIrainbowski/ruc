@@ -16,6 +16,7 @@ const relay = require('./relay');
 const roles = require('./roles');
 const minecraft = require('./minecraft');
 const report = require('./report');
+const reputation = require('./reputation');
 
 const REACTION_FILE = path.join(__dirname, 'reaction_roles.json');
 const ECONOMY_FILE  = path.join(__dirname, 'economy_data.json');
@@ -414,6 +415,10 @@ client.once(Events.ClientReady, async () => {
         // 신고 폼 (§3.8)
         new SlashCommandBuilder().setName('신고')
             .setDescription('플레이어를 신고합니다. 가해자·발생 시각·사유를 입력합니다.'),
+
+        // 평판 티어 → 디스코드 역할 (§3.7)
+        reputation.setupCommand,
+        reputation.syncCommand,
     ];
 
     try {
@@ -436,6 +441,8 @@ client.once(Events.ClientReady, async () => {
         } else {
             titles.logRoles(guild);
             relay.logConfig();
+            reputation.logConfig();
+            reputation.startSyncing(guild);
 
             // 설정한 역할을 실제로 부여할 수 있는 상태인지 확인합니다.
             // 가장 흔한 사고가 "봇 역할이 Ruc 보다 아래에 있어서 부여 실패" 이고,
@@ -500,6 +507,16 @@ client.on('interactionCreate', async interaction => {
 
             if (commandName === '신고') {
                 await interaction.showModal(report.buildModal());
+                return;
+            }
+
+            if (commandName === '평판역할설정') {
+                await reputation.handleSetup(interaction);
+                return;
+            }
+
+            if (commandName === '평판동기화') {
+                await reputation.handleSync(interaction);
                 return;
             }
 
