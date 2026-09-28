@@ -88,16 +88,40 @@
 백엔드는 전부 `server-ip=127.0.0.1` 로 묶여 있습니다. **이걸 풀면 안 됩니다** —
 프록시를 건너뛰고 백엔드에 직접 붙으면 D10 디스코드 인증이 통째로 우회됩니다.
 
-### 실행 / 종료
+### 실행 / 종료 / 재시작
 
 ```powershell
-# 전체 기동 (백엔드 4개 → 준비 대기 → 프록시)
+# 전체 기동 (백엔드 → 준비 대기 → 프록시)
 minecraft\scripts\start-network.ps1
 
-# 개별
+# 재시작 — 가장 자주 쓰는 것 (플러그인을 새로 배포한 뒤)
+minecraft\scriptsestart.ps1 raid          # 하나만
+minecraft\scriptsestart.ps1 home raid     # 여럿
+minecraft\scriptsestart.ps1 proxy         # 프록시만
+minecraft\scriptsestart.ps1 all           # 운영 중인 것 전부 + 프록시
+minecraft\scriptsestart.ps1 raid -Force   # 접속자 있어도 묻지 않고
+
+# 개별 기동 (콘솔이 현재 터미널에 붙습니다 — stop 을 직접 칠 수 있습니다)
 minecraft\scripts\start-home.ps1
 minecraft\scripts\start-raid.ps1
+
+# RCON 으로 명령 보내기
+node minecraft\scriptscon.js 25577 "list"
+node minecraft\scriptscon.js 25577 "save-all flush" "stop"
 ```
+
+`restart.ps1` 이 하는 일 — 손으로 할 때 빠뜨리기 쉬운 것들입니다:
+
+1. **접속자 확인.** 사람이 있으면 묻고 멈춥니다 (`-Force` 로 건너뜀)
+2. **`save-all flush` 먼저.** 안 하면 마지막 몇 분이 날아갑니다
+3. **포트가 닫힐 때까지 대기** 후 기동. 겹쳐 띄우면 잠금 충돌이 납니다
+4. **프록시는 프로세스를 직접 죽입니다** (RCON 이 없습니다). 그리고 25565 가
+   실제로 비었는지 확인한 뒤에야 새로 띄웁니다 — §5.1.1 의 고아 상태 방지
+
+> **로그의 `Done (` 로 기동 완료를 판단하지 마세요.** Paper 는 기동할 때 옛
+> `latest.log` 를 `.gz` 로 넘기는데 그 사이 잠깐 **옛 로그가 그대로 남습니다.**
+> 거기 지난번 `Done (` 이 있어서 시작도 안 한 서버를 완료로 읽습니다.
+> 실제로 `restart.ps1` 첫 판이 이 때문에 오판했습니다. **포트를 보세요.**
 
 > **`start-network.ps1` 은 부모 세션이 끝나면 같이 죽습니다.** `Start-Process` 로
 > 떼어 놓은 자식이라 PowerShell 세션이 종료될 때 함께 정리됩니다. 사람이 직접
