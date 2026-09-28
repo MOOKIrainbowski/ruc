@@ -3,7 +3,7 @@
 
 export type Lang = "ko" | "en";
 
-export const DISCORD_INVITE = "https://discord.gg/sTVAJ38ea";
+export const DISCORD_INVITE = "https://discord.gg/K3Z5CDn3GK";
 
 /** 서버 접속 주소. Phase 2에서 실제 주소로 교체. */
 export const MC_ADDRESS = process.env.NEXT_PUBLIC_MC_ADDRESS ?? "play.rucserver.kr";
@@ -95,9 +95,9 @@ export const content: Record<Lang, Copy> = {
     nav: { goToServer: "서버 가기", status: "서버 상태", landing: "소개" },
     hero: {
       eyebrow: "MINECRAFT SERVER NETWORK",
-      title: ["4개의 세계,", "하나의 경제."],
+      title: ["Ruc Server", "Season 1"],
       titleAccent: "러크 서버",
-      sub: "안전한 광장에서 시작해, 원하는 만큼만 위험해지세요.\n약탈 · 국가전 · 평화 — 어디서 벌든 Ruc는 하나로 이어집니다.",
+      sub: "약탈 · 국가전 · 평화 — Ruc는 하나로 이어집니다.",
       ctaDiscord: "디스코드 참여하기",
       ctaStatus: "실시간 서버 상태",
       copyAddress: "주소 복사",
@@ -116,7 +116,7 @@ export const content: Record<Lang, Copy> = {
       lead: "규칙으로 부탁하지 않습니다. 애초에 안 되게 만들었습니다.",
       items: [
         {
-          problem: "“결국 돈 쓴 사람이 이긴다”",
+          problem: "“P2W”",
           solution: "후원 혜택은 꾸미기와 편의뿐입니다. 전투 능력치는 어떤 등급으로도 살 수 없습니다.",
           feature: "후원 등급 설계",
           featureDesc: "무기·방어구·강화 재료는 어떤 등급에서도 팔지 않습니다.",
@@ -299,7 +299,7 @@ export const content: Record<Lang, Copy> = {
     nav: { goToServer: "Go to Server", status: "Server Status", landing: "About" },
     hero: {
       eyebrow: "MINECRAFT SERVER NETWORK",
-      title: ["Four worlds,", "one economy."],
+      title: ["Ruc Server", "Season 1"],
       titleAccent: "Ruc Server",
       sub: "Start safe in the plaza. Get as dangerous as you want.\nRaiding Server, Nation War, Peace — whatever you earn, Ruc carries across all of it.",
       ctaDiscord: "Join the Discord",
