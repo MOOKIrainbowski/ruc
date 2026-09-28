@@ -17,6 +17,7 @@ const roles = require('./roles');
 const minecraft = require('./minecraft');
 const report = require('./report');
 const reputation = require('./reputation');
+const sanction = require('./sanction');
 
 const REACTION_FILE = path.join(__dirname, 'reaction_roles.json');
 const ECONOMY_FILE  = path.join(__dirname, 'economy_data.json');
@@ -419,6 +420,11 @@ client.once(Events.ClientReady, async () => {
         // 평판 티어 → 디스코드 역할 (§3.7)
         reputation.setupCommand,
         reputation.syncCommand,
+
+        // 제재 티어 (§3.9 + D5)
+        sanction.sanctionCommand,
+        sanction.revokeCommand,
+        sanction.historyCommand,
     ];
 
     try {
@@ -443,6 +449,7 @@ client.once(Events.ClientReady, async () => {
             relay.logConfig();
             reputation.logConfig();
             reputation.startSyncing(guild);
+            sanction.start(guild);
 
             // 설정한 역할을 실제로 부여할 수 있는 상태인지 확인합니다.
             // 가장 흔한 사고가 "봇 역할이 Ruc 보다 아래에 있어서 부여 실패" 이고,
@@ -517,6 +524,21 @@ client.on('interactionCreate', async interaction => {
 
             if (commandName === '평판동기화') {
                 await reputation.handleSync(interaction);
+                return;
+            }
+
+            if (commandName === '제재') {
+                await sanction.handleSanction(interaction);
+                return;
+            }
+
+            if (commandName === '제재해제') {
+                await sanction.handleRevoke(interaction);
+                return;
+            }
+
+            if (commandName === '기록') {
+                await sanction.handleHistory(interaction);
                 return;
             }
 
@@ -817,6 +839,11 @@ client.on('interactionCreate', async interaction => {
 
                 return interaction.update({ content: '✅ 확인 완료! 스태프에게 알렸습니다.', components: [] });
             }
+
+            // ── 제재 버튼 (집행·승인·재시도) ─────────────────────────
+            // 임베드 빌더보다 먼저 봐야 합니다. 그쪽은 모르는 버튼을
+            // "세션 만료" 로 처리합니다.
+            if (await sanction.handleButton(interaction)) return;
 
             // ── 임베드 빌더 버튼 ─────────────────────────────────────
             const draft = embedBuilders.get(interaction.user.id);

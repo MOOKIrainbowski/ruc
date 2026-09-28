@@ -4,6 +4,7 @@ import kr.rucserver.core.command.CoreCommands;
 import kr.rucserver.core.command.GuildAdminCommands;
 import kr.rucserver.core.command.GuildCommands;
 import kr.rucserver.core.command.ReportCommands;
+import kr.rucserver.core.command.SanctionCommands;
 import kr.rucserver.core.command.TitleCommands;
 import kr.rucserver.core.listener.ChatListener;
 import kr.rucserver.core.listener.MenuListener;
@@ -19,6 +20,7 @@ import kr.rucserver.core.service.MailboxService;
 import kr.rucserver.core.service.MessageService;
 import kr.rucserver.core.service.PlayerDataService;
 import kr.rucserver.core.service.ReportService;
+import kr.rucserver.core.service.SanctionService;
 import kr.rucserver.core.service.ScoreboardService;
 import kr.rucserver.core.service.TitleService;
 import kr.rucserver.core.service.TpaService;
@@ -30,6 +32,7 @@ import kr.rucserver.core.storage.HomeRepository;
 import kr.rucserver.core.storage.MailboxRepository;
 import kr.rucserver.core.storage.PlayerRepository;
 import kr.rucserver.core.storage.ReportRepository;
+import kr.rucserver.core.storage.SanctionRepository;
 import kr.rucserver.core.storage.TitleRepository;
 import kr.rucserver.core.storage.VerificationRepository;
 import org.bukkit.GameRule;
@@ -60,6 +63,7 @@ public class RucCore extends JavaPlugin {
     private TitleService titles;
     private DiscordRelayService relay;
     private ReportService reports;
+    private SanctionService sanctions;
     private XpService xp;
     private ScoreboardService scoreboards;
     private TpaService tpa;
@@ -156,6 +160,18 @@ public class RucCore extends JavaPlugin {
         }
         reports = new ReportService(this, reportRepository);
 
+        // 제재 (Phase 6-7). 이 테이블이 곧 네트워크 밴입니다 — 프록시가 로그인 때
+        // 봅니다. 없으면 제재가 기록되지 않으므로 기동을 멈춥니다.
+        SanctionRepository sanctionRepository = new SanctionRepository(database);
+        try {
+            sanctionRepository.createSchema();
+        } catch (SQLException e) {
+            getLogger().log(Level.SEVERE, "제재 테이블 생성에 실패했습니다. 플러그인을 비활성화합니다.", e);
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        sanctions = new SanctionService(this, sanctionRepository);
+
         // 프록시 통신과 메뉴는 4개 서버 공통이라 Core가 소유합니다.
         network = new NetworkService(this);
         network.start();
@@ -170,6 +186,7 @@ public class RucCore extends JavaPlugin {
         new GuildAdminCommands(this).register();
         new TitleCommands(this, messages).register();
         new ReportCommands(this, messages).register();
+        new SanctionCommands(this).register();
 
         applyGlobalRules();
         scoreboards.start();
@@ -242,6 +259,7 @@ public class RucCore extends JavaPlugin {
     public TitleService getTitles() { return titles; }
     public DiscordRelayService getRelay() { return relay; }
     public ReportService getReports() { return reports; }
+    public SanctionService getSanctions() { return sanctions; }
     public BonusRegistry getBonuses() { return bonuses; }
     public XpService getXp() { return xp; }
     public ScoreboardService getScoreboards() { return scoreboards; }

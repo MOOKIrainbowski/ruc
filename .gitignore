@@ -108,3 +108,6 @@ minecraft/servers/*/hub/
 
 # 학습용 참고 맵 (329MB, 타인 저작물). 저장소에 넣지 않습니다.
 mapfile/
+
+# 제재 기록 (Phase 6-7) — 디스코드 ID 와 제재 사유가 들어갑니다. 공개 저장소에 올리지 않습니다.
+MOOKI*/sanctions_data.json

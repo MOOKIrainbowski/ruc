@@ -2,7 +2,9 @@ package kr.rucserver.gate;
 
 import com.google.inject.Inject;
 import com.velocitypowered.api.event.EventTask;
+import com.velocitypowered.api.event.ResultedEvent;
 import com.velocitypowered.api.event.Subscribe;
+import com.velocitypowered.api.event.connection.LoginEvent;
 import com.velocitypowered.api.event.player.ServerPreConnectEvent;
 import com.velocitypowered.api.event.proxy.ProxyInitializeEvent;
 import com.velocitypowered.api.event.proxy.ProxyShutdownEvent;
@@ -18,7 +20,11 @@ import org.slf4j.Logger;
 
 import java.nio.file.Path;
 import java.sql.SQLException;
+import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
@@ -40,6 +46,15 @@ import java.util.concurrent.TimeUnit;
  * 막는 쪽(fail-closed)으로 갑니다. 잘못 들여보내면 영토 클레임과 그리핑처럼
  * 남는 피해가 생기고, 잘못 막으면 잠시 못 들어가는 것으로 끝납니다. 비대칭이
  * 분명하므로 안전한 쪽을 고릅니다.
+ *
+ * <h2>네트워크 밴 (Phase 6-7)</h2>
+ * 바닐라 {@code /ban} 은 백엔드 한 대에만 걸립니다. 약탈에서 밴해도 홈으로는
+ * 들어옵니다. 그래서 밴은 {@code ruc_sanction} 에 적고, <b>로그인 시점에
+ * 프록시가</b> 막습니다. 접속 중인 사람은 주기 갱신이 찾아서 끊습니다.
+ *
+ * 여기서는 반대로 <b>열어 두는 쪽(fail-open)</b>입니다. DB 를 못 읽을 때 전원을
+ * 막으면 그건 밴이 아니라 서버 정지입니다. 그때는 마지막으로 읽은 목록으로
+ * 판정합니다 — 이미 알던 밴은 계속 막힙니다.
  */
 @Plugin(
         id = "rucgate",
@@ -60,6 +75,10 @@ public class RucGate {
     private GateConfig config;
     private GateDatabase database;
     private ScheduledTask refreshTask;
+    private ScheduledTask banTask;
+
+    /** 걸려 있는 밴. DB 를 못 읽을 때 로그인 판정의 대체 수단이기도 합니다. */
+    private volatile Map<UUID, GateDatabase.Ban> bans = Map.of();
 
     /** 국가 소속원 캐시. 통과 판정을 즉시 하기 위한 것입니다. */
     private volatile Set<UUID> nationMembers = Set.of();
@@ -96,13 +115,19 @@ public class RucGate {
                 .repeat(seconds, TimeUnit.SECONDS)
                 .schedule();
 
-        logger.info("RucGate 활성화 — 제한 서버: {} / 갱신 {}초",
-                String.join(", ", config.gatedServers()), seconds);
+        long banSeconds = config.banRefreshSeconds();
+        banTask = proxy.getScheduler().buildTask(this, this::refreshBans)
+                .repeat(banSeconds, TimeUnit.SECONDS)
+                .schedule();
+
+        logger.info("RucGate 활성화 — 제한 서버: {} / 갱신 {}초 / 밴 확인 {}초",
+                String.join(", ", config.gatedServers()), seconds, banSeconds);
     }
 
     @Subscribe
     public void onProxyShutdown(ProxyShutdownEvent event) {
         if (refreshTask != null) refreshTask.cancel();
+        if (banTask != null) banTask.cancel();
         if (database != null) database.close();
         logger.info("RucGate 비활성화");
     }
@@ -134,6 +159,101 @@ public class RucGate {
             healthy = false;
             logger.warn("국가 소속원 목록을 읽지 못했습니다: {}", e.getMessage());
         }
+    }
+
+    // ── 네트워크 밴 (Phase 6-7) ─────────────────────────────────────────
+
+    /**
+     * 밴 목록을 다시 읽고, 접속 중인 사람 중 밴된 사람을 끊습니다.
+     *
+     * 디스코드에서 제재하면 봇은 백엔드 한 대에 RCON 을 보냅니다. 대상이 그
+     * 서버에 있으면 거기서 바로 킥되지만, 다른 서버에 있으면 이 갱신이 끊습니다.
+     */
+    private void refreshBans() {
+        GateDatabase db = database;
+        if (db == null || !db.sanctionReady()) return;   // 연결 복구는 refresh() 가 맡습니다
+
+        long now = System.currentTimeMillis();
+        try {
+            bans = db.activeBans(now);
+        } catch (SQLException e) {
+            logger.warn("밴 목록을 읽지 못했습니다: {}", e.getMessage());
+            return;
+        }
+
+        for (Player player : proxy.getAllPlayers()) {
+            GateDatabase.Ban ban = bans.get(player.getUniqueId());
+            if (ban == null || ban.until() <= now) continue;
+            player.disconnect(banMessage(ban));
+            logger.info("밴 대상 연결 종료: {} (#{})", player.getUsername(), ban.id());
+        }
+    }
+
+    /**
+     * 로그인 판정. 인증(모장) 이후라 UUID 가 확정된 상태입니다.
+     *
+     * 캐시가 아니라 DB 를 매번 봅니다 — 방금 풀린 사람이 캐시 때문에 막히거나,
+     * 방금 밴된 사람이 캐시 때문에 들어오면 안 됩니다. 로그인은 드물어서
+     * 쿼리 한 번은 싸게 먹힙니다.
+     */
+    @Subscribe
+    public EventTask onLogin(LoginEvent event) {
+        if (!event.getResult().isAllowed()) return null;
+        Player player = event.getPlayer();
+
+        return EventTask.async(() -> {
+            long now = System.currentTimeMillis();
+            GateDatabase.Ban ban = null;
+            boolean checked = false;
+
+            GateDatabase db = database;
+            if (db != null) {
+                try {
+                    ban = db.activeBan(player.getUniqueId(), now);
+                    checked = true;
+                } catch (SQLException e) {
+                    // 테이블이 아직 없는 경우(백엔드가 6-7 이전)도 여기로 옵니다.
+                    logger.warn("밴 확인 실패 ({}): {} — 마지막 목록으로 판정합니다",
+                            player.getUsername(), e.getMessage());
+                }
+            }
+            if (!checked) {
+                GateDatabase.Ban cached = bans.get(player.getUniqueId());
+                if (cached != null && cached.until() > now) ban = cached;
+            }
+
+            if (ban != null) {
+                event.setResult(ResultedEvent.ComponentResult.denied(banMessage(ban)));
+                logger.info("밴 대상 로그인 거부: {} (#{})", player.getUsername(), ban.id());
+            }
+        });
+    }
+
+    private static final DateTimeFormatter UNTIL_FORMAT =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
+
+    /** 사유는 사람이 쓴 글이라 색코드로 해석하지 않고 글자 그대로 끼웁니다. */
+    private Component banMessage(GateDatabase.Ban ban) {
+        String until;
+        if (ban.permanent()) {
+            until = "영구";
+        } else {
+            until = UNTIL_FORMAT.format(Instant.ofEpochMilli(ban.until())
+                    .atZone(ZoneId.of(config.timezone()))) + " 까지";
+        }
+
+        String template = config.messageBanned()
+                .replace("{tier}", String.valueOf(ban.tier()))
+                .replace("{id}", String.valueOf(ban.id()))
+                .replace("{until}", until);
+
+        String[] parts = template.split("\\{reason\\}", -1);
+        Component out = Component.empty();
+        for (int i = 0; i < parts.length; i++) {
+            if (i > 0) out = out.append(Component.text(ban.reason() == null ? "" : ban.reason()));
+            out = out.append(message(parts[i]));
+        }
+        return out;
     }
 
     /**

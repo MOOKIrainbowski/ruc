@@ -41,6 +41,8 @@ public class ReportService {
         this.repository = repository;
     }
 
+    public ReportRepository getRepository() { return repository; }
+
     // ── 설정 ───────────────────────────────────────────────────────────
 
     public boolean isEnabled() {

@@ -24,7 +24,8 @@ import java.util.UUID;
  *   <li>홈 서버가 내려가 있을 때도 입장 판정은 작동해야 합니다.</li>
  * </ul>
  *
- * 쓰기는 하지 않습니다 — 프록시는 판정만 합니다.
+ * 쓰기는 하지 않습니다 — 프록시는 판정만 합니다. 판정은 두 가지입니다:
+ * 국가전 입장(§2.6)과 네트워크 밴(Phase 6-7).
  */
 public class GateDatabase {
 
@@ -124,6 +125,76 @@ public class GateDatabase {
         } catch (SQLException e) {
             return false;
         }
+    }
+
+    // ── 제재 (Phase 6-7) ─────────────────────────────────────────────
+
+    /**
+     * 지금 걸려 있는 밴. 없으면 null.
+     *
+     * 여러 개가 겹치면 가장 늦게 끝나는 것을 돌려줍니다 — 안내에 "언제까지"
+     * 를 적는데, 짧은 쪽을 보여 주면 그 시각에 다시 들어와도 막힙니다.
+     */
+    public Ban activeBan(UUID uuid, long now) throws SQLException {
+        String sql = """
+                SELECT id, tier, reason, ban_until FROM ruc_sanction
+                WHERE target = ? AND revoked_at IS NULL AND ban_until > ?
+                ORDER BY ban_until DESC LIMIT 1
+                """;
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, uuid.toString());
+            ps.setLong(2, now);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? mapBan(rs) : null;
+            }
+        }
+    }
+
+    /** 지금 걸려 있는 밴 전체. 주기 갱신으로 접속 중인 사람을 끊는 데 씁니다. */
+    public java.util.Map<UUID, Ban> activeBans(long now) throws SQLException {
+        String sql = """
+                SELECT target, id, tier, reason, ban_until FROM ruc_sanction
+                WHERE revoked_at IS NULL AND ban_until > ?
+                """;
+        java.util.Map<UUID, Ban> out = new java.util.HashMap<>();
+        try (Connection conn = dataSource.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setLong(1, now);
+            try (ResultSet rs = ps.executeQuery()) {
+                while (rs.next()) {
+                    try {
+                        UUID target = UUID.fromString(rs.getString("target"));
+                        Ban ban = mapBan(rs);
+                        out.merge(target, ban, (a, b) -> a.until() >= b.until() ? a : b);
+                    } catch (IllegalArgumentException ignored) {
+                        // 손상된 행 하나가 전체를 못 쓰게 만들지 않도록 건너뜁니다.
+                    }
+                }
+            }
+        }
+        return out;
+    }
+
+    /** 제재 테이블이 있는가. 백엔드가 6-7 이전 버전이면 없습니다. */
+    public boolean sanctionReady() {
+        try (Connection conn = dataSource.getConnection();
+             Statement st = conn.createStatement()) {
+            st.executeQuery("SELECT 1 FROM ruc_sanction WHERE 1 = 0").close();
+            return true;
+        } catch (SQLException e) {
+            return false;
+        }
+    }
+
+    private Ban mapBan(ResultSet rs) throws SQLException {
+        return new Ban(rs.getLong("id"), rs.getInt("tier"),
+                rs.getString("reason"), rs.getLong("ban_until"));
+    }
+
+    /** {@code until == Long.MAX_VALUE} 면 영구입니다 (RucCore 의 SanctionRepository.PERMANENT). */
+    public record Ban(long id, int tier, String reason, long until) {
+        public boolean permanent() { return until == Long.MAX_VALUE; }
     }
 
     public void close() {

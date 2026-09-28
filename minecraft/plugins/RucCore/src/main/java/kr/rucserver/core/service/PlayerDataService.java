@@ -53,6 +53,12 @@ public class PlayerDataService {
                 return;
             }
 
+            // 다른 서버에 있을 때 걸린 제재의 몰수·평판 (Phase 6-7).
+            // 캐시에 넣기 전이어야 합니다 — SanctionService.applyPendingOnLoad 참고.
+            if (plugin.getSanctions() != null) {
+                plugin.getSanctions().applyPendingOnLoad(data);
+            }
+
             cache.put(uuid, data);
 
             if (afterLoad != null) {

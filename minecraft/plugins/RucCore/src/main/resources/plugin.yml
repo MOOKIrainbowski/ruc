@@ -108,6 +108,10 @@ commands:
     description: (콘솔/RCON 전용) 플레이어 기록 요약. 신고 처리에 씁니다.
     usage: /rucinfo <닉네임>
     permission: ruccore.admin
+  rucsanction:
+    description: (콘솔/RCON 전용) 디스코드 봇의 /제재 가 마크 쪽 제재를 기록·해제·조회합니다.
+    usage: /rucsanction <apply|revoke|history> ...
+    permission: ruccore.admin
   rucrelay:
     description: (콘솔/RCON 전용) 디스코드 발언을 인게임에 중계합니다.
     usage: /rucrelay <발신자> <내용...>

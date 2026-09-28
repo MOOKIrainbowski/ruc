@@ -79,6 +79,13 @@ public class GateConfig {
                 message.denied=&c[러크] &f국가에 소속되어야 국가전 서버에 들어갈 수 있습니다.
                 message.denied-hint=&7길드를 만들거나 가입해서 길드원 수를 채우면 국가가 됩니다. &f/길드
                 message.unavailable=&c[러크] &f국가 소속을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.
+
+                # ── 네트워크 밴 (Phase 6-7) ──
+                # 접속 중인 사람 중 밴된 사람을 찾아 끊는 주기 (초). 디스코드에서
+                # /제재 한 뒤 다른 서버에 있던 사람이 끊기기까지 최대 이만큼 걸립니다.
+                ban.refresh-seconds=10
+                # {tier} {id} {until} {reason} 을 채웁니다. 사유는 색코드로 해석하지 않습니다.
+                message.banned=&c[러크] 제재 {tier}단계 (#{id})\\n\\n&f기간: &7{until}\\n&f사유: &7{reason}\\n\\n&8이의가 있으면 디스코드에서 소명해 주세요.
                 """;
         try (OutputStream out = Files.newOutputStream(file)) {
             out.write(defaults.getBytes(StandardCharsets.UTF_8));
@@ -138,6 +145,23 @@ public class GateConfig {
     public String messageUnavailable() {
         return get("message.unavailable",
                 "&c[러크] &f국가 소속을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.");
+    }
+
+    // ── 밴 (Phase 6-7) ────────────────────────────────────────────────
+
+    public long banRefreshSeconds() {
+        return Math.max(5, getInt("ban.refresh-seconds", 10));
+    }
+
+    /** 이미 배포된 config.properties 에는 이 키가 없습니다 — 기본값이 그대로 쓰입니다. */
+    public String messageBanned() {
+        return get("message.banned",
+                "&c[러크] 제재 {tier}단계 (#{id})\n\n&f기간: &7{until}\n&f사유: &7{reason}"
+                        + "\n\n&8이의가 있으면 디스코드에서 소명해 주세요.");
+    }
+
+    public String timezone() {
+        return get("timezone", "Asia/Seoul");
     }
 
     // ── 내부 ──────────────────────────────────────────────────────────

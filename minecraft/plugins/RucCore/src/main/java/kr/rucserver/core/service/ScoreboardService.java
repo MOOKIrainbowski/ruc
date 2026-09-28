@@ -240,6 +240,7 @@ public class ScoreboardService {
         }
 
         public String key() { return key; }
+        public int minScore() { return minScore; }
         public String color() { return color; }
 
         public static ReputationTier of(int score) {
