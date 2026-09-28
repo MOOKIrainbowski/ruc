@@ -86,6 +86,20 @@ commands:
     usage: /titlegrant <닉네임> <칭호키> [source]
     aliases: [칭호부여]
     permission: ruccore.admin
+  report:
+    description: 플레이어를 신고합니다. 스태프가 확인 후 처리합니다.
+    usage: /신고 <닉네임> <사유>
+    aliases: [신고]
+  reporthandle:
+    description: (스태프) 신고를 확정하거나 기각합니다. 확정 시 평판이 내려갑니다.
+    usage: /신고처리 <번호> <확정|기각>
+    aliases: [신고처리]
+    permission: ruccore.admin
+  reportlist:
+    description: (스태프) 처리하지 않은 신고 목록.
+    usage: /신고목록
+    aliases: [신고목록]
+    permission: ruccore.admin
   rucinfo:
     description: (콘솔/RCON 전용) 플레이어 기록 요약. 신고 처리에 씁니다.
     usage: /rucinfo <닉네임>

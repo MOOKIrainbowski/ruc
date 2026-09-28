@@ -123,6 +123,17 @@ public class DiscordRelayService {
         return plugin.getConfig().getString("relay.webhook-url", "").trim();
     }
 
+    /**
+     * 신고 전용 웹훅.
+     *
+     * <b>중계 채널과 반드시 분리하세요.</b> 입퇴장과 채팅이 흐르는 채널에
+     * 신고가 섞이면 스태프가 놓칩니다. 비어 있으면 신고를 디스코드로 보내지
+     * 않고 인게임 알림만 갑니다 — 잘못된 채널로 보내는 것보다 낫습니다.
+     */
+    private String reportWebhook() {
+        return plugin.getConfig().getString("relay.report-webhook-url", "").trim();
+    }
+
     /** 시스템 알림용 웹훅. 비어 있으면 발언과 같은 채널로 갑니다. */
     private String systemWebhook() {
         String url = plugin.getConfig().getString("relay.system-webhook-url", "").trim();
@@ -267,6 +278,39 @@ public class DiscordRelayService {
         String text = PLAIN.serialize(deathMessage);
         if (text.isBlank()) text = player.getName() + " 님이 사망했습니다.";
         relaySystem("death", text, 0xff4444);
+    }
+
+    /**
+     * 신고를 스태프 채널로 (§3.8, Phase 6-5).
+     *
+     * 발언·시스템 알림과 다른 웹훅을 씁니다. 신고는 흘려보내면 안 되는
+     * 종류의 알림이라 채널이 달라야 합니다.
+     *
+     * 확정 이력이 있으면 같이 적습니다 — "처음인가 반복인가" 가 스태프 판단을
+     * 가장 크게 바꾸는 정보입니다.
+     */
+    public void relayReport(long id, String reporter, String target,
+                            String reason, String serverId, int priorConfirmed) {
+        String url = reportWebhook();
+        if (url.isEmpty()) return;
+
+        StringBuilder desc = new StringBuilder()
+                .append("**신고자** ").append(reporter).append("\n")
+                .append("**대상** ").append(target);
+        if (priorConfirmed > 0) {
+            desc.append("  ⚠️ **확정 이력 ").append(priorConfirmed).append("건**");
+        }
+        desc.append("\n**서버** ").append(serverId)
+                .append("\n\n").append(reason)
+                .append("\n\n`/신고처리 ").append(id).append(" 확정`  ·  ")
+                .append("`/신고처리 ").append(id).append(" 기각`");
+
+        String embed = "{\"title\":" + json("🚨 신고 #" + id)
+                + ",\"description\":" + json(desc.toString())
+                + ",\"color\":" + (priorConfirmed > 0 ? 0xff4444 : 0xffaa00) + "}";
+
+        enqueue(new Payload(url,
+                body(trim(serverLabel() + " 신고", NAME_LIMIT), null, null, embed)));
     }
 
     /**

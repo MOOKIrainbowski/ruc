@@ -86,6 +86,22 @@ function all() {
         .sort((a, b) => b.priority - a.priority);
 }
 
+/**
+ * 티켓·신고 채널을 볼 역할.
+ *
+ * <b>스태프 전원이 아닙니다.</b> Designer·Tester 는 스태프이지만 모든 문의와
+ * 신고를 볼 이유가 없습니다. 신고에는 다른 사람의 이름과 사정이 들어갑니다 —
+ * 볼 사람을 좁히는 것이 기본입니다.
+ *
+ * 설정에 없으면 빈 배열입니다. 그 경우 티켓 채널은 작성자와 봇만 보게 되고,
+ * Administrator 권한을 가진 사람(보통 Owner)은 권한 특성상 여전히 봅니다.
+ */
+function ticketRoles() {
+    const keys = get().ticketRoles;
+    if (!Array.isArray(keys)) return [];
+    return keys.map(byKey).filter(Boolean);
+}
+
 /** 인증 통과 시 부여할 역할. */
 function verifiedRole() {
     const key = get().verifiedRole;
@@ -307,7 +323,7 @@ async function handleRoleAudit(interaction) {
 }
 
 module.exports = {
-    load, get, byKey, byId, ofKind, all,
+    load, get, byKey, byId, ofKind, all, ticketRoles,
     roleAuditCommand, handleRoleAudit,
     verifiedRole, isStaff, isSeniorStaff, highest, highestRank,
     grantVerified, audit, titleMapping,

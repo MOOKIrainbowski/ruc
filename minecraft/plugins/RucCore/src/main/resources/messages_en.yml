@@ -153,6 +153,28 @@ menu:
 # ── Staff correction commands (OP only) ───────────────────────────────
 # /levelup and /ruc give open every progression gate.
 # Permission node: ruccore.admin (default: op)
+
+# ── Reports (Phase 6-5) ───────────────────────────────────────────────
+report:
+  usage: "&7Usage: &f/report <player> <reason>"
+  submitted: "&aReport submitted. &7(#%id% · target %player%)&r&a Staff will review it."
+  self: "&cYou cannot report yourself."
+  reason-too-short: "&cPlease describe it in more detail. Staff cannot investigate a short reason."
+  cooldown: "&cYou cannot report again yet. Try in &f%seconds%s&c."
+  disabled: "&7Reporting is disabled."
+  error: "&cSomething went wrong with your report. Please tell the staff."
+  penalized: "&cA report against you was confirmed. Reputation &f-%amount%&c. &7(now %reputation%)"
+
+  handle-usage: "&7Usage: &f/reporthandle <id> <confirm|reject>"
+  confirmed: "&aReport #%id% confirmed. &7%player%'s reputation went down."
+  rejected: "&7Report #%id% rejected. &8(%player% — reputation unchanged)"
+  not-found: "&cReport #%id% not found."
+  already-handled: "&eReport #%id% has already been handled."
+
+  list-empty: "&7No pending reports."
+  list-header: "&8&m        &r &cPending reports: %count% &8&m        "
+  list-entry: "&8 #%id% &f%reporter% &7→ &f%target% &8(%server%)&7: %reason%"
+
 # ── Titles (Phase 6) ──────────────────────────────────────────────────
 title:
   disabled: "&7Titles are disabled."

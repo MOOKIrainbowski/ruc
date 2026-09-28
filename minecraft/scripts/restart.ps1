@@ -100,6 +100,15 @@ function Stop-Backend($name) {
             Write-Host "  [$name] 접속자 $count 명이 있습니다." -ForegroundColor Yellow
             Write-Host "         $($list.Trim())" -ForegroundColor DarkGray
             if (-not $Force) {
+                # 자동화(스크립트·도구)에서 부르면 Read-Host 가 예외를 던집니다.
+                # 거기서 죽으면 나머지 서버까지 재시작이 중단되므로, 물어볼 수
+                # 없는 환경에서는 "안전한 쪽" = 건너뛰기 를 택합니다.
+                $interactive = $Host.UI.RawUI -and -not [Console]::IsInputRedirected
+                if (-not $interactive) {
+                    Write-Host "  [$name] 접속자가 있어 건너뜁니다. 강제하려면 -Force" -ForegroundColor Yellow
+                    return $false
+                }
+
                 $answer = Read-Host "         그래도 재시작할까요? (y/N)"
                 if ($answer -ne "y") {
                     Write-Host "  [$name] 건너뜁니다." -ForegroundColor DarkGray

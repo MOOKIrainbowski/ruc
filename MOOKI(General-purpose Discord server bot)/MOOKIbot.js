@@ -189,11 +189,14 @@ async function createTicketChannel(guild, member, type, title, description) {
 
     const category = await getOrCreateTicketCategory(guild);
 
-    // 스태프 역할은 config/roles.json 이 정합니다.
-    // 예전에는 이름이 'Staff' 이거나 ManageMessages 권한이 있는 역할을 찾았는데,
-    // 그러면 이름을 바꾸는 순간 티켓이 스태프에게 안 보이고, 권한만 있는
-    // 엉뚱한 역할(봇 역할 등)이 걸리기도 합니다.
-    const staffRoles = roles.ofKind('staff')
+    // 티켓을 볼 역할은 config/roles.json 의 ticketRoles 가 정합니다.
+    //
+    // 스태프 **전원**이 아닙니다. Designer·Tester 도 스태프이지만 모든 문의와
+    // 신고를 볼 이유가 없습니다 — 신고에는 다른 사람의 이름과 사정이 들어갑니다.
+    //
+    // (예전에는 이름이 'Staff' 이거나 ManageMessages 권한인 역할을 찾았습니다.
+    //  이름을 바꾸면 티켓이 안 보이고, 권한만 있는 엉뚱한 역할이 걸렸습니다.)
+    const staffRoles = roles.ticketRoles()
         .map(r => guild.roles.cache.get(r.id))
         .filter(Boolean);
     const staffRole = staffRoles[0] || null;

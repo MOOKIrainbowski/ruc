@@ -3,6 +3,7 @@ package kr.rucserver.core;
 import kr.rucserver.core.command.CoreCommands;
 import kr.rucserver.core.command.GuildAdminCommands;
 import kr.rucserver.core.command.GuildCommands;
+import kr.rucserver.core.command.ReportCommands;
 import kr.rucserver.core.command.TitleCommands;
 import kr.rucserver.core.listener.ChatListener;
 import kr.rucserver.core.listener.MenuListener;
@@ -17,6 +18,7 @@ import kr.rucserver.core.service.GuildService;
 import kr.rucserver.core.service.MailboxService;
 import kr.rucserver.core.service.MessageService;
 import kr.rucserver.core.service.PlayerDataService;
+import kr.rucserver.core.service.ReportService;
 import kr.rucserver.core.service.ScoreboardService;
 import kr.rucserver.core.service.TitleService;
 import kr.rucserver.core.service.TpaService;
@@ -27,6 +29,7 @@ import kr.rucserver.core.storage.GuildRepository;
 import kr.rucserver.core.storage.HomeRepository;
 import kr.rucserver.core.storage.MailboxRepository;
 import kr.rucserver.core.storage.PlayerRepository;
+import kr.rucserver.core.storage.ReportRepository;
 import kr.rucserver.core.storage.TitleRepository;
 import kr.rucserver.core.storage.VerificationRepository;
 import org.bukkit.GameRule;
@@ -56,6 +59,7 @@ public class RucCore extends JavaPlugin {
     private MailboxService mailbox;
     private TitleService titles;
     private DiscordRelayService relay;
+    private ReportService reports;
     private XpService xp;
     private ScoreboardService scoreboards;
     private TpaService tpa;
@@ -141,6 +145,17 @@ public class RucCore extends JavaPlugin {
         // 매핑은 각 서버 config.yml 의 webhook-url 하나로 끝납니다.
         relay = new DiscordRelayService(this);
 
+        // 신고 (Phase 6-5). 평판 하락의 입력이라 기록이 없으면 안 됩니다.
+        ReportRepository reportRepository = new ReportRepository(database);
+        try {
+            reportRepository.createSchema();
+        } catch (SQLException e) {
+            getLogger().log(Level.SEVERE, "신고 테이블 생성에 실패했습니다. 플러그인을 비활성화합니다.", e);
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        reports = new ReportService(this, reportRepository);
+
         // 프록시 통신과 메뉴는 4개 서버 공통이라 Core가 소유합니다.
         network = new NetworkService(this);
         network.start();
@@ -154,6 +169,7 @@ public class RucCore extends JavaPlugin {
         new GuildCommands(this, messages).register();
         new GuildAdminCommands(this).register();
         new TitleCommands(this, messages).register();
+        new ReportCommands(this, messages).register();
 
         applyGlobalRules();
         scoreboards.start();
@@ -225,6 +241,7 @@ public class RucCore extends JavaPlugin {
     public MailboxService getMailbox() { return mailbox; }
     public TitleService getTitles() { return titles; }
     public DiscordRelayService getRelay() { return relay; }
+    public ReportService getReports() { return reports; }
     public BonusRegistry getBonuses() { return bonuses; }
     public XpService getXp() { return xp; }
     public ScoreboardService getScoreboards() { return scoreboards; }

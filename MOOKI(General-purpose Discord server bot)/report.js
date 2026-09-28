@@ -116,7 +116,9 @@ const TIERS = {
     purple: { label: '보라 (경고)',   color: 0xAA00AA },
     blue:   { label: '파랑 (위험)',   color: 0x5555FF },
     indigo: { label: '남색 (심각)',   color: 0x000080 },
-    black:  { label: '검정 (최악)',   color: 0x1A1A1A },
+    // RucCore 의 ReputationTier 는 마지막 티어 key 가 'dark' 입니다.
+    // 'black' 으로 적어 두는 바람에 그 구간이 '알 수 없음' 으로 나왔습니다.
+    dark:   { label: '검정 (최악)',   color: 0x1A1A1A },
 };
 
 /** 조회 결과를 임베드 필드로. 조회 실패 시 그 사실을 적습니다. */

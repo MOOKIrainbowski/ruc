@@ -18,6 +18,9 @@
 
   "verifiedRole": "ruc",
 
+  "_ticketRoles": "티켓·신고 채널을 볼 수 있는 역할. 스태프 전원이 아니라 여기 적힌 역할만입니다. 여러 개를 적으면 전부 열립니다.",
+  "ticketRoles": ["manager"],
+
   "roles": {
     "owner": {
       "label": "Owner",
