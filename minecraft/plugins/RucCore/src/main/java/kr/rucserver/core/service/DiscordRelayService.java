@@ -1,8 +1,11 @@
 package kr.rucserver.core.service;
 
+import io.papermc.paper.advancement.AdvancementDisplay;
 import kr.rucserver.core.RucCore;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.serializer.plain.PlainTextComponentSerializer;
+import net.kyori.adventure.translation.GlobalTranslator;
+import org.bukkit.advancement.Advancement;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.scheduler.BukkitTask;
@@ -12,6 +15,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Locale;
 import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.atomic.AtomicLong;
@@ -180,10 +184,83 @@ public class DiscordRelayService {
         relaySystem("quit", "**" + player.getName() + "** 님이 퇴장했습니다.", 0x8a8a8a);
     }
 
-    public void relayAdvancement(Player player, String advancement) {
-        relaySystem("advancement",
-                "**" + player.getName() + "** 님이 발전 과제를 달성했습니다 — `"
-                        + advancement + "`", 0xffd166);
+    /**
+     * 발전 과제 달성.
+     *
+     * <h2>내부 키가 아니라 이름을 보냅니다</h2>
+     * 예전에는 {@code story/mine_diamond} 를 그대로 내보냈습니다. 플레이어에게
+     * 그건 아무 의미가 없는 문자열입니다. 게임에 표시되는 이름("Diamonds!")과
+     * 설명("다이아몬드를 획득하세요")이 그 자리에 와야 합니다.
+     *
+     * <h2>등급에 따라 문구와 색이 달라집니다</h2>
+     * 바닐라도 그렇게 합니다 — 일반(TASK)/목표(GOAL)/도전(CHALLENGE)은 채팅
+     * 문구가 서로 다르고 색도 다릅니다. 그 구분을 그대로 가져옵니다.
+     *
+     * <h2>조용한 과제는 보내지 않습니다</h2>
+     * {@code doesAnnounceToChat()} 이 false 인 것은 레시피 해금이나 숨은
+     * 과제입니다. 게임에서도 안 뜨는 것을 디스코드에만 뿌리면 도배가 됩니다.
+     */
+    public void relayAdvancement(Player player, Advancement advancement) {
+        if (!isEnabled()) return;
+
+        AdvancementDisplay display = advancement.getDisplay();
+        if (display == null || !display.doesAnnounceToChat()) return;
+
+        String name = translate(display.title());
+        // 번역을 못 찾으면 Adventure 가 키를 그대로 돌려줍니다
+        // ("advancements.story.mine_diamond.title"). 그건 내부 키를 보내던
+        // 예전과 다를 바 없으므로, 그때는 키에서 읽을 만한 이름을 만듭니다.
+        if (name.isBlank() || name.startsWith("advancements.")) {
+            name = humanize(advancement.getKey().getKey());
+        }
+
+        String verb = switch (display.frame()) {
+            case CHALLENGE -> "도전 과제를 완료했습니다";
+            case GOAL -> "목표를 달성했습니다";
+            default -> "발전 과제를 달성했습니다";
+        };
+
+        StringBuilder body = new StringBuilder()
+                .append("**").append(player.getName()).append("** 님이 ")
+                .append(verb).append("\n### ").append(name);
+
+        String detail = translate(display.description());
+        if (!detail.isBlank() && !detail.startsWith("advancements.")) {
+            body.append("\n").append(detail);
+        }
+
+        // 등급 색을 그대로 씁니다 — 게임에서 본 색과 같아야 같은 것으로 읽힙니다.
+        relaySystem("advancement", body.toString(), display.frame().color().value());
+    }
+
+    /**
+     * 번역 가능한 Component 를 평문으로.
+     *
+     * 서버에 등록된 번역(Paper 는 바닐라 en_us 를 들고 있습니다)으로 먼저
+     * 풀고, 없으면 키가 그대로 남습니다. 한국어 이름까지 나오게 하려면
+     * ko_kr 번역을 따로 등록해야 합니다 (9b 폴리싱 후보).
+     */
+    private String translate(Component component) {
+        if (component == null) return "";
+        return PLAIN.serialize(GlobalTranslator.render(component, Locale.getDefault()));
+    }
+
+    /**
+     * {@code story/mine_diamond} → {@code Mine Diamond}.
+     *
+     * 최후의 수단입니다. 번역도 없고 이름도 없을 때, 적어도 사람이 읽을 수
+     * 있는 형태로는 내보냅니다.
+     */
+    private static String humanize(String key) {
+        String tail = key.contains("/") ? key.substring(key.lastIndexOf('/') + 1) : key;
+        String[] words = tail.split("_");
+        StringBuilder sb = new StringBuilder(tail.length());
+        for (String word : words) {
+            if (word.isEmpty()) continue;
+            if (sb.length() > 0) sb.append(' ');
+            sb.append(Character.toUpperCase(word.charAt(0))).append(word.substring(1));
+        }
+        return sb.length() == 0 ? key : sb.toString();
     }
 
     public void relayDeath(Player player, Component deathMessage) {

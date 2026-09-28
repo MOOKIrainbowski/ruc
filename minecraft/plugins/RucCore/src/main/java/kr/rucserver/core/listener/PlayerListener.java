@@ -85,7 +85,13 @@ public class PlayerListener implements Listener {
         long amount = plugin.getConfig().getLong("xp.reward.advancement", 80);
         plugin.getXp().award(event.getPlayer(), amount, true);
 
-        plugin.getRelay().relayAdvancement(event.getPlayer(), key);
+        // 중계에는 Advancement 를 통째로 넘깁니다. 표시 이름·설명·등급을
+        // 꺼내는 것은 표현의 문제라 중계 쪽이 맡습니다.
+        //
+        // 경험치 판정(위의 recipes/ 걸러내기)은 건드리지 않았습니다.
+        // 중계는 doesAnnounceToChat() 으로 한 번 더 거르지만, 그 기준을
+        // 경험치에 적용하면 지금까지 경험치를 주던 과제가 조용히 바뀝니다.
+        plugin.getRelay().relayAdvancement(event.getPlayer(), event.getAdvancement());
     }
 
     /**
