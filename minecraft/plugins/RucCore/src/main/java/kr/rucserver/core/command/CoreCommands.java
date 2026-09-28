@@ -41,7 +41,7 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
         for (String name : List.of("tpa", "tpahere", "tpaccept", "tpdeny",
                 "tpcancel", "ruc", "level", "ruclang",
                 "verify", "verifyapprove", "rucverify", "rucxp", "menu", "levelup",
-                "mailbox", "mailsend", "rucrelay")) {
+                "mailbox", "mailsend", "rucrelay", "rucinfo")) {
             var command = plugin.getCommand(name);
             if (command == null) {
                 plugin.getLogger().warning("plugin.yml에 '" + name + "' 명령어가 없습니다.");
@@ -64,6 +64,10 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
 
         if (command.getName().equalsIgnoreCase("rucrelay")) {
             return handleRconRelay(sender, args);
+        }
+
+        if (command.getName().equalsIgnoreCase("rucinfo")) {
+            return handleRconInfo(sender, args);
         }
 
         // 스태프 보정 명령도 콘솔·RCON 에서 써야 합니다. 게임에 들어가지 못하는
@@ -563,6 +567,61 @@ public class CoreCommands implements CommandExecutor, TabCompleter {
 
         plugin.getRelay().broadcastFromDiscord(author, message);
         sender.sendMessage("RUCRELAY OK");
+        return true;
+    }
+
+    /**
+     * {@code /rucinfo <닉네임>} — 그 사람의 기록 요약. <b>RCON 전용.</b>
+     *
+     * <h2>왜 필요한가</h2>
+     * 신고(§3.8)가 들어왔을 때 스태프가 가장 먼저 알아야 하는 것은 "이 사람이
+     * 누구인가" 입니다. 처음 온 사람인지, 오래 한 사람인지, 평판이 어떤지,
+     * 인증은 했는지. 그걸 모르면 신고 하나하나를 맨손으로 조사해야 합니다.
+     *
+     * 봇이 이 명령으로 요약을 받아 신고 티켓에 붙입니다.
+     *
+     * <h2>응답 규격</h2>
+     * 다른 RCON 명령과 같이 <b>한 줄</b>입니다. 봇이 파싱하기 쉽게 key=value 로
+     * 잇습니다. 값에 공백이 들어갈 수 있는 것은 이름뿐이라 맨 뒤에 둡니다.
+     *
+     * <pre>
+     * RUCINFO OK uuid=... level=12 rep=100 tier=red verified=y discord=123 kills=3 deaths=1 first=1790... last=1790... name=M02ki
+     * RUCINFO NOT_FOUND
+     * </pre>
+     */
+    private boolean handleRconInfo(CommandSender sender, String[] args) {
+        if (sender instanceof Player) {
+            sender.sendMessage("이 명령어는 콘솔에서만 사용할 수 있습니다.");
+            return true;
+        }
+        if (args.length < 1) {
+            sender.sendMessage("RUCINFO ERROR usage: /rucinfo <닉네임>");
+            return true;
+        }
+
+        // RCON 은 동기 응답을 기대합니다. 인덱스가 걸린 단건 조회라 짧습니다
+        // (rucverify · ructitle 과 같은 판단).
+        RucPlayer data = lookup(args[0]);
+        if (data == null) {
+            sender.sendMessage("RUCINFO NOT_FOUND");
+            return true;
+        }
+
+        var tier = kr.rucserver.core.service.ScoreboardService.ReputationTier
+                .of(data.getReputation());
+
+        sender.sendMessage("RUCINFO OK"
+                + " uuid=" + data.getUuid()
+                + " level=" + data.getLevel()
+                + " rep=" + data.getReputation()
+                + " tier=" + tier.key()
+                + " verified=" + (data.isVerified() ? "y" : "n")
+                + " discord=" + (data.getDiscordId() == null ? "-" : data.getDiscordId())
+                + " kills=" + data.getKills()
+                + " deaths=" + data.getDeaths()
+                + " first=" + data.getFirstJoin()
+                + " last=" + data.getLastSeen()
+                + " name=" + data.getName());
         return true;
     }
 

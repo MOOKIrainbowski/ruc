@@ -15,6 +15,7 @@ const titles = require('./titles');
 const relay = require('./relay');
 const roles = require('./roles');
 const minecraft = require('./minecraft');
+const report = require('./report');
 
 const REACTION_FILE = path.join(__dirname, 'reaction_roles.json');
 const ECONOMY_FILE  = path.join(__dirname, 'economy_data.json');
@@ -188,7 +189,14 @@ async function createTicketChannel(guild, member, type, title, description) {
 
     const category = await getOrCreateTicketCategory(guild);
 
-    const staffRole = guild.roles.cache.find(r => r.name === 'Staff' || r.name === '스태프' || r.permissions.has(PermissionsBitField.Flags.ManageMessages));
+    // 스태프 역할은 config/roles.json 이 정합니다.
+    // 예전에는 이름이 'Staff' 이거나 ManageMessages 권한이 있는 역할을 찾았는데,
+    // 그러면 이름을 바꾸는 순간 티켓이 스태프에게 안 보이고, 권한만 있는
+    // 엉뚱한 역할(봇 역할 등)이 걸리기도 합니다.
+    const staffRoles = roles.ofKind('staff')
+        .map(r => guild.roles.cache.get(r.id))
+        .filter(Boolean);
+    const staffRole = staffRoles[0] || null;
 
     const channel = await guild.channels.create({
         name: channelName,
@@ -198,7 +206,12 @@ async function createTicketChannel(guild, member, type, title, description) {
             { id: guild.roles.everyone, deny: [PermissionsBitField.Flags.ViewChannel] },
             { id: member.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] },
             { id: client.user.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ManageChannels, PermissionsBitField.Flags.ReadMessageHistory] },
-            ...(staffRole ? [{ id: staffRole.id, allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory] }] : []),
+            // 스태프 역할 전부에 열어 줍니다. 하나만 열면 나머지 스태프는
+            // 티켓을 볼 수 없습니다.
+            ...staffRoles.map(r => ({
+                id: r.id,
+                allow: [PermissionsBitField.Flags.ViewChannel, PermissionsBitField.Flags.SendMessages, PermissionsBitField.Flags.ReadMessageHistory],
+            })),
         ]
     });
 
@@ -394,6 +407,10 @@ client.once(Events.ClientReady, async () => {
         // 마크 서버 상태 · 역할 설정 점검
         minecraft.statusCommand,
         roles.roleAuditCommand,
+
+        // 신고 폼 (§3.8)
+        new SlashCommandBuilder().setName('신고')
+            .setDescription('플레이어를 신고합니다. 가해자·발생 시각·사유를 입력합니다.'),
     ];
 
     try {
@@ -475,6 +492,11 @@ client.on('interactionCreate', async interaction => {
 
             if (commandName === '역할점검') {
                 await roles.handleRoleAudit(interaction);
+                return;
+            }
+
+            if (commandName === '신고') {
+                await interaction.showModal(report.buildModal());
                 return;
             }
 
@@ -720,6 +742,13 @@ client.on('interactionCreate', async interaction => {
             // ── 티켓 유형 선택 버튼 ─────────────────────────────────
             if (customId.startsWith('ticket_type_')) {
                 const type = customId.replace('ticket_type_', '');
+
+                // 신고는 전용 폼을 씁니다 (§3.8 — 가해자·시각·사유).
+                // 제목+내용만 받으면 "누가 욕했어요" 로 끝나서 조사가 안 됩니다.
+                if (type === 'report') {
+                    return interaction.showModal(report.buildModal());
+                }
+
                 const modal = new ModalBuilder().setCustomId(`modal_ticket_${type}`).setTitle(`${TICKET_TYPES[type]} 티켓 생성`);
                 modal.addComponents(
                     new ActionRowBuilder().addComponents(
@@ -826,6 +855,11 @@ client.on('interactionCreate', async interaction => {
         else if (interaction.type === InteractionType.ModalSubmit) {
 
             // ── 티켓 생성 모달 (버튼 경유 방식 — 하위 호환 유지) ────
+            if (interaction.customId === 'modal_report') {
+                await report.handleSubmit(interaction, createTicketChannel);
+                return;
+            }
+
             if (interaction.customId.startsWith('modal_ticket_') && interaction.customId !== 'modal_ticket_direct') {
                 const type  = interaction.customId.replace('modal_ticket_', '');
                 const title = interaction.fields.getTextInputValue('ticket_title');
