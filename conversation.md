@@ -8,7 +8,8 @@
 >
 > **Phase 6 (디스코드) 완료** — 6-0 ~ 6-8. 6-8 에서 경제 미니게임을 지웠고
 > Q4 는 "잔고 이관 안 함" 으로 닫혔습니다 (§6.45).
-> 다음은 **9a 런칭 전제 조건** — MySQL 전환 · 백업 자동화 · 보안 체크리스트.
+> **9a 진행 중** — 백업 자동화 ✅ · RCON 비밀번호 교체 ✅ (§6.46).
+> MySQL 전환 · 부하 테스트는 **호스팅으로 옮길 때** 합니다 (2026-09-29 결정).
 >
 > 소유자 작업: 역할 ID · 웹훅 URL · RCON 비밀번호는 **끝났습니다**.
 > 남은 것은 `/평판역할설정` 실행과 신고 채널 웹훅뿐입니다 (§13).
@@ -53,7 +54,7 @@
 | 6-6 | **평판 → 디스코드 역할** | ✅ 구현 완료 (`/평판역할설정` 실행 대기) |
 | 6-7 | **제재 티어** (`sanction.js` + `/rucsanction` + RucGate 밴) | ✅ 구현 완료 (봇 재시작·디스코드 검증 대기) |
 | 6-8 | MOOKI 경제 미니게임 제거 | ✅ 완료 (Q4 — 이관 안 함) |
-| **9a** | 런칭 전제 조건 (MySQL·백업·보안) | ⬜ **다음** |
+| **9a** | 런칭 전제 조건 | 🟡 백업·보안 ✅ / MySQL·부하 테스트는 호스팅 이전 때 |
 | 7 | 평판 · 신고 · 제재 | ⬜ 런칭 + 디스코드 안정화 후 |
 | 10 | **유저 상점** | ⬜ 런칭 후 (우편함 위에 섭니다) |
 | 8 | 수익화 (+ 유료 칭호) | ⬜ 런칭 후 (Q5 미해결) |
@@ -177,8 +178,9 @@ con.js 25577 "save-all flush" "stop"
 > 2026-09-28 세션에서 소유자가 테스트 중인 것을 모르고 재시작해 튕긴 일이
 > 있었습니다.
 
-종료는 각 콘솔에 `stop`, 또는 RCON 으로 보냅니다. RCON 비밀번호는 로컬 개발용
-`ruc-<서버이름>-local-dev` 입니다 (예: `ruc-raid-local-dev`).
+종료는 각 콘솔에 `stop`, 또는 RCON 으로 보냅니다. RCON 비밀번호는 서버마다 다른
+무작위 24자이고 **각 서버의 `server.properties` 에만** 있습니다 (gitignore).
+`rcon.js` 가 거기서 읽습니다. 봇은 `.env` 의 `RUC_RCON_PW` (= home 의 값) 를 씁니다.
 **운영 전에 반드시 바꾸거나 RCON 을 끄세요.**
 
 ### 빌드
@@ -996,6 +998,34 @@ Q4 의 원래 결정은 "통합(디스코드 잔고 → 인게임 Ruc)" 이었�
   부르지 않습니다. 인게임 Ruc·평판·레벨 카드로 되살릴 때 호출부만 쓰면 됩니다
 - 이제 "Ruc" 는 **인게임 화폐 하나뿐**입니다. §4 의 이름 충돌이 사라졌습니다
 
+### 6.46 백업과 RCON 비밀번호 (Phase 9a, 2026-09-29)
+
+**백업** — `minecraft/scripts/backup.ps1`, 작업 스케줄러 `RucServerBackup` 가
+**매일 05:00** 에 돌립니다 (PC 가 꺼져 있었으면 켜진 뒤 바로). 저장 위치는
+`%USERPROFILE%\OneDrive\RucBackups` — OneDrive 가 PC 밖으로 사본을 올립니다. 14개 보관.
+
+- 켜진 서버는 `save-off` → `save-all flush` → 복사 → **`save-on` (finally)**.
+  save-on 을 빠뜨리면 그 뒤로 월드가 저장되지 않습니다
+- DB 는 `DbDump.java` 로 SQL 덤프를 뜹니다. 서버가 파일을 잡고 있으면 H2 가
+  원격 연결이 되고, 원격에서는 `BACKUP TO` · `SCRIPT TO` 가 **Feature not supported**
+  입니다. `SCRIPT` 를 질의로 돌려 받은 행을 이쪽에서 씁니다
+- zip 항목 이름을 **`/` 로 직접 넣습니다.** PS 5.1 의 `CreateFromDirectory` 는 `\` 를 넣어서
+  리눅스에서 풀면 폴더가 아니라 `db\ruc-h2.sql` 이라는 파일 하나가 됩니다
+- `.env`(토큰)는 담지 않습니다
+- **복원을 실제로 해 봤습니다** — 덤프를 빈 DB 에 넣고 플레이어·제재·우편·칭호 수,
+  Ruc·평판 합계가 운영 DB 와 **일치**
+
+복원 순서: 서버 전부 끄기 → `worlds\<서버>\*` 를 각 서버 폴더로 → 빈 DB 에
+`java -cp RucCore.jar org.h2.tools.RunScript -url <config 와 같은 URL> -user sa -script db\ruc-h2.sql`.
+
+**MySQL 로 옮기면** DB 부분을 `mysqldump` 로 바꾸고, 호스팅(리눅스)에서는 이 스크립트
+대신 cron 을 씁니다 (`05-HOSTING.md` §4.6).
+
+**RCON 비밀번호** — 옛 규칙 `ruc-<서버>-local-dev` 가 이 문서와 `rcon.js` 에 적혀
+**공개 저장소**에 올라가 있었습니다. 4개 서버 모두 무작위 24자로 바꿨고, 값은
+각 `server.properties` 에만 있습니다. `rcon.js` · `restart.ps1` · `backup.ps1` 은
+전부 거기서 읽으므로 비밀번호를 다시 바꿔도 스크립트는 고칠 필요가 없습니다.
+
 ### 6.43 기동 완료를 로그로 판단하지 마세요 — 포트를 보세요
 
 `restart.ps1` 첫 판이 "재시작 완료" 라고 해놓고 상태는 `꺼짐` 으로 나왔습니다.
@@ -1406,16 +1436,21 @@ Q2(버전 = Java 판 1.21.x 안정), Q3(JDK 21 설치됨), Q6(맵은 직접 생�
 
 ## 11. 보안 체크리스트 (운영 전환 전)
 
-- [ ] RCON 비밀번호 4개 전부 변경 또는 `enable-rcon=false`
-- [ ] `minecraft/proxy/forwarding.secret` 유출 여부 확인 (gitignore 되어 있음)
-- [ ] `MOOKI(...)/.env` 의 디스코드 토큰 — git 에 올라간 적 없는지 재확인
-- [ ] 방화벽에서 **25565 만** 개방. 25566~25569 는 절대 열지 말 것
+> **2026-09-29 점검** — 저장소가 **공개**(github.com/MOOKIrainbowski/ruc)입니다.
+> 커밋 전체(`git log --all -p`)에서 웹훅 URL · 디스코드 토큰 **0건** 확인.
+
+- [x] RCON 비밀번호 4개 전부 변경 — 무작위 24자 (§6.46). 옛 규칙은 공개 저장소에 있었습니다
+- [x] `minecraft/proxy/forwarding.secret` — 커밋된 적 없음, gitignore
+- [x] `MOOKI(...)/.env` 의 디스코드 토큰 — 커밋된 적 없음, gitignore
+- [x] `proxy/plugins/rucgate/config.properties` — 커밋된 적 없음, gitignore
+- [x] 백엔드 게임 포트·RCON 은 `127.0.0.1` 에만 열려 있음 (`netstat` 확인). 외부에 열린 것은 프록시 25565 뿐
+- [ ] 방화벽에서 **25565 만** 개방 — **호스팅에서** 설정. 25566~25579 는 절대 열지 말 것
 - [ ] `database.type` 을 `mysql` 로 전환 — **4개 서버 + `proxy/plugins/rucgate/config.properties`
       다섯 곳을 모두** 바꿔야 합니다. 게이트만 H2 로 남으면 국가 소속을 못 읽어
       국가전 입장이 전원 거부됩니다 (fail-closed).
 - [ ] **`proxy/plugins/rucgate/config.properties`** — 운영에서 MySQL 비밀번호가 들어갑니다.
-      새로 생긴 비밀 파일이므로 `.gitignore` 와 파일 권한을 확인하세요.
-- [ ] `online-mode = true` (프록시) 유지 — false 로 두면 UUID 위조로 D10 인증이
+      호스팅에서 파일 권한(600)을 확인하세요.
+- [x] `online-mode = true` (프록시) 유지 — false 로 두면 UUID 위조로 D10 인증이
       통째로 무력화됩니다
 
 ---
@@ -1428,9 +1463,9 @@ Q2(버전 = Java 판 1.21.x 안정), Q3(JDK 21 설치됨), Q6(맵은 직접 생�
 - `login2.js` — 백엔드 직접 로그인 시도. 프록시 우회가 막혔는지 검증
 - `nbt.js` / `render.js` / `elevation.js` / `holecheck.js` / `census.js` —
   맵 렌더링·검증 도구 일체 (직접 만든 NBT/region 파서 + PNG 인코더)
-- `rcon.js` — Source RCON 클라이언트. `node rcon.js <포트> "<명령>" ...`
-  (2026-09-27 세션에서 다시 만들었습니다. 포트로 비밀번호를 역산합니다:
-  25576=home / 25577=raid / 25578=war / 25579=peace)
+- `rcon.js` — **이제 저장소에 있습니다** (`minecraft/scripts/rcon.js`).
+  `node rcon.js <포트> "<명령>" ...` — 25576=home / 25577=raid / 25578=war / 25579=peace.
+  비밀번호는 그 서버의 `server.properties` 에서 읽습니다 (`RCON_PASSWORD` 환경변수로 덮기 가능)
   콘솔에서 되는 명령은 전부 이걸로 검증할 수 있습니다. **비동기 결과는 응답에
   실려 오지 않습니다** — 시즌 정산처럼 콜백으로 끝나는 명령은 서버 로그를 봐야 합니다.
 - `Db.java` — H2 조회·수정. `java -cp <h2.jar> -Dstdout.encoding=UTF-8 Db.java "<SQL>" ...`
@@ -1491,7 +1526,7 @@ paper-api jar (Material 확인용):
 > | **신고 채널 웹훅** | ⬜ **남음** — 6-5 의 디스코드 알림 (§13.5) |
 > | `RUC_RELAY_CHANNELS` | ➖ **안 함** (2026-09-29 결정) — 디스코드 → 인게임 중계는 만들지 않습니다. 인게임 → 디스코드만 씁니다 |
 > | RUSTcraft_manage 토큰 | ➖ 그 봇은 폐기됨 — 조치 불필요 |
-> | **MOOKI 재시작** (6-7 명령 등록) | ⬜ 남음 |
+> | **`.env` 의 `RUC_RCON_PW` 갱신** (2026-09-29 교체) | ⬜ **남음** — `servers/home/server.properties` 의 `rcon.password=` 값을 복사. 안 하면 봇의 인증·칭호·신고 조회·제재가 전부 실패합니다 |
 > | `.env` 제재 채널 | ✅ 완료 — 로그·승인 모두 `#제재로그` (비공개) |
 > | 봇 역할 위치 | ✅ 완료 — `RUC Bot` 이 Manager 바로 아래 (등급 역할 전부보다 위) |
 > | `LOG_CHANNEL_ID` | ⬜ 비어 있음 — 보안 로그가 공개 채널 `#✅ㅣ인증` 으로 갑니다. 비공개 채널 권장 |
@@ -1609,7 +1644,6 @@ display: "<gradient:#ffd166:#ff6b6b><bold>[ 수장 ]</bold></gradient>"
 - [ ] **GitHub 저장소 + Vercel 배포** — `web/README.md` 에 절차 있음
 - [ ] **Q5 결정** — 결제 수단 + 한국 통신판매업 신고 (Phase 8 전체)
 - [ ] **Q1 결정** — 호스팅 (실제 운영 배포)
-- [ ] §11 보안 체크리스트 — RCON 비밀번호가 아직 `ruc-<서버>-local-dev` 입니다
 
 ---
 
