@@ -111,3 +111,6 @@ mapfile/
 
 # 제재 기록 (Phase 6-7) — 디스코드 ID 와 제재 사유가 들어갑니다. 공개 저장소에 올리지 않습니다.
 MOOKI*/sanctions_data.json
+
+# 경제 미니게임 제거 (Phase 6-8) — 봇이 더는 쓰지 않습니다. 백업은 docs/backup/
+MOOKI*/economy_data.json

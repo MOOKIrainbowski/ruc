@@ -1,11 +1,10 @@
 const {
     Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
     SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField,
-    ChannelType, InteractionType, AttachmentBuilder, Events, MessageFlags
+    ChannelType, InteractionType, Events, MessageFlags
 } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
-const { createCanvas, loadImage } = require('@napi-rs/canvas');
 
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
@@ -20,7 +19,6 @@ const reputation = require('./reputation');
 const sanction = require('./sanction');
 
 const REACTION_FILE = path.join(__dirname, 'reaction_roles.json');
-const ECONOMY_FILE  = path.join(__dirname, 'economy_data.json');
 const TICKETS_FILE  = path.join(__dirname, 'tickets_data.json');
 
 const GUILD_ID   = process.env.GUILD_ID;
@@ -93,11 +91,9 @@ function saveJSON(filePath, data) {
 }
 
 let reactionRoles = loadJSON(REACTION_FILE, {});
-let economyData   = loadJSON(ECONOMY_FILE, { users: {}, companies: {}, market_index: 100 });
 let ticketsData   = loadJSON(TICKETS_FILE, { tickets: {}, counter: 0 });
 
 function saveTickets() { saveJSON(TICKETS_FILE, ticketsData); }
-function saveEconomyData(data) { saveJSON(ECONOMY_FILE, data); }
 
 // ─── 보안 모듈 (Security Module) ───────────────────────────────────────────────
 
@@ -279,43 +275,6 @@ async function closeTicket(ticketId, closedBy, guild) {
     } catch { /* channel already deleted */ }
 }
 
-// ─── 경제 유틸 ─────────────────────────────────────────────────────────────────
-
-function calculateInflationMultiplier() {
-    const total = Object.values(economyData.users).reduce((acc, u) => acc + (u.money || 0), 0);
-    return Math.max(1.0, 1.0 + total / 1000000);
-}
-
-function generateTextChart(history) {
-    if (!history || history.length === 0) return '데이터 없음';
-    const max = Math.max(...history);
-    const min = Math.min(...history);
-    const range = max - min || 1;
-    const height = 5;
-    let chart = '```\n';
-    for (let h = height; h >= 0; h--) {
-        let line = `${Math.floor(min + range * h / height).toString().padStart(6)} | `;
-        for (const val of history) {
-            const level = Math.round(((val - min) / range) * height);
-            line += level === h ? '● ' : '  ';
-        }
-        chart += line + '\n';
-    }
-    chart += '       └' + '─'.repeat(history.length * 2) + '\n```';
-    return chart;
-}
-
-function updateStockPrice(companyName) {
-    const company = economyData.companies[companyName];
-    if (!company?.history) return null;
-    const change = (Math.random() * 0.1) - 0.05;
-    company.stockPrice = Math.max(1, Math.floor(company.stockPrice * (1 + change)));
-    company.history.push(company.stockPrice);
-    if (company.history.length > 10) company.history.shift();
-    saveEconomyData(economyData);
-    return company.stockPrice;
-}
-
 // ─── 임베드 빌더 유틸 ──────────────────────────────────────────────────────────
 
 function createEmbedButtons() {
@@ -381,27 +340,6 @@ client.once(Events.ClientReady, async () => {
 
         // 티켓 명령어
         new SlashCommandBuilder().setName('ticket').setDescription('문의/신고/건의 티켓을 즉시 생성합니다.'),
-
-        // 경제 명령어
-        new SlashCommandBuilder().setName('가입').setDescription('경제 시스템에 가입합니다.'),
-        new SlashCommandBuilder().setName('탈퇴').setDescription('경제 시스템에서 탈퇴합니다.'),
-        new SlashCommandBuilder().setName('출석체크').setDescription('일일 보상을 받습니다.'),
-        new SlashCommandBuilder().setName('주식').setDescription('기업 주가 정보를 확인합니다.')
-            .addStringOption(o => o.setName('기업명').setDescription('기업 이름').setRequired(true)),
-        new SlashCommandBuilder().setName('랭크').setDescription('자산 순위를 확인합니다.'),
-        new SlashCommandBuilder().setName('인벤토리').setDescription('보유 아이템을 확인합니다.'),
-        new SlashCommandBuilder().setName('재화').setDescription('보유 자산을 확인합니다.'),
-        new SlashCommandBuilder().setName('창업').setDescription('새로운 기업을 창업합니다.')
-            .addStringOption(o => o.setName('기업명').setDescription('기업 이름').setRequired(true)),
-        new SlashCommandBuilder().setName('상장').setDescription('기업을 주식 시장에 상장합니다.')
-            .addStringOption(o => o.setName('기업명').setDescription('기업 이름').setRequired(true)),
-        new SlashCommandBuilder().setName('인수').setDescription('타 기업을 인수합니다.')
-            .addStringOption(o => o.setName('기업명').setDescription('기업 이름').setRequired(true)),
-        new SlashCommandBuilder().setName('ruc지급').setDescription('관리자가 특정 유저에게 RUC를 지급합니다.')
-            .addUserOption(o => o.setName('유저').setDescription('지급할 유저').setRequired(true))
-            .addIntegerOption(o => o.setName('금액').setDescription('지급할 RUC 금액').setRequired(true)),
-        new SlashCommandBuilder().setName('프로필').setDescription('경제 프로필 카드를 생성합니다.')
-            .addUserOption(o => o.setName('유저').setDescription('프로필을 볼 유저 (선택)').setRequired(false)),
 
         // 디스코드 ↔ 마크 계정 인증 (D10)
         verifyCommand,
@@ -488,8 +426,7 @@ client.on('interactionCreate', async interaction => {
         // 1. 슬래시 명령어
         // ═══════════════════════════════════════════════════════════
         if (interaction.isChatInputCommand()) {
-            const { commandName, user } = interaction;
-            const userId = user.id;
+            const { commandName } = interaction;
 
             // ── 티켓 명령어 ──────────────────────────────────────────
             if (commandName === '인증') {
@@ -600,153 +537,15 @@ client.on('interactionCreate', async interaction => {
                 return interaction.showModal(modal);
             }
 
-            // ── 경제 시스템 명령어 ────────────────────────────────────
-            const requiresJoin = ['출석체크','주식','랭크','인벤토리','재화','창업','상장','인수','프로필'];
-            if (requiresJoin.includes(commandName) && !economyData.users[userId]) {
-                return interaction.reply({ content: '❌ `/가입` 먼저 해주세요.', flags: MessageFlags.Ephemeral });
-            }
-
-            if (commandName === '가입') {
-                if (economyData.users[userId]) return interaction.reply({ content: '❌ 이미 가입되어 있습니다.', flags: MessageFlags.Ephemeral });
-                economyData.users[userId] = { money: 1000, inventory: [], companies: [], lastCheckIn: 0, streak: 0 };
-                saveEconomyData(economyData);
-                return interaction.reply({ content: `✅ **${user.username}**님 가입 완료! (지원금: 1,000 RUC)` });
-            }
-            if (commandName === '탈퇴') {
-                if (!economyData.users[userId]) return interaction.reply({ content: '❌ 가입 정보가 없습니다.', flags: MessageFlags.Ephemeral });
-                delete economyData.users[userId];
-                saveEconomyData(economyData);
-                return interaction.reply({ content: '✅ 탈퇴 완료.' });
-            }
-            if (commandName === '출석체크') {
-                const u = economyData.users[userId];
-                const now = Date.now();
-                if (now - u.lastCheckIn < 86400000) return interaction.reply({ content: '⏳ 24시간 후에 다시 출석해주세요.', flags: MessageFlags.Ephemeral });
-                u.streak = (now - u.lastCheckIn < 172800000) ? u.streak + 1 : 1;
-                u.lastCheckIn = now;
-                const reward = Math.floor(100 * calculateInflationMultiplier() * (1 + Math.min(u.streak * 0.1, 2)));
-                u.money += reward;
-                saveEconomyData(economyData);
-                return interaction.reply({ content: `📅 출석 완료! **+${reward} RUC** (연속 ${u.streak}일)` });
-            }
-            if (commandName === '재화') {
-                const m = economyData.users[userId].money;
-                try {
-                    await user.send(`\`\`\`txt\n[ ${user.username}님의 자산 정보 ]\n\n💵 보유 RUC: ${m.toLocaleString()} RUC\n\`\`\``);
-                    return interaction.reply({ content: '✅ DM으로 재화 정보를 보냈습니다.', flags: MessageFlags.Ephemeral });
-                } catch { return interaction.reply({ content: '❌ DM을 보낼 수 없습니다. DM을 열어주세요.', flags: MessageFlags.Ephemeral }); }
-            }
-            if (commandName === '인벤토리') {
-                const items = economyData.users[userId].inventory;
-                const invText = items.length > 0 ? items.map(i => `- ${i}`).join('\n') : '(비어있음)';
-                try {
-                    await user.send(`\`\`\`txt\n[ ${user.username}님의 인벤토리 ]\n\n${invText}\n\`\`\``);
-                    return interaction.reply({ content: '✅ DM으로 인벤토리를 보냈습니다.', flags: MessageFlags.Ephemeral });
-                } catch { return interaction.reply({ content: '❌ DM을 보낼 수 없습니다.', flags: MessageFlags.Ephemeral }); }
-            }
-            if (commandName === '랭크') {
-                const list = Object.entries(economyData.users).sort(([, a], [, b]) => b.money - a.money);
-                const top10 = list.slice(0, 10);
-                const myRank = list.findIndex(([id]) => id === userId);
-                const embed = new EmbedBuilder()
-                    .setTitle('🏆 MOOKI 서버 부자 랭킹 (TOP 10)')
-                    .setColor('Gold')
-                    .setDescription(top10.map(([id, d], i) => `**#${i + 1}** <@${id}> : \`${d.money.toLocaleString()} RUC\``).join('\n') || '데이터 없음')
-                    .setFooter({ text: `${user.username}님의 순위: ${myRank >= 0 ? myRank + 1 : '?'}위`, iconURL: user.displayAvatarURL() });
-                return interaction.reply({ embeds: [embed] });
-            }
-            if (commandName === '창업') {
-                const name = interaction.options.getString('기업명');
-                if (economyData.companies[name]) return interaction.reply({ content: '❌ 이미 존재하는 기업명입니다.', flags: MessageFlags.Ephemeral });
-                if (economyData.users[userId].money < 5000) return interaction.reply({ content: '❌ 5,000 RUC이 필요합니다.', flags: MessageFlags.Ephemeral });
-                economyData.users[userId].money -= 5000;
-                economyData.companies[name] = { owner: userId, stockPrice: 100, history: [100], isPublic: false };
-                economyData.users[userId].companies = economyData.users[userId].companies || [];
-                economyData.users[userId].companies.push(name);
-                saveEconomyData(economyData);
-                return interaction.reply({ content: `🏢 **${name}** 창업 완료! (-5,000 RUC)` });
-            }
-            if (commandName === '상장') {
-                const name = interaction.options.getString('기업명');
-                const comp = economyData.companies[name];
-                if (!comp || comp.owner !== userId) return interaction.reply({ content: '❌ 권한이 없거나 존재하지 않는 기업입니다.', flags: MessageFlags.Ephemeral });
-                comp.isPublic = true;
-                saveEconomyData(economyData);
-                return interaction.reply({ content: `📈 **${name}** 상장 완료!` });
-            }
-            if (commandName === '주식') {
-                const name = interaction.options.getString('기업명');
-                const comp = economyData.companies[name];
-                if (!comp?.isPublic) return interaction.reply({ content: '❌ 찾을 수 없거나 비상장 기업입니다.', flags: MessageFlags.Ephemeral });
-                const price = updateStockPrice(name);
-                return interaction.reply({ embeds: [new EmbedBuilder().setTitle(`📊 ${name} 주가`).setDescription(`현재 가격: **${price} RUC**\n${generateTextChart(comp.history)}`).setColor(0x00CC88)] });
-            }
-            if (commandName === '인수') {
-                const name = interaction.options.getString('기업명');
-                const comp = economyData.companies[name];
-                if (!comp || comp.owner === userId) return interaction.reply({ content: '❌ 본인 소유이거나 기업이 없습니다.', flags: MessageFlags.Ephemeral });
-                const price = comp.stockPrice * 100;
-                if (economyData.users[userId].money < price) return interaction.reply({ content: `❌ 자금 부족 (필요: ${price.toLocaleString()} RUC)`, flags: MessageFlags.Ephemeral });
-                if (economyData.users[comp.owner]) economyData.users[comp.owner].money += price;
-                economyData.users[userId].money -= price;
-                comp.owner = userId;
-                saveEconomyData(economyData);
-                return interaction.reply({ content: `🤝 **${name}** 인수 완료! (-${price.toLocaleString()} RUC)` });
-            }
-            if (commandName === 'ruc지급') {
-                // 화폐를 만들어 내는 명령입니다. 스태프 전원이 아니라
-                // Owner/Manager 만 되게 합니다 (config/roles.json 의 priority 기준).
-                if (!roles.isSeniorStaff(interaction.member))
-                    return interaction.reply({ content: '❌ Owner / Manager 전용 명령어입니다.', flags: MessageFlags.Ephemeral });
-                const target = interaction.options.getUser('유저');
-                const amount = interaction.options.getInteger('금액');
-                if (!economyData.users[target.id]) return interaction.reply({ content: `❌ ${target.username}님은 경제 시스템에 가입되어 있지 않습니다.`, flags: MessageFlags.Ephemeral });
-                economyData.users[target.id].money += amount;
-                saveEconomyData(economyData);
-                return interaction.reply({ content: `✅ **${target.username}**님에게 **${amount.toLocaleString()} RUC** 지급 완료.\n현재 잔액: ${economyData.users[target.id].money.toLocaleString()} RUC` });
-            }
-            if (commandName === '프로필') {
-                const target = interaction.options.getUser('유저') || user;
-                const tData = economyData.users[target.id];
-                if (!tData) return interaction.reply({ content: `❌ ${target.username}님은 경제 시스템에 가입되어 있지 않습니다.`, flags: MessageFlags.Ephemeral });
-                await interaction.deferReply();
-
-                const list = Object.entries(economyData.users).sort(([, a], [, b]) => b.money - a.money);
-                const rankIdx = list.findIndex(([id]) => id === target.id);
-                const rankText = rankIdx >= 0 ? `#${rankIdx + 1}` : 'Unranked';
-
-                const canvas = createCanvas(700, 250);
-                const ctx = canvas.getContext('2d');
-                ctx.fillStyle = '#23272A'; ctx.fillRect(0, 0, 700, 250);
-                ctx.strokeStyle = '#0099ff'; ctx.lineWidth = 10; ctx.strokeRect(0, 0, 700, 250);
-                ctx.font = 'bold 36px sans-serif'; ctx.fillStyle = '#ffffff';
-                ctx.fillText(target.username, 260, 60);
-                ctx.font = '28px sans-serif'; ctx.fillStyle = '#dddddd';
-                ctx.fillText(`자산: ${tData.money.toLocaleString()} RUC`, 260, 110);
-                ctx.fillText(`랭킹: ${rankText}`, 260, 150);
-                ctx.fillText(`연속 출석: ${tData.streak}일`, 260, 190);
-
-                try {
-                    const avatar = await loadImage(target.displayAvatarURL({ extension: 'png', forceStatic: true }));
-                    ctx.save();
-                    ctx.beginPath(); ctx.arc(125, 125, 80, 0, Math.PI * 2); ctx.closePath(); ctx.clip();
-                    ctx.drawImage(avatar, 45, 45, 160, 160);
-                    ctx.restore();
-                } catch { /* avatar unavailable */ }
-
-                const buf = canvas.toBuffer('image/png');
-                return interaction.editReply({ files: [new AttachmentBuilder(buf, { name: 'profile.png' })] });
-            }
-
             // ── 기존 유틸 ─────────────────────────────────────────────
             if (commandName === 'help') {
                 const embed = new EmbedBuilder()
                     .setTitle('📋 MOOKI 명령어 목록')
                     .setColor('Red')
                     .addFields(
-                        { name: '🛠️ 기본', value: '`/임베드생성` `/채널설정` `/add` `/메시지` `/ticket`' },
-                        { name: '💰 경제', value: '`/가입` `/탈퇴` `/출석체크` `/재화` `/인벤토리` `/랭크` `/창업` `/상장` `/인수` `/주식` `/프로필`' },
-                        { name: '🔑 관리자', value: '`/ruc지급`' }
+                        { name: '🎮 러크 서버', value: '`/인증` `/서버상태` `/신고` `/ticket`' },
+                        { name: '🛡️ 스태프', value: '`/제재` `/제재해제` `/기록` `/칭호동기화` `/평판동기화` `/평판역할설정` `/역할점검`' },
+                        { name: '🛠️ 관리 도구', value: '`/임베드생성` `/채널설정` `/add` `/메시지`' }
                     );
                 return interaction.reply({ embeds: [embed] });
             }
@@ -1149,7 +948,7 @@ client.on('messageReactionRemove', safeListener('messageReactionRemove', async (
 
 // ─── 종료 처리 ─────────────────────────────────────────────────────────────────
 //
-// 경제·티켓 데이터는 변경 시점마다 파일에 쓰지만, 마지막 쓰기 직후 Ctrl+C 가
+// 티켓 데이터는 변경 시점마다 파일에 쓰지만, 마지막 쓰기 직후 Ctrl+C 가
 // 들어오면 디스코드 연결이 끊기지 않은 채 프로세스가 사라집니다. 그러면 봇이
 // 몇 분간 "온라인" 으로 남아 있고 그동안의 명령이 전부 응답 없이 실패합니다.
 // destroy() 로 게이트웨이를 정상 종료하면 즉시 오프라인으로 바뀝니다.
@@ -1162,7 +961,6 @@ async function shutdown(signal) {
 
     console.log(`\n⏹️  ${signal} — 종료합니다…`);
     try {
-        saveJSON(ECONOMY_FILE, economyData);
         saveJSON(TICKETS_FILE, ticketsData);
         saveJSON(REACTION_FILE, reactionRoles);
         console.log('   데이터 저장 완료');
