@@ -15,6 +15,7 @@
 // 2. 단계는 스태프가 고릅니다. 봇은 이력을 보여 주고 다음 단계를 **제안만** 합니다.
 // 3. 한쪽이 실패하면 성공한 쪽은 유지하고, 실패한 쪽을 '재시도' 버튼으로 남깁니다.
 // 4. 이번 범위: 밴·뮤트·몰수·평판. 길드·홈·인벤토리·IP 는 '수동 처리' 로 안내만.
+// 5. 영구 밴에 소명 창구를 두지 않습니다 (2026-09-29).
 
 const fs = require('fs');
 const path = require('path');
@@ -51,14 +52,12 @@ const TIERS = {
     6:  { discordBan: 30 * DAY,                           mcBan: 30 * DAY,   pct: 50,  rep: 'none',  manual: ['길드 강제 탈퇴', '영토 청구권 상실'] },
     7:  { discordBan: 90 * DAY,                           mcBan: 90 * DAY,   pct: 70,  rep: 'none',  manual: ['모든 /home·클레임 삭제', '후원 혜택 정지'] },
     8:  { discordBan: PERM,                               mcBan: 180 * DAY,  pct: 100, rep: 'dark',  manual: ['약탈/평화 인벤토리 몰수', '평판 검정 고정(상승 차단)'] },
-    9:  { discordBan: PERM,                               mcBan: PERM,       pct: 100, rep: 'dark',  manual: ['계정 데이터 아카이브', '소명 1회 한정'] },
+    9:  { discordBan: PERM,                               mcBan: PERM,       pct: 100, rep: 'dark',  manual: ['계정 데이터 아카이브'] },
     10: { discordBan: PERM,                               mcBan: PERM,       pct: 100, rep: 'dark',  manual: ['IP 차단 (§D5 주의사항 확인)', '부계정 연쇄 차단'] },
 };
 
 /** 이 단계부터 Manager 이상 승인이 필요합니다 (D5 운영 원칙). */
 const APPROVAL_FROM = 4;
-/** 이 단계부터 소명 창구를 반드시 안내합니다 (D5 운영 원칙). */
-const APPEAL_FROM = 8;
 
 /** 디스코드 타임아웃 상한 (28일). 이보다 길면 API 가 거절합니다. */
 const MAX_TIMEOUT_MIN = 28 * DAY;
@@ -311,10 +310,9 @@ async function execute(guild, c) {
                 '',
                 `**사유** ${c.reason}`,
             ];
-            if (c.tier >= APPEAL_FROM) {
-                lines.push('', `**소명 창구** ${process.env.RUC_APPEAL_CONTACT
-                    || '(설정되지 않음 — 스태프에게 문의)'}`);
-            } else {
+            // 영구 밴(8단계 이상)에는 소명 창구를 두지 않습니다 (2026-09-29 소유자 결정 —
+            // D5 운영 원칙의 "8단계 이상 소명 창구" 를 뺐습니다).
+            if (TIERS[c.tier].discordBan !== PERM) {
                 lines.push('', '이의가 있으면 기간이 끝난 뒤 `/ticket` 으로 문의해 주세요.');
             }
             await user.send(lines.join('\n'));

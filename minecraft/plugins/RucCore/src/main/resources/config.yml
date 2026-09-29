@@ -135,7 +135,7 @@ titles:
     helper:
       display: "<color:#5bc0be><bold>[ 헬퍼 ]</bold></color>"
       priority: 800
-      discord-role: ""
+      discord-role: "1554265520222511144"
     builder:
       display: "<color:#b08968>[ 건축가 ]</color>"
       priority: 700
