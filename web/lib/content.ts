@@ -94,7 +94,7 @@ export const content: Record<Lang, Copy> = {
   ko: {
     nav: { goToServer: "서버 가기", status: "서버 상태", landing: "소개" },
     hero: {
-      eyebrow: "MINECRAFT SERVER NETWORK",
+      eyebrow: "Season 1",
       title: ["Ruc Server", "Season 1"],
       titleAccent: "러크 서버",
       sub: "약탈 · 국가전 · 평화 — Ruc는 하나로 이어집니다.",
@@ -258,7 +258,7 @@ export const content: Record<Lang, Copy> = {
       button: "디스코드 참여하기",
     },
     footer: {
-      tagline: "4개의 세계, 하나의 경제.",
+      tagline: "Ruc Server, Season 1",
       madeWith: "러크 서버",
       links: [
         { label: "서버 상태", href: "/status" },
