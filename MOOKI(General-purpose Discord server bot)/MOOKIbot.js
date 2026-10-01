@@ -17,6 +17,7 @@ const minecraft = require('./minecraft');
 const report = require('./report');
 const reputation = require('./reputation');
 const sanction = require('./sanction');
+const payment = require('./payment');
 
 const REACTION_FILE = path.join(__dirname, 'reaction_roles.json');
 const TICKETS_FILE  = path.join(__dirname, 'tickets_data.json');
@@ -363,6 +364,12 @@ client.once(Events.ClientReady, async () => {
         sanction.sanctionCommand,
         sanction.revokeCommand,
         sanction.historyCommand,
+
+        // 현금 충전 (docs/payment-design.md)
+        payment.chargeCommand,
+        payment.cancelCommand,
+        payment.lookupCommand,
+        payment.reviewCommand,
     ];
 
     try {
@@ -388,6 +395,7 @@ client.once(Events.ClientReady, async () => {
             reputation.logConfig();
             reputation.startSyncing(guild);
             sanction.start(guild);
+            payment.start(guild);
 
             // 설정한 역할을 실제로 부여할 수 있는 상태인지 확인합니다.
             // 가장 흔한 사고가 "봇 역할이 Ruc 보다 아래에 있어서 부여 실패" 이고,
@@ -478,6 +486,12 @@ client.on('interactionCreate', async interaction => {
                 await sanction.handleHistory(interaction);
                 return;
             }
+
+            // ── 현금 충전 (docs/payment-design.md) ───────────────────
+            if (commandName === '충전') { await payment.handleCharge(interaction); return; }
+            if (commandName === '충전취소') { await payment.handleCancel(interaction); return; }
+            if (commandName === '결제조회') { await payment.handleLookup(interaction); return; }
+            if (commandName === '결제대기') { await payment.handleReview(interaction); return; }
 
             if (commandName === 'ticket') {
                 // /ticket 입력 시 바로 팝업창(모달) 오픈 — 유형 선택 포함
@@ -643,6 +657,7 @@ client.on('interactionCreate', async interaction => {
             // 임베드 빌더보다 먼저 봐야 합니다. 그쪽은 모르는 버튼을
             // "세션 만료" 로 처리합니다.
             if (await sanction.handleButton(interaction)) return;
+            if (await payment.handleButton(interaction)) return;
 
             // ── 임베드 빌더 버튼 ─────────────────────────────────────
             const draft = embedBuilders.get(interaction.user.id);
@@ -699,6 +714,8 @@ client.on('interactionCreate', async interaction => {
         // 3. 모달 제출
         // ═══════════════════════════════════════════════════════════
         else if (interaction.type === InteractionType.ModalSubmit) {
+
+            if (await payment.handleModal(interaction)) return;
 
             // ── 티켓 생성 모달 (버튼 경유 방식 — 하위 호환 유지) ────
             if (interaction.customId === 'modal_report') {
