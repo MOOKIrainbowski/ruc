@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { DISCORD_INVITE, MC_ADDRESS, SERVER_KEYS, t, type Lang } from "@/lib/content";
 import Nav from "./Nav";
-import { Footer } from "./Landing";
+import Footer from "./Footer";
 import { useStatus } from "./useStatus";
 
 export default function StatusDashboard({ lang }: { lang: Lang }) {

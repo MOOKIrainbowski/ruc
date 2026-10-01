@@ -4,6 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { DISCORD_INVITE, MC_ADDRESS, t, type Lang } from "@/lib/content";
+import Footer from "./Footer";
 import Nav from "./Nav";
 import StatusStrip from "./StatusStrip";
 
@@ -341,33 +342,5 @@ export default function Landing({ lang }: { lang: Lang }) {
 
       <Footer lang={lang} />
     </>
-  );
-}
-
-export function Footer({ lang }: { lang: Lang }) {
-  const c = t(lang);
-  return (
-    <footer className="mt-10 border-t border-white/8">
-      <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-8 sm:px-6">
-        <div className="flex items-center gap-2.5">
-          <Image src="/icon.png" alt="" width={24} height={24} className="h-6 w-6" />
-          <span className="text-[11px] text-white/50">{c.footer.tagline}</span>
-        </div>
-        <div className="flex flex-wrap items-center gap-5 text-[11px]">
-          {c.footer.links.map((l) => (
-            <a
-              key={l.label}
-              href={l.href}
-              target={l.href.startsWith("http") ? "_blank" : undefined}
-              rel={l.href.startsWith("http") ? "noopener noreferrer" : undefined}
-              className="text-white/50 transition-colors hover:text-ruc-400"
-            >
-              {l.label}
-            </a>
-          ))}
-          <span className="text-white/25">© 2026 {c.footer.madeWith}</span>
-        </div>
-      </div>
-    </footer>
   );
 }

@@ -22,13 +22,16 @@ npm run build && npm run start
 
 | 경로 | 내용 |
 |---|---|
-| `/` | 랜딩 페이지 (한국어) |
-| `/en` | 랜딩 페이지 (영어) |
-| `/status` | 실시간 서버 상태 (한국어) |
-| `/en/status` | 실시간 서버 상태 (영어) |
+| `/` | → `/landing` 으로 임시 리디렉트 (307) |
+| `/landing` · `/en/landing` | 랜딩 — 신규 유저 대상 홍보 |
+| `/home` | 이용자 허브 — 충전 · 디스코드 · 규칙 · 위키 카드 (한국어 전용) |
+| `/rules` | 디스코드 · 마인크래프트 규칙 (한국어 전용, `content/rules.json`) |
+| `/wiki` · `/wiki/<문서>` | 러크 위키 (한국어 전용, `content/wiki/*.md`) |
+| `/charge` | 충전 · 결제 안내 (한국어 전용, `CHARGE_ENABLED` 로 켬) |
+| `/status` · `/en/status` | 실시간 서버 상태 |
 | `/api/status` | 서버 상태 JSON API |
 
-**규칙: 한국어는 루트에, 영어는 `/en` 접두사.**
+**규칙: 한국어는 루트에, 영어는 `/en` 접두사.** 한국어 전용 페이지는 `components/Nav.tsx` 의 `EN_PAGES` 에 넣지 않습니다 — 그러면 EN 토글이 비활성으로 표시됩니다.
 새 페이지 `foo`를 추가하면 → `app/foo/page.tsx` + `app/en/foo/page.tsx`, 둘 다 `components/Foo.tsx`에 `lang` prop만 다르게 넘깁니다. 문안은 전부 `lib/content.ts`에 ko/en 쌍으로 넣습니다 (타입이 누락을 막아줍니다).
 
 ## 환경변수

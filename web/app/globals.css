@@ -182,6 +182,13 @@ body {
   background: rgba(147, 233, 62, 0.3);
 }
 
+/* 키보드 포커스 — 마우스 클릭에는 안 뜨고 Tab 이동에만 보입니다. */
+:focus-visible {
+  outline: 2px solid var(--color-ruc-400);
+  outline-offset: 2px;
+}
+
+
 /* 스크롤바 */
 ::-webkit-scrollbar { width: 10px; }
 ::-webkit-scrollbar-track { background: rgba(0,0,0,0.3); }

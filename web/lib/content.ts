@@ -15,7 +15,18 @@ export const SERVER_KEYS = ["home", "raid", "war", "peace"] as const;
 export type ServerKey = (typeof SERVER_KEYS)[number];
 
 type Copy = {
-  nav: { goToServer: string; status: string; landing: string };
+  nav: {
+    goToServer: string;
+    status: string;
+    landing: string;
+    home: string;
+    rules: string;
+    wiki: string;
+    charge: string;
+    menu: string;
+    /** 한국어 전용 페이지에서 EN 토글에 붙는 안내 */
+    koOnly: string;
+  };
   hero: {
     eyebrow: string;
     title: string[];
@@ -92,7 +103,17 @@ type Copy = {
 
 export const content: Record<Lang, Copy> = {
   ko: {
-    nav: { goToServer: "서버 가기", status: "서버 상태", landing: "소개" },
+    nav: {
+      goToServer: "서버 가기",
+      status: "서버 상태",
+      landing: "소개",
+      home: "홈",
+      rules: "규칙",
+      wiki: "위키",
+      charge: "충전",
+      menu: "메뉴",
+      koOnly: "이 페이지는 아직 한국어만 있습니다",
+    },
     hero: {
       eyebrow: "Season 1",
       title: ["Ruc Server", "Season 1"],
@@ -261,6 +282,10 @@ export const content: Record<Lang, Copy> = {
       tagline: "Ruc Server, Season 1",
       madeWith: "러크 서버",
       links: [
+        { label: "홈", href: "/home" },
+        { label: "규칙", href: "/rules" },
+        { label: "위키", href: "/wiki" },
+        { label: "충전", href: "/charge" },
         { label: "서버 상태", href: "/status" },
         { label: "디스코드", href: DISCORD_INVITE },
       ],
@@ -296,7 +321,17 @@ export const content: Record<Lang, Copy> = {
   },
 
   en: {
-    nav: { goToServer: "Go to Server", status: "Server Status", landing: "About" },
+    nav: {
+      goToServer: "Go to Server",
+      status: "Server Status",
+      landing: "About",
+      home: "Home",
+      rules: "Rules",
+      wiki: "Wiki",
+      charge: "Top-up",
+      menu: "Menu",
+      koOnly: "This page is Korean only for now",
+    },
     hero: {
       eyebrow: "MINECRAFT SERVER NETWORK",
       title: ["Ruc Server", "Season 1"],
@@ -435,6 +470,9 @@ export const content: Record<Lang, Copy> = {
       tagline: "Four worlds, one economy.",
       madeWith: "Ruc Server",
       links: [
+        { label: "Home", href: "/home" },
+        { label: "Rules", href: "/rules" },
+        { label: "Wiki", href: "/wiki" },
         { label: "Server status", href: "/en/status" },
         { label: "Discord", href: DISCORD_INVITE },
       ],
