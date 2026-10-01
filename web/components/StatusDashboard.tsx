@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { DISCORD_INVITE, MC_ADDRESS, SERVER_KEYS, t, type Lang } from "@/lib/content";
+import { DISCORD_INVITE, MC_ADDRESS, SERVER_KEYS, path, t, type Lang } from "@/lib/content";
 import Nav from "./Nav";
 import Footer from "./Footer";
 import { useStatus } from "./useStatus";
@@ -174,7 +174,7 @@ export default function StatusDashboard({ lang }: { lang: Lang }) {
                   {c.nav.goToServer}
                 </a>
                 <a
-                  href={lang === "ko" ? "/" : "/en"}
+                  href={path(lang, "/landing")}
                   className="glass glass-hover block rounded-xl px-4 py-3 text-center text-[11px] text-white/80"
                 >
                   {c.nav.landing}
