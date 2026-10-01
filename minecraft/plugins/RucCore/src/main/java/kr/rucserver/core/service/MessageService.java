@@ -71,7 +71,11 @@ public class MessageService {
     public String raw(String lang, String key) {
         YamlConfiguration config = byLanguage.getOrDefault(lang, byLanguage.get(defaultLanguage));
         if (config == null) return key;
-        return config.getString(key, key);
+        // getString(key, key) 처럼 대체값을 직접 주면 Bukkit 은 setDefaults 로 깔아 둔
+        // jar 내부본을 보지 않습니다. 그러면 새 키를 추가할 때마다 배포본 파일을 지워야
+        // 했습니다(§5.3). 한 인자짜리 getString 은 기본값까지 찾아봅니다.
+        String value = config.getString(key);
+        return value != null ? value : key;
     }
 
     /**
