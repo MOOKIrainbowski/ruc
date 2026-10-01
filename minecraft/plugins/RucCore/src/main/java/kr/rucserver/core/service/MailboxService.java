@@ -137,6 +137,36 @@ public class MailboxService {
         insert(recipient, encoded, 0, sender, reason, onResult);
     }
 
+    /**
+     * 같은 사유로는 한 번만 보내는 아이템 우편. <b>블로킹입니다</b> — 충전 지급처럼
+     * RCON 응답에 결과를 실어야 하는 곳에서 씁니다.
+     *
+     * 사유에 주문 번호를 넣어 두면, 지급을 다시 시도해도 우편이 두 번 가지 않습니다.
+     * 우편함이 가득 차 있어도 보냅니다 — 돈을 내고 산 물건을 "가득 참" 으로 막을 수는
+     * 없습니다.
+     */
+    public Result sendItemOnce(UUID recipient, ItemStack item, String sender, String reason) {
+        if (item == null || item.getType().isAir()) return Result.EMPTY;
+        String why = truncate(reason, 32);
+        try {
+            if (repository.existsByReason(recipient, why)) return Result.OK;
+            long now = System.currentTimeMillis();
+            long id = repository.insert(Mail.outgoing(recipient, encode(item.clone()), 0,
+                    truncate(sender, 32), why, now, now + keepMillis()));
+            if (id < 0) return Result.ERROR;
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "우편 발송 실패 (" + why + ")", e);
+            return Result.ERROR;
+        }
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            Player online = Bukkit.getPlayer(recipient);
+            if (online == null) return;
+            String lang = plugin.getPlayerData().languageOf(online);
+            online.sendMessage(messages.prefixed(lang, "mailbox.arrived"));
+        });
+        return Result.OK;
+    }
+
     /** Ruc 우편. 미접속자 지급에 씁니다. */
     public void sendRuc(UUID recipient, long amount, String sender, String reason,
                         java.util.function.Consumer<Result> onResult) {

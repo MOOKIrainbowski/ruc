@@ -112,6 +112,14 @@ commands:
     description: (콘솔/RCON 전용) 디스코드 봇의 /제재 가 마크 쪽 제재를 기록·해제·조회합니다.
     usage: /rucsanction <apply|revoke|history> ...
     permission: ruccore.admin
+  rucpay:
+    description: (콘솔/RCON 전용) 디스코드 봇의 /충전 이 주문·입금·지급을 처리합니다.
+    usage: /rucpay <order|deposit|approve|link|refund|ignore|cancel|redeliver|status|lookup|review|...>
+    permission: ruccore.admin
+  charge:
+    description: 충전·후원 안내. 구매는 디스코드에서 합니다.
+    usage: /충전
+    aliases: [충전, 후원, 구매, 결제, donate, store]
   rucrelay:
     description: (콘솔/RCON 전용) 디스코드 발언을 인게임에 중계합니다.
     usage: /rucrelay <발신자> <내용...>

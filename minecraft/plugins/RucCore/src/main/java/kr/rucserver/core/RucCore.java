@@ -3,6 +3,7 @@ package kr.rucserver.core;
 import kr.rucserver.core.command.CoreCommands;
 import kr.rucserver.core.command.GuildAdminCommands;
 import kr.rucserver.core.command.GuildCommands;
+import kr.rucserver.core.command.PaymentCommands;
 import kr.rucserver.core.command.ReportCommands;
 import kr.rucserver.core.command.SanctionCommands;
 import kr.rucserver.core.command.TitleCommands;
@@ -18,6 +19,7 @@ import kr.rucserver.core.service.EconomyService;
 import kr.rucserver.core.service.GuildService;
 import kr.rucserver.core.service.MailboxService;
 import kr.rucserver.core.service.MessageService;
+import kr.rucserver.core.service.PaymentService;
 import kr.rucserver.core.service.PlayerDataService;
 import kr.rucserver.core.service.ReportService;
 import kr.rucserver.core.service.SanctionService;
@@ -30,6 +32,7 @@ import kr.rucserver.core.storage.Database;
 import kr.rucserver.core.storage.GuildRepository;
 import kr.rucserver.core.storage.HomeRepository;
 import kr.rucserver.core.storage.MailboxRepository;
+import kr.rucserver.core.storage.PaymentRepository;
 import kr.rucserver.core.storage.PlayerRepository;
 import kr.rucserver.core.storage.ReportRepository;
 import kr.rucserver.core.storage.SanctionRepository;
@@ -64,6 +67,7 @@ public class RucCore extends JavaPlugin {
     private DiscordRelayService relay;
     private ReportService reports;
     private SanctionService sanctions;
+    private PaymentService payments;
     private XpService xp;
     private ScoreboardService scoreboards;
     private TpaService tpa;
@@ -172,6 +176,18 @@ public class RucCore extends JavaPlugin {
         }
         sanctions = new SanctionService(this, sanctionRepository);
 
+        // 현금 충전 (docs/payment-design.md). 돈 기록이라 테이블이 없으면 기동을 멈춥니다 —
+        // 봇이 주문을 못 만드는 것보다, 입금을 받고도 기록을 못 남기는 쪽이 훨씬 나쁩니다.
+        PaymentRepository paymentRepository = new PaymentRepository(database);
+        try {
+            paymentRepository.createSchema();
+        } catch (SQLException e) {
+            getLogger().log(Level.SEVERE, "충전 테이블 생성에 실패했습니다. 플러그인을 비활성화합니다.", e);
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        payments = new PaymentService(this, paymentRepository);
+
         // 프록시 통신과 메뉴는 4개 서버 공통이라 Core가 소유합니다.
         network = new NetworkService(this);
         network.start();
@@ -187,6 +203,7 @@ public class RucCore extends JavaPlugin {
         new TitleCommands(this, messages).register();
         new ReportCommands(this, messages).register();
         new SanctionCommands(this).register();
+        new PaymentCommands(this, messages).register();
 
         applyGlobalRules();
         scoreboards.start();
@@ -195,6 +212,7 @@ public class RucCore extends JavaPlugin {
         mailbox.start();
         titles.start();
         relay.start();
+        payments.start();
 
         // 리로드로 켜진 경우 이미 접속해 있는 사람들 처리
         for (Player player : getServer().getOnlinePlayers()) {
@@ -219,6 +237,7 @@ public class RucCore extends JavaPlugin {
         if (mailbox != null) mailbox.stop();
         if (titles != null) titles.stop();
         if (relay != null) relay.stop();
+        if (payments != null) payments.stop();
         if (network != null) network.stop();
 
         // 종료 시에는 비동기로 넘기면 스케줄러가 이미 멈춰서 저장이 유실됩니다.
@@ -260,6 +279,7 @@ public class RucCore extends JavaPlugin {
     public DiscordRelayService getRelay() { return relay; }
     public ReportService getReports() { return reports; }
     public SanctionService getSanctions() { return sanctions; }
+    public PaymentService getPayments() { return payments; }
     public BonusRegistry getBonuses() { return bonuses; }
     public XpService getXp() { return xp; }
     public ScoreboardService getScoreboards() { return scoreboards; }

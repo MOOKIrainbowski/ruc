@@ -176,6 +176,14 @@ titles:
       priority: 500
       discord-role: "1554020486269239296"
 
+    # ── 충전 칭호 (docs/payment-design.md) ──────────────────────────
+    # 디스코드 /충전 으로 산 칭호입니다. 역할과 연결하지 않습니다 —
+    # source 가 purchase 라 디스코드 동기화가 회수하지 않습니다 (§6.29).
+    supporter:
+      display: "<gradient:#93e93e:#bad953>[ 후원자 ]</gradient>"
+      priority: 490
+      discord-role: ""
+
     # ── 디스코드 부스트 (§5.2) ──────────────────────────────────────
     hyper:
       display: "<gradient:#ff7eb6:#c77dff><bold>[ HYPER ]</bold></gradient>"
@@ -422,3 +430,19 @@ guild:
 
 # 주간 보상 초기화와 전쟁 시간대 판정의 기준 시간대입니다.
 timezone: "Asia/Seoul"
+
+# ── 현금 충전 (docs/payment-design.md) ───────────────────────────────
+# 가격 · 지급 내용은 여기 없습니다. web/content/products.json 한 곳에 있고
+# 봇이 주문을 만들 때 넘깁니다 (표가 두 곳에 있으면 한쪽만 고쳐집니다).
+payment:
+  # 게임 안 /충전 이 안내하는 디스코드 초대 링크
+  discord-invite: "https://discord.gg/K3Z5CDn3GK"
+  # 입금자명 = 접두 + 숫자 4자리 (예: R4821)
+  code-prefix: "R"
+  # 이 기간 안에 쓴 코드는 다시 쓰지 않습니다. 만료 뒤에 늦게 들어온 입금이
+  # 어느 주문인지 모호해지지 않게 하는 장치입니다.
+  code-reuse-days: 7
+  # 한 사람이 동시에 가질 수 있는 미입금 주문
+  max-pending-orders: 2
+  # 주문 사이 최소 간격 (도배 방지)
+  order-cooldown-seconds: 60

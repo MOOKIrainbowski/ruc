@@ -200,6 +200,13 @@ title:
     guide: "Guide"
     staff: "Staff"
 
+# ── Top-up (docs/payment-design.md) ───────────────────────────────────
+payment:
+  redirect: "&eTop-ups and support happen on &fDiscord&e."
+  redirect-link: "Open the Ruc Discord (click)"
+  redirect-how: "&7Type &f/충전 &7in Discord and pick a product. Once the transfer is confirmed it is delivered to your &fmailbox&7 / titles."
+  delivered: "&aYour purchase has been delivered! &7(%product%) &7Check &f/title &7and &f/mail&7."
+
 # ── Mailbox (Phase 5.5) ───────────────────────────────────────────────
 mailbox:
   title: "&8Mailbox &7(%page%/%pages%)"

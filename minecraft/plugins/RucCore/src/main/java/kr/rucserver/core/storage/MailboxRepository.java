@@ -183,6 +183,22 @@ public class MailboxRepository {
      *
      * @return 지운 행 수
      */
+    /**
+     * 이 사유로 보낸 우편이 이미 있는가 (받았든 안 받았든).
+     * 충전 지급처럼 "한 번만" 보내야 하는 우편의 중복 방지에 씁니다.
+     */
+    public boolean existsByReason(UUID recipient, String reason) throws SQLException {
+        String sql = "SELECT 1 FROM ruc_mail WHERE recipient = ? AND reason = ? LIMIT 1";
+        try (Connection conn = database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(sql)) {
+            ps.setString(1, recipient.toString());
+            ps.setString(2, reason);
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next();
+            }
+        }
+    }
+
     public int purge(long expiredBefore, long claimedBefore) throws SQLException {
         int removed = 0;
         try (Connection conn = database.getConnection()) {
