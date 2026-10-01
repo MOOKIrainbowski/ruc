@@ -292,3 +292,19 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
+/* 본문 속 인라인 코드 · 링크 (위키 밖 페이지에서) */
+.inline-code {
+  padding: 0.1em 0.4em;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.35);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-ruc-200);
+}
+.link {
+  color: var(--color-ruc-300);
+  text-decoration: underline;
+  text-decoration-color: rgba(186, 217, 83, 0.4);
+  text-underline-offset: 3px;
+}
+.link:hover { color: var(--color-ruc-400); }

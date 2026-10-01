@@ -1,0 +1,39 @@
+{
+  "reviewNote": "TODO: 운영진 검토 — 상품 구성과 가격은 초안입니다 (D7 후원 등급 기준, 가격 미정).",
+  "orderCodePrefix": "R",
+  "orderTtlMinutes": 60,
+  "products": [
+    {
+      "id": "title-basic",
+      "name": "후원 칭호",
+      "price": 3000,
+      "period": "영구",
+      "deliver": ["후원 칭호 1종 (채팅 · 탭 목록)", "디스코드 후원자 역할"],
+      "category": "칭호"
+    },
+    {
+      "id": "vip",
+      "name": "VIP",
+      "price": 5000,
+      "period": "30일",
+      "deliver": ["채팅 색상", "코스메틱 3종", "VIP 칭호"],
+      "category": "후원 등급"
+    },
+    {
+      "id": "svip",
+      "name": "SVIP",
+      "price": 9900,
+      "period": "30일",
+      "deliver": ["VIP 혜택 전부", "커스텀 입장 메시지", "SVIP 칭호"],
+      "category": "후원 등급"
+    },
+    {
+      "id": "mvp",
+      "name": "MVP",
+      "price": 15000,
+      "period": "30일",
+      "deliver": ["SVIP 혜택 전부", "코스메틱 펫", "후원자 라운지 입장", "MVP 칭호"],
+      "category": "후원 등급"
+    }
+  ]
+}
