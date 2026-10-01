@@ -1,39 +1,74 @@
 {
+  "_readme": [
+    "상품표는 이 파일 한 곳에만 있습니다. 웹(/charge)과 디스코드 봇(/충전)이 같이 읽습니다.",
+    "",
+    "available: false 면 웹에는 '준비 중' 으로 보이고 봇은 주문을 받지 않습니다.",
+    "grants:    마크 서버가 집행할 지급 명세. 쉼표로 여러 개.",
+    "             title:<칭호키>          칭호 (source=purchase, RucCore config.yml 의 titles.definitions)",
+    "             ent:<키>:<일수>         기간제 권리 (연장 구매는 끝나는 날 뒤로 붙음)",
+    "             ender:<개수>            엔더상자 확장 (개수형 권리)",
+    "             item:<MATERIAL>:<수량>  우편함으로 아이템",
+    "discordRoles: 지급할 때 봇이 줄 디스코드 역할 키 (MOOKI config/roles.json). ent 와 키가 같으면",
+    "              그 권리가 끝날 때 봇이 역할을 뗍니다."
+  ],
   "reviewNote": "TODO: 운영진 검토 — 상품 구성과 가격은 초안입니다 (D7 후원 등급 기준, 가격 미정).",
   "orderCodePrefix": "R",
   "orderTtlMinutes": 60,
   "products": [
     {
-      "id": "title-basic",
+      "id": "supporter",
       "name": "후원 칭호",
       "price": 3000,
       "period": "영구",
-      "deliver": ["후원 칭호 1종 (채팅 · 탭 목록)", "디스코드 후원자 역할"],
-      "category": "칭호"
+      "deliver": ["[ 후원자 ] 칭호 (채팅 · 탭 목록)"],
+      "category": "칭호",
+      "available": true,
+      "grants": "title:supporter",
+      "discordRoles": []
     },
     {
       "id": "vip",
       "name": "VIP",
       "price": 5000,
       "period": "30일",
-      "deliver": ["채팅 색상", "코스메틱 3종", "VIP 칭호"],
-      "category": "후원 등급"
+      "deliver": ["VIP 칭호 · 디스코드 VIP 역할", "채팅 색상", "코스메틱 3종"],
+      "category": "후원 등급",
+      "available": false,
+      "grants": "ent:vip:30",
+      "discordRoles": ["vip"]
     },
     {
       "id": "svip",
       "name": "SVIP",
       "price": 9900,
       "period": "30일",
-      "deliver": ["VIP 혜택 전부", "커스텀 입장 메시지", "SVIP 칭호"],
-      "category": "후원 등급"
+      "deliver": ["SVIP 칭호 · 디스코드 SVIP 역할", "VIP 혜택 전부", "커스텀 입장 메시지"],
+      "category": "후원 등급",
+      "available": false,
+      "grants": "ent:svip:30",
+      "discordRoles": ["svip"]
     },
     {
       "id": "mvp",
       "name": "MVP",
       "price": 15000,
       "period": "30일",
-      "deliver": ["SVIP 혜택 전부", "코스메틱 펫", "후원자 라운지 입장", "MVP 칭호"],
-      "category": "후원 등급"
+      "deliver": ["MVP 칭호 · 디스코드 MVP 역할", "SVIP 혜택 전부", "코스메틱 펫", "후원자 라운지 입장"],
+      "category": "후원 등급",
+      "available": false,
+      "grants": "ent:mvp:30",
+      "discordRoles": ["mvp"]
+    },
+    {
+      "id": "ender-1",
+      "name": "엔더상자 확장",
+      "price": 2000,
+      "period": "영구",
+      "deliver": ["엔더상자 한 페이지 추가", "게임 플레이로도 얻을 수 있습니다 (더 어렵게)"],
+      "category": "편의",
+      "available": false,
+      "grants": "ender:1",
+      "discordRoles": []
     }
   ]
 }

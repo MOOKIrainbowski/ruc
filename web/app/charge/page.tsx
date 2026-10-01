@@ -95,10 +95,15 @@ export default function Page() {
         )}
         <ul className="grid gap-4 sm:grid-cols-2">
           {products.products.map((p) => (
-            <li key={p.id} className="glass flex flex-col rounded-2xl p-5 sm:p-6">
+            <li
+              key={p.id}
+              className={`glass flex flex-col rounded-2xl p-5 sm:p-6 ${p.available ? "" : "opacity-75"}`}
+            >
               <div className="flex items-baseline justify-between gap-3">
                 <h3 className="headline text-lg">{p.name}</h3>
-                <span className="text-[10px] tracking-wider text-white/60">{p.category}</span>
+                <span className="text-[10px] tracking-wider text-white/60">
+                  {p.available ? p.category : `${p.category} · 준비 중`}
+                </span>
               </div>
               <p className="mt-2">
                 <span className="headline text-2xl text-ruc-400">{won(p.price)}</span>

@@ -11,6 +11,11 @@ export type Product = {
   period: string;
   deliver: string[];
   category: string;
+  /** false 면 '준비 중' — 봇도 주문을 받지 않습니다 */
+  available: boolean;
+  /** 마크 서버 지급 명세 (봇이 읽음). 웹에서는 쓰지 않습니다. */
+  grants: string;
+  discordRoles: string[];
 };
 
 export type ProductsData = {
