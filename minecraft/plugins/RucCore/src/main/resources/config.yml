@@ -117,35 +117,35 @@ titles:
   definitions:
     # ── 스태프 (§3.2) ───────────────────────────────────────────────
     owner:
-      display: "<gradient:#ffd166:#ff6b6b><bold>[ 수장 ]</bold></gradient>"
+      display: "<gradient:#ffd166:#ff6b6b><bold>[ Owner ]</bold></gradient>"
       priority: 1000
       discord-role: "1414495321349951508"
     admin:
-      display: "<gradient:#ff6b6b:#c77dff><bold>[ 관리자 ]</bold></gradient>"
+      display: "<gradient:#ff6b6b:#c77dff><bold>[ Admin ]</bold></gradient>"
       priority: 950
       discord-role: ""
     manager:
-      display: "<gradient:#c77dff:#7aa2ff><bold>[ 매니저 ]</bold></gradient>"
+      display: "<gradient:#c77dff:#7aa2ff><bold>[ Manager ]</bold></gradient>"
       priority: 900
       discord-role: "1406889344890966077"
     moderator:
-      display: "<color:#7aa2ff><bold>[ 중재자 ]</bold></color>"
+      display: "<color:#7aa2ff><bold>[ Moderator ]</bold></color>"
       priority: 850
       discord-role: ""
     helper:
-      display: "<color:#5bc0be><bold>[ 헬퍼 ]</bold></color>"
+      display: "<color:#5bc0be><bold>[ Helper ]</bold></color>"
       priority: 800
       discord-role: "1554265520222511144"
     builder:
-      display: "<color:#b08968>[ 건축가 ]</color>"
+      display: "<color:#b08968>[ Builder ]</color>"
       priority: 700
       discord-role: ""
     designer:
-      display: "<color:#f4a3c1>[ 디자이너 ]</color>"
+      display: "<color:#f4a3c1>[ Designer ]</color>"
       priority: 690
       discord-role: "1425822763867705415"
     tester:
-      display: "<color:#9aa0a6>[ 테스터 ]</color>"
+      display: "<color:#9aa0a6>[ Tester ]</color>"
       priority: 680
       discord-role: "1425823098602786827"
 
