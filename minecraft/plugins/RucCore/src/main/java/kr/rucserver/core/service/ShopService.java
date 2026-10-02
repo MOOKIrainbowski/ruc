@@ -208,6 +208,7 @@ public class ShopService {
     /** @param mine true 면 내 판매 목록 (더블클릭 = 취소) */
     public void open(Player player, int page, boolean mine) {
         if (!enabled()) { say(player, "shop.disabled"); return; }
+        if (plugin.getGuide() != null) plugin.getGuide().trigger(player, "shop");
         UUID uuid = player.getUniqueId();
         long now = System.currentTimeMillis();
         io.execute(() -> {

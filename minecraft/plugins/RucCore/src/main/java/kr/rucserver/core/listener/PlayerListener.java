@@ -58,6 +58,9 @@ public class PlayerListener implements Listener {
             // 접속 시점에 한 번 읽어 둬야 합니다.
             plugin.getTitles().loadAsync(player);
 
+            // 가이드 (Phase 11) — 처음이면 0단계로 시작, 다른 서버에 왔으면 "서버 이동" 완료.
+            plugin.getGuide().onJoin(player);
+
             // D10 — 미인증이면 인증 구역에 격리하고 코드를 발급합니다.
             if (plugin.getVerification().requiresVerification(player)) {
                 plugin.getVerification().beginVerification(player);

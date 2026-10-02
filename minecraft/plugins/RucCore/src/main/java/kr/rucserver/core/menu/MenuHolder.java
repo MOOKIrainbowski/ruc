@@ -30,7 +30,9 @@ public class MenuHolder implements InventoryHolder {
         /** 유저 상점 (Phase 10) — 전체 매물 · 내 판매 목록 · 구매 확인창 */
         SHOP,
         SHOP_MINE,
-        SHOP_CONFIRM
+        SHOP_CONFIRM,
+        /** 가이드 (Phase 11) */
+        GUIDE
     }
 
     private final Type type;

@@ -64,6 +64,7 @@ public class MenuListener implements Listener {
                 if (event.getRawSlot() == 22) plugin.getMenus().openMain(player);
             }
             case MAILBOX -> handleMailbox(player, holder, event.getRawSlot());
+            case GUIDE -> plugin.getGuide().click(player, holder, event.getRawSlot());
             case SHOP, SHOP_MINE, SHOP_CONFIRM ->
                     plugin.getShop().click(player, holder, event.getRawSlot(), event.getClick());
             default -> { }
@@ -155,6 +156,8 @@ public class MenuListener implements Listener {
             case MenuService.SLOT_ENDER -> plugin.getEnder().openSelector(player);
 
             case MenuService.SLOT_SHOP -> plugin.getShop().open(player, 0, false);
+
+            case MenuService.SLOT_GUIDE -> plugin.getGuide().open(player);
 
             case MenuService.SLOT_VERIFY -> {
                 player.closeInventory();

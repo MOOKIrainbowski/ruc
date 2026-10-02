@@ -468,6 +468,31 @@ shop:
   # 만료 되돌림 · 빠진 우편 채우기를 돌릴 서버 (한 곳만 — 두 곳이면 우편이 두 번 갈 수 있음)
   sweep-server: "home"
 
+# ── 가이드 (Phase 11) ────────────────────────────────────────────────
+# 단계 수 = "바닐라와 다른 기능" 의 수. 기능이 늘면 줄만 추가하세요 (메시지는 guide.step.<key>).
+#   type: check(상태) · trigger(코드가 알림) · command(그 명령을 침) · read(가이드 화면에서 클릭)
+# 국가전 · 평화가 다시 열리면 예: { key: war, type: command, commands: [warstatus, 전쟁], reward: 1000 }
+# 길드는 혼자서 끝낼 수 없어서 기본 목록에서 뺐습니다.
+guide:
+  enabled: true
+  # 이 서버가 아닌 곳에 접속하면 "서버 이동" 단계가 끝납니다
+  hub-server: "home"
+  # 다 끝냈을 때 (우편) + 칭호 키 (titles.definitions)
+  final-ruc: 30000
+  final-title: "guide"
+  steps:
+    - { key: verify,  type: check,   reward: 1000 }
+    - { key: menu,    type: trigger, reward: 1000 }
+    - { key: move,    type: trigger, reward: 1000 }
+    - { key: ruc,     type: command, commands: [ruc, money, 재화], reward: 1000 }
+    - { key: level,   type: command, commands: [level, lv, 레벨], reward: 1000 }
+    - { key: home,    type: command, commands: [sethome, 셋홈, 홈설정], reward: 2000 }
+    - { key: mailbox, type: trigger, reward: 1000 }
+    - { key: ender,   type: trigger, reward: 1000 }
+    - { key: shop,    type: trigger, reward: 1000 }
+    - { key: title,   type: command, commands: [title, titles, 칭호], reward: 1000 }
+    - { key: report,  type: read,    reward: 1000 }
+
 # ── 현금 충전 (docs/payment-design.md) ───────────────────────────────
 # 가격 · 지급 내용은 여기 없습니다. web/content/products.json 한 곳에 있고
 # 봇이 주문을 만들 때 넘깁니다 (표가 두 곳에 있으면 한쪽만 고쳐집니다).

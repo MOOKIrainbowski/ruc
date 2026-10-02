@@ -268,6 +268,7 @@ public class MailboxService {
     // ── 화면 ───────────────────────────────────────────────────────────
 
     public void open(Player player, int page) {
+        if (plugin.getGuide() != null) plugin.getGuide().trigger(player, "mailbox");
         UUID uuid = player.getUniqueId();
         long now = System.currentTimeMillis();
 

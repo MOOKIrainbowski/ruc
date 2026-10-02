@@ -140,6 +140,10 @@ menu:
     name: "&a&lPlayer Shop"
     lore: "&7Buy items other players listed|&7Sell: &f/sell <price>|&e▶ Click to open"
 
+  guide:
+    name: "&6&lGuide"
+    lore: "&7Try each Ruc feature|&7and earn rewards|&e▶ Click to open"
+
   spawn:
     name: "&f&lGo to spawn"
     lore: "&7Teleport to this server's spawn|&8The Raiding server has a warmup"
@@ -274,6 +278,55 @@ shop:
   sold-notice: "&a%buyer% bought your item. &7%price% %symbol% is on its way by mail."
   cancelled: "&aListing cancelled. The item returns to your mailbox."
   error: "&cSomething went wrong with the shop. Please try again shortly."
+
+# ── Guide (Phase 11) ─────────────────────────────────────────────────
+guide:
+  title: "&8Guide &7(%n%/%total%)"
+  disabled: "&cThe guide is not used on this server."
+  current: "&e[Guide %n%/%total%] &f%name%"
+  done: "&aGuide step done: &f%name% &7— &a%reward% %symbol% &7is on its way by mail."
+  finished: "&6&lYou finished the guide! &7You received &a%reward% %symbol% &7and the &f[ Guide ] &7title."
+  entry-done: "&a✓ %n%. %name%"
+  entry-current: "&e▶ %n%. %name%"
+  entry-locked: "&8%n%. %name%"
+  entry-read: "&e▶ Click to mark as read"
+  reward: "&7Reward &a%reward% %symbol% &8(mailbox)"
+  final-name: "&6&lCompletion reward"
+  final-lore: "&7%reward% %symbol% + [ Guide ] title"
+  step:
+    verify:
+      name: "Verify on Discord"
+      how: "&7Link your account with &f/인증 &7on Discord."
+    menu:
+      name: "Open the Shift+F menu"
+      how: "&7Sneak and press &fF&7. (Or &f/menu&7)"
+    move:
+      name: "Move to another server"
+      how: "&7Pick the &fRaiding Server &7in the Shift+F menu."
+    ruc:
+      name: "Check your Ruc"
+      how: "&7Type &f/ruc&7.|&7Ruc is the same wallet on every server."
+    level:
+      name: "Check your level"
+      how: "&7Type &f/level&7.|&7Your Ruc level follows you across servers."
+    home:
+      name: "Set a home"
+      how: "&7On the Raiding Server, type &f/sethome&7.|&7Come back later with &f/home&7."
+    mailbox:
+      name: "Open your mailbox"
+      how: "&7Shift+F → &fMailbox &7(or &f/mail&7).|&7Every reward arrives here."
+    ender:
+      name: "Open your ender chests"
+      how: "&7Shift+F → &fEnder Chests&7.|&7Add more with &f/enderexpand&7."
+    shop:
+      name: "Browse the player shop"
+      how: "&7Shift+F → &fPlayer Shop &7(or &f/shop&7).|&7Sell with &f/sell <price>"
+    title:
+      name: "Pick a title"
+      how: "&7Type &f/title &7to see your titles."
+    report:
+      name: "Learn how to report"
+      how: "&7See a rule break? &f/report <name> <reason>&7.|&7On Discord, use the &f/신고 &7form.|&7False reports are sanctioned."
 
 # ── Mailbox (Phase 5.5) ───────────────────────────────────────────────
 mailbox:

@@ -132,6 +132,10 @@ commands:
     description: 손에 든 아이템을 유저 상점에 올립니다. 취소 = 내 판매 목록.
     usage: /판매등록 <가격|취소>
     aliases: [판매등록, register, sell]
+  guide:
+    description: 가이드 — 러크의 기능을 하나씩 해 보고 보상을 받습니다.
+    usage: /가이드
+    aliases: [가이드, 튜토리얼, tutorial]
   rucrelay:
     description: (콘솔/RCON 전용) 디스코드 발언을 인게임에 중계합니다.
     usage: /rucrelay <발신자> <내용...>

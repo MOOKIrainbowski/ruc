@@ -168,6 +168,7 @@ public class EnderService implements Listener {
 
     /** 내 엔더상자 목록. Shift+F 메뉴의 [엔더상자] 도 여기로 옵니다. */
     public void openSelector(Player player) {
+        if (plugin.getGuide() != null) plugin.getGuide().trigger(player, "ender");
         if (!enabled()) {
             player.sendMessage(messages.prefixed(lang(player), "ender.disabled"));
             return;
