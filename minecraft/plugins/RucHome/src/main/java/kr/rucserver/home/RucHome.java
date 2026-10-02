@@ -146,9 +146,19 @@ public class RucHome extends JavaPlugin {
         player.setHealth(Math.min(20.0, player.getAttribute(
                 org.bukkit.attribute.Attribute.MAX_HEALTH).getValue()));
         player.setFireTicks(0);
-        // 서버 이동 나침반은 주지 않습니다 (2026-10-02) — Shift+F 메뉴와 겹칩니다.
-        // 이미 가지고 있던 나침반도 이 clear() 로 사라집니다.
-        player.getInventory().clear();
+        // ⚠️ 인벤토리를 통째로 비우지 않습니다 (2026-10-02 사고).
+        // 예전에는 들어올 때마다 clear() 했는데, 허브에서도 우편함 수령 · 유저 상점 · 엔더상자를
+        // 쓰게 되면서 받은 물건이 다음 접속 때 지워졌습니다. 이제 지우는 것은 예전에 주던
+        // 서버 이동 나침반(표식이 붙은 것)뿐입니다 — Shift+F 메뉴와 겹쳐서 더 주지 않습니다.
+        removeLegacyCompass(player);
+    }
+
+    private void removeLegacyCompass(Player player) {
+        var inventory = player.getInventory();
+        for (int i = 0; i < inventory.getSize(); i++) {
+            if (selector.isCompass(inventory.getItem(i))) inventory.setItem(i, null);
+        }
+        if (selector.isCompass(player.getItemOnCursor())) player.setItemOnCursor(null);
     }
 
     // ── 관리 명령어 ────────────────────────────────────────────────────
