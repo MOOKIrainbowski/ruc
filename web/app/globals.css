@@ -110,28 +110,26 @@ body {
     inset 0 1px 0 rgba(255, 255, 255, 0.2);
 }
 
-/* 상단 바 (2026-10-03 개편) — 초록 플라스틱 유리 대신 어두운 무채색 바 + 아래쪽 픽셀 블록 띠.
-   픽셀 폰트 · 마인크래프트 블록 느낌을 바의 경계에서만 냅니다. 본문 배경 사진은 그대로 비칩니다. */
+/* 상단 바 (2026-10-03 개편, 같은 날 수정) — 화면 맨 위는 검정 80%, 아래로 갈수록 투명.
+   띠 · 테두리 없이 그라데이션만. 바(64px)에서 끊기지 않도록 아래로 조금 더 이어서 사라지게 하고,
+   이어진 부분은 클릭을 막지 않습니다 (pointer-events: none). */
 .site-bar {
-  background: rgba(10, 11, 12, 0.9);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.35);
+  background: transparent;
 }
-.site-bar::after {
+.site-bar::before {
   content: "";
   position: absolute;
-  left: 0;
-  right: 0;
-  bottom: -4px;
-  height: 4px;
-  /* 4px 칸 두 색이 번갈아 — 잔디 블록 윗면처럼 */
-  background: repeating-linear-gradient(
-    90deg,
-    var(--color-ruc-400) 0 8px,
-    var(--color-ruc-600) 8px 16px
+  inset: 0 0 auto 0;
+  height: 112px;
+  z-index: -1;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    rgba(0, 0, 0, 0.8) 0%,
+    rgba(0, 0, 0, 0.55) 45%,
+    rgba(0, 0, 0, 0.2) 75%,
+    rgba(0, 0, 0, 0) 100%
   );
-  image-rendering: pixelated;
 }
 
 /* 아이콘 메뉴 툴팁 — 마우스를 올리거나 Tab 으로 갔을 때만 */
