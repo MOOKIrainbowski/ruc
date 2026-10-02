@@ -207,6 +207,24 @@ payment:
   redirect-how: "&7Type &f/충전 &7in Discord and pick a product. Once the transfer is confirmed it is delivered to your &fmailbox&7 / titles."
   delivered: "&aYour purchase has been delivered! &7(%product%) &7Check &f/title &7and &f/mail&7."
 
+# ── Ender chest expansion ────────────────────────────────────────────
+ender:
+  title: "&8Ender Expansion &7(%page%/%pages%)"
+  prev: "&e◀ Previous page"
+  next: "&eNext page ▶"
+  to-vanilla: "&e◀ Ender chest"
+  page-info: "&dExpansion page %page% / %pages%"
+  none: "&7You have no expansion pages. Unlock one with &f/enderexpand&7."
+  error: "&cCould not process the ender expansion. Please try again shortly."
+  disabled: "&cEnder expansion is not used on this server."
+  status: "&fEnder expansion &d%owned%&7/%max% pages &8(sneak + right-click an ender chest)"
+  max: "&7You already have the maximum number of pages."
+  no-free: "&7The next page cannot be unlocked for free. See the top-up guide."
+  next-cost: "&7Next page: &fLevel %level%+ &7· &a%cost% %symbol% &8— &f/enderexpand buy"
+  need-level: "&cYou need level %level% or higher."
+  need-ruc: "&cYou need %cost% %symbol%."
+  unlocked: "&aEnder expansion page %page% unlocked! &7Sneak + right-click an ender chest."
+
 # ── Mailbox (Phase 5.5) ───────────────────────────────────────────────
 mailbox:
   title: "&8Mailbox &7(%page%/%pages%)"

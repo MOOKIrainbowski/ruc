@@ -101,10 +101,18 @@ public class PaymentService {
     public OrderResult createOrder(String discordId, String productId, int amount,
                                    int ttlMinutes, String grants) {
         try {
-            if (parseGrants(grants) == null) return OrderResult.of(OrderKind.BAD_GRANTS);
+            List<Grant> parsed = parseGrants(grants);
+            if (parsed == null) return OrderResult.of(OrderKind.BAD_GRANTS);
 
             RucPlayer player = plugin.getPlayerData().getRepository().findByDiscordId(discordId);
             if (player == null) return OrderResult.of(OrderKind.NOT_VERIFIED);
+
+            // 엔더상자 확장은 유료 · 무과금 합쳐 상한이 있습니다. 상한에 닿은 사람이
+            // 돈을 내고 아무것도 못 받는 일이 없도록 주문 단계에서 막습니다.
+            int ender = parsed.stream().filter(g -> g.type().equals("ender")).mapToInt(Grant::number).sum();
+            if (ender > 0 && total(player.getUuid(), ENDER_PAGES) + ender > plugin.getEnder().maxPages()) {
+                return OrderResult.of(OrderKind.CAP);
+            }
 
             long now = System.currentTimeMillis();
             if (repository.countPending(discordId, now) >= maxPending()) {
@@ -537,7 +545,7 @@ public class PaymentService {
 
     public enum Kind { OK, NOT_FOUND, NOT_PENDING, ERROR }
 
-    public enum OrderKind { OK, NOT_VERIFIED, LIMIT, COOLDOWN, BAD_GRANTS, ERROR }
+    public enum OrderKind { OK, NOT_VERIFIED, LIMIT, COOLDOWN, BAD_GRANTS, CAP, ERROR }
 
     public record OrderResult(OrderKind kind, Order order) {
         static OrderResult of(OrderKind kind) { return new OrderResult(kind, null); }

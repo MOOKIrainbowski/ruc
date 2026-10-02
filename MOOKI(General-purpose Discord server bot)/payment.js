@@ -583,6 +583,7 @@ async function handleCharge(interaction) {
         LIMIT: '입금하지 않은 주문이 이미 있습니다. 먼저 입금하거나 `/충전취소` 로 취소해 주세요.',
         COOLDOWN: '조금 전에 주문하셨습니다. 1분 뒤에 다시 시도해 주세요.',
         BAD_GRANTS: '⚠️ 상품 설정에 문제가 있습니다. 운영진에게 알려 주세요.',
+        CAP: '이미 최대 개수까지 가지고 있어서 더 살 수 없습니다.',
     };
     if (r.kind !== 'ORDER') return interaction.editReply(fail[r.kind] || '⚠️ 주문을 만들지 못했습니다.');
 

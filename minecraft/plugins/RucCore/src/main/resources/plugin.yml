@@ -120,6 +120,10 @@ commands:
     description: 충전·후원 안내. 구매는 디스코드에서 합니다.
     usage: /충전
     aliases: [충전, 후원, 구매, 결제, donate, store]
+  enderexpand:
+    description: 엔더상자 확장 페이지를 레벨 · Ruc 로 엽니다. 확장 페이지는 엔더상자를 웅크리고 우클릭.
+    usage: /엔더확장 [구매]
+    aliases: [엔더확장, 엔더]
   rucrelay:
     description: (콘솔/RCON 전용) 디스코드 발언을 인게임에 중계합니다.
     usage: /rucrelay <발신자> <내용...>

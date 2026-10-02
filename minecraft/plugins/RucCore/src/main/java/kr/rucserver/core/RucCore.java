@@ -2,6 +2,7 @@ package kr.rucserver.core;
 
 import kr.rucserver.core.command.CoreCommands;
 import kr.rucserver.core.command.GuildAdminCommands;
+import kr.rucserver.core.command.EnderCommands;
 import kr.rucserver.core.command.GuildCommands;
 import kr.rucserver.core.command.PaymentCommands;
 import kr.rucserver.core.command.ReportCommands;
@@ -19,6 +20,7 @@ import kr.rucserver.core.service.EconomyService;
 import kr.rucserver.core.service.GuildService;
 import kr.rucserver.core.service.MailboxService;
 import kr.rucserver.core.service.MessageService;
+import kr.rucserver.core.service.EnderService;
 import kr.rucserver.core.service.PaymentService;
 import kr.rucserver.core.service.PlayerDataService;
 import kr.rucserver.core.service.ReportService;
@@ -32,6 +34,7 @@ import kr.rucserver.core.storage.Database;
 import kr.rucserver.core.storage.GuildRepository;
 import kr.rucserver.core.storage.HomeRepository;
 import kr.rucserver.core.storage.MailboxRepository;
+import kr.rucserver.core.storage.EnderRepository;
 import kr.rucserver.core.storage.PaymentRepository;
 import kr.rucserver.core.storage.PlayerRepository;
 import kr.rucserver.core.storage.ReportRepository;
@@ -68,6 +71,7 @@ public class RucCore extends JavaPlugin {
     private ReportService reports;
     private SanctionService sanctions;
     private PaymentService payments;
+    private EnderService ender;
     private XpService xp;
     private ScoreboardService scoreboards;
     private TpaService tpa;
@@ -188,6 +192,17 @@ public class RucCore extends JavaPlugin {
         }
         payments = new PaymentService(this, paymentRepository);
 
+        // 엔더상자 확장 (2026-10-02). 페이지 수는 위 충전 원장을 봅니다.
+        EnderRepository enderRepository = new EnderRepository(database);
+        try {
+            enderRepository.createSchema();
+        } catch (SQLException e) {
+            getLogger().log(Level.SEVERE, "엔더 확장 테이블 생성에 실패했습니다. 플러그인을 비활성화합니다.", e);
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        ender = new EnderService(this, messages, enderRepository);
+
         // 프록시 통신과 메뉴는 4개 서버 공통이라 Core가 소유합니다.
         network = new NetworkService(this);
         network.start();
@@ -204,6 +219,8 @@ public class RucCore extends JavaPlugin {
         new ReportCommands(this, messages).register();
         new SanctionCommands(this).register();
         new PaymentCommands(this, messages).register();
+        new EnderCommands(this).register();
+        getServer().getPluginManager().registerEvents(ender, this);
 
         applyGlobalRules();
         scoreboards.start();
@@ -238,6 +255,8 @@ public class RucCore extends JavaPlugin {
         if (titles != null) titles.stop();
         if (relay != null) relay.stop();
         if (payments != null) payments.stop();
+        // DB 를 닫기 전에 — 열린 확장 페이지와 저장 큐를 끝까지 씁니다.
+        if (ender != null) ender.stop();
         if (network != null) network.stop();
 
         // 종료 시에는 비동기로 넘기면 스케줄러가 이미 멈춰서 저장이 유실됩니다.
@@ -280,6 +299,7 @@ public class RucCore extends JavaPlugin {
     public ReportService getReports() { return reports; }
     public SanctionService getSanctions() { return sanctions; }
     public PaymentService getPayments() { return payments; }
+    public EnderService getEnder() { return ender; }
     public BonusRegistry getBonuses() { return bonuses; }
     public XpService getXp() { return xp; }
     public ScoreboardService getScoreboards() { return scoreboards; }
