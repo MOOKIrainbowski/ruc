@@ -5,6 +5,7 @@ import kr.rucserver.core.command.GuildAdminCommands;
 import kr.rucserver.core.command.EnderCommands;
 import kr.rucserver.core.command.GuildCommands;
 import kr.rucserver.core.command.PaymentCommands;
+import kr.rucserver.core.command.ShopCommands;
 import kr.rucserver.core.command.ReportCommands;
 import kr.rucserver.core.command.SanctionCommands;
 import kr.rucserver.core.command.TitleCommands;
@@ -26,6 +27,7 @@ import kr.rucserver.core.service.PlayerDataService;
 import kr.rucserver.core.service.ReportService;
 import kr.rucserver.core.service.SanctionService;
 import kr.rucserver.core.service.ScoreboardService;
+import kr.rucserver.core.service.ShopService;
 import kr.rucserver.core.service.TitleService;
 import kr.rucserver.core.service.TpaService;
 import kr.rucserver.core.service.VerificationService;
@@ -39,6 +41,7 @@ import kr.rucserver.core.storage.PaymentRepository;
 import kr.rucserver.core.storage.PlayerRepository;
 import kr.rucserver.core.storage.ReportRepository;
 import kr.rucserver.core.storage.SanctionRepository;
+import kr.rucserver.core.storage.ShopRepository;
 import kr.rucserver.core.storage.TitleRepository;
 import kr.rucserver.core.storage.VerificationRepository;
 import org.bukkit.GameRule;
@@ -72,6 +75,7 @@ public class RucCore extends JavaPlugin {
     private SanctionService sanctions;
     private PaymentService payments;
     private EnderService ender;
+    private ShopService shop;
     private XpService xp;
     private ScoreboardService scoreboards;
     private TpaService tpa;
@@ -203,6 +207,17 @@ public class RucCore extends JavaPlugin {
         }
         ender = new EnderService(this, messages, enderRepository);
 
+        // 유저 상점 (Phase 10). 매물 · 대금 기록이라 테이블이 없으면 기동을 멈춥니다.
+        ShopRepository shopRepository = new ShopRepository(database);
+        try {
+            shopRepository.createSchema();
+        } catch (SQLException e) {
+            getLogger().log(Level.SEVERE, "상점 테이블 생성에 실패했습니다. 플러그인을 비활성화합니다.", e);
+            getServer().getPluginManager().disablePlugin(this);
+            return;
+        }
+        shop = new ShopService(this, messages, shopRepository);
+
         // 프록시 통신과 메뉴는 4개 서버 공통이라 Core가 소유합니다.
         network = new NetworkService(this);
         network.start();
@@ -220,6 +235,7 @@ public class RucCore extends JavaPlugin {
         new SanctionCommands(this).register();
         new PaymentCommands(this, messages).register();
         new EnderCommands(this).register();
+        new ShopCommands(this).register();
         getServer().getPluginManager().registerEvents(ender, this);
 
         applyGlobalRules();
@@ -230,6 +246,7 @@ public class RucCore extends JavaPlugin {
         titles.start();
         relay.start();
         payments.start();
+        shop.start();
 
         // 리로드로 켜진 경우 이미 접속해 있는 사람들 처리
         for (Player player : getServer().getOnlinePlayers()) {
@@ -257,6 +274,7 @@ public class RucCore extends JavaPlugin {
         if (payments != null) payments.stop();
         // DB 를 닫기 전에 — 열린 확장 페이지와 저장 큐를 끝까지 씁니다.
         if (ender != null) ender.stop();
+        if (shop != null) shop.stop();
         if (network != null) network.stop();
 
         // 종료 시에는 비동기로 넘기면 스케줄러가 이미 멈춰서 저장이 유실됩니다.
@@ -300,6 +318,7 @@ public class RucCore extends JavaPlugin {
     public SanctionService getSanctions() { return sanctions; }
     public PaymentService getPayments() { return payments; }
     public EnderService getEnder() { return ender; }
+    public ShopService getShop() { return shop; }
     public BonusRegistry getBonuses() { return bonuses; }
     public XpService getXp() { return xp; }
     public ScoreboardService getScoreboards() { return scoreboards; }

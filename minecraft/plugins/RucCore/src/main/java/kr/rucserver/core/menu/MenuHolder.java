@@ -26,7 +26,11 @@ public class MenuHolder implements InventoryHolder {
         MAIN,
         SERVERS,
         HELP,
-        MAILBOX
+        MAILBOX,
+        /** 유저 상점 (Phase 10) — 전체 매물 · 내 판매 목록 · 구매 확인창 */
+        SHOP,
+        SHOP_MINE,
+        SHOP_CONFIRM
     }
 
     private final Type type;

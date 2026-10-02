@@ -124,6 +124,14 @@ commands:
     description: 엔더상자 확장권을 레벨 · Ruc 로 삽니다 (우편으로 지급). 엔더상자는 Shift+F 메뉴에서.
     usage: /엔더확장 [구매]
     aliases: [엔더확장, 엔더]
+  usershop:
+    description: 유저 상점을 엽니다. 더블클릭으로 구매합니다.
+    usage: /유저상점
+    aliases: [유저상점, 상점, shop]
+  shopsell:
+    description: 손에 든 아이템을 유저 상점에 올립니다. 취소 = 내 판매 목록.
+    usage: /판매등록 <가격|취소>
+    aliases: [판매등록, register, sell]
   rucrelay:
     description: (콘솔/RCON 전용) 디스코드 발언을 인게임에 중계합니다.
     usage: /rucrelay <발신자> <내용...>

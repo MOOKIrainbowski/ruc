@@ -167,6 +167,32 @@ public class MailboxService {
         return Result.OK;
     }
 
+    /**
+     * 같은 사유로는 한 번만 보내는 Ruc 우편. <b>블로킹입니다.</b> 유저 상점의 판매 대금처럼
+     * "다시 시도해도 한 번만" 이어야 하는 지급에 씁니다 ({@link #sendItemOnce} 와 같은 장치).
+     */
+    public Result sendRucOnce(UUID recipient, long amount, String sender, String reason) {
+        if (amount <= 0) return Result.EMPTY;
+        String why = truncate(reason, 32);
+        try {
+            if (repository.existsByReason(recipient, why)) return Result.OK;
+            long now = System.currentTimeMillis();
+            long id = repository.insert(Mail.outgoing(recipient, null, amount,
+                    truncate(sender, 32), why, now, now + keepMillis()));
+            if (id < 0) return Result.ERROR;
+        } catch (Exception e) {
+            plugin.getLogger().log(Level.SEVERE, "우편 발송 실패 (" + why + ")", e);
+            return Result.ERROR;
+        }
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            Player online = Bukkit.getPlayer(recipient);
+            if (online == null) return;
+            String lang = plugin.getPlayerData().languageOf(online);
+            online.sendMessage(messages.prefixed(lang, "mailbox.arrived"));
+        });
+        return Result.OK;
+    }
+
     /** Ruc 우편. 미접속자 지급에 씁니다. */
     public void sendRuc(UUID recipient, long amount, String sender, String reason,
                         java.util.function.Consumer<Result> onResult) {

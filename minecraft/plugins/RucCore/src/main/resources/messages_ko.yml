@@ -136,6 +136,10 @@ menu:
     name: "&d&l엔더상자"
     lore: "&7기본 엔더상자와 확장 엔더상자|&7어디서나 열 수 있습니다|&e▶ 클릭해서 열기"
 
+  shop:
+    name: "&a&l유저 상점"
+    lore: "&7다른 플레이어가 올린 물건을 삽니다|&7판매: &f/판매등록 <가격>|&e▶ 클릭해서 열기"
+
   spawn:
     name: "&f&l스폰으로"
     lore: "&7이 서버의 스폰 지점으로 이동합니다|&8약탈 서버에서는 시전 시간이 있습니다"
@@ -235,6 +239,41 @@ ender:
   voucher-used: "&c이미 사용된 확장권입니다."
   voucher-invalid: "&c유효하지 않은 확장권입니다."
   unlocked: "&a엔더상자가 %n%개가 되었습니다! &7Shift+F → 엔더상자"
+
+# ── 유저 상점 (Phase 10) ─────────────────────────────────────────────
+shop:
+  title: "&8유저 상점 &7(%page%/%pages%)"
+  mine-title: "&8내 판매 목록 &7(%page%/%pages%)"
+  empty: "&7올라온 물건이 없습니다"
+  mine-empty: "&7판매 중인 물건이 없습니다"
+  prev: "&7◀ 이전 장"
+  next: "&7다음 장 ▶"
+  to-mine: "&e&l내 판매 목록"
+  to-all: "&a&l전체 상점으로"
+  info-name: "&f&l유저 상점 안내"
+  info-lore: "&7판매: &f/판매등록 <가격> &7(손에 든 물건)|&7구매: 물건을 &f더블클릭|&7산 물건 · 판매 대금은 &f우편함&7으로|&7판매 수수료 &f%fee%%"
+  entry: "&7판매자 &f%seller%|&7가격 &a%price% %symbol%|&7남은 기간 &e%remain%"
+  entry-buy: "&e▶ 더블클릭해서 구매"
+  entry-own: "&8내 물건 — 내 판매 목록에서 취소할 수 있습니다"
+  entry-cancel: "&c▶ 더블클릭해서 등록 취소 (우편으로 돌아옴)"
+  confirm-title: "&8구매 확인"
+  confirm-yes: "&a&l구매"
+  confirm-no: "&c&l취소"
+  usage: "&7사용법: &f/판매등록 <가격> &7(손에 든 물건) · &f/판매등록 취소"
+  disabled: "&c이 서버에서는 유저 상점을 쓰지 않습니다."
+  not-verified: "&c디스코드 인증을 마쳐야 상점을 쓸 수 있습니다."
+  reputation-blocked: "&c평판이 거래 제한 단계라 상점을 쓸 수 없습니다."
+  price-range: "&c가격은 %min% ~ %max% %symbol% 사이여야 합니다."
+  empty-hand: "&c팔 물건을 손에 들어 주세요."
+  too-many: "&c동시에 올릴 수 있는 물건은 %max%개까지입니다."
+  registered: "&a상점에 올렸습니다. &7가격 %price% %symbol% · 팔리면 수수료 %fee%%를 뗀 대금이 우편으로 옵니다."
+  gone: "&c이미 팔렸거나 내려간 물건입니다."
+  own: "&c내가 올린 물건은 살 수 없습니다."
+  no-money: "&c%price% %symbol% 가 필요합니다."
+  bought: "&a구매했습니다! &7(%price% %symbol%) &f/우편함 &7에서 받으세요."
+  sold-notice: "&a%buyer% 님이 내 물건을 샀습니다. &7대금 %price% %symbol% 가 우편으로 옵니다."
+  cancelled: "&a등록을 취소했습니다. 물건은 우편함으로 돌아갑니다."
+  error: "&c상점 처리 중 문제가 생겼습니다. 잠시 뒤 다시 시도해 주세요."
 
 # ── 우편함 (Phase 5.5) ────────────────────────────────────────────────
 mailbox:

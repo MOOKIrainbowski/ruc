@@ -42,13 +42,13 @@ public class MenuService {
     public static final int SLOT_VERIFY = 22;
     public static final int SLOT_LANGUAGE = 24;
 
-    // 기능 줄. 28 · 30 · 32 · 34 로 좌우 대칭입니다.
-    // 엔더상자(2026-10-02)가 30 에 들어오면서 유저 상점(Phase 10) 자리는 그때 다시 정합니다.
-    // 26 은 가이드(Phase 11) 자리로 비워 둡니다.
+    // 기능 줄. 28 · 30 · 32 · 34 로 좌우 대칭입니다 (우편함 · 엔더상자 · 유저 상점 · 스폰).
+    // 도움말은 맨 아랫줄 38, 닫기 40, 42 는 가이드(Phase 11) 자리로 비워 둡니다.
     public static final int SLOT_MAILBOX = 28;
     public static final int SLOT_ENDER = 30;
-    public static final int SLOT_SPAWN = 32;
-    public static final int SLOT_HELP = 34;
+    public static final int SLOT_SHOP = 32;
+    public static final int SLOT_SPAWN = 34;
+    public static final int SLOT_HELP = 38;
     public static final int SLOT_CLOSE = 40;
 
     private final RucCore plugin;
@@ -222,6 +222,11 @@ public class MenuService {
         inv.setItem(SLOT_ENDER, item(Material.ENDER_CHEST,
                 messages.raw(lang, "menu.ender.name"),
                 loreOf(lang, "menu.ender.lore")));
+
+        // ── 유저 상점 (Phase 10)
+        inv.setItem(SLOT_SHOP, item(Material.EMERALD,
+                messages.raw(lang, "menu.shop.name"),
+                loreOf(lang, "menu.shop.lore")));
 
         // ── 스폰 이동
         inv.setItem(SLOT_SPAWN, item(Material.RECOVERY_COMPASS,

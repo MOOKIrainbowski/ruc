@@ -136,6 +136,10 @@ menu:
     name: "&d&lEnder Chests"
     lore: "&7Your default and expansion ender chests|&7Open them from anywhere|&e▶ Click to open"
 
+  shop:
+    name: "&a&lPlayer Shop"
+    lore: "&7Buy items other players listed|&7Sell: &f/sell <price>|&e▶ Click to open"
+
   spawn:
     name: "&f&lGo to spawn"
     lore: "&7Teleport to this server's spawn|&8The Raiding server has a warmup"
@@ -235,6 +239,41 @@ ender:
   voucher-used: "&cThis voucher has already been used."
   voucher-invalid: "&cThis voucher is not valid."
   unlocked: "&aYou now have %n% ender chests! &7Shift+F → Ender Chest"
+
+# ── Player shop (Phase 10) ───────────────────────────────────────────
+shop:
+  title: "&8Player Shop &7(%page%/%pages%)"
+  mine-title: "&8My Listings &7(%page%/%pages%)"
+  empty: "&7Nothing is listed yet"
+  mine-empty: "&7You have nothing listed"
+  prev: "&7◀ Previous"
+  next: "&7Next ▶"
+  to-mine: "&e&lMy listings"
+  to-all: "&a&lBack to the shop"
+  info-name: "&f&lPlayer Shop"
+  info-lore: "&7Sell: &f/sell <price> &7(item in hand)|&7Buy: &fdouble-click &7an item|&7Items and earnings arrive by &fmail|&7Sales fee &f%fee%%"
+  entry: "&7Seller &f%seller%|&7Price &a%price% %symbol%|&7Time left &e%remain%"
+  entry-buy: "&e▶ Double-click to buy"
+  entry-own: "&8Your item — cancel it from My listings"
+  entry-cancel: "&c▶ Double-click to cancel (returned by mail)"
+  confirm-title: "&8Confirm purchase"
+  confirm-yes: "&a&lBuy"
+  confirm-no: "&c&lCancel"
+  usage: "&7Usage: &f/sell <price> &7(item in hand) · &f/sell cancel"
+  disabled: "&cThe player shop is not used on this server."
+  not-verified: "&cFinish Discord verification to use the shop."
+  reputation-blocked: "&cYour reputation is trade-restricted."
+  price-range: "&cPrice must be between %min% and %max% %symbol%."
+  empty-hand: "&cHold the item you want to sell."
+  too-many: "&cYou can list up to %max% items at once."
+  registered: "&aListed. &7Price %price% %symbol% · earnings minus the %fee%% fee arrive by mail."
+  gone: "&cThat item was already sold or removed."
+  own: "&cYou cannot buy your own item."
+  no-money: "&cYou need %price% %symbol%."
+  bought: "&aPurchased! &7(%price% %symbol%) Claim it from &f/mail&7."
+  sold-notice: "&a%buyer% bought your item. &7%price% %symbol% is on its way by mail."
+  cancelled: "&aListing cancelled. The item returns to your mailbox."
+  error: "&cSomething went wrong with the shop. Please try again shortly."
 
 # ── Mailbox (Phase 5.5) ───────────────────────────────────────────────
 mailbox:
