@@ -4,8 +4,7 @@ import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
 import { DISCORD_INVITE, MC_ADDRESS, t, type Lang } from "@/lib/content";
-import Footer from "./Footer";
-import Nav from "./Nav";
+import LandingNav from "./LandingNav";
 import StatusStrip from "./StatusStrip";
 
 function Section({
@@ -56,11 +55,10 @@ export default function Landing({ lang }: { lang: Lang }) {
     }
   };
 
-  const statusHref = lang === "ko" ? "/status" : "/en/status";
-
   return (
     <>
-      <Nav lang={lang} />
+      {/* 랜딩은 독립 페이지 — 사이트 내비 대신 입장 버튼만 있는 전용 헤더 (2026-10-02) */}
+      <LandingNav lang={lang} />
 
       <main className="pt-16">
         {/* ─── 1. 히어로 (§7.2-1) ─────────────────────────────── */}
@@ -96,22 +94,22 @@ export default function Landing({ lang }: { lang: Lang }) {
             <span className="text-ruc-400">{copied ? c.hero.copied : c.hero.copyAddress}</span>
           </button>
 
-          {/* 필수 디스코드 CTA #1 (§7.2-4) */}
+          {/* 러크 홈페이지 입장 + 필수 디스코드 CTA #1 (§7.2-4) */}
           <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <Link
+              href="/home"
+              className="rounded-xl bg-ruc-400 px-6 py-3.5 text-xs font-bold text-ruc-900 shadow-[0_0_30px_rgba(147,233,62,0.4)] transition-all hover:bg-ruc-300 hover:shadow-[0_0_44px_rgba(147,233,62,0.6)]"
+            >
+              {c.nav.enter} →
+            </Link>
             <a
               href={DISCORD_INVITE}
               target="_blank"
               rel="noopener noreferrer"
-              className="rounded-xl bg-ruc-400 px-6 py-3.5 text-xs font-bold text-ruc-900 shadow-[0_0_30px_rgba(147,233,62,0.4)] transition-all hover:bg-ruc-300 hover:shadow-[0_0_44px_rgba(147,233,62,0.6)]"
+              className="glass glass-hover rounded-xl px-6 py-3.5 text-xs text-white/85"
             >
               {c.hero.ctaDiscord}
             </a>
-            <Link
-              href={statusHref}
-              className="glass glass-hover rounded-xl px-6 py-3.5 text-xs text-white/85"
-            >
-              {c.hero.ctaStatus}
-            </Link>
           </div>
         </Section>
 
@@ -328,19 +326,36 @@ export default function Landing({ lang }: { lang: Lang }) {
             <p className="mx-auto mt-4 max-w-md text-[13px] leading-relaxed text-white/65">
               {c.finalCta.lead}
             </p>
-            <a
-              href={DISCORD_INVITE}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mt-9 inline-block rounded-xl bg-ruc-400 px-9 py-4 text-xs font-bold text-ruc-900 shadow-[0_0_36px_rgba(147,233,62,0.45)] transition-all hover:bg-ruc-300 hover:shadow-[0_0_52px_rgba(147,233,62,0.65)]"
-            >
-              {c.finalCta.button}
-            </a>
+            <div className="mt-9 flex flex-wrap items-center justify-center gap-3">
+              <a
+                href={DISCORD_INVITE}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-block rounded-xl bg-ruc-400 px-9 py-4 text-xs font-bold text-ruc-900 shadow-[0_0_36px_rgba(147,233,62,0.45)] transition-all hover:bg-ruc-300 hover:shadow-[0_0_52px_rgba(147,233,62,0.65)]"
+              >
+                {c.finalCta.button}
+              </a>
+              <Link
+                href="/home"
+                className="glass glass-hover inline-block rounded-xl px-9 py-4 text-xs text-white/90"
+              >
+                {c.nav.enter} →
+              </Link>
+            </div>
           </div>
         </Section>
       </main>
 
-      <Footer lang={lang} />
+      {/* 랜딩 전용 푸터 — 사이트 링크 없이 한 줄 */}
+      <footer className="mt-10 border-t border-white/8">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-8 sm:px-6">
+          <div className="flex items-center gap-2.5">
+            <Image src="/icon.png" alt="" width={24} height={24} className="h-6 w-6" />
+            <span className="text-[11px] text-white/60">{c.footer.tagline}</span>
+          </div>
+          <span className="text-[11px] text-white/40">© 2026 {c.footer.madeWith}</span>
+        </div>
+      </footer>
     </>
   );
 }

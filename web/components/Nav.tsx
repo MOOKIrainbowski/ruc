@@ -7,11 +7,13 @@ import { useEffect, useRef, useState } from "react";
 import { DISCORD_INVITE, path, t, type Lang } from "@/lib/content";
 
 /**
- * 영어판이 있는 페이지. 나머지(/home /rules /wiki /charge)는 한국어 전용입니다
+ * 영어판이 있는 사이트 페이지. 나머지(/home /rules /wiki /charge)는 한국어 전용입니다.
+ * 랜딩(/landing · /en/landing)은 독립 페이지라 이 내비를 쓰지 않습니다 (LandingNav).
+ *
  * (2026-10-01 결정). 여기 없는 페이지에서는 EN 토글을 비활성으로 둡니다 —
  * /en/rules 처럼 없는 주소로 보내면 404 가 됩니다.
  */
-const EN_PAGES = ["/landing", "/status"];
+const EN_PAGES = ["/status"];
 
 function stripLang(pathname: string) {
   return pathname.replace(/^\/en(?=\/|$)/, "") || "/";
@@ -44,7 +46,6 @@ export default function Nav({ lang }: { lang: Lang }) {
 
   // 한국어 전용 페이지는 영어 화면에서도 한국어 주소로 연결합니다.
   const links = [
-    { href: path(lang, "/landing"), match: "/landing", label: c.nav.landing },
     { href: "/home", match: "/home", label: c.nav.home },
     { href: "/rules", match: "/rules", label: c.nav.rules },
     { href: "/wiki", match: "/wiki", label: c.nav.wiki },
@@ -64,8 +65,8 @@ export default function Nav({ lang }: { lang: Lang }) {
         aria-label={c.nav.menu}
         className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6"
       >
-        {/* 좌측: 아이콘 + "Ruc Server" (§7.3) */}
-        <Link href={path(lang, "/landing")} className="group flex shrink-0 items-center gap-2.5">
+        {/* 좌측: 아이콘 + "Ruc Server" (§7.3) — 러크 홈페이지 홈으로 */}
+        <Link href="/home" className="group flex shrink-0 items-center gap-2.5">
           <Image
             src="/icon.png"
             alt=""

@@ -23,7 +23,7 @@ npm run build && npm run start
 | 경로 | 내용 |
 |---|---|
 | `/` | → `/landing` 으로 임시 리디렉트 (307) |
-| `/landing` · `/en/landing` | 랜딩 — 신규 유저 대상 홍보 |
+| `/landing` · `/en/landing` | 랜딩 — 신규 유저 대상 홍보. **독립 페이지**: 사이트 내비 · 푸터 없이 전용 헤더(`LandingNav`)와 [러크 홈페이지 입장] → `/home` |
 | `/home` | 이용자 허브 — 충전 · 디스코드 · 규칙 · 위키 카드 (한국어 전용) |
 | `/rules` | 디스코드 · 마인크래프트 규칙 (한국어 전용, `content/rules.json`) |
 | `/wiki` · `/wiki/<문서>` | 러크 위키 (한국어 전용, `content/wiki/*.md`) |

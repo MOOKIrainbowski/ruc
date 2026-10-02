@@ -19,6 +19,8 @@ type Copy = {
     goToServer: string;
     status: string;
     landing: string;
+    /** 랜딩 → 러크 홈페이지(/home) 입장 버튼 */
+    enter: string;
     home: string;
     rules: string;
     wiki: string;
@@ -107,6 +109,7 @@ export const content: Record<Lang, Copy> = {
       goToServer: "서버 가기",
       status: "서버 상태",
       landing: "소개",
+      enter: "러크 홈페이지 입장",
       home: "홈",
       rules: "규칙",
       wiki: "위키",
@@ -325,6 +328,7 @@ export const content: Record<Lang, Copy> = {
       goToServer: "Go to Server",
       status: "Server Status",
       landing: "About",
+      enter: "Enter Ruc Home",
       home: "Home",
       rules: "Rules",
       wiki: "Wiki",
