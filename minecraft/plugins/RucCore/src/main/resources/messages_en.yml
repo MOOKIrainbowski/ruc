@@ -132,6 +132,10 @@ menu:
     name: "&6&lMailbox"
     lore: "&7Where rewards and traded items arrive|&7Kept for up to 30 days|&e▶ Click to open"
 
+  ender:
+    name: "&d&lEnder Chests"
+    lore: "&7Your default and expansion ender chests|&7Open them from anywhere|&e▶ Click to open"
+
   spawn:
     name: "&f&lGo to spawn"
     lore: "&7Teleport to this server's spawn|&8The Raiding server has a warmup"
@@ -209,21 +213,28 @@ payment:
 
 # ── Ender chest expansion ────────────────────────────────────────────
 ender:
-  title: "&8Ender Expansion &7(%page%/%pages%)"
-  prev: "&e◀ Previous page"
-  next: "&eNext page ▶"
-  to-vanilla: "&e◀ Ender chest"
-  page-info: "&dExpansion page %page% / %pages%"
-  none: "&7You have no expansion pages. Unlock one with &f/enderexpand&7."
-  error: "&cCould not process the ender expansion. Please try again shortly."
+  selector-title: "&8My Ender Chests &7(%count%)"
+  chest-vanilla: "&d&lEnder Chest 1 &7(default)"
+  chest-name: "&d&lEnder Chest %n%"
+  chest-lore: "&e▶ Click to open"
+  chest-title: "&8Ender Chest %n%"
+  more-name: "&a&lGet more ender chests"
+  more-lore: "&7You have %owned% · max %max%|&e▶ Click to see requirements &8(/enderexpand)"
+  error: "&cCould not process your ender chest. Please try again shortly."
   disabled: "&cEnder expansion is not used on this server."
-  status: "&fEnder expansion &d%owned%&7/%max% pages &8(sneak + right-click an ender chest)"
-  max: "&7You already have the maximum number of pages."
-  no-free: "&7The next page cannot be unlocked for free. See the top-up guide."
-  next-cost: "&7Next page: &fLevel %level%+ &7· &a%cost% %symbol% &8— &f/enderexpand buy"
+  status: "&fEnder chests &d%owned%&7/%max% &8(Shift+F → Ender Chest)"
+  outstanding: "&7You have &f%count% &7unused expansion voucher(s). Check your mailbox."
+  max: "&7You already have the maximum."
+  no-free: "&7You cannot buy more vouchers. See the top-up guide."
+  next-cost: "&7Next voucher: &fLevel %level%+ &7· &a%cost% %symbol% &8— &f/enderexpand buy"
   need-level: "&cYou need level %level% or higher."
   need-ruc: "&cYou need %cost% %symbol%."
-  unlocked: "&aEnder expansion page %page% unlocked! &7Sneak + right-click an ender chest."
+  voucher-sent: "&aAn ender expansion voucher was sent to your mailbox. Claim it and &fright-click &7while holding it."
+  voucher-name: "&d&lEnder Expansion Voucher"
+  voucher-lore: "&7Right-click while holding to add one ender chest"
+  voucher-used: "&cThis voucher has already been used."
+  voucher-invalid: "&cThis voucher is not valid."
+  unlocked: "&aYou now have %n% ender chests! &7Shift+F → Ender Chest"
 
 # ── Mailbox (Phase 5.5) ───────────────────────────────────────────────
 mailbox:

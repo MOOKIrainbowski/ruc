@@ -121,7 +121,7 @@ commands:
     usage: /충전
     aliases: [충전, 후원, 구매, 결제, donate, store]
   enderexpand:
-    description: 엔더상자 확장 페이지를 레벨 · Ruc 로 엽니다. 확장 페이지는 엔더상자를 웅크리고 우클릭.
+    description: 엔더상자 확장권을 레벨 · Ruc 로 삽니다 (우편으로 지급). 엔더상자는 Shift+F 메뉴에서.
     usage: /엔더확장 [구매]
     aliases: [엔더확장, 엔더]
   rucrelay:

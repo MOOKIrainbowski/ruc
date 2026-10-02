@@ -82,6 +82,8 @@ public class ScoreboardService {
         Objective objective = board.registerNewObjective(
                 "ruc", Criteria.DUMMY, MessageService.colorize(title));
         objective.setDisplaySlot(DisplaySlot.SIDEBAR);
+        // 오른쪽의 빨간 점수는 줄 순서를 정하는 내부 값일 뿐이라 감춥니다 (1.20.3+).
+        objective.numberFormat(io.papermc.paper.scoreboard.numbers.NumberFormat.blank());
 
         player.setScoreboard(board);
         update(player);

@@ -8,12 +8,12 @@ import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 /**
- * {@code /엔더확장} — 엔더상자 확장 페이지를 무과금으로 엽니다.
+ * {@code /엔더확장} — 엔더상자 확장권을 무과금으로 삽니다.
  * <pre>
- * /엔더확장        지금 몇 페이지인지 · 다음 페이지 조건
- * /엔더확장 구매   조건(레벨 · Ruc)을 채웠으면 한 페이지 열기
+ * /엔더확장        지금 몇 개인지 · 다음 확장권 조건
+ * /엔더확장 구매   조건(레벨 · Ruc)을 채웠으면 확장권을 우편으로 받기
  * </pre>
- * 확장 페이지 자체는 엔더상자를 웅크리고 우클릭해서 엽니다 (휴대용 명령은 없습니다).
+ * 확장권을 들고 우클릭해야 엔더상자가 늘어납니다. 엔더상자는 Shift+F 메뉴에서 엽니다.
  */
 public class EnderCommands implements CommandExecutor {
 

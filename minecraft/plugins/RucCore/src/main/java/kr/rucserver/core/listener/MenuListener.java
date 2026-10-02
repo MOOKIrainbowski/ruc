@@ -150,6 +150,8 @@ public class MenuListener implements Listener {
 
             case MenuService.SLOT_MAILBOX -> plugin.getMailbox().open(player, 0);
 
+            case MenuService.SLOT_ENDER -> plugin.getEnder().openSelector(player);
+
             case MenuService.SLOT_VERIFY -> {
                 player.closeInventory();
                 player.performCommand("verify");

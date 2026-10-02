@@ -146,8 +146,9 @@ public class RucHome extends JavaPlugin {
         player.setHealth(Math.min(20.0, player.getAttribute(
                 org.bukkit.attribute.Attribute.MAX_HEALTH).getValue()));
         player.setFireTicks(0);
+        // 서버 이동 나침반은 주지 않습니다 (2026-10-02) — Shift+F 메뉴와 겹칩니다.
+        // 이미 가지고 있던 나침반도 이 clear() 로 사라집니다.
         player.getInventory().clear();
-        selector.giveCompass(player);
     }
 
     // ── 관리 명령어 ────────────────────────────────────────────────────
