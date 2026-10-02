@@ -337,7 +337,7 @@ function startSyncing(guild) {
             .catch(err => console.error('[평판] 주기 동기화 실패:', err));
     }, minutes * 60 * 1000).unref?.();
 
-    console.log(`[평판] ${minutes}분마다 동기화합니다.`);
+    // 시작 줄은 logConfig 가 주기까지 함께 찍습니다.
 }
 
 /** 기동 시 설정 상태를 알려 줍니다. */
@@ -348,7 +348,7 @@ function logConfig() {
         console.log('[평판] 평판 역할이 설정되지 않았습니다. '
             + '디스코드에서 /평판역할설정 을 한 번 실행하세요.');
     } else {
-        console.log(`[평판] 티어 역할 ${set.length}/${TIER_KEYS.length}개 연결됨`);
+        console.log(`[평판] 티어 역할 ${set.length}/${TIER_KEYS.length}개 · ${Math.max(5, SWEEP_INTERVAL_MIN)}분마다 동기화`);
     }
 }
 

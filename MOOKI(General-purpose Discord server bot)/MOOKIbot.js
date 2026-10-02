@@ -315,11 +315,8 @@ client.once(Events.ClientReady, async () => {
     // 나타나서 원인을 찾기 어렵습니다.
     try {
         roles.load();
-        const staff = roles.ofKind('staff').map(r => r.label).join(' > ');
-        const rank = roles.ofKind('rank').map(r => r.label).join(' > ');
-        console.log(`✅ 역할 설정 로드 — 스태프: ${staff}`);
-        console.log(`✅ 역할 설정 로드 — 등급: ${rank}`);
-        console.log(`✅ 인증 시 부여할 역할: ${roles.verifiedRole().label}`);
+        console.log(`✅ 역할 설정 — 스태프 ${roles.ofKind('staff').length} · 등급 ${roles.ofKind('rank').length}`
+            + ` · 인증 역할 ${roles.verifiedRole().label}`);
     } catch (e) {
         console.error('❌ config/roles.json 을 읽지 못했습니다:', e.message);
         console.error('   권한 검사와 인증 역할 부여가 동작하지 않습니다.');
@@ -374,17 +371,16 @@ client.once(Events.ClientReady, async () => {
 
     try {
         await client.application.commands.set(commands);
-        console.log('✅ 슬래시 명령어 등록 완료.');
+        console.log(`✅ 슬래시 명령어 ${commands.length}개 등록`);
     } catch (e) {
         console.error('❌ 슬래시 명령어 등록 실패:', e);
     }
 
     // ── 칭호 동기화 (Phase 6) ────────────────────────────────────────
     //
-    // 역할 ID 를 콘솔에 찍는 이유: RucCore 의 config.yml 은 역할 이름이 아니라
-    // **ID** 를 요구합니다 (이름은 바뀌고, 공백·쉼표가 들어가 RCON 인자로 실을
-    // 수 없습니다). ID 는 디스코드 UI 에서 개발자 모드를 켜야 보이는 값이라
-    // 여기에 찍어 두면 설정을 채울 때 콘솔만 보면 됩니다.
+    // 역할 ID 전체 목록은 RucCore config.yml 을 채울 때만 필요합니다
+    // (설정은 2026-09-30 에 끝났습니다). 평소에는 한 줄 요약만 찍고,
+    // 목록이 필요하면 .env 에 RUC_LOG_ROLES=true 를 넣습니다.
     if (GUILD_ID) {
         const guild = await client.guilds.fetch(GUILD_ID).catch(() => null);
         if (!guild) {
@@ -404,12 +400,10 @@ client.once(Events.ClientReady, async () => {
                 const audit = await roles.audit(guild);
                 const broken = audit.filter(r => !r.ok);
                 if (broken.length === 0) {
-                    console.log(`✅ 역할 점검 — ${audit.length}개 전부 정상`);
+                    console.log(`✅ 역할 점검 — ${audit.length}개 정상`);
                 } else {
-                    console.warn(`⚠️ 역할 점검 — 문제 ${broken.length}건:`);
-                    for (const row of broken) {
-                        console.warn(`   ✗ ${row.label} (${row.key}) — ${row.problem}`);
-                    }
+                    console.warn(`⚠️ 역할 점검 — 문제 ${broken.length}건: `
+                        + broken.map(row => `${row.label}(${row.key}) ${row.problem}`).join(' · '));
                 }
             } catch (e) {
                 console.warn('⚠️ 역할 점검 실패:', e.message);

@@ -190,7 +190,9 @@ async function sweep(guild, all = false) {
             + `(연결된 역할 ${mappedRoles.size}개)`);
         return { sent, linked, roles: mappedRoles.size };
     } catch (err) {
-        console.error('[칭호] 훑기 실패:', err.message);
+        // 마크 서버가 꺼져 있는 것은 오류가 아니라 상태입니다. 한 줄로만 알립니다.
+        if (err.code === 'ECONNREFUSED') console.warn('[칭호] 마크 서버 꺼짐 — 훑기 건너뜀 (다음 주기에 다시)');
+        else console.error('[칭호] 훑기 실패:', err.message);
         return { sent, linked, roles: mappedRoles.size, error: err.message };
     } finally {
         if (rcon) {
@@ -212,6 +214,11 @@ function logRoles(guild) {
         .filter(role => role.name !== '@everyone')
         .sort((a, b) => b.position - a.position);
 
+    // 설정을 채울 때만 전체 목록이 필요합니다. 평소에는 25줄이 로그를 덮습니다.
+    if (process.env.RUC_LOG_ROLES !== 'true') {
+        console.log(`[역할] ${guild.name} 역할 ${roles.length}개 (ID 목록: .env 에 RUC_LOG_ROLES=true)`);
+        return;
+    }
     console.log(`[역할] ${guild.name} — ${roles.length}개 (위에서부터)`);
     for (const role of roles) {
         console.log(`[역할] ${role.name} = ${role.id}`);
@@ -227,7 +234,7 @@ function startSweeping(guild) {
         sweep(guild, false).catch(err => console.error('[칭호] 주기 훑기 실패:', err));
     }, minutes * 60 * 1000).unref?.();
 
-    console.log(`[칭호] ${minutes}분마다 훑습니다.`);
+    console.log(`[칭호] ${minutes}분마다 훑기`);
 }
 
 // ── 슬래시 명령어 ─────────────────────────────────────────────────────

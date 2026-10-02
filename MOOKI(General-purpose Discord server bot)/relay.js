@@ -177,8 +177,8 @@ function logConfig() {
     const ports = portMap();
 
     if (channels.size === 0) {
-        console.log('[중계] RUC_RELAY_CHANNELS 가 비어 있어 디스코드 → 인게임 중계가 '
-            + '꺼져 있습니다. 예: RUC_RELAY_CHANNELS=home:123,raid:456');
+        // 2026-09-29 결정으로 일부러 꺼 둔 상태입니다 — 경고가 아니라 상태 한 줄.
+        console.log('[중계] 디스코드 → 인게임 꺼짐 (인게임 → 디스코드는 플러그인 웹훅)');
         return;
     }
 

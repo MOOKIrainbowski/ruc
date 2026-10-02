@@ -98,6 +98,12 @@ function save() {
 
 // ── RCON ──────────────────────────────────────────────────────────────
 
+/**
+ * 마크 서버 연결 상태. 꺼져 있을 때 5분마다 같은 경고를 찍지 않도록
+ * <b>바뀔 때만</b> 로그를 남깁니다 (null = 아직 모름).
+ */
+let serverUp = null;
+
 /** @returns {Promise<string|null>} 응답 한 줄. 연결 실패면 null. */
 async function rcon(command) {
     const password = process.env.RUC_RCON_PW || '';
@@ -110,9 +116,17 @@ async function rcon(command) {
             password,
             timeout: 5000,
         });
-        return String(await conn.send(command)).trim();
+        const reply = String(await conn.send(command)).trim();
+        if (serverUp === false) console.log('[충전] 마크 서버 다시 연결됨');
+        serverUp = true;
+        return reply;
     } catch (err) {
-        console.warn('[충전] RCON 실패:', err.message);
+        if (serverUp !== false) {
+            console.warn(err.code === 'ECONNREFUSED'
+                ? '[충전] 마크 서버 꺼짐 — 주문 · 지급은 서버가 켜지면 이어집니다'
+                : `[충전] RCON 실패: ${err.message}`);
+        }
+        serverUp = false;
         return null;
     } finally {
         if (conn) {
@@ -392,12 +406,15 @@ async function watchSilence(guild) {
 function start(guild) {
     loadProducts();
     const available = catalog.products.filter(p => p.available).map(p => p.id);
-    console.log(`[충전] 상품 ${catalog.products.length}개 (판매 중: ${available.join(', ') || '없음'}) · `
-        + `${enabled() ? '운영' : '시험 모드 — Manager 만 주문 가능'} · 계좌 ${account() ? '설정됨' : '없음'}`);
+    console.log(`[충전] 판매 중 ${available.join(', ') || '없음'} · `
+        + `${enabled() ? '운영' : '시험 모드(Manager 만)'} · 계좌 ${account() ? '✓' : '없음'}`
+        + ` · 알림 웹훅 ${process.env.PAY_WEBHOOK_SECRET ? '켜짐' : '꺼짐(버튼 확인만)'}`);
 
     const tick = async () => {
         try {
             await grantRoles(guild);
+            // 첫 RCON 이 실패했으면 서버가 꺼져 있습니다. 나머지는 같은 실패라 건너뜁니다.
+            if (serverUp === false) return;
             await retryFailed(guild);
             await clearExpiredRoles(guild);
             await watchSilence(guild);
@@ -457,10 +474,7 @@ function verifySignature(secret, timestamp, body, signature) {
 
 function startWebhook(guild) {
     const secret = process.env.PAY_WEBHOOK_SECRET;
-    if (!secret) {
-        console.log('[충전] PAY_WEBHOOK_SECRET 이 없어 입금 알림 웹훅을 열지 않습니다 (관리자 확인만 사용).');
-        return;
-    }
+    if (!secret) return; // 시작 줄에 "알림 웹훅 꺼짐" 으로 이미 찍었습니다.
     const port = parseInt(process.env.PAY_WEBHOOK_PORT || '8790', 10);
     const host = process.env.PAY_WEBHOOK_HOST || '127.0.0.1';
 
