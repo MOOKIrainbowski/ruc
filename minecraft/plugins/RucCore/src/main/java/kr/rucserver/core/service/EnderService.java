@@ -82,13 +82,15 @@ import java.util.logging.Level;
 public class EnderService implements Listener {
 
     private static final int SIZE = 27;
-    /** 목록 화면에서 엔더상자를 놓는 칸 (가운데 줄, 최대 4개 기준 좌우 대칭). */
+    /** 목록 화면에서 엔더상자를 놓는 칸 (가운데 줄, 최대 7개까지 좌우 대칭). */
     private static final int[][] LAYOUT = {
             {13},
             {12, 14},
             {11, 13, 15},
             {10, 12, 14, 16},
             {9, 11, 13, 15, 17},
+            {10, 11, 12, 14, 15, 16},
+            {10, 11, 12, 13, 14, 15, 16},
     };
     private static final int SLOT_MORE = 22;
 
@@ -116,12 +118,15 @@ public class EnderService implements Listener {
         this.voucherKey = new NamespacedKey(plugin, "ender_voucher");
     }
 
+    // 대체값을 직접 넘기지 않습니다. getInt(path, def) 는 jar 기본값을 보지 않아서, ender 섹션이
+    // 없는 배포본 config.yml 에서 jar 의 값 대신 코드의 대체값이 나옵니다 (MessageService 와 같은 함정).
     public boolean enabled() {
-        return plugin.getConfig().getBoolean("ender.enabled", true);
+        return plugin.getConfig().getBoolean("ender.enabled");
     }
 
+    /** 확장 개수 상한 (바닐라 1개 제외). 기본 6 → 엔더상자 최대 7개. */
     public int maxPages() {
-        return Math.max(0, plugin.getConfig().getInt("ender.max-pages", 3));
+        return Math.max(0, Math.min(6, plugin.getConfig().getInt("ender.max-pages")));
     }
 
     private String serverId() {
