@@ -12,12 +12,12 @@ import { t, type Lang } from "@/lib/content";
 export default function LandingNav({ lang }: { lang: Lang }) {
   const c = t(lang);
   const langClass = (active: boolean) =>
-    `rounded-full px-2.5 py-1 transition-colors ${
+    `rounded px-2 py-1 transition-colors ${
       active ? "bg-ruc-400 text-ruc-900 font-bold" : "text-white/70 hover:text-white"
     }`;
 
   return (
-    <header className="glass-nav fixed top-0 left-0 right-0 z-50">
+    <header className="site-bar fixed top-0 left-0 right-0 z-50">
       <nav
         aria-label="Ruc Server"
         className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:px-6"
@@ -30,7 +30,7 @@ export default function LandingNav({ lang }: { lang: Lang }) {
         </span>
 
         <div className="flex items-center gap-2 sm:gap-3">
-          <div className="glass flex items-center rounded-full p-0.5 text-[11px]" role="group" aria-label="Language">
+          <div className="flex items-center rounded-md border border-white/10 p-0.5 text-[11px]" role="group" aria-label="Language">
             <Link href="/landing" aria-current={lang === "ko" ? "true" : undefined} className={langClass(lang === "ko")}>
               KO
             </Link>
@@ -40,7 +40,7 @@ export default function LandingNav({ lang }: { lang: Lang }) {
           </div>
           <Link
             href="/home"
-            className="rounded-full bg-ruc-400 px-3.5 py-2 text-[11px] font-bold text-ruc-900 shadow-[0_0_20px_rgba(147,233,62,0.35)] transition-all hover:bg-ruc-300 hover:shadow-[0_0_28px_rgba(147,233,62,0.55)] sm:text-xs"
+            className="rounded-md bg-ruc-400 px-3.5 py-2 text-[11px] font-bold text-ruc-900 shadow-[0_0_20px_rgba(147,233,62,0.35)] transition-all hover:bg-ruc-300 hover:shadow-[0_0_28px_rgba(147,233,62,0.55)] sm:text-xs"
           >
             {c.nav.enter} →
           </Link>
