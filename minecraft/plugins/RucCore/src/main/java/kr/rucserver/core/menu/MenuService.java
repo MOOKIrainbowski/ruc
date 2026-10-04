@@ -38,18 +38,18 @@ public class MenuService {
     /** 서버 칸 배치. 4개를 가운데에 고르게 둡니다. */
     private static final int[] SERVER_SLOTS = {10, 12, 14, 16};
 
-    public static final int SLOT_PROFILE = 20;
-    public static final int SLOT_VERIFY = 22;
-    public static final int SLOT_LANGUAGE = 24;
+    public static final int SLOT_PROFILE = 14;
+    public static final int SLOT_VERIFY = 15;
+    public static final int SLOT_LANGUAGE = 16;
 
     // 기능 줄. 28 · 30 · 32 · 34 로 좌우 대칭입니다 (우편함 · 엔더상자 · 유저 상점 · 스폰).
     // 도움말은 맨 아랫줄 38, 닫기 40, 가이드(Phase 11) 42 — 좌우 대칭.
     public static final int SLOT_MAILBOX = 28;
-    public static final int SLOT_ENDER = 30;
-    public static final int SLOT_SHOP = 32;
-    public static final int SLOT_SPAWN = 34;
-    public static final int SLOT_HELP = 38;
-    public static final int SLOT_GUIDE = 42;
+    public static final int SLOT_ENDER = 29;
+    public static final int SLOT_SHOP = 30;
+    public static final int SLOT_SPAWN = 11;
+    public static final int SLOT_HELP = 33;
+    public static final int SLOT_GUIDE = 34;
     public static final int SLOT_CLOSE = 40;
 
     private final RucCore plugin;

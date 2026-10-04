@@ -52,6 +52,44 @@ $velocityVersions = (Invoke-RestMethod "https://fill.papermc.io/v3/projects/velo
 $latestVelocity = ($velocityVersions.PSObject.Properties | Select-Object -First 1).Value[0]
 Get-PaperArtifact -Project "velocity" -Version $latestVelocity -OutFile "$Root\proxy\velocity.jar"
 
+# 구버전 클라이언트 접속 — ViaVersion + ViaBackwards (README "접속 가능 버전").
+# 프록시에만 둡니다. 백엔드는 1.21.11 만 보고, 번역은 프록시가 합니다.
+# 버전을 고정하고 SHA-512 를 확인합니다. 올릴 때는 둘을 같은 버전으로 같이 올리세요.
+$via = @(
+    @{ Name = "ViaVersion";   Url = "https://cdn.modrinth.com/data/P1OZGk5p/versions/FaishMnD/ViaVersion-5.12.0.jar";
+       Sha512 = "2dfe562109179f08685dc84a66aedf7c810592223b5287b6355ba1e741d1737d015ca0c444b4bc01e5db2a4b10549d5028bf2e3f3337219ded709e44b579a4d8" },
+    @{ Name = "ViaBackwards"; Url = "https://cdn.modrinth.com/data/NpvuJQoq/versions/SxGhdsPK/ViaBackwards-5.12.0.jar";
+       Sha512 = "dba076b3283eb5987e3d37a63b57802e7946cf8a2d3b6f68ff57ddbc4eb648e2084decd212fef2cd0cde5187bc6565959c31b496bfb38000e67e3ffab4c290b3" }
+)
+New-Item -ItemType Directory -Force -Path "$Root\proxy\plugins" | Out-Null
+foreach ($p in $via) {
+    $out = "$Root\proxy\plugins\$($p.Name).jar"
+    if (Test-Path $out) {
+        Write-Host "  이미 있음, 건너뜀: $($p.Name).jar" -ForegroundColor DarkGray
+        continue
+    }
+    Invoke-WebRequest $p.Url -OutFile $out -TimeoutSec 600
+    if ((Get-FileHash $out -Algorithm SHA512).Hash.ToLower() -ne $p.Sha512) {
+        Remove-Item $out -Force
+        throw "$($p.Name) 체크섬 불일치. 다시 실행해 주세요."
+    }
+    Write-Host "  $($p.Name).jar 받음 (체크섬 확인됨)"
+}
+
+# 최소 버전 1.21 · 백엔드 기본 프로토콜 1.21.11(774). 나머지 항목은 ViaVersion 이 첫 기동 때 기본값으로 채웁니다.
+# default 를 비워 두면 1.13(393) 으로 잡혀서, 꺼져 있던 서버로 넘어갈 때 번역이 어긋날 수 있습니다.
+$viaConfig = "$Root\proxy\plugins\viaversion\config.yml"
+if (-not (Test-Path $viaConfig)) {
+    New-Item -ItemType Directory -Force -Path (Split-Path $viaConfig) | Out-Null
+    [System.IO.File]::WriteAllText($viaConfig, @"
+block-versions: ["<1.21"]
+block-disconnect-msg: "러크 서버는 마인크래프트 1.21 이상으로 접속할 수 있습니다. 런처에서 버전을 바꿔 주세요."
+velocity-servers:
+  default: 774
+"@, (New-Object System.Text.UTF8Encoding($false)))
+    Write-Host "  ViaVersion 설정 생성 (1.21 이상 허용)"
+}
+
 # ── Paper 서버 4개 ──────────────────────────────────────────────────────
 Write-Host "`n[2/4] Paper 서버 4개" -ForegroundColor Cyan
 $paperJar = "$Root\paper-$McVersion.jar"
