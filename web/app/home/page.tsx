@@ -100,7 +100,7 @@ export default function Page() {
       <section aria-label="접속 정보" className="mt-10 space-y-4">
         <div className="glass flex flex-wrap items-center justify-between gap-3 rounded-2xl px-5 py-4">
           <div>
-            <p className="text-[10px] tracking-widest text-white/60">접속 주소 · Java 1.21.x</p>
+            <p className="text-[10px] tracking-widest text-white/60">접속 주소 · Java 1.21 ~ 1.21.11</p>
             <p className="mt-1 text-sm text-white">{MC_ADDRESS}</p>
           </div>
           <CopyButton
