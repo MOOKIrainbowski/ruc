@@ -3,8 +3,10 @@
 import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useState } from "react";
 import { DISCORD_INVITE, path, t, type Lang } from "@/lib/content";
 import NavIcon, { type NavIconName } from "./NavIcon";
+import SearchBox from "./SearchBox";
 
 /**
  * 영어판이 있는 사이트 페이지. 나머지(/home /rules /wiki /charge)는 한국어 전용입니다.
@@ -22,12 +24,23 @@ function stripLang(pathname: string) {
  *
  * 메뉴는 글자 대신 <b>아이콘</b>입니다. 이름은 마우스를 올리거나 Tab 으로 가면 툴팁으로 보이고,
  * 스크린리더는 aria-label 로 읽습니다. 아이콘이라 휴대폰 폭에도 전부 들어가서 햄버거 메뉴를 없앴습니다.
+ *
+ * 가운데는 사이트 검색창입니다 (2026-10-05) — 페이지 · 위키 · 규칙 · 충전 상품을 찾습니다.
+ * 휴대폰(md 미만)에서는 자리가 없어 돋보기 아이콘만 두고, 누르면 바 전체를 검색창이 덮습니다.
  */
 export default function Nav({ lang }: { lang: Lang }) {
   const c = t(lang);
   const pathname = usePathname() || "/";
   const current = stripLang(pathname);
   const hasEn = EN_PAGES.includes(current);
+  const [searchOpen, setSearchOpen] = useState(false);
+  // 위키에는 위키 전용 검색창이 따로 있어 "/" 단축키를 그쪽에 줍니다.
+  const searchHotkey = !(current === "/wiki" || current.startsWith("/wiki/"));
+  const searchProps = {
+    src: "/api/search",
+    label: c.nav.search,
+    placeholder: c.nav.searchPlaceholder,
+  };
 
   // 한국어 전용 페이지는 영어 화면에서도 한국어 주소로 연결합니다.
   const links: { href: string; match: string; label: string; icon: NavIconName }[] = [
@@ -55,10 +68,16 @@ export default function Nav({ lang }: { lang: Lang }) {
     <header className="site-bar fixed top-0 left-0 right-0 z-50">
       <nav
         aria-label={c.nav.menu}
-        className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-2 px-4 sm:px-6"
+        className="relative mx-auto flex h-16 max-w-6xl items-center gap-2 px-4 sm:px-6 md:gap-4"
       >
         {/* 좌측: 아이콘 + "Ruc Server" — 러크 홈페이지 홈으로. 좁은 화면에서는 아이콘만 */}
-        <Link href="/home" className="group flex shrink-0 items-center gap-2.5" aria-label="Ruc Server">
+        {/* 휴대폰 폭이 모자랄 때 (검색 버튼이 생겨서): 영어판이 있는 페이지는 로고를, 없는 페이지는
+            어차피 비활성인 KO/EN 토글을 숨깁니다. 로고가 하는 일(/home)은 집 아이콘이 똑같이 합니다. */}
+        <Link
+          href="/home"
+          className={`group shrink-0 items-center gap-2.5 ${hasEn ? "hidden sm:flex" : "flex"}`}
+          aria-label="Ruc Server"
+        >
           <Image
             src="/icon.png"
             alt=""
@@ -72,8 +91,22 @@ export default function Nav({ lang }: { lang: Lang }) {
           </span>
         </Link>
 
-        <div className="flex items-center gap-1.5 sm:gap-2">
-          <ul className="flex items-center gap-1.5 sm:gap-2">
+        {/* 가운데: 사이트 검색 (md 이상) */}
+        <div className="mx-auto hidden min-w-0 max-w-md flex-1 md:block">
+          <SearchBox {...searchProps} hotkey={searchHotkey} inputClassName="h-9 rounded-lg" />
+        </div>
+
+        <div className="ml-auto flex items-center gap-1 sm:gap-2 md:ml-0">
+          {/* 휴대폰: 돋보기 → 바 전체를 덮는 검색창 */}
+          <button
+            type="button"
+            onClick={() => setSearchOpen(true)}
+            aria-label={c.nav.search}
+            className={`${iconBtn(false)} md:hidden`}
+          >
+            <NavIcon name="search" />
+          </button>
+          <ul className="flex items-center gap-1 sm:gap-2">
             {links.map((l) => {
               const active = isActive(l.match);
               return (
@@ -107,7 +140,11 @@ export default function Nav({ lang }: { lang: Lang }) {
           <span aria-hidden="true" className="mx-0.5 hidden h-6 w-px bg-white/15 sm:block" />
 
           {/* KO / EN */}
-          <div className="flex items-center rounded-md border border-white/10 p-0.5 text-[11px]" role="group" aria-label="Language">
+          <div
+            className={`items-center rounded-md border border-white/10 p-0.5 text-[11px] ${hasEn ? "flex" : "hidden sm:flex"}`}
+            role="group"
+            aria-label="Language"
+          >
             <Link href={current} aria-current={lang === "ko" ? "true" : undefined} className={langClass(lang === "ko")}>
               KO
             </Link>
@@ -127,6 +164,27 @@ export default function Nav({ lang }: { lang: Lang }) {
             )}
           </div>
         </div>
+
+        {searchOpen && (
+          <div className="absolute inset-0 flex items-center gap-2 bg-black px-4 sm:px-6 md:hidden">
+            <div className="min-w-0 flex-1">
+              <SearchBox
+                {...searchProps}
+                autoFocus
+                onDone={() => setSearchOpen(false)}
+                inputClassName="h-10 rounded-lg"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => setSearchOpen(false)}
+              aria-label={c.nav.searchClose}
+              className={iconBtn(false)}
+            >
+              <NavIcon name="close" />
+            </button>
+          </div>
+        )}
       </nav>
     </header>
   );

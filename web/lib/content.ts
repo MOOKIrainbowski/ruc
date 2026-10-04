@@ -28,6 +28,10 @@ type Copy = {
     menu: string;
     /** 한국어 전용 페이지에서 EN 토글에 붙는 안내 */
     koOnly: string;
+    /** 상단 바 검색창 */
+    search: string;
+    searchPlaceholder: string;
+    searchClose: string;
   };
   hero: {
     eyebrow: string;
@@ -87,6 +91,9 @@ export const content: Record<Lang, Copy> = {
       charge: "충전",
       menu: "메뉴",
       koOnly: "이 페이지는 아직 한국어만 있습니다",
+      search: "사이트 검색",
+      searchPlaceholder: "위키 · 규칙 · 상품 검색  ( / )",
+      searchClose: "검색 닫기",
     },
     hero: {
       eyebrow: "Season 1",
@@ -183,6 +190,9 @@ export const content: Record<Lang, Copy> = {
       charge: "Top-up",
       menu: "Menu",
       koOnly: "This page is Korean only for now",
+      search: "Search the site",
+      searchPlaceholder: "Search (content is in Korean)  ( / )",
+      searchClose: "Close search",
     },
     hero: {
       eyebrow: "MINECRAFT SERVER NETWORK",

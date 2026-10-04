@@ -156,6 +156,34 @@ body {
   transform: translateX(-50%) translateY(0);
 }
 
+/* 검색창 (components/SearchBox.tsx) — 상단 바 · 위키 공용.
+   포커스 테두리를 바깥 outline 대신 안쪽 그림자로 그립니다. 바깥으로 그리면
+   스크롤 영역(위키 사이드바)이나 화면 가장자리에서 잘려 보입니다. */
+.search-input {
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  transition: border-color 120ms ease, background 120ms ease;
+}
+.search-input:hover {
+  border-color: rgba(255, 255, 255, 0.26);
+}
+.search-input:focus,
+.search-input:focus-visible {
+  outline: none;
+  background: rgba(0, 0, 0, 0.45);
+  border-color: var(--color-ruc-400);
+  box-shadow: inset 0 0 0 1px var(--color-ruc-400);
+}
+.search-input::-webkit-search-cancel-button {
+  filter: invert(1) opacity(0.6);
+}
+/* 결과 목록은 불투명 — 반투명이면 뒤의 글자가 비쳐 겹쳐 보입니다. */
+.search-results {
+  background: #0b0f0a;
+  border: 1px solid rgba(147, 233, 62, 0.3);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.55);
+}
+
 .glass-hover {
   transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
 }

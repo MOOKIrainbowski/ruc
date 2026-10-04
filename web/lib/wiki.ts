@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { Marked, type RendererObject } from "marked";
+import type { SearchEntry } from "./search";
 
 /**
  * 러크 위키 — content/wiki/*.md 를 읽어 페이지로 만듭니다.
@@ -37,11 +38,6 @@ export type WikiMeta = {
 export type WikiHeading = { id: string; text: string };
 
 export type WikiDoc = WikiMeta & { html: string; headings: WikiHeading[] };
-
-/** 검색 색인 한 줄 — 클라이언트로 내려가므로 본문은 평문으로만 */
-export type WikiSearchEntry = Pick<WikiMeta, "slug" | "title" | "category" | "description"> & {
-  text: string;
-};
 
 function parseFrontMatter(src: string): { data: Record<string, string>; body: string } {
   // CRLF 로 저장된 파일도 받습니다 (윈도우에서 편집하면 그렇게 됩니다).
@@ -165,9 +161,9 @@ function plain(md: string) {
     .trim();
 }
 
-export function searchIndex(): WikiSearchEntry[] {
+export function searchIndex(): SearchEntry[] {
   return listDocs().map((d) => ({
-    slug: d.slug,
+    href: `/wiki/${d.slug}`,
     title: d.title,
     category: d.category,
     description: d.description,

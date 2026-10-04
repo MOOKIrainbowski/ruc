@@ -1,11 +1,15 @@
 import Link from "next/link";
 import { groupedDocs, searchIndex, type WikiHeading } from "@/lib/wiki";
-import WikiSearch from "./WikiSearch";
+import SearchBox from "./SearchBox";
 
 /**
  * 위키 3단 레이아웃 (블릭 · GitBook 패턴).
- * 왼쪽: 검색 + 문서 목록 / 가운데: 본문 / 오른쪽(xl 이상): 이 문서의 목차
- * 모바일에서는 검색이 위에 오고 문서 목록은 접힌 상태로 둡니다.
+ * 맨 위: 검색 (가로 전체) / 왼쪽: 문서 목록 / 가운데: 본문 / 오른쪽(xl 이상): 이 문서의 목차
+ * 모바일에서는 문서 목록을 접힌 상태로 둡니다.
+ *
+ * 검색은 사이드바 밖에 둡니다 (2026-10-05). 사이드바는 스크롤 영역이라 포커스 테두리가
+ * 잘렸고, 결과 목록이 문서 목록 위에 겹쳐 떴습니다. 지금은 결과가 검색창 아래에
+ * 끼워져 아래 내용을 밀어냅니다.
  */
 export default function WikiLayout({
   activeSlug,
@@ -50,36 +54,47 @@ export default function WikiLayout({
   );
 
   return (
-    <div className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_180px]">
-      <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto lg:pr-2">
-        <WikiSearch index={index} />
-        {/* 데스크톱: 펼친 목록 */}
-        <div className="mt-6 hidden lg:block">{tree}</div>
-        {/* 모바일: 접힌 목록 */}
-        <details className="glass mt-3 rounded-xl px-4 py-3 lg:hidden">
-          <summary className="cursor-pointer text-[12px] text-white/85">문서 목록</summary>
-          <div className="mt-4">{tree}</div>
-        </details>
-      </aside>
-
-      <div className="min-w-0">{children}</div>
-
-      {toc && toc.length > 0 && (
-        <aside className="hidden xl:block">
-          <nav aria-label="이 문서의 목차" className="sticky top-24">
-            <p className="mb-2 text-[10px] tracking-[0.18em] text-white/60">이 문서에서</p>
-            <ul className="space-y-1.5 text-[11.5px]">
-              {toc.map((h) => (
-                <li key={h.id}>
-                  <a href={`#${h.id}`} className="text-white/70 transition-colors hover:text-ruc-400">
-                    {h.text}
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </nav>
+    <>
+      <div className="mb-8 max-w-xl">
+        <SearchBox
+          entries={index}
+          label="위키 검색"
+          placeholder="위키 검색  ( / )"
+          variant="inline"
+          hotkey
+          inputClassName="py-3"
+        />
+      </div>
+      <div className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_180px]">
+        <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto lg:pr-2">
+          {/* 데스크톱: 펼친 목록 */}
+          <div className="hidden lg:block">{tree}</div>
+          {/* 모바일: 접힌 목록 */}
+          <details className="glass rounded-xl px-4 py-3 lg:hidden">
+            <summary className="cursor-pointer text-[12px] text-white/85">문서 목록</summary>
+            <div className="mt-4">{tree}</div>
+          </details>
         </aside>
-      )}
-    </div>
+
+        <div className="min-w-0">{children}</div>
+
+        {toc && toc.length > 0 && (
+          <aside className="hidden xl:block">
+            <nav aria-label="이 문서의 목차" className="sticky top-24">
+              <p className="mb-2 text-[10px] tracking-[0.18em] text-white/60">이 문서에서</p>
+              <ul className="space-y-1.5 text-[11.5px]">
+                {toc.map((h) => (
+                  <li key={h.id}>
+                    <a href={`#${h.id}`} className="text-white/70 transition-colors hover:text-ruc-400">
+                      {h.text}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </nav>
+          </aside>
+        )}
+      </div>
+    </>
   );
 }
