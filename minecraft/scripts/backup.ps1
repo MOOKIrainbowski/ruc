@@ -164,10 +164,10 @@ $cfg = Join-Path $work "config"
 $copies = @(
     @{ From = "minecraft\proxy\velocity.toml";                          To = "proxy\velocity.toml" }
     @{ From = "minecraft\proxy\plugins\rucgate\config.properties";      To = "proxy\rucgate.properties" }
-    @{ From = "MOOKI(General-purpose Discord server bot)\config\roles.json"; To = "mooki\roles.json" }
-    @{ From = "MOOKI(General-purpose Discord server bot)\tickets_data.json"; To = "mooki\tickets_data.json" }
-    @{ From = "MOOKI(General-purpose Discord server bot)\sanctions_data.json"; To = "mooki\sanctions_data.json" }
-    @{ From = "MOOKI(General-purpose Discord server bot)\reaction_roles.json"; To = "mooki\reaction_roles.json" }
+    @{ From = "MOOKI\config\roles.json"; To = "mooki\roles.json" }
+    @{ From = "MOOKI\tickets_data.json"; To = "mooki\tickets_data.json" }
+    @{ From = "MOOKI\sanctions_data.json"; To = "mooki\sanctions_data.json" }
+    @{ From = "MOOKI\reaction_roles.json"; To = "mooki\reaction_roles.json" }
 )
 foreach ($name in $Servers.Keys) {
     $copies += @{ From = "minecraft\servers\$name\server.properties"; To = "$name\server.properties" }

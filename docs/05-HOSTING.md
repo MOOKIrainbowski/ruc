@@ -135,7 +135,7 @@ sudo apt update && sudo apt install -y openjdk-21-jre-headless mysql-server node
 # 2. 파일 업로드 (로컬에서)
 #    world* 폴더가 크므로 압축해서 옮깁니다.
 scp -r minecraft/ user@서버IP:~/ruc/
-scp -r "MOOKI(General-purpose Discord server bot)/" user@서버IP:~/ruc/mooki/
+scp -r "MOOKI/" user@서버IP:~/ruc/mooki/
 
 # 3. MySQL 준비
 sudo mysql -e "CREATE DATABASE ruc CHARACTER SET utf8mb4;"
