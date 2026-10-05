@@ -140,6 +140,9 @@ menu:
     name: "&a&l유저 상점"
     lore: "&7다른 플레이어가 올린 물건을 삽니다|&7판매: &f/판매등록 <가격>|&e▶ 클릭해서 열기"
 
+  cosmetic:
+    name: "&d&l코스메틱"
+    lore: "&7파티클 · 펫 · 발광 · 킬 이펙트|&7등급마다 열리는 것이 다릅니다|&e▶ 클릭해서 열기 &8(/코스메틱)"
   guide:
     name: "&6&l가이드"
     lore: "&7러크의 기능을 하나씩 해 보고|&7보상을 받습니다|&e▶ 클릭해서 열기"
@@ -521,3 +524,24 @@ guild:
     use-transfer: "&c길드장 직위는 &f/길드 위임 &c으로만 넘길 수 있습니다."
     no-change: "&c이미 그 직위입니다."
     error: "&c처리 중 문제가 발생했습니다. 잠시 후 다시 시도해 주세요."
+
+# ── 코스메틱 (2026-10-05) ───────────────────────────────────────────
+cosmetic:
+  title: "&8코스메틱"
+  list-title: "&8코스메틱 · %kind%"
+  kind:
+    particle: "&d&l파티클"
+    pet: "&6&l펫"
+    glow: "&e&l발광"
+    kill: "&c&l킬 이펙트"
+  kind-lore: "&7장착: &f%item%|&e▶ 클릭해서 고르기"
+  none: "없음"
+  equipped: "&a● 장착 중|&7클릭하면 해제"
+  click: "&e▶ 클릭해서 장착"
+  locked: "&c🔒 %rank% 이상|&7등급: &f/등급 &7· 디스코드 &f/충전"
+  back: "&7◀ 뒤로"
+  unequip: "&c해제"
+  close: "&c닫기"
+  equipped-msg: "&a%item% &a장착!"
+  unequipped: "&7%kind% &7해제했습니다."
+  locked-msg: "&c%item% &c은(는) &f%rank% 이상&c 등급 전용입니다. &7/등급"

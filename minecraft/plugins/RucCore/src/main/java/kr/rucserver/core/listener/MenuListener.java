@@ -159,6 +159,10 @@ public class MenuListener implements Listener {
 
             case MenuService.SLOT_GUIDE -> plugin.getGuide().open(player);
 
+            case MenuService.SLOT_COSMETIC -> {
+                if (plugin.getCosmetics() != null) plugin.getCosmetics().open(player);
+            }
+
             case MenuService.SLOT_VERIFY -> {
                 player.closeInventory();
                 player.performCommand("verify");

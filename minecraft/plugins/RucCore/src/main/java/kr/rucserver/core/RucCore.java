@@ -4,6 +4,8 @@ import kr.rucserver.core.command.CoreCommands;
 import kr.rucserver.core.command.GuildAdminCommands;
 import kr.rucserver.core.command.EnderCommands;
 import kr.rucserver.core.command.RankCommands;
+import kr.rucserver.core.service.CosmeticService;
+import kr.rucserver.core.storage.CosmeticRepository;
 import kr.rucserver.core.command.GuideCommands;
 import kr.rucserver.core.command.GuildCommands;
 import kr.rucserver.core.command.PaymentCommands;
@@ -79,6 +81,7 @@ public class RucCore extends JavaPlugin {
     private SanctionService sanctions;
     private PaymentService payments;
     private EnderService ender;
+    private CosmeticService cosmetics;
     private ShopService shop;
     private GuideService guide;
     private XpService xp;
@@ -212,6 +215,15 @@ public class RucCore extends JavaPlugin {
         }
         ender = new EnderService(this, messages, enderRepository);
 
+        // 코스메틱 (2026-10-05). 장착 기록뿐이라 테이블이 없으면 이 기능만 끕니다.
+        CosmeticRepository cosmeticRepository = new CosmeticRepository(database);
+        try {
+            cosmeticRepository.createSchema();
+            cosmetics = new CosmeticService(this, messages, cosmeticRepository);
+        } catch (SQLException e) {
+            getLogger().log(Level.SEVERE, "코스메틱 테이블 생성에 실패했습니다. 코스메틱을 끕니다.", e);
+        }
+
         // 유저 상점 (Phase 10). 매물 · 대금 기록이라 테이블이 없으면 기동을 멈춥니다.
         ShopRepository shopRepository = new ShopRepository(database);
         try {
@@ -271,6 +283,19 @@ public class RucCore extends JavaPlugin {
         new GuideCommands(this).register();
         getServer().getPluginManager().registerEvents(guide, this);
         getServer().getPluginManager().registerEvents(ender, this);
+        if (cosmetics != null) {
+            getServer().getPluginManager().registerEvents(cosmetics, this);
+            cosmetics.start();
+        }
+        var cosmeticCommand = getCommand("cosmetic");
+        if (cosmeticCommand != null) cosmeticCommand.setExecutor((sender, command, label, args) -> {
+            if (!(sender instanceof org.bukkit.entity.Player player)) {
+                sender.sendMessage("게임 안에서만 쓸 수 있습니다.");
+            } else if (cosmetics != null) {
+                cosmetics.open(player);
+            }
+            return true;
+        });
 
         applyGlobalRules();
         scoreboards.start();
@@ -310,6 +335,7 @@ public class RucCore extends JavaPlugin {
         if (payments != null) payments.stop();
         // DB 를 닫기 전에 — 열린 확장 페이지와 저장 큐를 끝까지 씁니다.
         if (ender != null) ender.stop();
+        if (cosmetics != null) cosmetics.stop();
         if (shop != null) shop.stop();
         if (guide != null) guide.stop();
         if (network != null) network.stop();
@@ -355,6 +381,7 @@ public class RucCore extends JavaPlugin {
     public SanctionService getSanctions() { return sanctions; }
     public PaymentService getPayments() { return payments; }
     public EnderService getEnder() { return ender; }
+    public CosmeticService getCosmetics() { return cosmetics; }
     public ShopService getShop() { return shop; }
     public GuideService getGuide() { return guide; }
     public BonusRegistry getBonuses() { return bonuses; }

@@ -140,6 +140,9 @@ menu:
     name: "&a&lPlayer Shop"
     lore: "&7Buy items other players listed|&7Sell: &f/sell <price>|&e▶ Click to open"
 
+  cosmetic:
+    name: "&d&lCosmetics"
+    lore: "&7Particles · pets · glow · kill effects|&7Unlocked by rank|&e▶ Click to open &8(/cosmetic)"
   guide:
     name: "&6&lGuide"
     lore: "&7Try each Ruc feature|&7and earn rewards|&e▶ Click to open"
@@ -512,3 +515,24 @@ guild:
     use-transfer: "&cLeadership can only move via &f/guild transfer&c."
     no-change: "&cThey already hold that rank."
     error: "&cSomething went wrong. Please try again shortly."
+
+# ── Cosmetics (2026-10-05) ──────────────────────────────────────────
+cosmetic:
+  title: "&8Cosmetics"
+  list-title: "&8Cosmetics · %kind%"
+  kind:
+    particle: "&d&lParticles"
+    pet: "&6&lPets"
+    glow: "&e&lGlow"
+    kill: "&c&lKill Effects"
+  kind-lore: "&7Equipped: &f%item%|&e▶ Click to choose"
+  none: "None"
+  equipped: "&a● Equipped|&7Click to remove"
+  click: "&e▶ Click to equip"
+  locked: "&c🔒 %rank% or higher|&7Ranks: &f/rank &7· Discord &f/충전"
+  back: "&7◀ Back"
+  unequip: "&cRemove"
+  close: "&cClose"
+  equipped-msg: "&aEquipped %item%&a!"
+  unequipped: "&7Removed %kind%&7."
+  locked-msg: "&c%item% &cneeds &f%rank%&c or higher. &7/rank"

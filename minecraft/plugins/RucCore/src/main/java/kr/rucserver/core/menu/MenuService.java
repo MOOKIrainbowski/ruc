@@ -50,6 +50,7 @@ public class MenuService {
     public static final int SLOT_SPAWN = 11;
     public static final int SLOT_HELP = 33;
     public static final int SLOT_GUIDE = 34;
+    public static final int SLOT_COSMETIC = 31;
     public static final int SLOT_CLOSE = 40;
 
     private final RucCore plugin;
@@ -229,6 +230,11 @@ public class MenuService {
         inv.setItem(SLOT_SHOP, item(Material.EMERALD,
                 messages.raw(lang, "menu.shop.name"),
                 loreOf(lang, "menu.shop.lore")));
+
+        // ── 코스메틱 (2026-10-05)
+        inv.setItem(SLOT_COSMETIC, item(Material.NETHER_STAR,
+                messages.raw(lang, "menu.cosmetic.name"),
+                loreOf(lang, "menu.cosmetic.lore")));
 
         // ── 가이드 (Phase 11)
         inv.setItem(SLOT_GUIDE, item(Material.KNOWLEDGE_BOOK,

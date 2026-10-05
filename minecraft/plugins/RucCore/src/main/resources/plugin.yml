@@ -128,6 +128,10 @@ commands:
     description: 내 후원 등급 · RUC 잔고를 보고, VIP · SVIP 를 Gold 로 삽니다.
     usage: /등급 [구매 <vip|svip>]
     aliases: [등급, 랭크, ranks]
+  cosmetic:
+    description: 코스메틱(파티클 · 펫 · 발광 · 킬 이펙트)을 고릅니다. 등급마다 열리는 것이 다릅니다.
+    usage: /코스메틱
+    aliases: [코스메틱, cosmetics, 꾸미기]
   usershop:
     description: 유저 상점을 엽니다. 더블클릭으로 구매합니다.
     usage: /유저상점
