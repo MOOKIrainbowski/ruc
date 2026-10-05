@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import PageShell from "@/components/PageShell";
 import ProductCard from "@/components/ProductCard";
 import { CATEGORIES, category, chargeEnabled, products, productsIn } from "@/lib/charge";
+import { banner } from "@/lib/og";
 
 type Params = { category: string };
 
@@ -14,7 +15,9 @@ export const dynamicParams = false;
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const c = category((await params).category);
-  return c ? { title: `${c.name} · 충전`, description: c.summary } : {};
+  return c
+    ? { title: `${c.name} · 충전`, description: c.summary, ...banner("charge", `${c.name} · 러크 서버 충전`, c.summary) }
+    : {};
 }
 
 export default async function Page({ params }: { params: Promise<Params> }) {

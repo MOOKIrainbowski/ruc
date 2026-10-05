@@ -3,10 +3,12 @@ import CopyButton from "@/components/CopyButton";
 import PageShell from "@/components/PageShell";
 import { bankAccount, CATEGORIES, chargeEnabled, products, productsIn } from "@/lib/charge";
 import { DISCORD_INVITE } from "@/lib/content";
+import { banner } from "@/lib/og";
 
 export const metadata = {
   title: "충전 · 결제 안내",
   description: "러크 서버 멤버 등급 · RUC 충전 · 편의 상품과 토스 계좌 입금 방법.",
+  ...banner("charge", "러크 서버 충전 · 결제 안내", "멤버 등급 · RUC 충전 · 편의 상품과 토스 계좌 입금 방법."),
 };
 
 const btnPrimary =
