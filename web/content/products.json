@@ -13,6 +13,7 @@
     "             ender:<개수>            엔더상자 확장 (개수형 권리, 등급별 상한)",
     "             item:<MATERIAL>:<수량>  우편함으로 아이템",
     "             ruc:<양>                RUC 충전",
+    "category: member(멤버 등급) · ruc(RUC 충전) · convenience(편의) — web/lib/charge.ts 의 CATEGORIES",
     "discordRoles: 지급할 때 봇이 줄 디스코드 역할 키 (MOOKI config/roles.json). ent 와 키가 같으면",
     "              그 권리가 끝날 때 봇이 역할을 뗍니다."
   ],
@@ -27,7 +28,7 @@
       "price": 5000,
       "period": "충전",
       "deliver": ["RUC 5,000", "MVP 이상 등급 · 상품을 RUC 로 사면 10% 할인"],
-      "category": "RUC 충전",
+      "category": "ruc",
       "available": true,
       "grants": "ruc:5000",
       "discordRoles": []
@@ -38,7 +39,7 @@
       "price": 10000,
       "period": "충전",
       "deliver": ["RUC 10,000", "MVP 이상 등급 · 상품을 RUC 로 사면 10% 할인"],
-      "category": "RUC 충전",
+      "category": "ruc",
       "available": true,
       "grants": "ruc:10000",
       "discordRoles": []
@@ -49,7 +50,7 @@
       "price": 30000,
       "period": "충전",
       "deliver": ["RUC 30,000", "MVP 이상 등급 · 상품을 RUC 로 사면 10% 할인"],
-      "category": "RUC 충전",
+      "category": "ruc",
       "available": true,
       "grants": "ruc:30000",
       "discordRoles": []
@@ -60,7 +61,7 @@
       "price": 3000,
       "period": "영구",
       "deliver": ["[ 후원자 ] 칭호 (채팅 · 탭 목록)"],
-      "category": "칭호",
+      "category": "convenience",
       "available": true,
       "grants": "title:supporter",
       "discordRoles": []
@@ -71,7 +72,7 @@
       "gold": 50000,
       "period": "30일",
       "deliver": ["VIP 칭호 · 디스코드 VIP 역할", "엔더상자 확장 최대 2개"],
-      "category": "후원 등급",
+      "category": "member",
       "available": true,
       "grants": "ent:vip:30",
       "discordRoles": ["vip"]
@@ -82,7 +83,7 @@
       "gold": 120000,
       "period": "30일",
       "deliver": ["SVIP 칭호 · 디스코드 SVIP 역할", "엔더상자 확장 최대 3개"],
-      "category": "후원 등급",
+      "category": "member",
       "available": true,
       "grants": "ent:svip:30",
       "discordRoles": ["svip"]
@@ -93,7 +94,7 @@
       "price": 15000,
       "period": "30일",
       "deliver": ["MVP 칭호 · 디스코드 MVP 역할", "Shift+F 엔더상자 · 확장 최대 6개"],
-      "category": "후원 등급",
+      "category": "member",
       "available": true,
       "grants": "ent:mvp:30",
       "discordRoles": ["mvp"]
@@ -104,7 +105,7 @@
       "price": 25000,
       "period": "30일",
       "deliver": ["Prime 칭호 · 디스코드 Prime 역할", "MVP 혜택 전부"],
-      "category": "후원 등급",
+      "category": "member",
       "available": true,
       "grants": "ent:prime:30",
       "discordRoles": ["prime"]
@@ -115,7 +116,7 @@
       "price": 39000,
       "period": "30일",
       "deliver": ["Premium 칭호 · 디스코드 Premium 역할", "Prime 혜택 전부"],
-      "category": "후원 등급",
+      "category": "member",
       "available": true,
       "grants": "ent:premium:30",
       "discordRoles": ["premium"]
@@ -126,7 +127,7 @@
       "price": 59000,
       "period": "30일",
       "deliver": ["Elite 칭호 · 디스코드 Elite 역할", "Premium 혜택 전부"],
-      "category": "후원 등급",
+      "category": "member",
       "available": true,
       "grants": "ent:elite:30",
       "discordRoles": ["elite"]
@@ -137,7 +138,7 @@
       "price": 2000,
       "period": "영구",
       "deliver": ["엔더상자 1개 추가 (27칸)", "Shift+F 엔더상자는 MVP 이상만 열 수 있습니다", "등급별 최대: 일반 1 · VIP 2 · SVIP 3 · MVP 이상 6"],
-      "category": "편의",
+      "category": "convenience",
       "available": true,
       "grants": "ender:1",
       "discordRoles": []

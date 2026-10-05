@@ -1,12 +1,12 @@
 import Link from "next/link";
 import CopyButton from "@/components/CopyButton";
 import PageShell from "@/components/PageShell";
-import { bankAccount, chargeEnabled, num, products, rucPrice, won } from "@/lib/charge";
+import { bankAccount, CATEGORIES, chargeEnabled, products, productsIn } from "@/lib/charge";
 import { DISCORD_INVITE } from "@/lib/content";
 
 export const metadata = {
   title: "충전 · 결제 안내",
-  description: "러크 서버 후원 상품과 토스 계좌 입금 방법.",
+  description: "러크 서버 멤버 등급 · RUC 충전 · 편의 상품과 토스 계좌 입금 방법.",
 };
 
 const btnPrimary =
@@ -85,59 +85,40 @@ export default function Page() {
         차이가 나지 않습니다.
       </p>
 
-      {/* ─── 상품 ─────────────────────────────────────────── */}
+      {/* ─── 상품 분류 — 누르면 /charge/<분류> ───────────────── */}
       <section aria-labelledby="products-title">
         <h2 id="products-title" className="headline mb-4 text-xl">
           상품
         </h2>
-        <p className="mb-4 text-[12px] leading-relaxed text-white/80">
-          <strong className="text-white">Gold</strong> 는 게임에서 버는 화폐이고,{" "}
+        <p className="mb-5 text-[12px] leading-relaxed text-white/80">
+          <strong className="text-white">Gold</strong> 는 게임에서 버는 화폐,{" "}
           <strong className="text-white">RUC</strong> 는 충전으로 얻는 화폐입니다 (가끔 이벤트로도 드립니다).
-          VIP · SVIP 는 Gold 로, MVP 이상은 현금 또는 RUC 로 삽니다. RUC 로 사면{" "}
-          {products.rucDiscountPercent}% 할인됩니다. 잔고는 게임 안 <code className="inline-code">/등급</code>.
+          RUC 로 사면 {products.rucDiscountPercent}% 할인 · 잔고는 게임 안 <code className="inline-code">/등급</code>.
         </p>
-        {products.reviewNote && (
-          <p className="mb-4 text-[11px] text-amber-200/90">{products.reviewNote}</p>
-        )}
-        <ul className="grid gap-4 sm:grid-cols-2">
-          {products.products.map((p) => (
-            <li
-              key={p.id}
-              className={`glass flex flex-col rounded-2xl p-5 sm:p-6 ${p.available ? "" : "opacity-75"}`}
-            >
-              <div className="flex items-baseline justify-between gap-3">
-                <h3 className="headline text-lg">{p.name}</h3>
-                <span className="text-[10px] tracking-wider text-white/60">
-                  {p.available ? p.category : `${p.category} · 준비 중`}
-                </span>
-              </div>
-              <p className="mt-2">
-                <span className="headline text-2xl text-ruc-400">
-                  {p.price ? won(p.price) : `${num(p.gold ?? 0)} Gold`}
-                </span>
-                <span className="ml-2 text-[11px] text-white/65">/ {p.period}</span>
-              </p>
-              {rucPrice(p) !== null && (
-                <p className="mt-1 text-[11.5px] text-sky-200">
-                  또는 <strong>{num(rucPrice(p)!)} RUC</strong>{" "}
-                  <span className="text-white/60">({products.rucDiscountPercent}% 할인)</span>
-                </p>
-              )}
-              {!p.price && (
-                <p className="mt-1 text-[11.5px] text-amber-200/90">
-                  게임 안에서 <code className="inline-code">/등급 구매 {p.id}</code> 로 삽니다
-                </p>
-              )}
-              <ul className="mt-4 space-y-1.5 border-t border-white/10 pt-4 text-[12px] text-white/85">
-                {p.deliver.map((d) => (
-                  <li key={d} className="flex gap-2">
-                    <span aria-hidden="true" className="text-ruc-400">·</span>
-                    {d}
-                  </li>
-                ))}
-              </ul>
-            </li>
-          ))}
+        <ul className="grid gap-4 sm:grid-cols-3">
+          {CATEGORIES.map((c) => {
+            const list = productsIn(c.slug);
+            return (
+              <li key={c.slug}>
+                <Link
+                  href={`/charge/${c.slug}`}
+                  className="glass glass-hover group flex h-full flex-col rounded-2xl p-5 sm:p-6"
+                >
+                  <span aria-hidden="true" className="headline text-2xl text-ruc-400">
+                    {c.glyph}
+                  </span>
+                  <h3 className="headline mt-3 text-lg">{c.name}</h3>
+                  <p className="mt-2 flex-1 text-[12px] leading-relaxed text-white/75">{c.summary}</p>
+                  <p className="mt-4 text-[11px] text-white/60">
+                    상품 {list.length}개 · {list.map((p) => p.name).join(" · ")}
+                  </p>
+                  <span className="mt-4 inline-block rounded-lg bg-ruc-400 px-4 py-2.5 text-center text-xs font-bold text-ruc-900 transition-colors group-hover:bg-ruc-300">
+                    상품 보기 →
+                  </span>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       </section>
 

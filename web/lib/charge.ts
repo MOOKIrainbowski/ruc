@@ -12,6 +12,7 @@ export type Product = {
   gold?: number;
   period: string;
   deliver: string[];
+  /** member · ruc · convenience (CATEGORIES) */
   category: string;
   /** false 면 '준비 중' — 봇도 주문을 받지 않습니다 */
   available: boolean;
@@ -64,4 +65,41 @@ export function rucPrice(p: Product): number | null {
 
 export function num(n: number) {
   return n.toLocaleString("ko-KR");
+}
+
+/** 충전 페이지의 세 묶음. 상품의 category 가 slug 입니다. 순서 = 화면 순서. */
+export type Category = { slug: string; name: string; summary: string; glyph: string };
+
+export const CATEGORIES: Category[] = [
+  {
+    slug: "member",
+    name: "멤버 등급",
+    summary: "VIP · SVIP 는 게임에서 번 Gold 로, MVP 이상은 현금 또는 RUC 로. 30일 단위입니다.",
+    glyph: "★",
+  },
+  {
+    slug: "ruc",
+    name: "RUC 충전",
+    summary: "1 RUC = 1원. MVP 이상 등급과 상품을 RUC 로 사면 할인됩니다.",
+    glyph: "◆",
+  },
+  {
+    slug: "convenience",
+    name: "편의",
+    summary: "엔더상자 확장 · 후원 칭호처럼 한 번 사면 계속 쓰는 상품입니다.",
+    glyph: "✚",
+  },
+];
+
+export function category(slug: string): Category | undefined {
+  return CATEGORIES.find((c) => c.slug === slug);
+}
+
+export function productsIn(slug: string): Product[] {
+  return products.products.filter((p) => p.category === slug);
+}
+
+/** 상품 한 줄 가격 — 현금이 있으면 원, 없으면 Gold. */
+export function priceText(p: Product) {
+  return p.price ? won(p.price) : `${num(p.gold ?? 0)} Gold`;
 }

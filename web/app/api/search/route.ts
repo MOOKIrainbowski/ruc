@@ -1,4 +1,4 @@
-import { products } from "@/lib/charge";
+import { category, priceText, products } from "@/lib/charge";
 import { rules } from "@/lib/rules";
 import type { SearchEntry } from "@/lib/search";
 import { searchIndex } from "@/lib/wiki";
@@ -43,10 +43,10 @@ function ruleEntries(): SearchEntry[] {
 
 function productEntries(): SearchEntry[] {
   return products.products.map((p) => ({
-    href: "/charge",
+    href: `/charge/${p.category}`,
     title: p.name,
-    category: "충전",
-    description: `${p.price ? `${p.price.toLocaleString("ko-KR")}원` : `${(p.gold ?? 0).toLocaleString("ko-KR")} Gold`} · ${p.period}`,
+    category: `충전 · ${category(p.category)?.name ?? ""}`,
+    description: `${priceText(p)} · ${p.period}`,
     text: p.deliver.join(" "),
   }));
 }
