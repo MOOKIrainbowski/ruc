@@ -22,26 +22,26 @@ const CARDS: Card[] = [
   {
     href: "/charge",
     title: "충전 · 결제 안내",
-    desc: "후원 상품과 가격, 토스 계좌 입금 방법을 안내합니다.",
+    desc: "멤버 등급 · RUC 충전 · 편의 상품, 입금 방법.",
     glyph: "₩",
   },
   {
     href: DISCORD_INVITE,
     title: "디스코드 서버",
-    desc: "공지 · 인증 · 신고 · 길드 모집. 접속 전에 꼭 들어와 주세요.",
+    desc: "공지 · 인증 · 신고. 접속 전 필수.",
     glyph: "#",
     external: true,
   },
   {
     href: "/rules",
     title: "서버 규칙",
-    desc: "디스코드와 마인크래프트에서 지켜야 할 것, 어기면 받는 제재.",
+    desc: "디스코드 · 마인크래프트 규칙과 제재.",
     glyph: "§",
   },
   {
     href: "/wiki",
     title: "러크 위키",
-    desc: "접속 방법부터 Shift+F 메뉴, 우편함, 칭호, MOOKI 명령어까지.",
+    desc: "접속 · 메뉴 · 화폐 · 기능 안내.",
     glyph: "?",
   },
 ];
@@ -76,8 +76,8 @@ export default function Page() {
   return (
     <PageShell
       eyebrow="RUC HUB"
-      title={"무엇을 찾고 계신가요?"}
-      lead="러크 서버를 이용하는 데 필요한 곳을 한데 모았습니다."
+      title={"러크 홈"}
+      lead="충전 · 디스코드 · 규칙 · 위키."
     >
       <ul className="grid gap-4 sm:grid-cols-2">
         {CARDS.map((card) => (

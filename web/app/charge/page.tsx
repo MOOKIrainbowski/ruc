@@ -24,10 +24,9 @@ export default function Page() {
       title: "디스코드에서 주문하기",
       body: (
         <>
-          디스코드에서 <code className="inline-code">/충전</code> 을 입력하고 상품을 고릅니다. 봇이{" "}
-          <strong>주문 코드</strong>(예: <code className="inline-code">{code}</code>)와 입금할 금액을
-          알려 줍니다. <Link href="/wiki/verify" className="link">계정 인증</Link>을 마친 사람만
-          주문할 수 있습니다 — 그래야 누구에게 지급할지 정확히 압니다.
+          디스코드 <code className="inline-code">/충전</code> → 상품 선택 → <strong>주문 코드</strong>(예:{" "}
+          <code className="inline-code">{code}</code>) · 금액 안내.{" "}
+          <Link href="/wiki/verify" className="link">계정 인증</Link> 필수.
         </>
       ),
     },
@@ -35,9 +34,8 @@ export default function Page() {
       title: "토스 계좌로 입금하기",
       body: (
         <>
-          아래 계좌로 <strong>안내받은 금액을 정확히</strong> 보냅니다. 이때{" "}
-          <strong>입금자명(받는 분에게 표시)을 주문 코드로</strong> 바꿔 주세요. 주문 후{" "}
-          {products.orderTtlMinutes}분 안에 입금해야 합니다.
+          <strong>정확한 금액</strong> 입금 · <strong>입금자명 = 주문 코드</strong> ·{" "}
+          {products.orderTtlMinutes}분 이내.
         </>
       ),
     },
@@ -45,9 +43,7 @@ export default function Page() {
       title: "자동 확인 · 우편함 지급",
       body: (
         <>
-          입금이 확인되면 디스코드로 알림이 가고, 상품은{" "}
-          <Link href="/wiki/mailbox" className="link">우편함</Link>으로 도착합니다. 접속해 있지 않아도
-          우편함에 보관됩니다 (30일).
+          확인 시 디스코드 알림 · <Link href="/wiki/mailbox" className="link">우편함</Link> 지급 (30일 보관).
         </>
       ),
     },
@@ -55,9 +51,8 @@ export default function Page() {
       title: "문제가 생겼다면",
       body: (
         <>
-          입금자명을 잘못 적었거나 금액이 다르면 자동 확인이 되지 않습니다. 디스코드{" "}
-          <code className="inline-code">/ticket</code> → 문의에 <strong>주문 코드 · 입금 시각 · 금액</strong>
-          을 적어 주시면 운영진이 직접 확인합니다.
+          입금자명 · 금액이 다르면 수동 확인. 디스코드 <code className="inline-code">/ticket</code> →{" "}
+          <strong>주문 코드 · 입금 시각 · 금액</strong>.
         </>
       ),
     },
@@ -67,7 +62,7 @@ export default function Page() {
     <PageShell
       eyebrow="SUPPORT"
       title="충전 · 결제 안내"
-      lead={"러크는 무료 서버입니다. 후원은 서버 운영비로 쓰이고,\n꾸미기 · 편의 상품으로 감사를 표합니다."}
+      lead={"무료 서버. 판매 수익은 운영비로 쓰입니다."}
     >
       {!enabled && (
         <p
@@ -81,8 +76,7 @@ export default function Page() {
       {/* Tebex 스토어 공통 패턴 — 상품 위에 원칙을 고정합니다 */}
       <p className="glass mb-8 flex items-start gap-2.5 rounded-xl px-4 py-3 text-[12px] leading-relaxed text-ruc-200">
         <span aria-hidden="true" className="text-ruc-400">✓</span>
-        어떤 상품도 전투 능력치 · 장비 · 강화 재료를 주지 않습니다. 후원하지 않은 사람과 싸움에서
-        차이가 나지 않습니다.
+        전투 능력치 · 장비 · 강화 재료는 판매하지 않습니다.
       </p>
 
       {/* ─── 상품 분류 — 누르면 /charge/<분류> ───────────────── */}
@@ -91,9 +85,8 @@ export default function Page() {
           상품
         </h2>
         <p className="mb-5 text-[12px] leading-relaxed text-white/80">
-          <strong className="text-white">Gold</strong> 는 게임에서 버는 화폐,{" "}
-          <strong className="text-white">RUC</strong> 는 충전으로 얻는 화폐입니다 (가끔 이벤트로도 드립니다).
-          RUC 로 사면 {products.rucDiscountPercent}% 할인 · 잔고는 게임 안 <code className="inline-code">/등급</code>.
+          <strong className="text-white">Gold</strong> = 게임 화폐 · <strong className="text-white">RUC</strong> = 충전
+          화폐 (RUC 결제 {products.rucDiscountPercent}% 할인) · 잔고 <code className="inline-code">/등급</code>
         </p>
         <ul className="grid gap-4 sm:grid-cols-3">
           {CATEGORIES.map((c) => {
@@ -206,9 +199,7 @@ export default function Page() {
         </ol>
 
         <div className="mt-5 rounded-xl border border-ruc-400/30 bg-ruc-400/8 px-4 py-3 text-[12px] leading-relaxed text-ruc-100">
-          <strong className="text-white">입금자명 규칙</strong> — 입금자명에는 닉네임이 아니라{" "}
-          <strong className="text-white">주문 코드</strong>만 적습니다. 닉네임은 길어서 은행 앱에서
-          잘리고, 같은 이름의 입금이 겹치면 누구의 것인지 알 수 없습니다.
+          <strong className="text-white">입금자명 = 주문 코드</strong> (닉네임 X)
         </div>
       </section>
 

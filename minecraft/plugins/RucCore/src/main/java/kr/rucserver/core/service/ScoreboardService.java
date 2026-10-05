@@ -15,6 +15,9 @@ import org.bukkit.scoreboard.Team;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * 우측 사이드바 스코어보드 (§3.6).
@@ -44,6 +47,13 @@ public class ScoreboardService {
     private final MessageService messages;
     private final XpService xp;
     private BukkitTask task;
+    private BukkitTask rucTask;
+
+    /**
+     * RUC 잔고 캐시. RUC 는 접속 캐시가 아니라 DB 원장에 있어서(PaymentService.RUC) 매 초 읽을 수
+     * 없습니다 — 15초마다 비동기로 다시 읽습니다. 디스코드에서 산 RUC 는 최대 15초 늦게 보입니다.
+     */
+    private final Map<UUID, Long> ruc = new ConcurrentHashMap<>();
 
     public ScoreboardService(RucCore plugin, MessageService messages, XpService xp) {
         this.plugin = plugin;
@@ -53,6 +63,11 @@ public class ScoreboardService {
 
     public void start() {
         if (!plugin.getConfig().getBoolean("scoreboard.enabled", true)) return;
+
+        rucTask = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+            for (Player player : Bukkit.getOnlinePlayers()) refreshRuc(player.getUniqueId());
+            ruc.keySet().removeIf(uuid -> Bukkit.getPlayer(uuid) == null);
+        }, 40L, 20L * 15);
 
         long interval = plugin.getConfig().getLong("scoreboard.update-interval", 20);
         task = Bukkit.getScheduler().runTaskTimer(plugin, () -> {
@@ -67,7 +82,20 @@ public class ScoreboardService {
         }, 20L, interval);
     }
 
+    /** 블로킹 — 비동기에서 부르세요. */
+    public void refreshRuc(UUID uuid) {
+        try {
+            ruc.put(uuid, plugin.getPayments().rucBalance(uuid));
+        } catch (Exception e) {
+            plugin.getLogger().warning("RUC 잔고 조회 실패: " + e.getMessage());
+        }
+    }
+
     public void stop() {
+        if (rucTask != null) {
+            rucTask.cancel();
+            rucTask = null;
+        }
         if (task != null) {
             task.cancel();
             task = null;
@@ -87,6 +115,7 @@ public class ScoreboardService {
 
         player.setScoreboard(board);
         update(player);
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> refreshRuc(player.getUniqueId()));
     }
 
     private void update(Player player) {
@@ -161,6 +190,10 @@ public class ScoreboardService {
         lines.add(messages.raw(lang, "scoreboard.balance")
                 .replace("%amount%", EconomyService.format(data.getRuc()))
                 .replace("%symbol%", plugin.getEconomy().symbol()));
+
+        // 5-2줄 — RUC 잔고 (2026-10-05). 아직 못 읽었으면 줄을 비우지 않고 0 으로.
+        lines.add(messages.raw(lang, "scoreboard.ruc")
+                .replace("%amount%", EconomyService.format(ruc.getOrDefault(player.getUniqueId(), 0L))));
 
         // 6줄 — 평판
         ReputationTier tier = ReputationTier.of(data.getReputation());

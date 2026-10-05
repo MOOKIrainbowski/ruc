@@ -62,12 +62,11 @@ export default async function Page({ params }: { params: Promise<Params> }) {
       </ul>
 
       <p className="glass mt-8 rounded-xl px-4 py-3 text-[12px] leading-relaxed text-white/80">
-        구매는 디스코드 <code className="inline-code">/충전</code> 에서 합니다 (Gold 상품은 게임 안{" "}
-        <code className="inline-code">/등급 구매</code>). 입금 계좌와 절차는{" "}
+        구매: 디스코드 <code className="inline-code">/충전</code> · Gold 상품은 게임{" "}
+        <code className="inline-code">/등급 구매</code> ·{" "}
         <Link href="/charge#steps-title" className="link">
-          충전 안내
+          입금 절차
         </Link>
-        에 있습니다.
       </p>
     </PageShell>
   );

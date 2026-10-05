@@ -74,19 +74,19 @@ export const CATEGORIES: Category[] = [
   {
     slug: "member",
     name: "멤버 등급",
-    summary: "VIP · SVIP 는 게임에서 번 Gold 로, MVP 이상은 현금 또는 RUC 로. 30일 단위입니다.",
+    summary: "VIP · SVIP = Gold · MVP 이상 = 현금 · RUC · 30일",
     glyph: "★",
   },
   {
     slug: "ruc",
     name: "RUC 충전",
-    summary: "1 RUC = 1원. MVP 이상 등급과 상품을 RUC 로 사면 할인됩니다.",
+    summary: "1 RUC = 1원 · RUC 결제 시 10% 할인",
     glyph: "◆",
   },
   {
     slug: "convenience",
     name: "편의",
-    summary: "엔더상자 확장 · 후원 칭호처럼 한 번 사면 계속 쓰는 상품입니다.",
+    summary: "엔더상자 확장 · 후원 칭호 · 영구",
     glyph: "✚",
   },
 ];

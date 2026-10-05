@@ -28,14 +28,14 @@ export default function PageShell({
       <main className="pt-16">
         <div
           className={`mx-auto w-full px-4 pt-12 pb-20 sm:px-6 sm:pt-16 ${
-            wide ? "max-w-6xl" : "max-w-4xl"
+            wide ? "max-w-[1440px]" : "max-w-6xl"
           }`}
         >
-          <header className="mb-10">
+          <header className="page-intro mb-10">
             <p className="eyebrow mb-3">{eyebrow}</p>
             <h1 className="headline whitespace-pre-line text-3xl sm:text-5xl">{title}</h1>
             {lead && (
-              <p className="mt-4 max-w-2xl whitespace-pre-line text-[13px] leading-relaxed text-white/75">
+              <p className="mt-4 max-w-4xl whitespace-pre-line text-[13px] leading-relaxed text-white/75">
                 {lead}
               </p>
             )}

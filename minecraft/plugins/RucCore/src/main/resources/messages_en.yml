@@ -51,6 +51,7 @@ scoreboard:
   ping: "&fPing &7%dot% &f%tier%"
   online: "&fOnline &a%online% &7/ &f%max%"
   balance: "&f%amount% &a%symbol%"
+  ruc: "&f%amount% &bRUC"
   reputation: "&fRep %color%%tier%"
   guild: "&f%dot%&f %guild%"
   server: "&f%server%"

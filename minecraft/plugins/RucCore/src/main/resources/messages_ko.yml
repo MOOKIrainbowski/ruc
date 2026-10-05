@@ -51,6 +51,7 @@ scoreboard:
   ping: "&f핑 &7%dot% &f%tier%"
   online: "&f접속 &a%online% &7/ &f%max%"
   balance: "&f%amount% &a%symbol%"
+  ruc: "&f%amount% &bRUC"
   reputation: "&f평판 %color%%tier%"
   guild: "&f%dot%&f %guild%"
   server: "&f%server%"

@@ -29,7 +29,7 @@
       "period": "충전",
       "deliver": [
         "RUC 5,000",
-        "MVP 이상 등급 · 상품을 RUC 로 사면 10% 할인"
+        "RUC 결제 시 10% 할인"
       ],
       "category": "ruc",
       "available": true,
@@ -43,7 +43,7 @@
       "period": "충전",
       "deliver": [
         "RUC 10,000",
-        "MVP 이상 등급 · 상품을 RUC 로 사면 10% 할인"
+        "RUC 결제 시 10% 할인"
       ],
       "category": "ruc",
       "available": true,
@@ -57,7 +57,7 @@
       "period": "충전",
       "deliver": [
         "RUC 30,000",
-        "MVP 이상 등급 · 상품을 RUC 로 사면 10% 할인"
+        "RUC 결제 시 10% 할인"
       ],
       "category": "ruc",
       "available": true,
@@ -84,7 +84,7 @@
       "period": "30일",
       "deliver": [
         "VIP 칭호 · 디스코드 VIP 역할",
-        "코스메틱: 파티클 3 · 발광 1색 · 킬 이펙트 2",
+        "코스메틱: 파티클 3 · 발광 1 · 킬 2",
         "엔더상자 확장 최대 2개"
       ],
       "category": "member",
@@ -101,7 +101,7 @@
       "period": "30일",
       "deliver": [
         "SVIP 칭호 · 디스코드 SVIP 역할",
-        "코스메틱: 파티클 8 · 발광 3색 · 킬 이펙트 4",
+        "코스메틱: 파티클 8 · 발광 3 · 킬 4",
         "엔더상자 확장 최대 3개"
       ],
       "category": "member",
@@ -118,7 +118,7 @@
       "period": "30일",
       "deliver": [
         "MVP 칭호 · 디스코드 MVP 역할",
-        "코스메틱: 파티클 12 · 펫 4 · 발광 6색 · 킬 이펙트 7",
+        "코스메틱: 파티클 12 · 펫 4 · 발광 6 · 킬 7",
         "Shift+F 엔더상자 · 확장 최대 6개"
       ],
       "category": "member",
@@ -135,7 +135,7 @@
       "period": "30일",
       "deliver": [
         "Prime 칭호 · 디스코드 Prime 역할",
-        "코스메틱: 파티클 14 · 펫 8 · 발광 8색 · 킬 이펙트 9",
+        "코스메틱: 파티클 14 · 펫 8 · 발광 8 · 킬 9",
         "MVP 혜택 전부"
       ],
       "category": "member",
@@ -152,7 +152,7 @@
       "period": "30일",
       "deliver": [
         "Premium 칭호 · 디스코드 Premium 역할",
-        "코스메틱: 파티클 15 · 펫 11 · 발광 9색 · 킬 이펙트 11",
+        "코스메틱: 파티클 15 · 펫 11 · 발광 9 · 킬 11",
         "Prime 혜택 전부"
       ],
       "category": "member",
@@ -169,7 +169,7 @@
       "period": "30일",
       "deliver": [
         "Elite 칭호 · 디스코드 Elite 역할",
-        "코스메틱 전부: 파티클 16 · 펫 12 · 발광 10색(무지개) · 킬 이펙트 12",
+        "코스메틱 전부 (52)",
         "Premium 혜택 전부"
       ],
       "category": "member",
@@ -185,9 +185,9 @@
       "price": 2000,
       "period": "영구",
       "deliver": [
-        "엔더상자 1개 추가 (27칸)",
-        "Shift+F 엔더상자는 MVP 이상만 열 수 있습니다",
-        "등급별 최대: 일반 1 · VIP 2 · SVIP 3 · MVP 이상 6"
+        "엔더상자 +1 (27칸)",
+        "Shift+F 열기: MVP 이상",
+        "상한: 일반 1 · VIP 2 · SVIP 3 · MVP+ 6"
       ],
       "category": "convenience",
       "available": true,

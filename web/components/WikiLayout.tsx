@@ -36,7 +36,7 @@ export default function WikiLayout({
                   <Link
                     href={`/wiki/${d.slug}`}
                     aria-current={active ? "page" : undefined}
-                    className={`-ml-px block border-l-2 py-1.5 pl-3 pr-2 text-[12px] leading-snug transition-colors ${
+                    className={`-ml-px block truncate whitespace-nowrap border-l-2 py-1.5 pl-3 pr-2 text-[12.5px] leading-snug transition-colors ${
                       active
                         ? "border-ruc-400 text-ruc-400"
                         : "border-transparent text-white/75 hover:border-white/30 hover:text-white"
@@ -65,7 +65,7 @@ export default function WikiLayout({
           inputClassName="py-3"
         />
       </div>
-      <div className="grid gap-8 lg:grid-cols-[220px_minmax(0,1fr)] xl:grid-cols-[220px_minmax(0,1fr)_180px]">
+      <div className="grid gap-8 lg:grid-cols-[264px_minmax(0,1fr)] xl:grid-cols-[264px_minmax(0,1fr)_220px]">
         <aside className="lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:self-start lg:overflow-y-auto lg:pr-2">
           {/* 데스크톱: 펼친 목록 */}
           <div className="hidden lg:block">{tree}</div>

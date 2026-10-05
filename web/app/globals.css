@@ -70,6 +70,35 @@ body {
   /* 블러는 충분히 주되 밝기는 살립니다 — 이 사진이 안 보이면 §7.6의 의미가 없습니다. */
   filter: blur(13px) saturate(1.3) brightness(0.92);
   transform: scale(1.06);
+  animation: bg-drift 60s ease-in-out infinite alternate;
+}
+
+@keyframes bg-drift {
+  from { transform: scale(1.06) translate3d(0, 0, 0); }
+  to   { transform: scale(1.12) translate3d(-1.2%, -1%, 0); }
+}
+
+/* 떠오르는 픽셀 — 배경 위 아주 옅은 장식 (2026-10-05) */
+.bg-pixels {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    linear-gradient(var(--color-ruc-400), var(--color-ruc-400)),
+    linear-gradient(var(--color-ruc-300), var(--color-ruc-300)),
+    linear-gradient(#ffffff, #ffffff),
+    linear-gradient(var(--color-ruc-400), var(--color-ruc-400)),
+    linear-gradient(var(--color-ruc-200), var(--color-ruc-200));
+  background-size: 4px 4px, 3px 3px, 2px 2px, 3px 3px, 4px 4px;
+  background-repeat: no-repeat;
+  background-position: 12% 110%, 34% 110%, 58% 110%, 77% 110%, 91% 110%;
+  opacity: 0.35;
+  animation: pixels-rise 26s linear infinite;
+}
+@keyframes pixels-rise {
+  0%   { background-position: 12% 110%, 34% 120%, 58% 105%, 77% 125%, 91% 115%; }
+  100% { background-position: 16% -10%, 30% -20%, 62% -5%, 73% -25%, 95% -15%; }
 }
 
 .bg-tint {
@@ -185,12 +214,41 @@ body {
 }
 
 .glass-hover {
-  transition: background 160ms ease, border-color 160ms ease, transform 160ms ease;
+  position: relative;
+  overflow: hidden;
+  transition: background 160ms ease, border-color 160ms ease, transform 200ms cubic-bezier(.2,.8,.2,1),
+    box-shadow 200ms ease;
 }
 .glass-hover:hover {
   background: rgba(255, 255, 255, 0.1);
   border-color: rgba(186, 217, 83, 0.38);
-  transform: translateY(-2px);
+  transform: translateY(-3px);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.45), 0 0 0 1px rgba(147, 233, 62, 0.18),
+    0 0 24px rgba(147, 233, 62, 0.12);
+}
+.glass-hover:active { transform: translateY(-1px) scale(0.99); }
+/* 마우스를 올리면 빛이 한 번 지나갑니다 */
+.glass-hover::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(105deg, transparent 35%, rgba(255, 255, 255, 0.13) 50%, transparent 65%);
+  transform: translateX(-120%);
+}
+.glass-hover:hover::after { transform: translateX(120%); transition: transform 700ms ease; }
+
+/* 픽셀 모서리 장식 — 큰 카드(.glass-strong)와 콘텐츠 카드에 */
+.glass-strong,
+.pixel-corners {
+  background-image:
+    linear-gradient(var(--color-ruc-400), var(--color-ruc-400)),
+    linear-gradient(var(--color-ruc-400), var(--color-ruc-400)),
+    linear-gradient(var(--color-ruc-400), var(--color-ruc-400)),
+    linear-gradient(var(--color-ruc-400), var(--color-ruc-400));
+  background-size: 10px 2px, 2px 10px, 10px 2px, 2px 10px;
+  background-position: top 6px left 6px, top 6px left 6px, bottom 6px right 6px, bottom 6px right 6px;
+  background-repeat: no-repeat;
 }
 
 /* ── 타이포 강조 (§7.5 "강한 타이포그래피") ─────────────────────── */
@@ -206,6 +264,51 @@ body {
 .accent {
   color: var(--color-ruc-400);
   text-shadow: 0 0 18px rgba(147, 233, 62, 0.5);
+}
+
+.page-intro > * {
+  animation: rise-in 600ms cubic-bezier(.2,.8,.2,1) both;
+}
+.page-intro > :nth-child(2) { animation-delay: 80ms; }
+.page-intro > :nth-child(3) { animation-delay: 160ms; }
+.page-intro > :nth-child(4) { animation-delay: 240ms; }
+.page-intro h1::after {
+  content: "";
+  display: block;
+  width: 64px;
+  height: 4px;
+  margin-top: 14px;
+  background: linear-gradient(90deg, var(--color-ruc-400) 0 60%, var(--color-ruc-300) 60% 80%, var(--color-ruc-200) 80%);
+  box-shadow: 0 0 14px rgba(147, 233, 62, 0.6);
+  transform-origin: left;
+  animation: bar-grow 700ms 200ms cubic-bezier(.2,.8,.2,1) both;
+}
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: none; }
+}
+/* 스크롤 등장은 transform 대신 translate — 카드의 hover 들림(transform)과 겹치지 않게 */
+@keyframes reveal {
+  from { opacity: 0; translate: 0 18px; }
+  to   { opacity: 1; translate: none; }
+}
+@keyframes bar-grow {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+
+/* 스크롤하면 카드 · 본문이 차례로 떠오릅니다 — 브라우저 기본 기능(스크롤 타임라인).
+   지원하지 않는 브라우저(파이어폭스 등)에서는 그냥 보입니다. */
+@supports (animation-timeline: view()) {
+  main .glass,
+  main .glass-strong,
+  .wiki-prose > h2,
+  .wiki-prose > .table-wrap,
+  .wiki-prose > blockquote {
+    animation: reveal linear both;
+    animation-timeline: view();
+    animation-range: entry 0% entry 40%;
+  }
 }
 
 .eyebrow {
@@ -276,6 +379,18 @@ body {
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 .wiki-prose h3 { margin: 1.8em 0 0.6em; font-size: 1.1em; }
+.wiki-prose h2::before {
+  content: "";
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin-right: 10px;
+  vertical-align: 0.15em;
+  background: var(--color-ruc-400);
+  box-shadow: 0 0 10px rgba(147, 233, 62, 0.7);
+}
+.wiki-prose tbody tr { transition: background 120ms ease; }
+.wiki-prose tbody tr:hover { background: rgba(147, 233, 62, 0.06); }
 .wiki-prose .anchor {
   margin-right: 0.4em;
   color: var(--color-ruc-400);
@@ -356,6 +471,9 @@ body {
     transition-duration: 0.01ms !important;
     scroll-behavior: auto !important;
   }
+  .bg-layer, .bg-pixels, .page-intro > *, .page-intro h1::after,
+  main .glass, main .glass-strong, .wiki-prose > * { animation: none !important; }
+  .glass-hover::after { display: none; }
 }
 
 /* 본문 속 인라인 코드 · 링크 (위키 밖 페이지에서) */

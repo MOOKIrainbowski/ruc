@@ -15,7 +15,7 @@ export default function Page() {
       wide
       eyebrow="RUC WIKI"
       title="러크 위키"
-      lead="접속 방법부터 러크만의 기능까지. 처음이라면 '시작하기' 부터 읽어 주세요."
+      lead="처음이라면 '시작하기' 부터."
     >
       <WikiLayout>
         {/* Wynncraft 위키식 분류 카드 */}

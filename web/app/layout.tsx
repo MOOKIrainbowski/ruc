@@ -44,6 +44,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <div className="bg-layer" aria-hidden="true" />
         <div className="bg-tint" aria-hidden="true" />
+        <div className="bg-pixels" aria-hidden="true" />
         {children}
       </body>
     </html>
