@@ -10,6 +10,8 @@ const nextConfig: NextConfig = {
     return [
       { source: "/", destination: "/landing", permanent: false },
       { source: "/en", destination: "/en/landing", permanent: false },
+      // 단수형으로 적는 사람이 많아서 (2026-10-05) — 404 면 링크 미리보기도 기본 아이콘이 됩니다.
+      { source: "/rule", destination: "/rules", permanent: true },
     ];
   },
 };
