@@ -52,7 +52,7 @@ economy:
   # 신규 플레이어 시작 자금
   starting-balance: 1000
   # 화면 표시 단위
-  symbol: "Ruc"
+  symbol: "Gold"
 
 scoreboard:
   enabled: true
@@ -440,6 +440,12 @@ ender:
   # 유료 + 무과금 합쳐 확장 최대 개수 (바닐라 엔더상자 제외). 6 → 엔더상자 최대 7개 (2026-10-02)
   # 목록 화면이 7개까지만 그리므로 6 을 넘길 수 없습니다.
   max-pages: 6
+  # 등급별 확장 상한 (2026-10-05 소유자 결정). MVP 이상은 max-pages 까지.
+  # Shift+F 엔더상자 자체는 MVP 이상만 열 수 있습니다 — 낮은 등급이 산 확장은 MVP 가 되면 쓰입니다.
+  rank-caps:
+    none: 1
+    vip: 2
+    svip: 3
   # /엔더확장 구매 로 n 번째 확장권을 살 때의 조건 (확장권은 우편으로 가고, 들고 우클릭해야 늘어남).
   # 순서는 "그 사람이 지금까지 산 확장권 수" 로 정합니다 — 싸게 사서 넘기는 우회를 막습니다.
   # 유료보다 어렵게 (2026-10-02 소유자 결정) — TODO: 운영진 경제 검토
@@ -508,3 +514,19 @@ payment:
   max-pending-orders: 2
   # 주문 사이 최소 간격 (도배 방지)
   order-cooldown-seconds: 60
+
+# ── Gold 로 파는 후원 등급 (2026-10-05) ──────────────────────────────
+# 게임 안 /등급 구매 <id>. MVP 이상은 현금 · RUC 로만 (web/content/products.json).
+# ⚠️ 가격을 바꾸면 web/content/products.json 의 같은 상품 "gold" 도 같이 고치세요 — 웹 표시용입니다.
+# grants 형식은 products.json 과 같습니다. TODO: 운영진 경제 검토 (가격 초안)
+rank-shop:
+  vip:
+    name: "VIP"
+    gold: 50000
+    period: "30일"
+    grants: "ent:vip:30"
+  svip:
+    name: "SVIP"
+    gold: 120000
+    period: "30일"
+    grants: "ent:svip:30"

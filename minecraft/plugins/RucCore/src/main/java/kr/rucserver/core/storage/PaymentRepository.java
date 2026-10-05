@@ -196,7 +196,9 @@ public class PaymentRepository {
     }
 
     public long lastOrderAt(String discordId) throws SQLException {
-        String sql = "SELECT MAX(created_at) FROM ruc_pay_order WHERE discord_id = ?";
+        // RUC · Gold 결제(바로 지급되는 주문)는 연타 방지 대상이 아닙니다.
+        String sql = "SELECT MAX(created_at) FROM ruc_pay_order WHERE discord_id = ? "
+                + "AND (note IS NULL OR note NOT IN ('RUC', 'GOLD'))";
         try (Connection conn = database.getConnection();
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, discordId);

@@ -15,7 +15,7 @@ lang:
 economy:
   balance-self: "&fBalance: &a%amount% %symbol%"
   balance-other: "&f%player%'s balance: &a%amount% %symbol%"
-  insufficient: "&cNot enough Ruc. (need: %needed%, have: %balance%)"
+  insufficient: "&cNot enough Gold. (need: %needed%, have: %balance%)"
   received: "&aReceived %amount% %symbol%."
   paid: "&eSpent %amount% %symbol%."
 
@@ -160,7 +160,7 @@ menu:
     travel-name: "&b&lTravelling"
     travel-lore: "&7Sneak and press &fF &7to open this menu|&7Or use the command: &f/menu|&7On Home, the compass works too"
     economy-name: "&a&lEconomy and progress"
-    economy-lore: "&7Ruc is shared across every server|&7Custom XP is separate from vanilla|&fUse /ruc &7and &f/level"
+    economy-lore: "&7Gold is shared across every server|&7Custom XP is separate from vanilla|&fUse /ruc &7and &f/level"
 
 # ── Staff correction commands (OP only) ───────────────────────────────
 # /levelup and /ruc give open every progression gate.
@@ -219,6 +219,18 @@ payment:
   redirect-how: "&7Type &f/충전 &7in Discord and pick a product. Once the transfer is confirmed it is delivered to your &fmailbox&7 / titles."
   delivered: "&aYour purchase has been delivered! &7(%product%) &7Check &f/title &7and &f/mail&7."
 
+# ── Ranks · RUC (2026-10-05) ─────────────────────────────────────────
+rank:
+  none: "Default"
+  status: "&fRank &d%rank% &8· &fRUC &b%ruc% &8· &f%symbol% &e%gold%"
+  offer: "&7- &f%name% &7(%period%) &e%cost% %symbol% &8— &f/rank buy %id%"
+  cash-hint: "&7MVP+ ranks and RUC top-ups: &f/충전 &7on Discord (cash, or RUC for 10% off)"
+  bought: "&aYou now have %name%! &7(%period%)"
+  unknown: "&cNo such rank product. &7See &f/rank&7."
+  need-verify: "&cVerify your Discord account first. &f/verify"
+  need-gold: "&cYou need %cost% %symbol%."
+  error: "&cCouldn't complete the purchase. Your %symbol% was refunded."
+
 # ── Ender chest expansion ────────────────────────────────────────────
 ender:
   selector-title: "&8My Ender Chests &7(%count%)"
@@ -243,6 +255,8 @@ ender:
   voucher-used: "&cThis voucher has already been used."
   voucher-invalid: "&cThis voucher is not valid."
   unlocked: "&aYou now have %n% ender chests! &7Shift+F → Ender Chest"
+  need-mvp: "&cThe Shift+F ender chests are for &dMVP or higher&c. &7Buy an MVP+ rank with &f/충전 &7on Discord. &8(/rank)"
+  rank-cap: "&cYour rank can't add more ender chests. &7Expansions: default 1 · VIP 2 · SVIP 3 · MVP+ 6"
 
 # ── Player shop (Phase 10) ───────────────────────────────────────────
 shop:
@@ -304,8 +318,8 @@ guide:
       name: "Move to another server"
       how: "&7Pick the &fRaiding Server &7in the Shift+F menu."
     ruc:
-      name: "Check your Ruc"
-      how: "&7Type &f/ruc&7.|&7Ruc is the same wallet on every server."
+      name: "Check your Gold"
+      how: "&7Type &f/ruc&7.|&7Gold is the same wallet on every server."
     level:
       name: "Check your level"
       how: "&7Type &f/level&7.|&7Your Ruc level follows you across servers."
@@ -484,7 +498,7 @@ guild:
     name-invalid: "&cGuild names must be 2-12 letters, digits or Hangul."
     tag-invalid: "&cTags must be 2-4 letters, digits or Hangul."
     level-too-low: "&cYour level is too low. (Lv.%level%+)"
-    not-enough-ruc: "&cNot enough Ruc. (need %cost% %symbol%)"
+    not-enough-ruc: "&cNot enough Gold. (need %cost% %symbol%)"
     not-enough-bank: "&cThe guild bank does not have that much."
     invalid-amount: "&cEnter a valid amount."
     guild-full: "&cThe guild is full. (max %max%)"

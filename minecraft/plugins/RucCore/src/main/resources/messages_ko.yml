@@ -15,7 +15,7 @@ lang:
 economy:
   balance-self: "&f보유 자산: &a%amount% %symbol%"
   balance-other: "&f%player% 님의 자산: &a%amount% %symbol%"
-  insufficient: "&cRuc가 부족합니다. (필요: %needed%, 보유: %balance%)"
+  insufficient: "&cGold가 부족합니다. (필요: %needed%, 보유: %balance%)"
   received: "&a%amount% %symbol%를 받았습니다."
   paid: "&e%amount% %symbol%를 사용했습니다."
 
@@ -160,7 +160,7 @@ menu:
     travel-name: "&b&l서버 이동"
     travel-lore: "&7웅크린 채 &fF &7키로 이 메뉴를 엽니다|&7명령어로도 됩니다: &f/메뉴|&7홈에서는 나침반으로도 이동할 수 있습니다"
     economy-name: "&a&l경제와 성장"
-    economy-lore: "&7Ruc 는 모든 서버에서 공용입니다|&7자체 경험치는 바닐라와 별개입니다|&f/재화 &7· &f/레벨 &7로 확인하세요"
+    economy-lore: "&7Gold 는 모든 서버에서 공용입니다|&7자체 경험치는 바닐라와 별개입니다|&f/재화 &7· &f/레벨 &7로 확인하세요"
 
 # ── 스태프 보정 명령 (OP 전용) ─────────────────────────────────────────
 # /levelup 과 /ruc give 는 모든 성장 게이트를 여는 열쇠입니다.
@@ -219,6 +219,18 @@ payment:
   redirect-how: "&7디스코드에서 &f/충전 &7을 입력하고 상품을 고르세요. 입금이 확인되면 &f우편함&7 · 칭호로 바로 지급됩니다."
   delivered: "&a충전 상품이 지급되었습니다! &7(%product%) &f/칭호 &7· &f/우편함 &7에서 확인하세요."
 
+# ── 후원 등급 · RUC (2026-10-05) ─────────────────────────────────────
+rank:
+  none: "일반"
+  status: "&f내 등급 &d%rank% &8· &fRUC &b%ruc% &8· &f%symbol% &e%gold%"
+  offer: "&7- &f%name% &7(%period%) &e%cost% %symbol% &8— &f/등급 구매 %id%"
+  cash-hint: "&7MVP 이상 등급 · RUC 충전은 디스코드 &f/충전 &7(현금, 또는 RUC 로 10% 할인)"
+  bought: "&a%name% 등급을 받았습니다! &7(%period%)"
+  unknown: "&c그런 등급 상품이 없습니다. &f/등급 &7으로 목록을 보세요."
+  need-verify: "&c디스코드 인증을 마친 뒤에 살 수 있습니다. &f/인증"
+  need-gold: "&c%cost% %symbol% 가 필요합니다."
+  error: "&c구매를 처리하지 못했습니다. %symbol% 는 돌려드렸습니다."
+
 # ── 엔더상자 확장 ────────────────────────────────────────────────────
 ender:
   selector-title: "&8내 엔더상자 &7(%count%개)"
@@ -243,6 +255,8 @@ ender:
   voucher-used: "&c이미 사용된 확장권입니다."
   voucher-invalid: "&c유효하지 않은 확장권입니다."
   unlocked: "&a엔더상자가 %n%개가 되었습니다! &7Shift+F → 엔더상자"
+  need-mvp: "&cShift+F 엔더상자는 &dMVP 이상&c 등급 전용입니다. &7디스코드 &f/충전 &7에서 MVP 이상 등급을 구매해 주세요. &8(/등급)"
+  rank-cap: "&c지금 등급으로는 엔더상자를 더 늘릴 수 없습니다. &7확장 개수: 일반 1 · VIP 2 · SVIP 3 · MVP 이상 6"
 
 # ── 유저 상점 (Phase 10) ─────────────────────────────────────────────
 shop:
@@ -304,8 +318,8 @@ guide:
       name: "다른 서버로 이동"
       how: "&7Shift+F 메뉴에서 &f약탈 서버&7를 눌러 이동해 보세요."
     ruc:
-      name: "Ruc 확인"
-      how: "&f/ruc &7를 입력해 내 잔고를 확인하세요.|&7Ruc 는 모든 서버에서 같은 지갑입니다."
+      name: "Gold 확인"
+      how: "&f/ruc &7를 입력해 내 잔고를 확인하세요.|&7Gold 는 모든 서버에서 같은 지갑입니다."
     level:
       name: "레벨 확인"
       how: "&f/레벨 &7을 입력하세요.|&7러크 레벨은 서버를 옮겨도 유지됩니다."
@@ -410,7 +424,7 @@ guild:
   nation-hint: "&7길드원 &f%count%&7명을 더 모으면 &b국가&7로 인정됩니다. (기준 %threshold%명)"
   nation-promoted: "&b&l국가 승격! &f%guild% &7길드가 %count%명으로 &b국가&7가 되었습니다."
   disband-confirm: "&c정말 해산하시겠습니까? &f/길드 해산 %guild% &c를 입력하세요. (되돌릴 수 없습니다)"
-  disbanded: "&c길드 &f%guild% &c를 해산했습니다. 금고에 남은 Ruc는 돌려받았습니다."
+  disbanded: "&c길드 &f%guild% &c를 해산했습니다. 금고에 남은 Gold는 돌려받았습니다."
   disbanded-notice: "&c소속 길드 &f%guild% &c가 해산되었습니다."
 
   # 초대 · 가입 · 탈퇴
@@ -493,7 +507,7 @@ guild:
     name-invalid: "&c길드 이름은 한글·영문·숫자 2~12자여야 합니다."
     tag-invalid: "&c태그는 한글·영문·숫자 2~4자여야 합니다."
     level-too-low: "&c레벨이 부족합니다. (Lv.%level% 이상)"
-    not-enough-ruc: "&cRuc가 부족합니다. (필요: %cost% %symbol%)"
+    not-enough-ruc: "&cGold가 부족합니다. (필요: %cost% %symbol%)"
     not-enough-bank: "&c길드 금고가 부족합니다."
     invalid-amount: "&c금액을 올바르게 입력하세요."
     guild-full: "&c길드 인원이 가득 찼습니다. (최대 %max%명)"

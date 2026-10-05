@@ -1,7 +1,7 @@
 import Link from "next/link";
 import CopyButton from "@/components/CopyButton";
 import PageShell from "@/components/PageShell";
-import { bankAccount, chargeEnabled, products, won } from "@/lib/charge";
+import { bankAccount, chargeEnabled, num, products, rucPrice, won } from "@/lib/charge";
 import { DISCORD_INVITE } from "@/lib/content";
 
 export const metadata = {
@@ -90,6 +90,12 @@ export default function Page() {
         <h2 id="products-title" className="headline mb-4 text-xl">
           상품
         </h2>
+        <p className="mb-4 text-[12px] leading-relaxed text-white/80">
+          <strong className="text-white">Gold</strong> 는 게임에서 버는 화폐이고,{" "}
+          <strong className="text-white">RUC</strong> 는 충전으로 얻는 화폐입니다 (가끔 이벤트로도 드립니다).
+          VIP · SVIP 는 Gold 로, MVP 이상은 현금 또는 RUC 로 삽니다. RUC 로 사면{" "}
+          {products.rucDiscountPercent}% 할인됩니다. 잔고는 게임 안 <code className="inline-code">/등급</code>.
+        </p>
         {products.reviewNote && (
           <p className="mb-4 text-[11px] text-amber-200/90">{products.reviewNote}</p>
         )}
@@ -106,9 +112,22 @@ export default function Page() {
                 </span>
               </div>
               <p className="mt-2">
-                <span className="headline text-2xl text-ruc-400">{won(p.price)}</span>
+                <span className="headline text-2xl text-ruc-400">
+                  {p.price ? won(p.price) : `${num(p.gold ?? 0)} Gold`}
+                </span>
                 <span className="ml-2 text-[11px] text-white/65">/ {p.period}</span>
               </p>
+              {rucPrice(p) !== null && (
+                <p className="mt-1 text-[11.5px] text-sky-200">
+                  또는 <strong>{num(rucPrice(p)!)} RUC</strong>{" "}
+                  <span className="text-white/60">({products.rucDiscountPercent}% 할인)</span>
+                </p>
+              )}
+              {!p.price && (
+                <p className="mt-1 text-[11.5px] text-amber-200/90">
+                  게임 안에서 <code className="inline-code">/등급 구매 {p.id}</code> 로 삽니다
+                </p>
+              )}
               <ul className="mt-4 space-y-1.5 border-t border-white/10 pt-4 text-[12px] text-white/85">
                 {p.deliver.map((d) => (
                   <li key={d} className="flex gap-2">

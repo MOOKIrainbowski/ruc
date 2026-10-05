@@ -6,8 +6,10 @@ import raw from "@/content/products.json";
 export type Product = {
   id: string;
   name: string;
-  /** 원 단위 정수 */
-  price: number;
+  /** 원 단위 정수. 없으면 현금 · RUC 로 팔지 않는 상품 (Gold 전용) */
+  price?: number;
+  /** Gold 가격 — 게임 안 /등급 구매 (실제 값은 RucCore config.yml rank-shop) */
+  gold?: number;
   period: string;
   deliver: string[];
   category: string;
@@ -24,6 +26,8 @@ export type ProductsData = {
   orderCodePrefix: string;
   /** 주문 후 이 시간 안에 입금해야 합니다 */
   orderTtlMinutes: number;
+  /** RUC 로 사면 깎아 주는 비율 (%) */
+  rucDiscountPercent: number;
   products: Product[];
 };
 
@@ -50,4 +54,14 @@ export function bankAccount(): BankAccount | null {
 
 export function won(n: number) {
   return `${n.toLocaleString("ko-KR")}원`;
+}
+
+/** RUC 결제 가격 (1 RUC = 1원). RUC 충전 상품 · 현금 가격 없는 상품은 null. 봇(payment.js)과 같은 계산. */
+export function rucPrice(p: Product): number | null {
+  if (!p.price || /(^|,)ruc:/.test(p.grants)) return null;
+  return Math.round((p.price * (100 - products.rucDiscountPercent)) / 100);
+}
+
+export function num(n: number) {
+  return n.toLocaleString("ko-KR");
 }

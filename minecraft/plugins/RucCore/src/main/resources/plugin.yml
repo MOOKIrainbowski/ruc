@@ -26,9 +26,9 @@ commands:
     description: 내가 보낸 텔레포트 요청을 취소합니다.
     usage: /tpcancel
   ruc:
-    description: 보유한 Ruc를 확인합니다. (스태프) /ruc give 로 지급합니다.
+    description: 보유한 Gold를 확인합니다. (스태프) /ruc give 로 지급합니다.
     usage: /ruc [player] | /ruc give <player> <amount>
-    aliases: [money, 재화]
+    aliases: [money, 재화, gold, 골드]
   level:
     description: 현재 레벨과 경험치를 확인합니다.
     usage: /level
@@ -121,9 +121,13 @@ commands:
     usage: /충전
     aliases: [충전, 후원, 구매, 결제, donate, store]
   enderexpand:
-    description: 엔더상자 확장권을 레벨 · Ruc 로 삽니다 (우편으로 지급). 엔더상자는 Shift+F 메뉴에서.
+    description: 엔더상자 확장권을 레벨 · Gold 로 삽니다 (우편으로 지급). 엔더상자는 Shift+F 메뉴에서.
     usage: /엔더확장 [구매]
     aliases: [엔더확장, 엔더]
+  rank:
+    description: 내 후원 등급 · RUC 잔고를 보고, VIP · SVIP 를 Gold 로 삽니다.
+    usage: /등급 [구매 <vip|svip>]
+    aliases: [등급, 랭크, ranks]
   usershop:
     description: 유저 상점을 엽니다. 더블클릭으로 구매합니다.
     usage: /유저상점

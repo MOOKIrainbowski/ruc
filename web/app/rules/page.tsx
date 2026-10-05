@@ -51,7 +51,7 @@ export default function Page() {
                 <th scope="col" className="px-4 py-3">단계</th>
                 <th scope="col" className="px-4 py-3">디스코드</th>
                 <th scope="col" className="px-4 py-3">마인크래프트</th>
-                <th scope="col" className="px-4 py-3">Ruc 몰수</th>
+                <th scope="col" className="px-4 py-3">Gold 몰수</th>
                 <th scope="col" className="px-4 py-3">추가</th>
               </tr>
             </thead>

@@ -56,13 +56,17 @@ import java.util.logging.Level;
  * rucpay roles-done &lt;주문ID&gt;
  * rucpay expired                    → 끝났는데 역할을 안 뗀 기간제 권리
  * rucpay expired-done &lt;uuid&gt; &lt;키&gt;
+ * rucpay rucbuy &lt;디스코드ID&gt; &lt;상품ID&gt; &lt;RUC가격&gt; &lt;지급명세&gt;   (RUC 결제, 2026-10-05)
+ *   → RUCPAY BOUGHT order= code= balance= delivered=0|1
+ *   → RUCPAY SHORT balance= | NOT_VERIFIED | CAP | BAD_GRANTS | ERROR
+ * rucpay rucbal &lt;디스코드ID&gt;     → RUCPAY RUCBAL balance= name=  | NOT_VERIFIED
  * </pre>
  * 목록 응답은 {@code items=a:b:c;d:e:f} 형식이고, 값 안의 공백 · 구분자는 {@code _} 로 바꿉니다.
  */
 public class PaymentCommands implements CommandExecutor {
 
     private static final String USAGE = "RUCPAY ERROR usage: order|deposit|approve|link|refund|ignore|"
-            + "cancel|redeliver|status|lookup|review|failed|roles|roles-done|expired|expired-done";
+            + "cancel|redeliver|status|lookup|review|failed|roles|roles-done|expired|expired-done|rucbuy|rucbal";
 
     private final RucCore plugin;
     private final MessageService messages;
@@ -225,6 +229,13 @@ public class PaymentCommands implements CommandExecutor {
                     int n = pay.getRepository().markRoleCleared(java.util.UUID.fromString(args[1]), args[2]);
                     sender.sendMessage("RUCPAY OK rows=" + n);
                 }
+                case "rucbuy" -> rucBuy(sender, pay, args);
+                case "rucbal" -> {
+                    if (need(sender, args, 2, "rucbal <디스코드ID>")) return true;
+                    var player = plugin.getPlayerData().getRepository().findByDiscordId(args[1]);
+                    sender.sendMessage(player == null ? "RUCPAY NOT_VERIFIED"
+                            : "RUCPAY RUCBAL balance=" + pay.rucBalance(player.getUuid()) + " name=" + player.getName());
+                }
                 default -> sender.sendMessage(USAGE);
             }
         } catch (NumberFormatException e) {
@@ -255,6 +266,22 @@ public class PaymentCommands implements CommandExecutor {
         Order o = r.order();
         sender.sendMessage("RUCPAY ORDER id=" + o.id() + " code=" + o.code() + " amount=" + o.amount()
                 + " expires=" + o.expiresAt() + " name=" + o.playerName() + " uuid=" + o.uuid());
+    }
+
+    private void rucBuy(CommandSender sender, PaymentService pay, String[] args) {
+        if (need(sender, args, 5, "rucbuy <디스코드ID> <상품ID> <RUC가격> <지급명세>")) return;
+        int price = Integer.parseInt(args[3]);
+        if (price <= 0 || price > 1_000_000 || args[2].length() > 32 || args[4].length() > 255) {
+            sender.sendMessage("RUCPAY ERROR 범위");
+            return;
+        }
+        PaymentService.RucBuyResult r = pay.buyWithRuc(args[1], args[2], price, args[4]);
+        sender.sendMessage(switch (r.kind()) {
+            case OK -> "RUCPAY BOUGHT order=" + r.order().id() + " code=" + r.order().code()
+                    + " balance=" + r.balance() + " delivered=" + (r.delivered() ? 1 : 0);
+            case SHORT -> "RUCPAY SHORT balance=" + r.balance();
+            default -> "RUCPAY " + r.kind().name();
+        });
     }
 
     private void deposit(CommandSender sender, PaymentService pay, String[] args) {

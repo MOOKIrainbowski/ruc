@@ -46,7 +46,7 @@ function productEntries(): SearchEntry[] {
     href: "/charge",
     title: p.name,
     category: "충전",
-    description: `${p.price.toLocaleString("ko-KR")}원 · ${p.period}`,
+    description: `${p.price ? `${p.price.toLocaleString("ko-KR")}원` : `${(p.gold ?? 0).toLocaleString("ko-KR")} Gold`} · ${p.period}`,
     text: p.deliver.join(" "),
   }));
 }

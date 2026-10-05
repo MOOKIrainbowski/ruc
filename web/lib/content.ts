@@ -114,7 +114,7 @@ export const content: Record<Lang, Copy> = {
       eyebrow: "AT A GLANCE",
       heading: "러크가 다른 세 가지.",
       items: [
-        { glyph: "₩", title: "하나의 지갑", desc: "Ruc 와 레벨이 모든 서버에서 그대로 이어집니다." },
+        { glyph: "₩", title: "하나의 지갑", desc: "Gold 와 레벨이 모든 서버에서 그대로 이어집니다." },
         { glyph: "⚔", title: "도망은 없다", desc: "약탈 서버에서 전투 중 나가면 전부 잃습니다." },
         { glyph: "✓", title: "돈으로 못 사는 강함", desc: "후원은 꾸미기와 편의뿐, 능력치는 팔지 않습니다." },
       ],
@@ -213,7 +213,7 @@ export const content: Record<Lang, Copy> = {
       eyebrow: "AT A GLANCE",
       heading: "Three things make Ruc different.",
       items: [
-        { glyph: "₩", title: "One wallet", desc: "Ruc and your level follow you to every server." },
+        { glyph: "₩", title: "One wallet", desc: "Gold and your level follow you to every server." },
         { glyph: "⚔", title: "No running away", desc: "Log out mid-fight on the Raiding Server and you lose it all." },
         { glyph: "✓", title: "Power can't be bought", desc: "Support only buys cosmetics and convenience." },
       ],

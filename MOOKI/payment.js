@@ -76,6 +76,18 @@ function won(n) {
     return `${Number(n).toLocaleString('ko-KR')}원`;
 }
 
+/** 주문 금액 표시 — 코드 접두로 결제 수단을 압니다 (R 현금 · U RUC · G Gold). */
+function paidText(code, amount) {
+    const n = Number(amount).toLocaleString('ko-KR');
+    return code.startsWith('U') ? `${n} RUC` : code.startsWith('G') ? `${n} Gold` : won(amount);
+}
+
+/** RUC 결제 가격 (1 RUC = 1원, 할인 적용). RUC 충전 상품 · 현금 가격 없는 상품은 null. web/lib/charge.ts 와 같은 계산. */
+function rucPrice(p) {
+    if (!p.price || /(^|,)ruc:/.test(p.grants || '')) return null;
+    return Math.round(p.price * (100 - (catalog.rucDiscountPercent || 0)) / 100);
+}
+
 // ── 화면 상태 (관리자 메시지 ID 등) ────────────────────────────────────
 
 let data = load();
@@ -172,7 +184,7 @@ function orderEmbed(o, state) {
     const e = new EmbedBuilder()
         .setTitle(`충전 주문 ${o.code} — ${p ? p.name : o.product}`)
         .addFields(
-            { name: '금액', value: won(o.price ?? o.amount), inline: true },
+            { name: '금액', value: paidText(String(o.code || ''), o.price ?? o.amount), inline: true },
             { name: '받는 사람', value: `${o.name} (<@${o.discord}>)`, inline: true },
             { name: '만료', value: o.expires ? `<t:${Math.floor(o.expires / 1000)}:R>` : '-', inline: true },
         )
@@ -534,14 +546,23 @@ function startWebhook(guild) {
 
 function buildChargeCommand() {
     loadProducts();
-    const cmd = new SlashCommandBuilder().setName('충전').setDescription('러크 서버 후원 상품을 주문합니다. 토스 계좌 입금으로 결제합니다.');
-    const choices = catalog.products.filter(p => p.available).slice(0, 25)
-        .map(p => ({ name: `${p.name} — ${won(p.price)} / ${p.period}`.slice(0, 100), value: p.id }));
+    const cmd = new SlashCommandBuilder().setName('충전').setDescription('러크 서버 상품을 삽니다. 토스 계좌 입금 또는 RUC 로 결제합니다.');
+    // Gold 전용 상품(VIP · SVIP)은 여기 없습니다 — 게임 안 /등급 구매.
+    const choices = catalog.products.filter(p => p.available && p.price > 0).slice(0, 25)
+        .map(p => {
+            const ruc = rucPrice(p);
+            return { name: `${p.name} — ${won(p.price)}${ruc ? ` · ${ruc.toLocaleString('ko-KR')} RUC` : ''} / ${p.period}`.slice(0, 100), value: p.id };
+        });
     cmd.addStringOption(o => {
         o.setName('상품').setDescription('살 상품').setRequired(true);
         if (choices.length > 0) o.addChoices(...choices);
         return o;
     });
+    cmd.addStringOption(o => o.setName('결제').setDescription('결제 수단 (기본: 현금)')
+        .addChoices(
+            { name: '현금 (토스 계좌 입금)', value: 'cash' },
+            { name: `RUC (${catalog.rucDiscountPercent || 0}% 할인)`, value: 'ruc' },
+        ));
     return cmd;
 }
 
@@ -564,14 +585,17 @@ async function handleCharge(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     loadProducts(); // 가격을 고쳤으면 재시작 없이 반영됩니다 (선택지 목록만 재시작 필요).
 
+    const p = product(interaction.options.getString('상품'));
+    if (!p || !p.available || !(p.price > 0)) return interaction.editReply('지금은 살 수 없는 상품입니다.');
+
+    // RUC 결제는 돈이 오가지 않으므로 충전 운영(PAY_ENABLED) · 계좌와 무관합니다.
+    if (interaction.options.getString('결제') === 'ruc') return payWithRuc(interaction, p);
+
     if (!enabled() && !isAdmin(interaction.member)) {
         return interaction.editReply('충전은 아직 준비 중입니다. 열리면 공지로 알려 드릴게요.');
     }
     const acct = account();
     if (!acct) return interaction.editReply('⚠️ 입금 계좌가 설정되지 않았습니다. 운영진에게 알려 주세요.');
-
-    const p = product(interaction.options.getString('상품'));
-    if (!p || !p.available) return interaction.editReply('지금은 살 수 없는 상품입니다.');
 
     const line = await rcon(['rucpay', 'order', interaction.user.id, token(p.id), p.price,
         catalog.orderTtlMinutes || 60, String(p.grants || '-').replace(/\s+/g, '')].join(' '));
@@ -620,6 +644,37 @@ async function handleCharge(interaction) {
     }
 }
 
+/** RUC 로 바로 결제 · 지급. 주문 코드는 U 로 시작합니다 (입금 매칭에 걸리지 않음). */
+async function payWithRuc(interaction, p) {
+    const price = rucPrice(p);
+    if (price === null) return interaction.editReply('RUC 충전 상품은 현금으로만 살 수 있습니다.');
+
+    const r = parse(await rcon(['rucpay', 'rucbuy', interaction.user.id, token(p.id), price,
+        String(p.grants || '-').replace(/\s+/g, '')].join(' ')));
+    if (!r) return interaction.editReply('⚠️ 마크 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.');
+    const fail = {
+        NOT_VERIFIED: '마인크래프트 계정 인증이 먼저 필요합니다. 게임에서 코드를 받아 `/인증` 을 해 주세요.',
+        SHORT: `RUC 가 부족합니다. (필요 ${price.toLocaleString('ko-KR')} · 보유 ${Number(r.balance || 0).toLocaleString('ko-KR')}) — \`/충전\` 에서 RUC 를 충전할 수 있습니다.`,
+        CAP: '지금 등급으로는 더 살 수 없습니다 (엔더상자 확장: 일반 1 · VIP 2 · SVIP 3 · MVP 이상 6).',
+        BAD_GRANTS: '⚠️ 상품 설정에 문제가 있습니다. 운영진에게 알려 주세요.',
+    };
+    if (r.kind !== 'BOUGHT') return interaction.editReply(fail[r.kind] || '⚠️ 결제하지 못했습니다.');
+
+    console.log(`[충전] RUC 결제 ${r.code} ${p.id} ${price} RUC — ${interaction.user.tag}`);
+    await interaction.editReply({
+        embeds: [new EmbedBuilder().setColor(r.delivered === '1' ? COLOR.ok : COLOR.pending)
+            .setTitle(`${p.name} — RUC 결제 완료`)
+            .setDescription([
+                `**${price.toLocaleString('ko-KR')} RUC** 를 썼습니다 (${catalog.rucDiscountPercent || 0}% 할인). 남은 RUC: **${Number(r.balance).toLocaleString('ko-KR')}**`,
+                r.delivered === '1'
+                    ? '게임 안에 바로 지급됐습니다. `/등급` · `/칭호` 로 확인하세요.'
+                    : '결제는 됐고 지급을 준비하고 있습니다. 잠시 뒤 자동으로 지급됩니다.',
+            ].join('\n'))
+            .setFooter({ text: `주문 ${r.code}` })],
+    });
+    if (r.delivered === '1') await grantRoles(interaction.guild);
+}
+
 async function handleCancel(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const code = interaction.options.getString('코드').trim().toUpperCase();
@@ -641,7 +696,7 @@ async function handleLookup(interaction) {
     if (!isAdmin(interaction.member)) return interaction.editReply('❌ Manager 이상만 볼 수 있습니다.');
     const q = interaction.options.getString('대상').trim();
 
-    if (/^R\d{4}$/i.test(q)) {
+    if (/^[RUG]\d{4}$/i.test(q)) {
         const r = parse(await rcon(`rucpay status ${token(q.toUpperCase())}`));
         if (!r) return interaction.editReply('⚠️ 마크 서버에 연결하지 못했습니다.');
         if (r.kind !== 'STATUS') return interaction.editReply('그 코드의 주문이 없습니다.');
@@ -652,7 +707,7 @@ async function handleLookup(interaction) {
     const rows = items(r);
     if (rows.length === 0) return interaction.editReply('주문 기록이 없습니다.');
     const lines = rows.map(([id, code, status, pid, amount, created]) =>
-        `\`#${id}\` **${code}** ${status} · ${product(pid)?.name || pid} · ${won(amount)} · <t:${Math.floor(created / 1000)}:d>`);
+        `\`#${id}\` **${code}** ${status} · ${product(pid)?.name || pid} · ${paidText(code, amount)} · <t:${Math.floor(created / 1000)}:d>`);
     return interaction.editReply({ embeds: [new EmbedBuilder().setColor(COLOR.info).setTitle(`주문 기록 — ${q}`).setDescription(lines.join('\n'))] });
 }
 

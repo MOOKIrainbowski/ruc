@@ -4,6 +4,10 @@
 > 남은 것은 런칭 쪽입니다 — **호스팅 확보**(§15 · §17.4, 예산이 생겨 유료로 재조사 · **소유자 선택 대기**) ·
 > **통신판매업 신고**(Q5) · 플레이어 접속이 필요한 검증(§8, §16).
 >
+> **2026-10-05 오후 — 화폐 개편** (상세는 §18, **미커밋 · 서버 미기동**): Ruc → **Gold**(잔고 전부 0) ·
+> 현금으로 사는 **RUC** 신설 · VIP/SVIP 는 Gold, MVP 이상은 현금 또는 RUC(10% 할인) · Shift+F 엔더상자는 MVP 이상 ·
+> 엔더 확장 상한 일반 1 / VIP 2 / SVIP 3.
+>
 > **2026-10-03~05 에 한 것** (상세는 §17):
 > 구버전 접속(프록시 ViaVersion, 1.21~1.21.11) · Shift+F 메뉴 새 배치(⚠️ 서버 칸과 겹침) ·
 > 웹 사이트 검색 + 위키 검색 위치 수정 · 웹에 버전 · 메뉴 반영 · MOOKI 폴더 이름 변경 + 백업 경로 수정 ·
@@ -1887,3 +1891,34 @@ display: "<gradient:#ffd166:#ff6b6b><bold>[ 수장 ]</bold></gradient>"
   - `products.json` 의 `ender-1` 이 `available: true` — 설계 문서는 실제 클라이언트 클릭 검증 전까지 false
   - 계좌 환경변수가 웹(`TOSS_BANK/ACCOUNT/HOLDER`)과 봇(`PAY_BANK/ACCOUNT/HOLDER`)으로 이름이 다름 — 두 곳 다 채워야 함
   - `MOOKI/reaction_roles.json` 은 추적 안 함 (런타임 데이터, 지금 `{}`)
+
+## 18. 2026-10-05 오후 — 화폐 개편 (Gold · RUC · 등급)
+
+소유자 결정: ① Ruc → **Gold** 로 이름을 바꾸고 **잔고 전부 초기화** ② 현금으로 사는 **RUC** 신설 (1 RUC = 1원, 이벤트로도 지급)
+③ VIP · SVIP 는 Gold, MVP · Prime · Premium · Elite 는 현금 또는 RUC — **RUC 결제는 10% 할인** ④ Shift+F 엔더상자는 **MVP 이상만**
+(아래는 구매 안내) ⑤ 엔더 확장 상한 **일반 1 · VIP 2 · SVIP 3** · MVP 이상 6.
+
+**상태: 미커밋.** 새 RucCore jar 는 4개 서버에 배포했고 (옛 jar `plugins/RucCore.jar.bak-20261005`), 서버는 아직 안 켰습니다.
+**다음 기동 때 Gold 초기화가 한 번 돕니다** — 직전 DB 는 `servers/shared/ruc.mv.db.bak-20261005-before-gold`.
+MOOKI 는 재시작해야 `/충전` 의 결제 수단 옵션 · 새 상품이 등록됩니다.
+
+| 무엇 | 어디 |
+|---|---|
+| RUC 잔고 = `ruc_entitlement` 의 `ruc` 키 합 (충전 +, 결제 −). 접속 캐시에 없음 → 미접속자도 OK, 환불 시 그 주문 줄만 회수 | `PaymentService.RUC` · `rucBalance` |
+| 등급 = 기간제 권리 `vip`~`elite` 중 유효한 가장 높은 것 | `PaymentService.RANKS` · `rankLevel` · `enderCap` |
+| RUC · Gold 구매도 `ruc_pay_order` 에 남김 (코드 `U`=RUC · `G`=Gold, `note`). 그래서 디스코드 역할 · 재지급 · 조회가 현금과 같은 길 | `instantOrder` |
+| RCON `rucpay rucbuy <디스코드ID> <상품> <RUC가격> <명세>` · `rucpay rucbal <디스코드ID>` | `PaymentCommands` |
+| 게임 안 `/등급` (잔고 · Gold 상품) · `/등급 구매 vip` · (스태프) `/등급 RUC지급 <닉> <양>` (음수 = 회수) | `RankCommands` |
+| Gold 가격 · 명세 = config `rank-shop` (배포본 4개에도 넣음). **products.json 의 `gold` 는 웹 표시용 — 같이 고칠 것** | `config.yml` |
+| 일회성 초기화: `ruc_migration` 표식으로 4개 서버 중 한 번만. 플레이어 잔고 · 길드 금고 · 미수령 우편 Ruc | `Database.runOnce` · `RucCore` |
+| 상품표: RUC 5천/1만/3만 · MVP 15,000 · Prime 25,000 · Premium 39,000 · Elite 59,000 · VIP 50,000 Gold · SVIP 120,000 Gold (**전부 초안**) · `rucDiscountPercent` | `web/content/products.json` |
+
+- **검증**: 스크래치 서버(DB 사본)에서 초기화 1회(재기동 시 안 돔) · RUC 지급 · RUC 결제 · 잔고 부족 · RUC로 RUC 사기 거부 ·
+  현금 RUC 충전 → 승인 → 잔고 · 환불 → 회수 · 음수 회수 · 역할 대기 목록 확인. **게임 안 클릭(엔더 차단 · /등급 구매)은 클라이언트 검증 대기**
+- **함정**: 새 jar 는 **모든 서버를 내린 상태에서 한꺼번에** 올려야 합니다 — 옛 jar 서버의 접속자 캐시가 옛 잔고를 다시 써넣습니다
+- RUC 차감에는 잠금이 없습니다 (봇 → 홈 RCON 메인 스레드 하나로만 들어와 직렬). 게임 안에서 RUC 를 쓰게 되면 조건부 UPDATE 로 바꿀 것
+- 현금 주문 연타 방지(60초)는 RUC · Gold 주문을 세지 않습니다
+- 웹: `/charge` 에 Gold/RUC 가격 · 설명, 위키(economy · ender 등) 문구 Ruc → Gold. 브랜드 이름 "Ruc 서버" 는 그대로
+- **남은 것 (소유자 판단)**: 가격 확정 · MVP 이상의 다른 D7 혜택(펫 · 파티클 등)은 아직 없음 → 상품 설명에서 뺐음 ·
+  D7 의 "월 Ruc 지급 · 획득 보너스" 를 Gold 로 볼지 · 등급 혜택 정지(제재 7단계) 미구현
+

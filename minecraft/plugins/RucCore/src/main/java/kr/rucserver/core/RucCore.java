@@ -3,6 +3,7 @@ package kr.rucserver.core;
 import kr.rucserver.core.command.CoreCommands;
 import kr.rucserver.core.command.GuildAdminCommands;
 import kr.rucserver.core.command.EnderCommands;
+import kr.rucserver.core.command.RankCommands;
 import kr.rucserver.core.command.GuideCommands;
 import kr.rucserver.core.command.GuildCommands;
 import kr.rucserver.core.command.PaymentCommands;
@@ -233,6 +234,21 @@ public class RucCore extends JavaPlugin {
         }
         guide = new GuideService(this, messages, guideRepository);
 
+        // 화폐 전환 (2026-10-05 소유자 결정): 옛 Ruc 가 Gold 가 되고, 잔고는 전부 0 에서 시작합니다.
+        // 다른 서버가 옛 jar 로 떠 있으면 그쪽 접속자 캐시가 나중에 옛 잔고를 다시 써넣습니다 —
+        // 새 jar 는 모든 서버를 내린 뒤 한꺼번에 올리세요.
+        try {
+            if (database.runOnce("2026-10-05-gold-reset",
+                    "UPDATE ruc_player SET ruc = 0",
+                    "UPDATE ruc_guild SET bank = 0",
+                    "DELETE FROM ruc_mail WHERE claimed_at IS NULL AND item IS NULL",
+                    "UPDATE ruc_mail SET ruc = 0 WHERE claimed_at IS NULL")) {
+                getLogger().warning("[Gold] 화폐 전환 — 잔고 · 길드 금고 · 미수령 우편의 Ruc 를 0 으로 초기화했습니다.");
+            }
+        } catch (SQLException e) {
+            getLogger().log(Level.SEVERE, "[Gold] 잔고 초기화 실패 — 다음 기동 때 다시 시도합니다.", e);
+        }
+
         // 프록시 통신과 메뉴는 4개 서버 공통이라 Core가 소유합니다.
         network = new NetworkService(this);
         network.start();
@@ -250,6 +266,7 @@ public class RucCore extends JavaPlugin {
         new SanctionCommands(this).register();
         new PaymentCommands(this, messages).register();
         new EnderCommands(this).register();
+        new RankCommands(this, messages).register();
         new ShopCommands(this).register();
         new GuideCommands(this).register();
         getServer().getPluginManager().registerEvents(guide, this);

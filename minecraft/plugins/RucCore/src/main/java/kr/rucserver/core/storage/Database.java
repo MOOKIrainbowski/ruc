@@ -6,6 +6,7 @@ import org.bukkit.configuration.ConfigurationSection;
 
 import java.io.File;
 import java.sql.Connection;
+import java.sql.PreparedStatement;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.logging.Logger;
@@ -149,6 +150,47 @@ public class Database {
             st.executeUpdate(codes);
         }
         logger.info("DB 스키마 준비 완료");
+    }
+
+    /**
+     * 한 번만 도는 데이터 변경. 표식({@code ruc_migration})을 먼저 넣고, 넣는 데 성공한 서버만
+     * 실행합니다 — 4개 서버가 동시에 떠도 한 번입니다. 한 트랜잭션이라 중간에 실패하면 표식도
+     * 되돌아가서 다음 기동 때 다시 시도합니다.
+     * @return 이번에 실행했는가 (false = 이미 됨)
+     */
+    public boolean runOnce(String id, String... statements) throws SQLException {
+        try (Connection conn = getConnection(); Statement st = conn.createStatement()) {
+            st.executeUpdate("""
+                    CREATE TABLE IF NOT EXISTS ruc_migration (
+                        id          VARCHAR(64)  NOT NULL,
+                        applied_at  BIGINT       NOT NULL,
+                        PRIMARY KEY (id)
+                    )
+                    """);
+            conn.setAutoCommit(false);
+            try {
+                try (PreparedStatement ps = conn.prepareStatement(
+                        "INSERT INTO ruc_migration (id, applied_at) VALUES (?, ?)")) {
+                    ps.setString(1, id);
+                    ps.setLong(2, System.currentTimeMillis());
+                    ps.executeUpdate();
+                } catch (SQLException e) {
+                    if (e.getSQLState() != null && e.getSQLState().startsWith("23")) {
+                        conn.rollback();
+                        return false;
+                    }
+                    throw e;
+                }
+                for (String sql : statements) st.executeUpdate(sql);
+                conn.commit();
+                return true;
+            } catch (SQLException e) {
+                conn.rollback();
+                throw e;
+            } finally {
+                conn.setAutoCommit(true);
+            }
+        }
     }
 
     public Connection getConnection() throws SQLException {

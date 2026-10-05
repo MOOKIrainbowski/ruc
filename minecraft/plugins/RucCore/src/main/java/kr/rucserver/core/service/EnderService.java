@@ -57,7 +57,7 @@ import java.util.logging.Level;
  * 몇 개를 가졌는가는 {@code ruc_entitlement} 원장의 {@code ender_pages} 합입니다.
  * <ul>
  *   <li>디스코드 {@code /충전} — 바로 늘어남 ({@code purchase})</li>
- *   <li>{@code /엔더확장 구매} — 레벨 · Ruc 를 내고 <b>확장권</b>을 우편으로 받습니다.
+ *   <li>{@code /엔더확장 구매} — 레벨 · Gold 를 내고 <b>확장권</b>을 우편으로 받습니다.
  *       확장권을 들고 우클릭하면 늘어납니다 ({@code voucher})</li>
  * </ul>
  * 합쳐서 {@code ender.max-pages} 까지입니다.
@@ -177,7 +177,11 @@ public class EnderService implements Listener {
         if (!busy.add(uuid)) return;
         io.execute(() -> {
             int owned;
+            boolean allowed;
             try {
+                // Shift+F 엔더상자는 MVP 이상만 (2026-10-05 소유자 결정). 바닥의 엔더상자 블록을
+                // 그냥 우클릭하는 바닐라 동작은 그대로입니다.
+                allowed = plugin.getPayments().isMvpOrAbove(uuid);
                 owned = Math.min(maxPages(), plugin.getPayments().total(uuid, PaymentService.ENDER_PAGES));
             } catch (Exception e) {
                 plugin.getLogger().log(Level.SEVERE, "[엔더] 개수 조회 실패: " + player.getName(), e);
@@ -186,7 +190,13 @@ public class EnderService implements Listener {
             }
             Bukkit.getScheduler().runTask(plugin, () -> {
                 busy.remove(uuid);
-                if (player.isOnline()) player.openInventory(buildSelector(player, owned));
+                if (!player.isOnline()) return;
+                if (!allowed) {
+                    player.closeInventory();
+                    player.sendMessage(messages.prefixed(lang(player), "ender.need-mvp"));
+                    return;
+                }
+                player.openInventory(buildSelector(player, owned));
             });
         });
     }
@@ -397,8 +407,10 @@ public class EnderService implements Listener {
             int owned;
             int bought;
             int outstanding;
+            int cap;
             try {
                 owned = plugin.getPayments().total(uuid, PaymentService.ENDER_PAGES);
+                cap = plugin.getPayments().enderCap(uuid);
                 bought = repository.countBought(uuid);
                 outstanding = repository.countOutstanding(uuid);
             } catch (Exception e) {
@@ -418,9 +430,11 @@ public class EnderService implements Listener {
                 }
 
                 // 이미 가진 것 + 아직 안 쓴 내 확장권이 상한에 닿으면 더 살 이유가 없습니다.
-                if (owned + outstanding >= maxPages()) {
+                // 상한은 등급별입니다 (일반 1 · VIP 2 · SVIP 3 · MVP 이상 전부).
+                if (owned + outstanding >= cap) {
                     busy.remove(uuid);
-                    player.sendMessage(messages.get(lang, "ender.max"));
+                    player.sendMessage(messages.get(lang, cap < maxPages() ? "ender.rank-cap" : "ender.max",
+                            "cap", String.valueOf(cap)));
                     return;
                 }
                 if (bought >= reqs.size()) {
@@ -491,7 +505,7 @@ public class EnderService implements Listener {
                             return;
                         }
                         plugin.getLogger().info("[엔더] " + player.getName() + " 확장권 #" + voucher
-                                + " 구매 (" + cost + " Ruc) → 우편");
+                                + " 구매 (" + cost + " Gold) → 우편");
                         if (player.isOnline()) {
                             player.sendMessage(messages.prefixed(lang, "ender.voucher-sent"));
                         }
@@ -535,8 +549,9 @@ public class EnderService implements Listener {
             String result;
             try {
                 int owned = plugin.getPayments().total(uuid, PaymentService.ENDER_PAGES);
-                if (owned >= maxPages()) {
-                    result = "ender.max";
+                int cap = plugin.getPayments().enderCap(uuid);
+                if (owned >= cap) {
+                    result = cap < maxPages() ? "ender.rank-cap" : "ender.max";
                 } else {
                     int r = repository.redeem(id, uuid);
                     if (r == 1) {
