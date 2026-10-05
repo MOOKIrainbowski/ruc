@@ -79,12 +79,17 @@ const sendChannels  = new Map();
 
 // ─── 데이터 로드/저장 ──────────────────────────────────────────────────────────
 
+/**
+ * 파일이 기본값의 키를 빠뜨려도 기본값으로 채웁니다. tickets_data.json 이 `{}` 로 남아 있어
+ * `tickets` · `counter` 가 없었고, 티켓 생성 · 닫기 · 해결이 전부 TypeError 로 실패했습니다.
+ */
 function loadJSON(filePath, fallback) {
-    if (fs.existsSync(filePath)) {
-        try { return JSON.parse(fs.readFileSync(filePath, 'utf8')); }
-        catch { return fallback; }
-    }
-    return fallback;
+    if (!fs.existsSync(filePath)) return fallback;
+    let data;
+    try { data = JSON.parse(fs.readFileSync(filePath, 'utf8')); }
+    catch { return fallback; }
+    const plain = v => v && typeof v === 'object' && !Array.isArray(v);
+    return plain(fallback) && plain(data) ? { ...fallback, ...data } : data;
 }
 
 function saveJSON(filePath, data) {
@@ -260,9 +265,12 @@ async function closeTicket(ticketId, closedBy, guild) {
 
     ticket.open = false;
     saveTickets();
+    await closeTicketChannel(guild.channels.cache.get(ticket.channelId), closedBy);
+}
 
+/** 종료 안내를 남기고 3초 뒤 채널을 지웁니다. */
+async function closeTicketChannel(channel, closedBy) {
     try {
-        const channel = guild.channels.cache.get(ticket.channelId);
         if (channel) {
             const embed = new EmbedBuilder()
                 .setTitle('🔒 티켓 종료')
@@ -615,7 +623,17 @@ client.on('interactionCreate', async interaction => {
                 const parts = customId.split('_');
                 const ticketId = parseInt(parts[parts.length - 1]);
                 const ticket = ticketsData.tickets[ticketId];
-                if (!ticket) return interaction.reply({ content: '❌ 티켓을 찾을 수 없습니다.', flags: MessageFlags.Ephemeral });
+                if (!ticket) {
+                    // 기록이 없는 티켓 — 위 loadJSON 버그 동안 만들어진 채널(번호 NaN)입니다.
+                    // 작성자를 알 수 없으므로 스태프만, 티켓 분류 안의 채널일 때만 닫습니다.
+                    const ch = interaction.channel;
+                    if (roles.isStaff(interaction.member) && ch?.parent?.name === TICKET_CATEGORY_NAME) {
+                        await interaction.reply({ content: '🔒 기록이 없는 티켓이라 채널만 정리합니다...', flags: MessageFlags.Ephemeral });
+                        await closeTicketChannel(ch, interaction.user.id);
+                        return;
+                    }
+                    return interaction.reply({ content: '❌ 티켓 기록이 없습니다. 스태프에게 닫아 달라고 요청해 주세요.', flags: MessageFlags.Ephemeral });
+                }
                 if (!roles.isStaff(interaction.member) && interaction.user.id !== ticket.creatorId)
                     return interaction.reply({ content: '❌ 권한이 없습니다.', flags: MessageFlags.Ephemeral });
                 await interaction.reply({ content: '🔒 티켓을 종료합니다...', flags: MessageFlags.Ephemeral });

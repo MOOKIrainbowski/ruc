@@ -113,6 +113,9 @@ mapfile/
 MOOKI*/sanctions_data.json
 # 충전 화면 상태 (관리자 메시지 ID · 디스코드 ID)
 MOOKI*/pay_data.json
+# 티켓 내용(유저 문의 · 신고)과 반응 역할은 런타임 데이터 — 저장소가 공개입니다
+MOOKI*/tickets_data.json
+MOOKI*/reaction_roles.json
 
 # 경제 미니게임 제거 (Phase 6-8) — 봇이 더는 쓰지 않습니다. 백업은 docs/backup/
 MOOKI*/economy_data.json
