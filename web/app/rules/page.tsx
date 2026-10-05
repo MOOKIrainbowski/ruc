@@ -1,10 +1,12 @@
 import PageShell from "@/components/PageShell";
 import Rules from "@/components/Rules";
 import { rules } from "@/lib/rules";
+import { banner } from "@/lib/og";
 
 export const metadata = {
   title: "서버 규칙",
   description: "러크 서버 디스코드 · 마인크래프트 규칙과 제재 단계.",
+  ...banner("rules", "러크 서버 규칙", "러크 서버 디스코드 · 마인크래프트 규칙과 제재 단계."),
 };
 
 function tierClass(tier: number) {

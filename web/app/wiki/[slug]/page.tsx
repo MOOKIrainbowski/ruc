@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import PageShell from "@/components/PageShell";
 import WikiLayout from "@/components/WikiLayout";
 import { getDoc, listDocs, listSlugs } from "@/lib/wiki";
+import { banner } from "@/lib/og";
 
 type Params = { slug: string };
 
@@ -17,7 +18,11 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const { slug } = await params;
   const doc = getDoc(slug);
   if (!doc) return {};
-  return { title: `${doc.title} · 위키`, description: doc.description };
+  return {
+    title: `${doc.title} · 위키`,
+    description: doc.description,
+    ...banner("wiki", `${doc.title} · 러크 위키`, doc.description),
+  };
 }
 
 export default async function Page({ params }: { params: Promise<Params> }) {

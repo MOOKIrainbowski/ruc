@@ -2,10 +2,12 @@ import Link from "next/link";
 import PageShell from "@/components/PageShell";
 import WikiLayout from "@/components/WikiLayout";
 import { groupedDocs } from "@/lib/wiki";
+import { banner } from "@/lib/og";
 
 export const metadata = {
   title: "러크 위키",
   description: "러크 서버 접속 방법, 이용 가이드, 고유 기능, MOOKI 봇 명령어, FAQ.",
+  ...banner("wiki", "러크 위키", "러크 서버 접속 방법, 이용 가이드, 고유 기능, MOOKI 봇 명령어, FAQ."),
 };
 
 export default function Page() {
