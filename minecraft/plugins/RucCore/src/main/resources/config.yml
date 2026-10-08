@@ -519,6 +519,14 @@ payment:
 # 게임 안 /등급 구매 <id>. MVP 이상은 현금 · RUC 로만 (web/content/products.json).
 # ⚠️ 가격을 바꾸면 web/content/products.json 의 같은 상품 "gold" 도 같이 고치세요 — 웹 표시용입니다.
 # grants 형식은 products.json 과 같습니다. TODO: 운영진 경제 검토 (가격 초안)
+# 코스메틱 Gold 영구 구매 (2026-10-09). 등급이 모자라도 /코스메틱 목록에서 Shift+클릭.
+# 등급 = 일반 · 희귀 · 전설 (CosmeticService.CATALOG). 초안 — 비교: VIP 30일 50,000 · SVIP 30일 120,000
+cosmetic-shop:
+  price:
+    common: 20000
+    rare: 60000
+    legendary: 150000
+
 rank-shop:
   vip:
     name: "VIP"

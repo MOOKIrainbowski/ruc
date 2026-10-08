@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import type { RulesData } from "@/lib/rules";
+import CopyButton from "@/components/CopyButton";
+import { sectionText, type RulesData } from "@/lib/rules";
 
 /** "4~6단계" → 4. 숫자가 없으면(— · 자동) null */
 function severity(sanction: string): number | null {
@@ -15,6 +16,32 @@ function badgeClass(sanction: string) {
   if (n <= 3) return "border-ruc-400/35 bg-ruc-400/10 text-ruc-300";
   if (n <= 7) return "border-amber-400/35 bg-amber-400/10 text-amber-200";
   return "border-red-400/40 bg-red-500/10 text-red-300";
+}
+
+const ACTION_BTN =
+  "rounded-lg border border-white/15 bg-white/5 px-3 py-1.5 text-[11px] text-white/80 transition-colors hover:bg-white/10 hover:text-white";
+
+/** 섹션 하나를 .txt 로 복사 · 다운로드 — 디스코드 공지에 붙이거나 보관용. */
+export function TextActions({ text, filename, label }: { text: string; filename: string; label: string }) {
+  const download = () => {
+    // BOM 을 붙여야 윈도우 메모장이 한글을 UTF-8 로 엽니다.
+    const url = URL.createObjectURL(new Blob([String.fromCharCode(0xfeff) + text], { type: "text/plain;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+  return (
+    <div className="flex flex-wrap gap-2">
+      <CopyButton value={text} label={`${label} 규칙 복사`} toastText={`${label} 규칙을 복사했습니다`} className={ACTION_BTN}>
+        복사
+      </CopyButton>
+      <button type="button" onClick={download} aria-label={`${label} 규칙 .txt 다운로드`} className={ACTION_BTN}>
+        .txt 다운로드
+      </button>
+    </div>
+  );
 }
 
 export default function Rules({ data }: { data: RulesData }) {
@@ -98,7 +125,14 @@ export default function Rules({ data }: { data: RulesData }) {
         tabIndex={0}
         className="mt-6"
       >
-        <p className="mb-6 text-[12px] leading-relaxed text-white/70">{section.intro}</p>
+        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <p className="text-[12px] leading-relaxed text-white/70">{section.intro}</p>
+          <TextActions
+            text={sectionText(data, section)}
+            filename={`ruc-rules-${section.id}.txt`}
+            label={section.label}
+          />
+        </div>
 
         <div className="space-y-6">
           {section.groups.map((g) => (

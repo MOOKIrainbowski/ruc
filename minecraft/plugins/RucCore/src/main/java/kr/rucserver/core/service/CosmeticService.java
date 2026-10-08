@@ -63,6 +63,7 @@ import java.util.logging.Level;
  * <h2>등급으로 열립니다 (D7)</h2>
  * 코스메틱마다 필요한 최소 등급이 있고, 등급이 끝나면 장착은 남아 있어도 보이지 않습니다
  * (다시 등급을 사면 그대로 돌아옵니다). 스태프({@code ruccore.admin})는 전부 쓸 수 있습니다.
+ * 등급이 모자라도 목록에서 Shift+클릭하면 {@link Tier} 가격의 Gold 로 <b>영구</b> 구매합니다 (2026-10-09).
  *
  * <h2>싸움에 영향이 없어야 합니다 (D7 대원칙)</h2>
  * <ul>
@@ -108,74 +109,92 @@ public class CosmeticService implements Listener {
     record KillSpec(Particle particle, int count, double spread, double speed, Sound sound,
                     Object data, boolean lightning) { }
 
-    public record Cosmetic(String key, Kind kind, String ko, String en, Material icon, int minRank, Object spec) {
+    /**
+     * Gold 로 영구 구매할 때의 가격 등급 (2026-10-09). 등급(VIP~Elite)과 따로 매깁니다 —
+     * 눈에 띄는 정도와 오래 써도 질리지 않는지로 나눴습니다. 가격은 config {@code cosmetic-shop.price}.
+     */
+    public enum Tier {
+        COMMON(20_000), RARE(60_000), LEGENDARY(150_000);
+
+        final long defaultPrice;
+
+        Tier(long defaultPrice) { this.defaultPrice = defaultPrice; }
+
+        String key() { return name().toLowerCase(); }
+    }
+
+    private static final Tier C = Tier.COMMON, R = Tier.RARE, L = Tier.LEGENDARY;
+
+    public record Cosmetic(String key, Kind kind, Tier tier, String ko, String en, Material icon, int minRank, Object spec) {
         String name(String lang) { return lang.equals("en") ? en : ko; }
     }
 
     private static final List<Cosmetic> CATALOG = new ArrayList<>();
 
-    private static void add(String key, Kind kind, String ko, String en, Material icon, int rank, Object spec) {
-        CATALOG.add(new Cosmetic(key, kind, ko, en, icon, rank, spec));
+    private static void add(String key, Kind kind, Tier tier, String ko, String en, Material icon, int rank, Object spec) {
+        // 구매 기록(ruc_cosmetic_owned)은 키만 남기므로 종류가 달라도 키가 겹치면 안 됩니다.
+        for (Cosmetic c : CATALOG) if (c.key.equals(key)) throw new IllegalStateException("코스메틱 키 중복: " + key);
+        CATALOG.add(new Cosmetic(key, kind, tier, ko, en, icon, rank, spec));
     }
 
     static {
         // 파티클 — D7: VIP 3종 · SVIP 8종 · 그 위로 늘어남
-        add("heart", Kind.PARTICLE, "하트", "Hearts", Material.RED_DYE, VIP, new ParticleSpec(Particle.HEART, 1, 0.4, 0));
-        add("note", Kind.PARTICLE, "음표", "Notes", Material.NOTE_BLOCK, VIP, new ParticleSpec(Particle.NOTE, 1, 0.4, 0));
-        add("happy", Kind.PARTICLE, "초록 반짝이", "Green Sparkles", Material.EMERALD, VIP, new ParticleSpec(Particle.HAPPY_VILLAGER, 2, 0.4, 0));
-        add("flame", Kind.PARTICLE, "불꽃", "Flames", Material.BLAZE_POWDER, SVIP, new ParticleSpec(Particle.FLAME, 2, 0.3, 0.01));
-        add("snow", Kind.PARTICLE, "눈송이", "Snowflakes", Material.SNOWBALL, SVIP, new ParticleSpec(Particle.SNOWFLAKE, 2, 0.4, 0.01));
-        add("cloud", Kind.PARTICLE, "구름", "Clouds", Material.WHITE_WOOL, SVIP, new ParticleSpec(Particle.CLOUD, 2, 0.3, 0.01));
-        add("enchant", Kind.PARTICLE, "마법 글자", "Enchant Runes", Material.ENCHANTING_TABLE, SVIP, new ParticleSpec(Particle.ENCHANT, 6, 0.5, 0.5));
-        add("witch", Kind.PARTICLE, "보랏빛 마법", "Witch Magic", Material.AMETHYST_SHARD, SVIP, new ParticleSpec(Particle.WITCH, 2, 0.4, 0));
-        add("soul", Kind.PARTICLE, "영혼불", "Soul Fire", Material.SOUL_TORCH, MVP, new ParticleSpec(Particle.SOUL_FIRE_FLAME, 2, 0.3, 0.01));
-        add("endrod", Kind.PARTICLE, "별빛", "Starlight", Material.END_ROD, MVP, new ParticleSpec(Particle.END_ROD, 1, 0.4, 0.01));
-        add("cherry", Kind.PARTICLE, "벚꽃잎", "Cherry Petals", Material.PINK_PETALS, MVP, new ParticleSpec(Particle.CHERRY_LEAVES, 2, 0.5, 0));
-        add("spark", Kind.PARTICLE, "전기 불꽃", "Electric Sparks", Material.LIGHTNING_ROD, MVP, new ParticleSpec(Particle.ELECTRIC_SPARK, 3, 0.4, 0.05));
-        add("glowdot", Kind.PARTICLE, "야광 먹물", "Glow Ink", Material.GLOW_INK_SAC, PRIME, new ParticleSpec(Particle.GLOW, 2, 0.4, 0));
-        add("firefly", Kind.PARTICLE, "반딧불이", "Fireflies", Material.FIREFLY_BUSH, PRIME, new ParticleSpec(Particle.FIREFLY, 2, 0.6, 0));
-        add("totem", Kind.PARTICLE, "토템 빛", "Totem Glow", Material.TOTEM_OF_UNDYING, PREMIUM, new ParticleSpec(Particle.TOTEM_OF_UNDYING, 2, 0.4, 0.05));
-        add("rift", Kind.PARTICLE, "차원의 틈", "Void Rift", Material.CRYING_OBSIDIAN, ELITE, new ParticleSpec(Particle.REVERSE_PORTAL, 4, 0.3, 0.02));
+        add("heart", Kind.PARTICLE, C, "하트", "Hearts", Material.RED_DYE, VIP, new ParticleSpec(Particle.HEART, 1, 0.4, 0));
+        add("note", Kind.PARTICLE, C, "음표", "Notes", Material.NOTE_BLOCK, VIP, new ParticleSpec(Particle.NOTE, 1, 0.4, 0));
+        add("happy", Kind.PARTICLE, C, "초록 반짝이", "Green Sparkles", Material.EMERALD, VIP, new ParticleSpec(Particle.HAPPY_VILLAGER, 2, 0.4, 0));
+        add("flame", Kind.PARTICLE, C, "불꽃", "Flames", Material.BLAZE_POWDER, SVIP, new ParticleSpec(Particle.FLAME, 2, 0.3, 0.01));
+        add("snow", Kind.PARTICLE, C, "눈송이", "Snowflakes", Material.SNOWBALL, SVIP, new ParticleSpec(Particle.SNOWFLAKE, 2, 0.4, 0.01));
+        add("cloud", Kind.PARTICLE, C, "구름", "Clouds", Material.WHITE_WOOL, SVIP, new ParticleSpec(Particle.CLOUD, 2, 0.3, 0.01));
+        add("enchant", Kind.PARTICLE, R, "마법 글자", "Enchant Runes", Material.ENCHANTING_TABLE, SVIP, new ParticleSpec(Particle.ENCHANT, 6, 0.5, 0.5));
+        add("witch", Kind.PARTICLE, R, "보랏빛 마법", "Witch Magic", Material.AMETHYST_SHARD, SVIP, new ParticleSpec(Particle.WITCH, 2, 0.4, 0));
+        add("soul", Kind.PARTICLE, R, "영혼불", "Soul Fire", Material.SOUL_TORCH, MVP, new ParticleSpec(Particle.SOUL_FIRE_FLAME, 2, 0.3, 0.01));
+        add("endrod", Kind.PARTICLE, R, "별빛", "Starlight", Material.END_ROD, MVP, new ParticleSpec(Particle.END_ROD, 1, 0.4, 0.01));
+        add("cherry", Kind.PARTICLE, R, "벚꽃잎", "Cherry Petals", Material.PINK_PETALS, MVP, new ParticleSpec(Particle.CHERRY_LEAVES, 2, 0.5, 0));
+        add("spark", Kind.PARTICLE, R, "전기 불꽃", "Electric Sparks", Material.LIGHTNING_ROD, MVP, new ParticleSpec(Particle.ELECTRIC_SPARK, 3, 0.4, 0.05));
+        add("glowdot", Kind.PARTICLE, R, "야광 먹물", "Glow Ink", Material.GLOW_INK_SAC, PRIME, new ParticleSpec(Particle.GLOW, 2, 0.4, 0));
+        add("firefly", Kind.PARTICLE, R, "반딧불이", "Fireflies", Material.FIREFLY_BUSH, PRIME, new ParticleSpec(Particle.FIREFLY, 2, 0.6, 0));
+        add("totem", Kind.PARTICLE, L, "토템 빛", "Totem Glow", Material.TOTEM_OF_UNDYING, PREMIUM, new ParticleSpec(Particle.TOTEM_OF_UNDYING, 2, 0.4, 0.05));
+        add("rift", Kind.PARTICLE, L, "차원의 틈", "Void Rift", Material.CRYING_OBSIDIAN, ELITE, new ParticleSpec(Particle.REVERSE_PORTAL, 4, 0.3, 0.02));
 
         // 펫 — D7: MVP 부터
-        add("cat", Kind.PET, "아기 고양이", "Kitten", Material.STRING, MVP, new PetSpec(EntityType.CAT, false, true));
-        add("fox", Kind.PET, "아기 여우", "Fox Kit", Material.SWEET_BERRIES, MVP, new PetSpec(EntityType.FOX, false, true));
-        add("rabbit", Kind.PET, "아기 토끼", "Bunny", Material.CARROT, MVP, new PetSpec(EntityType.RABBIT, false, true));
-        add("chick", Kind.PET, "병아리", "Chick", Material.EGG, MVP, new PetSpec(EntityType.CHICKEN, false, true));
-        add("parrot", Kind.PET, "앵무새", "Parrot", Material.FEATHER, PRIME, new PetSpec(EntityType.PARROT, true, false));
-        add("bee", Kind.PET, "꿀벌", "Bee", Material.HONEYCOMB, PRIME, new PetSpec(EntityType.BEE, true, true));
-        add("axolotl", Kind.PET, "아홀로틀", "Axolotl", Material.AXOLOTL_BUCKET, PRIME, new PetSpec(EntityType.AXOLOTL, false, true));
-        add("frog", Kind.PET, "개구리", "Frog", Material.SLIME_BALL, PRIME, new PetSpec(EntityType.FROG, false, false));
-        add("panda", Kind.PET, "아기 판다", "Panda Cub", Material.BAMBOO, PREMIUM, new PetSpec(EntityType.PANDA, false, true));
-        add("wolf", Kind.PET, "아기 늑대", "Wolf Pup", Material.BONE, PREMIUM, new PetSpec(EntityType.WOLF, false, true));
-        add("armadillo", Kind.PET, "아기 아르마딜로", "Armadillo Pup", Material.ARMADILLO_SCUTE, PREMIUM, new PetSpec(EntityType.ARMADILLO, false, true));
-        add("allay", Kind.PET, "알레이", "Allay", Material.AMETHYST_CLUSTER, ELITE, new PetSpec(EntityType.ALLAY, true, false));
+        add("cat", Kind.PET, R, "아기 고양이", "Kitten", Material.STRING, MVP, new PetSpec(EntityType.CAT, false, true));
+        add("fox", Kind.PET, R, "아기 여우", "Fox Kit", Material.SWEET_BERRIES, MVP, new PetSpec(EntityType.FOX, false, true));
+        add("rabbit", Kind.PET, C, "아기 토끼", "Bunny", Material.CARROT, MVP, new PetSpec(EntityType.RABBIT, false, true));
+        add("chick", Kind.PET, C, "병아리", "Chick", Material.EGG, MVP, new PetSpec(EntityType.CHICKEN, false, true));
+        add("parrot", Kind.PET, R, "앵무새", "Parrot", Material.FEATHER, PRIME, new PetSpec(EntityType.PARROT, true, false));
+        add("bee", Kind.PET, R, "꿀벌", "Bee", Material.HONEYCOMB, PRIME, new PetSpec(EntityType.BEE, true, true));
+        add("axolotl", Kind.PET, R, "아홀로틀", "Axolotl", Material.AXOLOTL_BUCKET, PRIME, new PetSpec(EntityType.AXOLOTL, false, true));
+        add("frog", Kind.PET, R, "개구리", "Frog", Material.SLIME_BALL, PRIME, new PetSpec(EntityType.FROG, false, false));
+        add("panda", Kind.PET, L, "아기 판다", "Panda Cub", Material.BAMBOO, PREMIUM, new PetSpec(EntityType.PANDA, false, true));
+        add("wolf", Kind.PET, R, "아기 늑대", "Wolf Pup", Material.BONE, PREMIUM, new PetSpec(EntityType.WOLF, false, true));
+        add("armadillo", Kind.PET, R, "아기 아르마딜로", "Armadillo Pup", Material.ARMADILLO_SCUTE, PREMIUM, new PetSpec(EntityType.ARMADILLO, false, true));
+        add("allay", Kind.PET, L, "알레이", "Allay", Material.AMETHYST_CLUSTER, ELITE, new PetSpec(EntityType.ALLAY, true, false));
 
         // 발광 — 색
-        add("white", Kind.GLOW, "흰색 발광", "White Glow", Material.WHITE_DYE, VIP, new GlowSpec(NamedTextColor.WHITE));
-        add("yellow", Kind.GLOW, "노란 발광", "Yellow Glow", Material.YELLOW_DYE, SVIP, new GlowSpec(NamedTextColor.YELLOW));
-        add("green", Kind.GLOW, "초록 발광", "Green Glow", Material.LIME_DYE, SVIP, new GlowSpec(NamedTextColor.GREEN));
-        add("aqua", Kind.GLOW, "하늘 발광", "Aqua Glow", Material.LIGHT_BLUE_DYE, MVP, new GlowSpec(NamedTextColor.AQUA));
-        add("red", Kind.GLOW, "빨간 발광", "Red Glow", Material.RED_DYE, MVP, new GlowSpec(NamedTextColor.RED));
-        add("gold", Kind.GLOW, "황금 발광", "Gold Glow", Material.ORANGE_DYE, MVP, new GlowSpec(NamedTextColor.GOLD));
-        add("blue", Kind.GLOW, "파란 발광", "Blue Glow", Material.BLUE_DYE, PRIME, new GlowSpec(NamedTextColor.BLUE));
-        add("pink", Kind.GLOW, "분홍 발광", "Pink Glow", Material.PINK_DYE, PRIME, new GlowSpec(NamedTextColor.LIGHT_PURPLE));
-        add("purple", Kind.GLOW, "보라 발광", "Purple Glow", Material.PURPLE_DYE, PREMIUM, new GlowSpec(NamedTextColor.DARK_PURPLE));
-        add("rainbow", Kind.GLOW, "무지개 발광", "Rainbow Glow", Material.PRISMARINE_CRYSTALS, ELITE, new GlowSpec(null));
+        add("white", Kind.GLOW, C, "흰색 발광", "White Glow", Material.WHITE_DYE, VIP, new GlowSpec(NamedTextColor.WHITE));
+        add("yellow", Kind.GLOW, C, "노란 발광", "Yellow Glow", Material.YELLOW_DYE, SVIP, new GlowSpec(NamedTextColor.YELLOW));
+        add("green", Kind.GLOW, C, "초록 발광", "Green Glow", Material.LIME_DYE, SVIP, new GlowSpec(NamedTextColor.GREEN));
+        add("aqua", Kind.GLOW, C, "하늘 발광", "Aqua Glow", Material.LIGHT_BLUE_DYE, MVP, new GlowSpec(NamedTextColor.AQUA));
+        add("red", Kind.GLOW, C, "빨간 발광", "Red Glow", Material.RED_DYE, MVP, new GlowSpec(NamedTextColor.RED));
+        add("gold", Kind.GLOW, R, "황금 발광", "Gold Glow", Material.ORANGE_DYE, MVP, new GlowSpec(NamedTextColor.GOLD));
+        add("blue", Kind.GLOW, C, "파란 발광", "Blue Glow", Material.BLUE_DYE, PRIME, new GlowSpec(NamedTextColor.BLUE));
+        add("pink", Kind.GLOW, R, "분홍 발광", "Pink Glow", Material.PINK_DYE, PRIME, new GlowSpec(NamedTextColor.LIGHT_PURPLE));
+        add("purple", Kind.GLOW, R, "보라 발광", "Purple Glow", Material.PURPLE_DYE, PREMIUM, new GlowSpec(NamedTextColor.DARK_PURPLE));
+        add("rainbow", Kind.GLOW, L, "무지개 발광", "Rainbow Glow", Material.PRISMARINE_CRYSTALS, ELITE, new GlowSpec(null));
 
         // 킬 이펙트 — 상대를 쓰러뜨린 자리에서. 전부 겉모습뿐입니다.
-        add("k_heart", Kind.KILL, "하트 폭발", "Heart Burst", Material.RED_DYE, VIP, new KillSpec(Particle.HEART, 12, 0.6, 0, Sound.ENTITY_PLAYER_LEVELUP, null, false));
-        add("k_note", Kind.KILL, "승리의 음표", "Victory Notes", Material.NOTE_BLOCK, VIP, new KillSpec(Particle.NOTE, 15, 0.8, 1, Sound.BLOCK_NOTE_BLOCK_BELL, null, false));
-        add("k_snow", Kind.KILL, "눈보라", "Blizzard", Material.SNOWBALL, SVIP, new KillSpec(Particle.SNOWFLAKE, 60, 0.6, 0.1, Sound.BLOCK_SNOW_BREAK, null, false));
-        add("k_cherry", Kind.KILL, "벚꽃 흩날림", "Cherry Blossom", Material.PINK_PETALS, SVIP, new KillSpec(Particle.CHERRY_LEAVES, 60, 1.0, 0, Sound.BLOCK_CHERRY_LEAVES_BREAK, null, false));
-        add("k_firework", Kind.KILL, "불꽃놀이", "Fireworks", Material.FIREWORK_ROCKET, MVP, new KillSpec(Particle.FIREWORK, 80, 0.3, 0.25, Sound.ENTITY_FIREWORK_ROCKET_BLAST, null, false));
-        add("k_soul", Kind.KILL, "영혼 이탈", "Soul Escape", Material.SOUL_LANTERN, MVP, new KillSpec(Particle.SOUL, 25, 0.5, 0.05, Sound.PARTICLE_SOUL_ESCAPE, null, false));
-        add("k_ender", Kind.KILL, "차원 붕괴", "Rift", Material.ENDER_PEARL, MVP, new KillSpec(Particle.PORTAL, 120, 0.5, 1, Sound.ENTITY_ENDERMAN_TELEPORT, null, false));
-        add("k_blood", Kind.KILL, "붉은 파편", "Crimson Shards", Material.REDSTONE_BLOCK, PRIME, new KillSpec(Particle.BLOCK, 50, 0.4, 0.1, Sound.BLOCK_NOTE_BLOCK_BASS, Material.REDSTONE_BLOCK.createBlockData(), false));
-        add("k_totem", Kind.KILL, "토템 섬광", "Totem Flash", Material.TOTEM_OF_UNDYING, PRIME, new KillSpec(Particle.TOTEM_OF_UNDYING, 80, 0.5, 0.5, Sound.ITEM_TOTEM_USE, null, false));
-        add("k_boom", Kind.KILL, "폭발", "Explosion", Material.TNT, PREMIUM, new KillSpec(Particle.EXPLOSION_EMITTER, 1, 0, 0, Sound.ENTITY_GENERIC_EXPLODE, null, false));
-        add("k_lightning", Kind.KILL, "번개", "Lightning", Material.LIGHTNING_ROD, PREMIUM, new KillSpec(Particle.ELECTRIC_SPARK, 40, 0.5, 0.2, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, null, true));
-        add("k_sonic", Kind.KILL, "음파 폭발", "Sonic Boom", Material.ECHO_SHARD, ELITE, new KillSpec(Particle.SONIC_BOOM, 1, 0, 0, Sound.ENTITY_WARDEN_SONIC_BOOM, null, false));
+        add("k_heart", Kind.KILL, C, "하트 폭발", "Heart Burst", Material.RED_DYE, VIP, new KillSpec(Particle.HEART, 12, 0.6, 0, Sound.ENTITY_PLAYER_LEVELUP, null, false));
+        add("k_note", Kind.KILL, C, "승리의 음표", "Victory Notes", Material.NOTE_BLOCK, VIP, new KillSpec(Particle.NOTE, 15, 0.8, 1, Sound.BLOCK_NOTE_BLOCK_BELL, null, false));
+        add("k_snow", Kind.KILL, C, "눈보라", "Blizzard", Material.SNOWBALL, SVIP, new KillSpec(Particle.SNOWFLAKE, 60, 0.6, 0.1, Sound.BLOCK_SNOW_BREAK, null, false));
+        add("k_cherry", Kind.KILL, R, "벚꽃 흩날림", "Cherry Blossom", Material.PINK_PETALS, SVIP, new KillSpec(Particle.CHERRY_LEAVES, 60, 1.0, 0, Sound.BLOCK_CHERRY_LEAVES_BREAK, null, false));
+        add("k_firework", Kind.KILL, R, "불꽃놀이", "Fireworks", Material.FIREWORK_ROCKET, MVP, new KillSpec(Particle.FIREWORK, 80, 0.3, 0.25, Sound.ENTITY_FIREWORK_ROCKET_BLAST, null, false));
+        add("k_soul", Kind.KILL, R, "영혼 이탈", "Soul Escape", Material.SOUL_LANTERN, MVP, new KillSpec(Particle.SOUL, 25, 0.5, 0.05, Sound.PARTICLE_SOUL_ESCAPE, null, false));
+        add("k_ender", Kind.KILL, R, "차원 붕괴", "Rift", Material.ENDER_PEARL, MVP, new KillSpec(Particle.PORTAL, 120, 0.5, 1, Sound.ENTITY_ENDERMAN_TELEPORT, null, false));
+        add("k_blood", Kind.KILL, R, "붉은 파편", "Crimson Shards", Material.REDSTONE_BLOCK, PRIME, new KillSpec(Particle.BLOCK, 50, 0.4, 0.1, Sound.BLOCK_NOTE_BLOCK_BASS, Material.REDSTONE_BLOCK.createBlockData(), false));
+        add("k_totem", Kind.KILL, L, "토템 섬광", "Totem Flash", Material.TOTEM_OF_UNDYING, PRIME, new KillSpec(Particle.TOTEM_OF_UNDYING, 80, 0.5, 0.5, Sound.ITEM_TOTEM_USE, null, false));
+        add("k_boom", Kind.KILL, L, "폭발", "Explosion", Material.TNT, PREMIUM, new KillSpec(Particle.EXPLOSION_EMITTER, 1, 0, 0, Sound.ENTITY_GENERIC_EXPLODE, null, false));
+        add("k_lightning", Kind.KILL, L, "번개", "Lightning", Material.LIGHTNING_ROD, PREMIUM, new KillSpec(Particle.ELECTRIC_SPARK, 40, 0.5, 0.2, Sound.ENTITY_LIGHTNING_BOLT_THUNDER, null, true));
+        add("k_sonic", Kind.KILL, L, "음파 폭발", "Sonic Boom", Material.ECHO_SHARD, ELITE, new KillSpec(Particle.SONIC_BOOM, 1, 0, 0, Sound.ENTITY_WARDEN_SONIC_BOOM, null, false));
     }
 
     private static final NamedTextColor[] RAINBOW = {
@@ -205,6 +224,8 @@ public class CosmeticService implements Listener {
     private final Map<UUID, Map<Kind, String>> equipped = new HashMap<>();
     /** 등급 순번 캐시. 접속 · 메뉴 열 때 다시 읽습니다. */
     private final Map<UUID, Integer> ranks = new ConcurrentHashMap<>();
+    /** Gold 로 산 코스메틱 키 (메인 스레드). 접속 · 메뉴 열 때 다시 읽습니다. */
+    private final Map<UUID, Set<String>> owned = new HashMap<>();
     private final Map<UUID, Entity> pets = new HashMap<>();
     /** 우리가 켠 발광 — 다른 이유(분광 화살 등)로 켜진 것은 건드리지 않습니다. */
     private final Set<UUID> glowing = new HashSet<>();
@@ -246,7 +267,12 @@ public class CosmeticService implements Listener {
     private String lang(Player p) { return plugin.getPlayerData().languageOf(p); }
 
     private boolean allowed(Player player, Cosmetic c) {
-        return player.hasPermission("ruccore.admin") || ranks.getOrDefault(player.getUniqueId(), -1) >= c.minRank;
+        return player.hasPermission("ruccore.admin") || ranks.getOrDefault(player.getUniqueId(), -1) >= c.minRank
+                || owned.getOrDefault(player.getUniqueId(), Set.of()).contains(c.key);
+    }
+
+    public long price(Tier tier) {
+        return Math.max(1, plugin.getConfig().getLong("cosmetic-shop.price." + tier.key(), tier.defaultPrice));
     }
 
     /** 지금 효과를 내야 하는 장착 코스메틱. 없거나 등급이 모자라면 null. */
@@ -274,16 +300,20 @@ public class CosmeticService implements Listener {
         UUID uuid = player.getUniqueId();
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             Map<Kind, String> map = new EnumMap<>(Kind.class);
+            Set<String> bought = new HashSet<>();
             try {
                 for (Map.Entry<String, String> e : repository.load(uuid).entrySet()) {
                     for (Kind k : Kind.values()) if (k.key().equals(e.getKey())) map.put(k, e.getValue());
                 }
+                bought.addAll(repository.loadOwned(uuid));
                 ranks.put(uuid, plugin.getPayments().rankLevel(uuid));
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "[코스메틱] 불러오기 실패: " + player.getName(), e);
             }
             Bukkit.getScheduler().runTask(plugin, () -> {
-                if (player.isOnline()) equipped.put(uuid, map);
+                if (!player.isOnline()) return;
+                equipped.put(uuid, map);
+                owned.computeIfAbsent(uuid, k -> new HashSet<>()).addAll(bought);
             });
         });
     }
@@ -294,6 +324,7 @@ public class CosmeticService implements Listener {
         removePet(uuid);
         equipped.remove(uuid);
         ranks.remove(uuid);
+        owned.remove(uuid);
         if (glowing.remove(uuid)) event.getPlayer().setGlowing(false);
     }
 
@@ -498,13 +529,17 @@ public class CosmeticService implements Listener {
     public void open(Player player) {
         UUID uuid = player.getUniqueId();
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            Set<String> bought = new HashSet<>();
             try {
                 ranks.put(uuid, plugin.getPayments().rankLevel(uuid));
+                bought.addAll(repository.loadOwned(uuid));   // 다른 서버에서 산 것
             } catch (Exception e) {
                 plugin.getLogger().log(Level.WARNING, "[코스메틱] 등급 조회 실패", e);
             }
             Bukkit.getScheduler().runTask(plugin, () -> {
-                if (player.isOnline()) player.openInventory(mainMenu(player));
+                if (!player.isOnline()) return;
+                owned.computeIfAbsent(uuid, k -> new HashSet<>()).addAll(bought);
+                player.openInventory(mainMenu(player));
             });
         });
     }
@@ -538,9 +573,11 @@ public class CosmeticService implements Listener {
             if (c.kind != kind || i >= LIST_SLOTS.length) continue;
             boolean ok = allowed(player, c);
             boolean on = c.key.equals(mine.get(kind));
-            String lore = !ok
+            String lore = messages.raw(lang, "cosmetic.tier." + c.tier.key()) + "|" + (!ok
                     ? messages.raw(lang, "cosmetic.locked").replace("%rank%", RANK_NAMES[c.minRank])
-                    : messages.raw(lang, on ? "cosmetic.equipped" : "cosmetic.click");
+                            .replace("%price%", EconomyService.format(price(c.tier)))
+                            .replace("%symbol%", plugin.getEconomy().symbol())
+                    : messages.raw(lang, on ? "cosmetic.equipped" : "cosmetic.click"));
             ItemStack stack = item(ok ? c.icon : Material.GRAY_DYE,
                     (on ? "&a" : ok ? "&f" : "&7") + c.name(lang), lore);
             if (on) {
@@ -589,9 +626,12 @@ public class CosmeticService implements Listener {
         Cosmetic c = holder.slots.get(slot);
         if (c == null) return;
         if (!allowed(player, c)) {
+            // 그냥 클릭은 안내만 — 잘못 눌러 Gold 가 빠지지 않게 구매는 Shift+클릭으로만.
+            if (event.isShiftClick()) { buy(player, c); return; }
             player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 0.6f, 0.8f);
             player.sendMessage(messages.prefixed(lang, "cosmetic.locked-msg",
-                    "item", c.name(lang), "rank", RANK_NAMES[c.minRank]));
+                    "item", c.name(lang), "rank", RANK_NAMES[c.minRank],
+                    "price", EconomyService.format(price(c.tier)), "symbol", plugin.getEconomy().symbol()));
             return;
         }
         boolean on = c.key.equals(equipped.getOrDefault(player.getUniqueId(), Map.of()).get(c.kind));
@@ -606,6 +646,56 @@ public class CosmeticService implements Listener {
     @EventHandler(priority = EventPriority.HIGH)
     public void onDrag(InventoryDragEvent event) {
         if (event.getView().getTopInventory().getHolder() instanceof Holder) event.setCancelled(true);
+    }
+
+    /**
+     * Gold 영구 구매. 차감 · 소유를 메인 스레드에서 먼저 반영하고(연타해도 두 번 빠지지 않게),
+     * DB 기록이 실패하면 둘 다 되돌립니다. 산 것은 바로 장착합니다.
+     */
+    private void buy(Player player, Cosmetic c) {
+        String lang = lang(player);
+        UUID uuid = player.getUniqueId();
+        long cost = price(c.tier);
+        String symbol = plugin.getEconomy().symbol();
+        if (!plugin.getEconomy().withdraw(uuid, cost)) {
+            player.playSound(player.getLocation(), Sound.BLOCK_NOTE_BLOCK_BASS, 0.6f, 0.8f);
+            player.sendMessage(messages.prefixed(lang, "rank.need-gold",
+                    "cost", EconomyService.format(cost), "symbol", symbol));
+            return;
+        }
+        owned.computeIfAbsent(uuid, k -> new HashSet<>()).add(c.key);
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            boolean saved;
+            try {
+                repository.addOwned(uuid, c.key, cost);
+                saved = true;
+            } catch (Exception e) {
+                plugin.getLogger().log(Level.SEVERE, "[코스메틱] 구매 기록 실패 — 되돌림: " + player.getName() + " " + c.key, e);
+                saved = false;
+            }
+            boolean ok = saved;
+            Bukkit.getScheduler().runTask(plugin, () -> {
+                if (!ok) {
+                    Set<String> mine = owned.get(uuid);
+                    if (mine != null) mine.remove(c.key);
+                    if (!plugin.getEconomy().deposit(uuid, cost)) {
+                        plugin.getLogger().severe("[코스메틱] 환불 실패(접속 끊김) — 수동 환불 필요: "
+                                + player.getName() + " " + cost + " " + symbol);
+                    }
+                    if (player.isOnline()) player.sendMessage(messages.prefixed(lang, "rank.error", "symbol", symbol));
+                    return;
+                }
+                plugin.getLogger().info("[코스메틱] Gold 구매 " + c.key + " " + cost + " — " + player.getName());
+                if (!player.isOnline()) return;
+                set(player, c.kind, c.key);
+                player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.6f, 1.4f);
+                player.sendMessage(messages.prefixed(lang, "cosmetic.bought",
+                        "item", c.name(lang), "price", EconomyService.format(cost), "symbol", symbol));
+                if (player.getOpenInventory().getTopInventory().getHolder() instanceof Holder) {
+                    player.openInventory(listMenu(player, c.kind));
+                }
+            });
+        });
     }
 
     /** 장착 바꾸기 — 메모리 먼저(바로 보이게), DB 는 비동기. */

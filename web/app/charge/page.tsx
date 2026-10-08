@@ -215,7 +215,7 @@ export default function Page() {
           <li>· 지급 후 서버 오류로 상품을 쓸 수 없게 되면 남은 기간만큼 연장하거나 환불합니다.</li>
           <li>· 만 19세 미만은 보호자의 동의를 받고 후원해 주세요. 보호자 동의 없는 결제는 환불을 요청할 수 있습니다.</li>
           <li>· 제재(7단계 이상)를 받으면 후원 혜택이 정지됩니다. 이미 받은 혜택은 환불되지 않습니다.</li>
-          <li>· 다른 사람 명의로 입금하거나 상품을 되파는 것은 금지입니다 (<Link href="/rules" className="link">규칙 0.5</Link>).</li>
+          <li>· 다른 사람 명의로 입금하거나 상품을 되파는 것은 금지입니다 (<Link href="/rules" className="link">규칙 0.5 · 0.11</Link>).</li>
           <li className="text-white/60">· TODO: 운영진 검토 — 통신판매업 신고번호 · 사업자 정보 · 환불 정책 확정 후 기재</li>
         </ul>
         <p className="mt-5 text-[12px] text-white/75">

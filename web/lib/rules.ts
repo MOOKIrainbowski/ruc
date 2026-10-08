@@ -25,3 +25,29 @@ export type RulesData = {
 
 // JSON import 는 타입이 넓게 잡히므로 여기서 한 번 고정합니다.
 export const rules: RulesData = raw;
+
+// ── .txt 내보내기 (규칙 페이지의 복사 · 다운로드 버튼) ──────────────────
+
+const SITE = "https://ruc-server.vercel.app/rules";
+
+/** 탭 하나(공통 · 디스코드 · 마인크래프트)를 디스코드 공지에 그대로 붙일 수 있는 글로. */
+export function sectionText(data: RulesData, s: RuleSection): string {
+  const lines = [`러크 서버 규칙 — ${s.label}`, `최종 수정 ${data.updatedAt} · ${SITE}#${s.id}`, "", s.intro];
+  for (const g of s.groups) {
+    lines.push("", `${g.no}. ${g.title}`);
+    for (const r of g.rules) lines.push(`  ${r.no}  ${r.text}`, `        제재: ${r.sanction}`);
+  }
+  return lines.join("\n") + "\n";
+}
+
+export function sanctionsText(data: RulesData): string {
+  const { title, intro, tiers, notes } = data.sanctions;
+  const lines = [`러크 서버 규칙 — ${title}`, `최종 수정 ${data.updatedAt} · ${SITE}#sanctions`, "", intro, ""];
+  for (const t of tiers) {
+    lines.push(
+      `${t.tier}단계 | 디스코드 ${t.discord} | 마인크래프트 ${t.minecraft} | Gold 몰수 ${t.confiscate} | 추가 ${t.extra}`,
+    );
+  }
+  lines.push("", ...notes.map((n) => `· ${n}`));
+  return lines.join("\n") + "\n";
+}

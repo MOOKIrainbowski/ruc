@@ -143,7 +143,7 @@ menu:
 
   cosmetic:
     name: "&d&l코스메틱"
-    lore: "&7파티클 · 펫 · 발광 · 킬 이펙트|&7등급마다 열리는 것이 다릅니다|&e▶ 클릭해서 열기 &8(/코스메틱)"
+    lore: "&7파티클 · 펫 · 발광 · 킬 이펙트|&7등급으로 열리고 Gold 로 영구 구매|&e▶ 클릭해서 열기 &8(/코스메틱)"
   guide:
     name: "&6&l가이드"
     lore: "&7러크의 기능을 하나씩 해 보고|&7보상을 받습니다|&e▶ 클릭해서 열기"
@@ -539,10 +539,15 @@ cosmetic:
   none: "없음"
   equipped: "&a● 장착 중|&7클릭하면 해제"
   click: "&e▶ 클릭해서 장착"
-  locked: "&c🔒 %rank% 이상|&7등급: &f/등급 &7· 디스코드 &f/충전"
+  locked: "&c🔒 %rank% 이상 등급|&7또는 &6%price% %symbol% &7영구 구매|&e▶ Shift+클릭해서 구매"
+  tier:
+    common: "&f◆ 일반"
+    rare: "&b◆ 희귀"
+    legendary: "&6◆ 전설"
+  bought: "&a%item% &a영구 구매! &7(-%price% %symbol%) 장착했습니다."
   back: "&7◀ 뒤로"
   unequip: "&c해제"
   close: "&c닫기"
   equipped-msg: "&a%item% &a장착!"
   unequipped: "&7%kind% &7해제했습니다."
-  locked-msg: "&c%item% &c은(는) &f%rank% 이상&c 등급 전용입니다. &7/등급"
+  locked-msg: "&c%item% &c은(는) &f%rank% 이상&c 등급이 필요합니다. &7Shift+클릭하면 &6%price% %symbol%&7 로 영구 구매합니다."

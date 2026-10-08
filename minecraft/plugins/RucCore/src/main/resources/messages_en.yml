@@ -143,7 +143,7 @@ menu:
 
   cosmetic:
     name: "&d&lCosmetics"
-    lore: "&7Particles · pets · glow · kill effects|&7Unlocked by rank|&e▶ Click to open &8(/cosmetic)"
+    lore: "&7Particles · pets · glow · kill effects|&7Unlocked by rank or bought with Gold|&e▶ Click to open &8(/cosmetic)"
   guide:
     name: "&6&lGuide"
     lore: "&7Try each Ruc feature|&7and earn rewards|&e▶ Click to open"
@@ -530,10 +530,15 @@ cosmetic:
   none: "None"
   equipped: "&a● Equipped|&7Click to remove"
   click: "&e▶ Click to equip"
-  locked: "&c🔒 %rank% or higher|&7Ranks: &f/rank &7· Discord &f/충전"
+  locked: "&c🔒 %rank% or higher|&7or buy forever: &6%price% %symbol%|&e▶ Shift+click to buy"
+  tier:
+    common: "&f◆ Common"
+    rare: "&b◆ Rare"
+    legendary: "&6◆ Legendary"
+  bought: "&aBought %item%&a forever! &7(-%price% %symbol%) Equipped."
   back: "&7◀ Back"
   unequip: "&cRemove"
   close: "&cClose"
   equipped-msg: "&aEquipped %item%&a!"
   unequipped: "&7Removed %kind%&7."
-  locked-msg: "&c%item% &cneeds &f%rank%&c or higher. &7/rank"
+  locked-msg: "&c%item% &cneeds &f%rank%&c or higher. &7Shift+click to buy it forever for &6%price% %symbol%&7."

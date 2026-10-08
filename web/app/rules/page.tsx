@@ -1,6 +1,6 @@
 import PageShell from "@/components/PageShell";
-import Rules from "@/components/Rules";
-import { rules } from "@/lib/rules";
+import Rules, { TextActions } from "@/components/Rules";
+import { rules, sanctionsText } from "@/lib/rules";
 import { banner } from "@/lib/og";
 
 export const metadata = {
@@ -40,9 +40,12 @@ export default function Page() {
       <Rules data={rules} />
 
       <section id="sanctions" aria-labelledby="sanctions-title" className="mt-14">
-        <h2 id="sanctions-title" className="headline text-xl sm:text-2xl">
-          {sanctions.title}
-        </h2>
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <h2 id="sanctions-title" className="headline text-xl sm:text-2xl">
+            {sanctions.title}
+          </h2>
+          <TextActions text={sanctionsText(rules)} filename="ruc-rules-sanctions.txt" label={sanctions.title} />
+        </div>
         <p className="mt-3 max-w-2xl text-[12px] leading-relaxed text-white/70">{sanctions.intro}</p>
 
         {/* 표는 모바일에서 가로 스크롤 — 열을 줄이면 비교가 안 됩니다. */}

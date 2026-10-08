@@ -6,7 +6,9 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 
 /**
@@ -30,8 +32,44 @@ public class CosmeticRepository {
                     PRIMARY KEY (uuid, slot)
                 )
                 """;
+        // Gold 로 영구 구매한 것 (2026-10-09). 키는 카탈로그 전체에서 겹치지 않습니다.
+        String owned = """
+                CREATE TABLE IF NOT EXISTS ruc_cosmetic_owned (
+                    uuid        VARCHAR(36)  NOT NULL,
+                    item        VARCHAR(32)  NOT NULL,
+                    price       BIGINT       NOT NULL,
+                    bought_at   BIGINT       NOT NULL,
+                    PRIMARY KEY (uuid, item)
+                )
+                """;
         try (Connection conn = database.getConnection(); Statement st = conn.createStatement()) {
             st.executeUpdate(sql);
+            st.executeUpdate(owned);
+        }
+    }
+
+    public Set<String> loadOwned(UUID uuid) throws SQLException {
+        try (Connection conn = database.getConnection();
+             PreparedStatement ps = conn.prepareStatement("SELECT item FROM ruc_cosmetic_owned WHERE uuid = ?")) {
+            ps.setString(1, uuid.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                Set<String> out = new HashSet<>();
+                while (rs.next()) out.add(rs.getString(1));
+                return out;
+            }
+        }
+    }
+
+    /** 이미 산 것이면 기본 키 충돌로 SQLException — 호출부가 Gold 를 되돌립니다. */
+    public void addOwned(UUID uuid, String item, long price) throws SQLException {
+        try (Connection conn = database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "INSERT INTO ruc_cosmetic_owned (uuid, item, price, bought_at) VALUES (?, ?, ?, ?)")) {
+            ps.setString(1, uuid.toString());
+            ps.setString(2, item);
+            ps.setLong(3, price);
+            ps.setLong(4, System.currentTimeMillis());
+            ps.executeUpdate();
         }
     }
 
