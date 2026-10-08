@@ -116,6 +116,16 @@ MOOKI*/pay_data.json
 # 티켓 내용(유저 문의 · 신고)과 반응 역할은 런타임 데이터 — 저장소가 공개입니다
 MOOKI*/tickets_data.json
 MOOKI*/reaction_roles.json
+MOOKI*/announce_channels.json
 
 # 경제 미니게임 제거 (Phase 6-8) — 봇이 더는 쓰지 않습니다. 백업은 docs/backup/
 MOOKI*/economy_data.json
+
+# 로컬 전용 — IDE 빌드 결과 · 콘솔 기록 · 교체 전 jar 백업 · 개인 메모
+minecraft/plugins/*/bin/
+**/.console_history
+minecraft/servers/*/plugins/*.jar.bak-*
+**/tempCodeRunnerFile.*
+.vscode/
+startcommand.txt
+banner/

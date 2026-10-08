@@ -25,6 +25,7 @@ const {
     TextInputBuilder, TextInputStyle,
 } = require('discord.js');
 const roles = require('./roles');
+const greet = require('./greet');
 
 const DATA_FILE = path.join(__dirname, 'pay_data.json');
 const PRODUCTS_FILE = process.env.PAY_PRODUCTS_FILE
@@ -271,6 +272,9 @@ async function announce(guild, r, by) {
                     : '지급을 준비하고 있습니다. 잠시 뒤 자동으로 지급됩니다.')
                 .setFooter({ text: `주문 ${r.code}` })],
         });
+        // 후원 감사 — 입금이 확인된 순간 한 번. 알림 실패가 결제 처리를 막으면 안 됩니다.
+        await greet.thank(guild, r.discord, 'cash', Number(r.amount ?? r.price) || 0)
+            .catch(e => console.warn('[충전] 후원 감사 알림 실패:', e.message));
         if (delivered) await grantRoles(guild);
         return;
     }
@@ -573,12 +577,12 @@ const cancelCommand = new SlashCommandBuilder()
     .addStringOption(o => o.setName('코드').setDescription('주문 코드 (예: R4821)').setRequired(true).setMaxLength(8));
 
 const lookupCommand = new SlashCommandBuilder()
-    .setName('결제조회').setDescription('(Manager) 주문 · 입금 · 지급 기록을 봅니다.')
+    .setName('결제조회').setDescription('(스태프) 주문 · 입금 · 지급 기록을 봅니다.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild)
     .addStringOption(o => o.setName('대상').setDescription('주문 코드 · 닉네임 · 디스코드 ID').setRequired(true).setMaxLength(32));
 
 const reviewCommand = new SlashCommandBuilder()
-    .setName('결제대기').setDescription('(Manager) 자동으로 처리되지 않은 입금 목록을 다시 올립니다.')
+    .setName('결제대기').setDescription('(스태프) 자동으로 처리되지 않은 입금 목록을 다시 올립니다.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
 async function handleCharge(interaction) {

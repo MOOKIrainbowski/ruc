@@ -1,7 +1,7 @@
 const {
     Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
     SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField,
-    ChannelType, InteractionType, Events, MessageFlags
+    ChannelType, InteractionType, Events, MessageFlags, StringSelectMenuBuilder
 } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
@@ -9,7 +9,7 @@ const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '.env') });
 
 // dotenv 이후에 require 해야 합니다 (아래 모듈이 환경변수를 사용)
-const { verifyCommand, handleVerify } = require('./verification');
+const { verifyCommand, handleVerify, verifyPanelCommand, buildVerifyPanel, buildCodeModal } = require('./verification');
 const titles = require('./titles');
 const relay = require('./relay');
 const roles = require('./roles');
@@ -18,6 +18,7 @@ const report = require('./report');
 const reputation = require('./reputation');
 const sanction = require('./sanction');
 const payment = require('./payment');
+const greet = require('./greet');
 
 const REACTION_FILE = path.join(__dirname, 'reaction_roles.json');
 const TICKETS_FILE  = path.join(__dirname, 'tickets_data.json');
@@ -259,6 +260,30 @@ async function createTicketChannel(guild, member, type, title, description) {
     return { channel, ticketId };
 }
 
+/** /ticket panel — 선택 값은 아래 ticket_type_ 처리가 그대로 받습니다 */
+function buildTicketPanel() {
+    const embed = new EmbedBuilder()
+        .setColor(0x5865f2)
+        .setTitle('🎫 러크 서버 티켓')
+        .setDescription('스태프에게 전할 내용이 있으면 아래에서 **유형을 골라** 티켓을 열어 주세요.\n'
+            + '본인과 스태프만 볼 수 있는 전용 채널이 만들어집니다.\n')
+        .addFields(
+            { name: TICKET_TYPES.inquiry, value: '서버 이용 · 인증 · 결제 · 계정 등 궁금한 점이나 도움이 필요할 때\n' },
+            { name: TICKET_TYPES.report, value: '규칙 위반 플레이어 신고 — **가해자 닉네임 · 발생 시각 · 사유**를 적어 주세요. 증거(스크린샷 · 영상 링크)가 있으면 빨리 처리됩니다.\n' },
+            { name: TICKET_TYPES.suggestion, value: '서버 · 컨텐츠 · 디스코드에 대한 아이디어나 개선 의견을 건의할 때\n' },
+            { name: '📌 안내', value: '• 스태프가 답변하면 DM 으로 알려 드립니다.\n• 장난 · 도배 티켓은 제재 대상입니다.\n' })
+        .setFooter({ text: '명령어로도 열 수 있습니다: /ticket create · /신고' });
+
+    const row = new ActionRowBuilder().addComponents(
+        new StringSelectMenuBuilder().setCustomId('panel_select').setPlaceholder('📂 위 상황에 맞게 선택해주세요.').addOptions(
+            { label: '문의', value: 'ticket_type_inquiry', emoji: '📬', description: '이용 · 인증 · 결제 · 계정 문의' },
+            { label: '신고', value: 'ticket_type_report', emoji: '🚨', description: '규칙 위반 플레이어 신고' },
+            { label: '건의', value: 'ticket_type_suggestion', emoji: '💡', description: '서버 · 컨텐츠 개선 의견' },
+        ),
+    );
+    return { embeds: [embed], components: [row] };
+}
+
 async function closeTicket(ticketId, closedBy, guild) {
     const ticket = ticketsData.tickets[ticketId];
     if (!ticket) return;
@@ -335,20 +360,27 @@ client.once(Events.ClientReady, async () => {
         new SlashCommandBuilder().setName('임베드생성').setDescription('임베드 초안을 생성합니다.'),
         new SlashCommandBuilder().setName('채널설정').setDescription('메시지를 보낼 채널을 설정합니다.')
             .addChannelOption(o => o.setName('채널').setDescription('채널 지정').setRequired(true).addChannelTypes(ChannelType.GuildText)),
-        new SlashCommandBuilder().setName('help').setDescription('명령어 목록을 확인합니다.'),
+        new SlashCommandBuilder().setName('help').setDescription('MOOKI 봇의 명령어 목록을 확인합니다.'),
         new SlashCommandBuilder().setName('add').setDescription('반응 역할을 설정합니다.')
             .addStringOption(o => o.setName('message_id').setDescription('메시지 ID').setRequired(true))
             .addStringOption(o => o.setName('emoji').setDescription('이모지').setRequired(true))
             .addRoleOption(o => o.setName('role').setDescription('역할').setRequired(true)),
 
         // /sendmessage — 모달 기반 다국어/멀티라인 공지
-        new SlashCommandBuilder().setName('메시지').setDescription('MOOKI를 통해 메시지를 채널에 전송합니다.'),
+        new SlashCommandBuilder().setName('메시지').setDescription('MOOKI를 통해 메시지를 지정된 채널에 전송합니다.'),
 
         // 티켓 명령어
-        new SlashCommandBuilder().setName('ticket').setDescription('문의/신고/건의 티켓을 즉시 생성합니다.'),
+        new SlashCommandBuilder().setName('ticket').setDescription('문의/신고/건의 티켓')
+            .addSubcommand(s => s.setName('create').setDescription('문의/신고/건의 티켓을 즉시 생성합니다.'))
+            .addSubcommand(s => s.setName('panel').setDescription('이 채널에 티켓 안내 패널을 올립니다. (관리자)')),
 
         // 디스코드 ↔ 마크 계정 인증 (D10)
         verifyCommand,
+        verifyPanelCommand,
+
+        // 환영 인사 · 후원 감사 채널 (관리자)
+        greet.welcomeCommand,
+        greet.donationCommand,
 
         // 디스코드 역할 → 마크 칭호 (Phase 6)
         titles.titleSyncCommand,
@@ -444,6 +476,8 @@ client.on('interactionCreate', async interaction => {
                 return;
             }
 
+            if (await greet.handleCommand(interaction)) return;
+
             if (commandName === '칭호동기화') {
                 await titles.handleTitleSync(interaction);
                 return;
@@ -495,8 +529,17 @@ client.on('interactionCreate', async interaction => {
             if (commandName === '결제조회') { await payment.handleLookup(interaction); return; }
             if (commandName === '결제대기') { await payment.handleReview(interaction); return; }
 
+            // ── 안내 패널 (/ticket panel · /verify panel) — 관리자 전용 ──
+            if ((commandName === 'ticket' || commandName === 'verify')
+                && interaction.options.getSubcommand() === 'panel') {
+                if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator))
+                    return interaction.reply({ content: '❌ 관리자 전용 명령어입니다.', flags: MessageFlags.Ephemeral });
+                await interaction.channel.send(commandName === 'ticket' ? buildTicketPanel() : buildVerifyPanel());
+                return interaction.reply({ content: '✅ 패널을 올렸습니다.', flags: MessageFlags.Ephemeral });
+            }
+
             if (commandName === 'ticket') {
-                // /ticket 입력 시 바로 팝업창(모달) 오픈 — 유형 선택 포함
+                // /ticket create 입력 시 바로 팝업창(모달) 오픈 — 유형 선택 포함
                 const modal = new ModalBuilder()
                     .setCustomId('modal_ticket_direct')
                     .setTitle('🎫 티켓 생성');
@@ -559,10 +602,12 @@ client.on('interactionCreate', async interaction => {
                     .setTitle('📋 MOOKI 명령어 목록')
                     .setColor('Red')
                     .addFields(
-                        { name: '🎮 러크 서버', value: '`/인증` `/서버상태` `/신고` `/ticket`' },
-                        { name: '🛡️ 스태프', value: '`/제재` `/제재해제` `/기록` `/칭호동기화` `/평판동기화` `/평판역할설정` `/역할점검`' },
-                        { name: '🛠️ 관리 도구', value: '`/임베드생성` `/채널설정` `/add` `/메시지`' }
-                    );
+                        { name: '러크 서버', value: '`/인증` `/서버상태` `/신고` `/ticket create`' },
+                        { name: '관리', value: '`/임베드생성` `/채널설정` `/add` `/메시지` `/ticket panel` `/verify panel` `/welcome channel` `/donation channel`' },
+                        { name: '결제', value: '`/충전` `/충전취소` `/결제조회` `/결제대기`' },
+                        { name: '디스코드', value: '`/임베드생성` `/채널설정` `/add`' }
+                    )
+                    .setFooter({ text: '관리자 전용 명령어는 관리자만 사용할 수 있습니다. 자세한 기능은 ** / ** 를 입력해 확인하세요.' });
                 return interaction.reply({ embeds: [embed] });
             }
             if (commandName === 'channel') {
@@ -593,10 +638,19 @@ client.on('interactionCreate', async interaction => {
         // ═══════════════════════════════════════════════════════════
         // 2. 버튼 상호작용
         // ═══════════════════════════════════════════════════════════
-        else if (interaction.isButton()) {
-            const { customId } = interaction;
+        else if (interaction.isButton() || interaction.isStringSelectMenu()) {
+            // 패널의 분류 선택 메뉴는 고른 값이 곧 버튼 ID 입니다 (verify_open · ticket_type_*).
+            const isSelect = interaction.isStringSelectMenu();
+            const customId = isSelect ? interaction.values[0] : interaction.customId;
+            // 고른 항목이 메뉴에 남아 있으면 같은 걸 다시 고를 수 없습니다 — 메시지를 다시 그려 비웁니다.
+            if (isSelect) interaction.message.edit({ components: interaction.message.components }).catch(() => {});
 
-            // ── 티켓 유형 선택 버튼 ─────────────────────────────────
+            // ── 인증 패널의 [인증하기] 버튼 ─────────────────────────
+            if (customId === 'verify_open') {
+                return interaction.showModal(buildCodeModal());
+            }
+
+            // ── 티켓 유형 선택 버튼 (티켓 패널 · 인증 패널의 문의) ──
             if (customId.startsWith('ticket_type_')) {
                 const type = customId.replace('ticket_type_', '');
 
@@ -729,7 +783,12 @@ client.on('interactionCreate', async interaction => {
 
             if (await payment.handleModal(interaction)) return;
 
-            // ── 티켓 생성 모달 (버튼 경유 방식 — 하위 호환 유지) ────
+            if (interaction.customId === 'modal_verify') {
+                await handleVerify(interaction, interaction.fields.getTextInputValue('verify_code'));
+                return;
+            }
+
+            // ── 티켓 생성 모달 (버튼 경유 방식 — 티켓 패널) ─────────
             if (interaction.customId === 'modal_report') {
                 await report.handleSubmit(interaction, createTicketChannel);
                 return;
@@ -937,6 +996,8 @@ client.on('guildMemberAdd', safeListener('guildMemberAdd', async member => {
             `<@${member.id}> (**${member.user.tag}**)의 계정이 생성된 지 **${ageDays}일**밖에 되지 않았습니다.`,
             0xFFAA00);
     }
+
+    await greet.welcome(member);
 }));
 
 // ─── 역할 변경 → 마크 칭호 동기화 (Phase 6) ───────────────────────────────────
@@ -947,6 +1008,11 @@ client.on('guildMemberAdd', safeListener('guildMemberAdd', async member => {
 
 client.on('guildMemberUpdate', safeListener('guildMemberUpdate', async (oldMember, newMember) => {
     await titles.onMemberUpdate(oldMember, newMember);
+
+    // 부스트 시작. 캐시에 없던 멤버(partial)는 이전 상태를 몰라 오탐하므로 건너뜁니다.
+    if (!oldMember.partial && !oldMember.premiumSince && newMember.premiumSince) {
+        await greet.thank(newMember.guild, newMember.id, 'boost');
+    }
 }));
 
 // ─── 리액션 롤 이벤트 ──────────────────────────────────────────────────────────
