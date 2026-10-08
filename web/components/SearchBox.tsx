@@ -31,7 +31,7 @@ export default function SearchBox({
   label: string;
   placeholder: string;
   variant?: "dropdown" | "inline";
-  /** "/" 키로 이 입력창에 바로 들어갑니다. 한 화면에 하나만 켜세요. */
+  /** "/" · Ctrl/Cmd+K 로 이 입력창에 바로 들어갑니다. 한 화면에 하나만 켜세요. */
   hotkey?: boolean;
   autoFocus?: boolean;
   /** 결과로 이동했거나 Esc 로 닫았을 때 (휴대폰 상단 바의 펼친 검색창을 접을 때) */
@@ -65,7 +65,9 @@ export default function SearchBox({
     if (!hotkey) return;
     const onKey = (e: KeyboardEvent) => {
       const el = e.target as HTMLElement;
-      if (e.key !== "/" || el.closest("input, textarea, [contenteditable]")) return;
+      // Ctrl/Cmd+K 는 다른 입력창 안에서도 받습니다 (브라우저 주소창 검색 단축키를 덮음).
+      const palette = e.key.toLowerCase() === "k" && (e.ctrlKey || e.metaKey);
+      if (!palette && (e.key !== "/" || el.closest("input, textarea, [contenteditable]"))) return;
       e.preventDefault();
       inputRef.current?.focus();
     };

@@ -92,7 +92,7 @@ export const content: Record<Lang, Copy> = {
       menu: "메뉴",
       koOnly: "이 페이지는 아직 한국어만 있습니다",
       search: "사이트 검색",
-      searchPlaceholder: "위키 · 규칙 · 상품 검색  ( / )",
+      searchPlaceholder: "위키 · 규칙 · 상품 검색  ( Ctrl K )",
       searchClose: "검색 닫기",
     },
     hero: {
@@ -191,7 +191,7 @@ export const content: Record<Lang, Copy> = {
       menu: "Menu",
       koOnly: "This page is Korean only for now",
       search: "Search the site",
-      searchPlaceholder: "Search (content is in Korean)  ( / )",
+      searchPlaceholder: "Search (content is in Korean)  ( Ctrl K )",
       searchClose: "Close search",
     },
     hero: {

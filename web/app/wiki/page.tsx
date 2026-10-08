@@ -11,15 +11,40 @@ export const metadata = {
 };
 
 export default function Page() {
-  const groups = groupedDocs();
+  // 첫 분류(시작하기)는 순서대로 읽는 길이라 번호 단계로 따로 강조합니다.
+  const [start, ...groups] = groupedDocs();
   return (
     <PageShell
       wide
       eyebrow="RUC WIKI"
       title="러크 위키"
-      lead="처음이라면 '시작하기' 부터."
+      lead="접속부터 고유 기능까지. 처음이라면 1번부터 차례로."
     >
       <WikiLayout>
+        <section aria-labelledby="start-path" className="glass-strong mb-10 rounded-2xl p-5 sm:p-6">
+          <h2 id="start-path" className="headline text-base text-ruc-300">
+            처음이라면 — {start.category}
+          </h2>
+          <ol className="mt-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            {start.docs.map((d, i) => (
+              <li key={d.slug}>
+                <Link href={`/wiki/${d.slug}`} className="glass glass-hover flex h-full gap-3 rounded-xl p-4">
+                  <span
+                    aria-hidden="true"
+                    className="headline flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-ruc-400 text-[13px] text-ruc-900"
+                  >
+                    {i + 1}
+                  </span>
+                  <span>
+                    <span className="block text-[13px] text-white">{d.title}</span>
+                    <span className="mt-1 block text-[11.5px] leading-relaxed text-white/70">{d.description}</span>
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ol>
+        </section>
+
         {/* Wynncraft 위키식 분류 카드 */}
         <div className="space-y-8">
           {groups.map((g) => (

@@ -9,6 +9,11 @@ export const metadata = {
   ...banner("rules", "러크 서버 규칙", "러크 서버 디스코드 · 마인크래프트 규칙과 제재 단계."),
 };
 
+/** 단계가 오를수록 진해지는 붉은 배경 (히트맵) — 1단계 거의 투명, 10단계 0.25 */
+function heat(tier: number) {
+  return { backgroundColor: `rgba(239, 68, 68, ${(tier * 0.025).toFixed(3)})` };
+}
+
 function tierClass(tier: number) {
   if (tier <= 3) return "text-ruc-300";
   if (tier <= 7) return "text-amber-200";
@@ -48,8 +53,30 @@ export default function Page() {
         </div>
         <p className="mt-3 max-w-2xl text-[12px] leading-relaxed text-white/70">{sanctions.intro}</p>
 
-        {/* 표는 모바일에서 가로 스크롤 — 열을 줄이면 비교가 안 됩니다. */}
-        <div className="glass mt-6 overflow-x-auto rounded-2xl" tabIndex={0} aria-label="제재 단계 표">
+        {/* 휴대폰: 단계마다 카드. sm 이상: 표 */}
+        <ol className="mt-6 space-y-2.5 sm:hidden">
+          {sanctions.tiers.map((t) => (
+            <li key={t.tier} className="glass rounded-xl p-4 text-[11.5px]" style={heat(t.tier)}>
+              <p className={`headline text-sm ${tierClass(t.tier)}`}>{t.tier}단계</p>
+              <dl className="mt-2 grid grid-cols-[auto_1fr] gap-x-3 gap-y-1">
+                <dt className="text-white/60">디스코드</dt>
+                <dd className="text-white/90">{t.discord}</dd>
+                <dt className="text-white/60">마인크래프트</dt>
+                <dd className="text-white/90">{t.minecraft}</dd>
+                <dt className="text-white/60">Gold 몰수</dt>
+                <dd className="text-white/85">{t.confiscate}</dd>
+                {t.extra !== "—" && (
+                  <>
+                    <dt className="text-white/60">추가</dt>
+                    <dd className="text-white/80">{t.extra}</dd>
+                  </>
+                )}
+              </dl>
+            </li>
+          ))}
+        </ol>
+
+        <div className="glass mt-6 hidden overflow-x-auto rounded-2xl sm:block" tabIndex={0} aria-label="제재 단계 표">
           <table className="w-full min-w-[640px] text-left text-[11.5px]">
             <thead className="border-b border-white/12 text-[10px] tracking-wider text-white/60">
               <tr>
@@ -62,7 +89,7 @@ export default function Page() {
             </thead>
             <tbody className="divide-y divide-white/8">
               {sanctions.tiers.map((t) => (
-                <tr key={t.tier}>
+                <tr key={t.tier} style={heat(t.tier)}>
                   <th scope="row" className={`headline px-4 py-3 ${tierClass(t.tier)}`}>
                     {t.tier}
                   </th>

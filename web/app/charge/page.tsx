@@ -67,12 +67,20 @@ export default function Page() {
       lead={"무료 서버. 판매 수익은 운영비로 쓰입니다."}
     >
       {!enabled && (
-        <p
+        <div
           role="note"
-          className="mb-8 rounded-xl border border-amber-400/40 bg-amber-400/10 px-4 py-3 text-[12px] leading-relaxed text-amber-100"
+          className="mb-8 flex flex-col gap-3 rounded-xl border border-amber-400/40 bg-amber-400/10 px-4 py-3 text-[12px] leading-relaxed text-amber-100 sm:flex-row sm:items-center sm:justify-between"
         >
-          충전은 아직 준비 중입니다. 열리면 디스코드 공지로 알려 드립니다. 아래 상품 구성은 미리보기입니다.
-        </p>
+          <p>충전은 아직 준비 중입니다. 열리면 디스코드 공지로 알려 드립니다. 아래 상품 구성은 미리보기입니다.</p>
+          <a
+            href={DISCORD_INVITE}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="shrink-0 rounded-lg border border-amber-300/50 px-3 py-1.5 text-center text-[11px] text-amber-50 transition-colors hover:bg-amber-300/15"
+          >
+            디스코드에서 알림 받기 ↗
+          </a>
+        </div>
       )}
 
       {/* Tebex 스토어 공통 패턴 — 상품 위에 원칙을 고정합니다 */}
@@ -183,16 +191,20 @@ export default function Page() {
         <h2 id="steps-title" className="headline mb-4 text-xl">
           입금 절차
         </h2>
-        <ol className="space-y-3">
+        {/* 세로 타임라인 — 번호 사이를 선으로 잇습니다 (마지막 단계는 선 없음) */}
+        <ol>
           {steps.map((s, i) => (
-            <li key={s.title} className="glass flex gap-4 rounded-2xl p-5">
+            <li key={s.title} className="relative flex gap-4 pb-3 last:pb-0">
+              {i < steps.length - 1 && (
+                <span aria-hidden="true" className="absolute top-12 bottom-0 left-[17px] w-0.5 bg-gradient-to-b from-ruc-400/60 to-ruc-400/10" />
+              )}
               <span
                 aria-hidden="true"
-                className="headline flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ruc-400/40 bg-ruc-400/10 text-ruc-400"
+                className="headline relative z-[1] mt-5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-ruc-400/60 bg-ruc-900 text-ruc-400 shadow-[0_0_14px_rgba(147,233,62,0.25)]"
               >
                 {i + 1}
               </span>
-              <div>
+              <div className="glass flex-1 rounded-2xl p-5">
                 <h3 className="text-[13.5px] font-bold text-white">{s.title}</h3>
                 <p className="mt-1.5 text-[12px] leading-relaxed text-white/80">{s.body}</p>
               </div>

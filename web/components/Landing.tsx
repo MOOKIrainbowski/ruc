@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { DISCORD_INVITE, MC_ADDRESS, t, type Lang } from "@/lib/content";
 import LandingNav from "./LandingNav";
+import { Magnetic, ParallaxHero, RevealText, StickyScenes, TiltCard, ZoomIn } from "./LandingMotion";
 import StatusStrip from "./StatusStrip";
 
 /**
@@ -39,9 +40,11 @@ export default function Landing({ lang }: { lang: Lang }) {
 
   const ctas = (
     <div className="flex flex-wrap items-center justify-center gap-3">
-      <Link href="/home" className={primaryBtn}>
-        {c.nav.enter} →
-      </Link>
+      <Magnetic>
+        <Link href="/home" className={`inline-block ${primaryBtn}`}>
+          {c.nav.enter} →
+        </Link>
+      </Magnetic>
       <a href={DISCORD_INVITE} target="_blank" rel="noopener noreferrer" className={secondaryBtn}>
         {c.hero.ctaDiscord}
       </a>
@@ -53,24 +56,30 @@ export default function Landing({ lang }: { lang: Lang }) {
       {/* 랜딩은 독립 페이지 — 사이트 내비 대신 입장 버튼만 있는 전용 헤더 */}
       <LandingNav lang={lang} />
 
-      <main className="pt-16">
+      {/* 히어로 블록이 화면 밖까지 뻗으므로 가로를 자릅니다 (clip 은 sticky 를 깨지 않음) */}
+      <main className="overflow-x-clip pt-16">
         {/* ─── 1. 히어로 ─────────────────────────────────────── */}
         <Section className="pt-14 pb-10 text-center sm:pt-24 sm:pb-14">
-          <Image
-            src="/icon.png"
-            alt="Ruc Server"
-            width={128}
-            height={128}
-            priority
-            className="mx-auto mb-7 h-24 w-24 drop-shadow-[0_0_40px_rgba(147,233,62,0.35)] sm:h-32 sm:w-32"
-          />
-          <p className="eyebrow mb-4">{c.hero.eyebrow}</p>
-          <h1 className="headline text-3xl leading-tight sm:text-6xl">
-            {c.hero.title[0]}
-            <br />
-            <span className="accent">{c.hero.title[1]}</span>
-          </h1>
-          <p className="mx-auto mt-6 max-w-md text-[13px] leading-relaxed text-white/75 sm:text-sm">{c.hero.sub}</p>
+          <ParallaxHero
+            icon={
+              <Image
+                src="/icon.png"
+                alt="Ruc Server"
+                width={128}
+                height={128}
+                priority
+                className="mx-auto mb-7 h-24 w-24 drop-shadow-[0_0_40px_rgba(147,233,62,0.35)] sm:h-32 sm:w-32"
+              />
+            }
+          >
+            <p className="eyebrow mb-4">{c.hero.eyebrow}</p>
+            <h1 className="headline text-3xl leading-tight sm:text-6xl">
+              <RevealText text={c.hero.title[0]} />
+              <br />
+              <RevealText text={c.hero.title[1]} delay={0.25} className="accent" />
+            </h1>
+            <p className="mx-auto mt-6 max-w-md text-[13px] leading-relaxed text-white/75 sm:text-sm">{c.hero.sub}</p>
+          </ParallaxHero>
 
           <button
             onClick={copyAddress}
@@ -92,29 +101,34 @@ export default function Landing({ lang }: { lang: Lang }) {
         <Section className="py-14 sm:py-20">
           <p className="eyebrow mb-3 text-center">{c.highlights.eyebrow}</p>
           <h2 className="headline mb-10 text-center text-2xl sm:text-3xl">{c.highlights.heading}</h2>
+          <StickyScenes
+            items={c.highlights.items}
+            fallback={
           <ul className="grid gap-4 sm:grid-cols-3">
-            {c.highlights.items.map((h) => (
-              <li key={h.title} className="glass rounded-2xl p-6 text-center">
-                <span
-                  aria-hidden="true"
-                  className="headline mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-ruc-400/40 bg-ruc-400/10 text-xl text-ruc-400"
-                >
-                  {h.glyph}
-                </span>
-                <h3 className="headline text-base">{h.title}</h3>
-                <p className="mt-2 text-[12px] leading-relaxed text-white/70">{h.desc}</p>
-              </li>
-            ))}
-          </ul>
+                {c.highlights.items.map((h) => (
+                  <li key={h.title} className="glass rounded-2xl p-6 text-center">
+                    <span
+                      aria-hidden="true"
+                      className="headline mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg border border-ruc-400/40 bg-ruc-400/10 text-xl text-ruc-400"
+                    >
+                      {h.glyph}
+                    </span>
+                    <h3 className="headline text-base">{h.title}</h3>
+                    <p className="mt-2 text-[12px] leading-relaxed text-white/70">{h.desc}</p>
+                  </li>
+                ))}
+              </ul>
+            }
+          />
         </Section>
 
         {/* ─── 3. 서버 ───────────────────────────────────────── */}
         <Section className="py-14 sm:py-20">
           <p className="eyebrow mb-3 text-center">{c.modes.eyebrow}</p>
           <h2 className="headline mb-10 text-center text-2xl sm:text-3xl">{c.modes.heading}</h2>
-          <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            {c.modes.items.map((m) => (
-              <li key={m.key} className={`glass rounded-2xl p-5 ${m.paused ? "opacity-60" : ""}`}>
+          <ul className="grid grid-cols-2 gap-3 [perspective:1000px] lg:grid-cols-4">
+            {c.modes.items.map((m, i) => (
+              <TiltCard key={m.key} index={i} muted={m.paused} className="glass rounded-2xl p-5">
                 <div className="mb-2 flex items-center justify-between gap-2">
                   <h3 className="headline text-lg">{m.name}</h3>
                   <span
@@ -127,18 +141,18 @@ export default function Landing({ lang }: { lang: Lang }) {
                 </div>
                 <p className="text-[10px] tracking-[0.2em] text-ruc-400/80">{m.tag}</p>
                 <p className="mt-2 text-[12px] leading-relaxed text-white/75">{m.hook}</p>
-              </li>
+              </TiltCard>
             ))}
           </ul>
         </Section>
 
         {/* ─── 4. 마지막 CTA ─────────────────────────────────── */}
         <Section className="py-16 text-center sm:py-24">
-          <div className="glass-strong rounded-3xl px-6 py-12 sm:px-12 sm:py-16">
+          <ZoomIn className="glass-strong rounded-3xl px-6 py-12 sm:px-12 sm:py-16">
             <h2 className="headline text-2xl sm:text-4xl">{c.finalCta.heading}</h2>
             <p className="mx-auto mt-4 mb-8 max-w-md text-[13px] leading-relaxed text-white/70">{c.finalCta.lead}</p>
             {ctas}
-          </div>
+          </ZoomIn>
         </Section>
       </main>
 

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import CopyButton from "@/components/CopyButton";
-import { sectionText, type RulesData } from "@/lib/rules";
+import { SITE_RULES, sectionText, type Rule, type RuleSection, type RulesData } from "@/lib/rules";
 
 /** "4~6단계" → 4. 숫자가 없으면(— · 자동) null */
 function severity(sanction: string): number | null {
@@ -47,13 +47,21 @@ export function TextActions({ text, filename, label }: { text: string; filename:
 export default function Rules({ data }: { data: RulesData }) {
   const ids = data.sections.map((s) => s.id);
   const [active, setActive] = useState(ids[0]);
+  const [q, setQ] = useState("");
   const tabRefs = useRef<(HTMLButtonElement | null)[]>([]);
 
-  // #discord 처럼 주소로 바로 탭을 열 수 있게 합니다 (디스코드 공지에 링크 걸기).
+  // #discord 는 그 탭을, #rule-0.5 는 그 조항이 있는 탭을 열고 조항으로 내려갑니다 (디스코드 공지에 링크 걸기).
   useEffect(() => {
     const fromHash = () => {
-      const h = window.location.hash.slice(1);
-      if (ids.includes(h)) setActive(h);
+      const h = decodeURIComponent(window.location.hash.slice(1));
+      if (ids.includes(h)) return setActive(h);
+      const no = h.startsWith("rule-") ? h.slice(5) : null;
+      const owner = no && data.sections.find((s) => s.groups.some((g) => g.rules.some((r) => r.no === no)));
+      if (!owner) return;
+      setQ("");
+      setActive(owner.id);
+      // 탭이 바뀐 뒤에야 조항이 화면에 생깁니다.
+      requestAnimationFrame(() => document.getElementById(h)?.scrollIntoView({ block: "center" }));
     };
     fromHash();
     window.addEventListener("hashchange", fromHash);
@@ -62,6 +70,7 @@ export default function Rules({ data }: { data: RulesData }) {
   }, []);
 
   const select = (id: string, focus = false) => {
+    setQ("");
     setActive(id);
     history.replaceState(null, "", `#${id}`);
     if (focus) tabRefs.current[ids.indexOf(id)]?.focus();
@@ -83,8 +92,31 @@ export default function Rules({ data }: { data: RulesData }) {
 
   const section = data.sections.find((s) => s.id === active) ?? data.sections[0];
 
+  // 검색 중에는 탭과 상관없이 모든 분류에서 찾습니다 — 어느 탭에 있는지 몰라도 되게.
+  const terms = q.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  const matches = (r: Rule) => terms.every((t) => `${r.no} ${r.text} ${r.sanction}`.toLowerCase().includes(t));
+  const shown: RuleSection[] = terms.length
+    ? data.sections
+        .map((s) => ({ ...s, groups: s.groups.map((g) => ({ ...g, rules: g.rules.filter(matches) })).filter((g) => g.rules.length) }))
+        .filter((s) => s.groups.length)
+    : [section];
+  const hits = shown.reduce((n, s) => n + s.groups.reduce((m, g) => m + g.rules.length, 0), 0);
+
   return (
     <div>
+      <label htmlFor="rule-filter" className="sr-only">
+        규칙 검색
+      </label>
+      <input
+        id="rule-filter"
+        type="search"
+        value={q}
+        onChange={(e) => setQ(e.target.value)}
+        onKeyDown={(e) => e.key === "Escape" && setQ("")}
+        placeholder="조항 검색 — 예: 부계정 · 매크로 · 8단계"
+        autoComplete="off"
+        className="search-input mb-3 h-10 w-full rounded-xl px-4 text-[13px] text-white placeholder:text-white/50"
+      />
       <div
         role="tablist"
         aria-label="규칙 분류"
@@ -125,30 +157,46 @@ export default function Rules({ data }: { data: RulesData }) {
         tabIndex={0}
         className="mt-6"
       >
-        <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <p className="text-[12px] leading-relaxed text-white/70">{section.intro}</p>
-          <TextActions
-            text={sectionText(data, section)}
-            filename={`ruc-rules-${section.id}.txt`}
-            label={section.label}
-          />
-        </div>
+        {terms.length === 0 ? (
+          <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+            <p className="text-[12px] leading-relaxed text-white/70">{section.intro}</p>
+            <TextActions
+              text={sectionText(data, section)}
+              filename={`ruc-rules-${section.id}.txt`}
+              label={section.label}
+            />
+          </div>
+        ) : (
+          <p role="status" className="mb-6 text-[12px] text-white/70">
+            {hits > 0 ? `모든 분류에서 ${hits}개 조항을 찾았습니다.` : `“${q}” 에 맞는 조항이 없습니다.`}
+          </p>
+        )}
 
         <div className="space-y-6">
-          {section.groups.map((g) => (
+          {shown.flatMap((s) => s.groups.map((g) => ({ s, g }))).map(({ s, g }) => (
             <section key={g.no} aria-labelledby={`g-${g.no}`} className="glass rounded-2xl p-5 sm:p-7">
               <h2 id={`g-${g.no}`} className="headline flex items-baseline gap-3 text-base sm:text-lg">
                 <span className="text-ruc-400">{g.no}.</span>
                 {g.title}
+                {terms.length > 0 && <span className="text-[11px] font-normal text-white/55">{s.label}</span>}
               </h2>
               <ol className="mt-4 divide-y divide-white/8">
                 {g.rules.map((r) => (
                   <li
                     key={r.no}
                     id={`rule-${r.no}`}
-                    className="flex flex-col gap-2 py-3.5 sm:flex-row sm:items-start sm:gap-4"
+                    className="flex scroll-mt-40 flex-col gap-2 py-3.5 target:rounded-lg target:bg-ruc-400/10 sm:flex-row sm:items-start sm:gap-4"
                   >
-                    <span className="w-10 shrink-0 text-[11px] text-ruc-300">{r.no}</span>
+                    {/* 번호를 누르면 이 조항으로 바로 오는 링크를 복사합니다 (#rule-0.5). */}
+                    <CopyButton
+                      value={`${SITE_RULES}#rule-${r.no}`}
+                      label={`${r.no} 조항 링크 복사`}
+                      toastText={`${r.no} 조항 링크를 복사했습니다`}
+                      className="group/no flex w-12 shrink-0 items-center gap-1 self-start text-left text-[11px] text-ruc-300 hover:text-ruc-200"
+                    >
+                      {r.no}
+                      <span aria-hidden="true" className="text-white/0 transition-colors group-hover/no:text-white/50 group-focus-visible/no:text-white/50">#</span>
+                    </CopyButton>
                     <p className="flex-1 text-[12.5px] leading-relaxed text-white/90">{r.text}</p>
                     <span
                       className={`self-start whitespace-nowrap rounded-full border px-2.5 py-1 text-[10px] ${badgeClass(

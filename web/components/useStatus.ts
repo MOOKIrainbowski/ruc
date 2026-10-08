@@ -7,6 +7,8 @@ import type { StatusPayload } from "@/lib/servers";
 export function useStatus(intervalMs = 45_000) {
   const [data, setData] = useState<StatusPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  /** 마지막으로 요청을 마친 시각 — 다음 갱신 카운트다운용 */
+  const [loadedAt, setLoadedAt] = useState(0);
 
   const load = useCallback(async () => {
     try {
@@ -17,6 +19,7 @@ export function useStatus(intervalMs = 45_000) {
       // 조회 실패 시 직전 값을 유지합니다. 화면이 갑자기 비는 것보다 낫습니다.
     } finally {
       setLoading(false);
+      setLoadedAt(Date.now());
     }
   }, []);
 
@@ -32,5 +35,5 @@ export function useStatus(intervalMs = 45_000) {
     };
   }, [load, intervalMs]);
 
-  return { data, loading, reload: load };
+  return { data, loading, reload: load, loadedAt, intervalMs };
 }

@@ -1,0 +1,10 @@
+{
+  "description": "Enhances website design with intuitive navigation and rich 3D animations to deliver engaging, user-friendly experiences that captivate visitors.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
