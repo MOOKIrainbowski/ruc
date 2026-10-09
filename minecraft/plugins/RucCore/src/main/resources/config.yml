@@ -526,8 +526,8 @@ guide:
 # 가격 · 지급 내용은 여기 없습니다. web/content/products.json 한 곳에 있고
 # 봇이 주문을 만들 때 넘깁니다 (표가 두 곳에 있으면 한쪽만 고쳐집니다).
 payment:
-  # 게임 안 /충전 이 안내하는 디스코드 초대 링크
-  discord-invite: "https://discord.gg/K3Z5CDn3GK"
+  # 게임 안 /충전 · 디스코드 인증 안내가 쓰는 디스코드 초대 링크
+  discord-invite: "https://discord.gg/pfbUzsGm5e"
   # 입금자명 = 접두 + 숫자 4자리 (예: R4821)
   code-prefix: "R"
   # 이 기간 안에 쓴 코드는 다시 쓰지 않습니다. 만료 뒤에 늦게 들어온 입금이

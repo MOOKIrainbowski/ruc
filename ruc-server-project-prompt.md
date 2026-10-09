@@ -129,7 +129,7 @@ Roles marked `#` below are **unconfirmed/optional** — add them later only if t
 
 ## 4. Discord Server
 
-- Invite link: https://discord.gg/sTVAJ38ea
+- Invite link: https://discord.gg/pfbUzsGm5e
 - Staff roles: same as §3.2 above (shared role concept across platforms).
 
 ### 4.1 Bots

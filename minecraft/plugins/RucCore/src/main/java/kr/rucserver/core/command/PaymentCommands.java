@@ -91,7 +91,7 @@ public class PaymentCommands implements CommandExecutor {
 
     private boolean onCharge(CommandSender sender, Command command, String label, String[] args) {
         String lang = sender instanceof Player p ? plugin.getPlayerData().languageOf(p) : "ko";
-        String invite = plugin.getConfig().getString("payment.discord-invite", "https://discord.gg/K3Z5CDn3GK");
+        String invite = plugin.getConfig().getString("payment.discord-invite", "https://discord.gg/pfbUzsGm5e");
 
         sender.sendMessage(messages.prefixed(lang, "payment.redirect"));
         sender.sendMessage(Component.text("  ▶ ", NamedTextColor.GRAY)

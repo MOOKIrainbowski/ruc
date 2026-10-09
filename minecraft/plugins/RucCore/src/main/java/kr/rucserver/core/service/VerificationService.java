@@ -159,7 +159,7 @@ public class VerificationService {
     /** 코드를 타이틀·채팅·보스바로 보여줍니다. */
     private void showCode(Player player, String code, int expireSeconds) {
         String lang = plugin.getPlayerData().languageOf(player);
-        String invite = "discord.gg/sTVAJ38ea";
+        String invite = plugin.getConfig().getString("payment.discord-invite", "https://discord.gg/pfbUzsGm5e").replaceFirst("^https://", "");
         int minutes = Math.max(1, expireSeconds / 60);
 
         player.showTitle(Title.title(
