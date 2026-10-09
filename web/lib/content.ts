@@ -3,7 +3,7 @@
 
 export type Lang = "ko" | "en";
 
-export const DISCORD_INVITE = "https://discord.gg/K3Z5CDn3GK";
+export const DISCORD_INVITE = "https://discord.gg/pfbUzsGm5e";
 
 /** 서버 접속 주소. Phase 2에서 실제 주소로 교체. */
 export const MC_ADDRESS = process.env.NEXT_PUBLIC_MC_ADDRESS ?? "play.rucserver.kr";
