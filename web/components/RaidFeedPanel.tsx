@@ -77,6 +77,7 @@ export default function RaidFeedPanel() {
             <p className="text-[11px] text-white/60">현상금 풀</p>
             <p className="headline mt-1 text-2xl text-amber-200">{feed.bounty.pool.toLocaleString("ko-KR")} Gold</p>
             <p className="mt-1 text-[11px] text-white/70">지금 수배자 {feed.bounty.wanted}명 · 처치하면 풀의 10% (최소 2,000)</p>
+            <Link href="/chronicle" className="link mt-3 inline-block text-[11px]">러크 연대기 →</Link>
           </>
         ) : (
           <p className="text-[12px] leading-relaxed text-white/70">

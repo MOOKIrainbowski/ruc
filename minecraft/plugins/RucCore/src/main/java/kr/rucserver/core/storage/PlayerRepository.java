@@ -112,6 +112,19 @@ public class PlayerRepository {
         }
     }
 
+    /** 이 레벨 이상인 다른 플레이어 수 — 연대기 "서버 N번째" 에 씁니다. */
+    public int countAtLeastLevel(int level, UUID except) throws SQLException {
+        try (Connection conn = database.getConnection();
+             PreparedStatement ps = conn.prepareStatement(
+                     "SELECT COUNT(*) FROM ruc_player WHERE level >= ? AND uuid <> ?")) {
+            ps.setInt(1, level);
+            ps.setString(2, except.toString());
+            try (ResultSet rs = ps.executeQuery()) {
+                return rs.next() ? rs.getInt(1) : 0;
+            }
+        }
+    }
+
     public record DiscordReputation(String discordId, int reputation, String name) { }
 
     public void save(RucPlayer p) throws SQLException {

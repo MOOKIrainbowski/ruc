@@ -14,6 +14,7 @@ const PAGES: SearchEntry[] = [
   { href: "/wiki", title: "러크 위키", category: "페이지", description: "접속 방법, 이용 가이드, 고유 기능, MOOKI 봇 명령어, FAQ.", text: "" },
   { href: "/charge", title: "충전 · 결제 안내", category: "페이지", description: "후원 상품과 가격, 토스 계좌 입금 방법.", text: "후원 결제 계좌 입금" },
   { href: "/status", title: "서버 상태", category: "페이지", description: "서버가 켜져 있는지, 지금 몇 명이 접속해 있는지.", text: "온라인 접속자 핑" },
+  { href: "/chronicle", title: "러크 연대기", category: "페이지", description: "드래곤 알 · 큰 현상금 · 길드 창설 · 레벨 이정표 — 서버의 역사.", text: "역사 기록 알 현상금 길드" },
   { href: "/landing", title: "러크 서버 소개", category: "페이지", description: "홈 · 약탈 · 국가전 · 평화. 네 개의 서버, 하나의 경제.", text: "" },
 ];
 

@@ -110,3 +110,24 @@ B 와 같은 "웹으로 데이터 보내는 길" 을 씁니다. B 를 하면 반
 3. **광장 기념비** — **홈** 서버 `plugins/RucCore/config.yml` 에 `egg-reign.monument.enabled: true` 와 world · x · y · z
 4. 시즌이 끝나면 통치 1위에게 `/titlegrant <닉> egg_king staff`, 다음 시즌은 `egg-reign.season` 을 바꿈 (약탈 · 홈 둘 다)
 5. 게임 안 확인 (위 표) — 숫자(현상금 10% · 최소 2,000 · 수수료 · 추천 점수)는 전부 config 에서 조정
+
+## E. 러크 연대기 (2026-10-09)
+
+**구현 · 4개 서버 jar 배포 (옛 jar `*.bak-20261009-3`).** 웹 `/chronicle` (상태 페이지 현상금 칸 · 검색에서 연결).
+
+| 사건 | 어디 | 조건 |
+|---|---|---|
+| 🥚 알 주인 교체 | RucRaid `DragonEggService.reignTick` | 다른 사람이 차지할 때 |
+| 🎯 큰 현상금 처치 | RucRaid `BountyService.onDeath` | 받은 현상금 ≥ `bounty.chronicle-min` (10,000) |
+| 🏰 길드 창설 | RucCore `GuildService.create` | 항상 |
+| ⭐ 레벨 이정표 | RucCore `XpService` (award · catchUp) | `chronicle.level-milestones` (50 · 100) 을 처음 넘을 때, "서버 N번째" |
+
+- **피드 채널 하나로 합침 (2026-10-09, 소유자 결정).** 약탈 서버의 상태(`RUCFEED <json>`)는 새로 올리지 않고 메시지 하나를 고쳐 씁니다
+  (ID 는 `plugins/RucCore/feed-message-id.txt`, 지워지면 새로 올림). 연대기는 같은 채널에 한 줄씩 쌓입니다.
+- 웹은 피드 채널에서 **웹훅이 쓴 메시지만** 최근 500건까지 읽고(1분 캐시), `RUCFEED` 줄은 상태 칸, 나머지는 `/chronicle`.
+- 스태프 지급(`/levelup` · 레벨 설정)은 시험용이라 남기지 않습니다.
+
+### 소유자가 할 일
+
+없음 — 피드 웹훅을 4개 서버 `relay.feed-webhook-url` 에 모두 넣어 둠 (Claude, 2026-10-09). Vercel 은 기존 `FEED_CHANNEL_ID` 그대로.
+피드 채널에 상태 메시지가 여러 개 남아 있으면(합치기 전 것) 지워도 됩니다.

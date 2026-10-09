@@ -113,3 +113,4 @@ bounty:
   min-level: 10        # 받는 사람 최소 레벨 (갓 만든 계정 차단)
   immunity-hours: 24   # 처치당한 수배자 면제 시간
   reveal-minutes: 2    # 수배자 위치 대략 공지 간격
+  chronicle-min: 10000         # 이 이상 받은 처치만 러크 연대기에 남김

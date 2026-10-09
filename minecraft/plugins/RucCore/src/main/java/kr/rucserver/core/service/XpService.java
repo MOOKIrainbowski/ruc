@@ -3,8 +3,14 @@ package kr.rucserver.core.service;
 import kr.rucserver.core.RucCore;
 import kr.rucserver.core.model.RucPlayer;
 import net.kyori.adventure.text.Component;
+import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
+
+import java.sql.SQLException;
+import java.util.List;
+import java.util.UUID;
+import java.util.logging.Level;
 
 /**
  * 자체 경험치 시스템 (§3.4).
@@ -87,6 +93,30 @@ public class XpService {
                 player.sendMessage(messages.prefixed(lang, "xp.max-level"));
             }
             plugin.getPlayerData().saveAsync(data);
+            chronicleLevels(player, oldLevel, data.getLevel());
+        }
+    }
+
+    /**
+     * 러크 연대기 — 이정표 레벨({@code chronicle.level-milestones}, 기본 50 · 100)을 넘으면 "서버 N번째" 와 함께 남깁니다.
+     * 스태프 지급(grant · setLevel)은 시험용이라 남기지 않습니다.
+     */
+    private void chronicleLevels(Player player, int from, int to) {
+        var config = plugin.getConfig();
+        List<Integer> marks = config.isList("chronicle.level-milestones")
+                ? config.getIntegerList("chronicle.level-milestones") : List.of(50, 100);
+        UUID uuid = player.getUniqueId();
+        String name = player.getName();
+        for (int m : marks) {
+            if (from >= m || to < m) continue;
+            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+                try {
+                    int rank = plugin.getPlayerData().getRepository().countAtLeastLevel(m, uuid) + 1;
+                    plugin.getRelay().relayChronicle("⭐ **" + name + "** 이(가) Lv." + m + " 달성 — 서버 " + rank + "번째");
+                } catch (SQLException e) {
+                    plugin.getLogger().log(Level.WARNING, "[연대기] 레벨 순위 조회 실패", e);
+                }
+            });
         }
     }
 
@@ -137,6 +167,7 @@ public class XpService {
                 "new", String.valueOf(data.getLevel())));
         player.playSound(player.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 1.0f, 1.2f);
         plugin.getPlayerData().saveAsync(data);
+        chronicleLevels(player, oldLevel, data.getLevel());
 
         plugin.getLogger().info("밀린 레벨업 처리: " + player.getName()
                 + " Lv." + oldLevel + " → Lv." + data.getLevel());

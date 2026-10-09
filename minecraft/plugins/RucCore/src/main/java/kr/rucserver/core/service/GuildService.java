@@ -235,6 +235,7 @@ public class GuildService {
                         System.currentTimeMillis());
                 // 창설자 한 명으로 국가가 되는 설정(임계치 1)도 반영되도록 여기서 판정합니다.
                 applyNationFlag(id, 1);
+                plugin.getRelay().relayChronicle("🏰 길드 **[" + tag + "] " + name + "** 창설 — 길드장 **" + playerName + "**");
                 refreshAsync(() -> callback.accept(Result.OK));
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.WARNING, "길드 창설 실패: " + name, e);

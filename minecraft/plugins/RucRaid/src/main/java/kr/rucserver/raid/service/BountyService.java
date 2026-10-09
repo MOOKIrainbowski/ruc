@@ -195,6 +195,11 @@ public class BountyService implements Listener {
                         "🎯 **" + killerName + "** 이(가) 수배자 **" + victimName + "** 을(를) 처치"
                                 + (amount > 0 ? " — 현상금 " + EconomyService.format(amount) + " " + symbol : ""),
                         0xE5484D);
+                // 연대기에는 큰 현상금만 (bounty.chronicle-min)
+                if (amount >= plugin.getConfig().getLong("bounty.chronicle-min", 10000)) {
+                    plugin.core().getRelay().relayChronicle("🎯 **" + killerName + "** 이(가) 수배자 **" + victimName
+                            + "** 을(를) 처치 — 현상금 " + EconomyService.format(amount) + " " + symbol);
+                }
                 plugin.getLogger().info("[현상금] " + killerName + " → " + victimName + " " + amount);
             });
         });

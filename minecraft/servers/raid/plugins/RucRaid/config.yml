@@ -114,3 +114,4 @@ bounty:
   min-level: 10
   immunity-hours: 24
   reveal-minutes: 2
+  chronicle-min: 10000         # 이 이상 받은 처치만 러크 연대기에 남김

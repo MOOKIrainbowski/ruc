@@ -76,6 +76,12 @@ public class DiscordRelayService {
     /** 429 를 받았을 때 이 시각까지 쉬었다 보냅니다. */
     private volatile long pausedUntil;
 
+    /**
+     * 피드 채널의 상태 메시지 ID. 상태는 새로 올리지 않고 이 메시지 하나를 고쳐 씁니다 —
+     * 같은 채널에 쌓이는 연대기가 묻히지 않게 (2026-10-09). 재시작해도 같은 메시지를 쓰도록 파일에 둡니다.
+     */
+    private volatile String feedMessageId;
+
     public DiscordRelayService(RucCore plugin) {
         this.plugin = plugin;
         this.queue = new ArrayBlockingQueue<>(
@@ -84,6 +90,23 @@ public class DiscordRelayService {
                 .connectTimeout(Duration.ofSeconds(5))
                 .followRedirects(HttpClient.Redirect.NORMAL)
                 .build();
+        try {
+            if (feedIdFile().exists()) feedMessageId = java.nio.file.Files.readString(feedIdFile().toPath()).trim();
+        } catch (java.io.IOException ignored) { }
+    }
+
+    private java.io.File feedIdFile() {
+        return new java.io.File(plugin.getDataFolder(), "feed-message-id.txt");
+    }
+
+    private void saveFeedMessageId(String id) {
+        feedMessageId = id;
+        try {
+            if (id == null) java.nio.file.Files.deleteIfExists(feedIdFile().toPath());
+            else java.nio.file.Files.writeString(feedIdFile().toPath(), id);
+        } catch (java.io.IOException e) {
+            plugin.getLogger().log(Level.WARNING, "피드 메시지 ID 저장 실패", e);
+        }
     }
 
     // ── 수명 ───────────────────────────────────────────────────────────
@@ -143,10 +166,19 @@ public class DiscordRelayService {
         return plugin.getConfig().getString("relay.feed-webhook-url", "").trim();
     }
 
-    /** {@code RUCFEED <json>} 한 줄을 피드 채널에 올립니다. json 은 호출부가 만듭니다. */
+    /** 피드 채널의 상태 메시지({@code RUCFEED <json>})를 고쳐 씁니다. 처음이거나 지워졌으면 새로 올립니다. json 은 호출부가 만듭니다. */
     public void relayFeed(String json) {
         if (feedWebhook().isEmpty()) return;
-        enqueue(new Payload(feedWebhook(), body("Ruc Feed", null, trim("RUCFEED " + json, CONTENT_LIMIT), null)));
+        enqueue(new Payload(feedWebhook(), body("Ruc Feed", null, trim("RUCFEED " + json, CONTENT_LIMIT), null), true));
+    }
+
+    /**
+     * 러크 연대기 (docs/08 E) — 서버 역사에 남길 사건 한 줄을 피드 채널에 새 메시지로 올립니다.
+     * 웹 /chronicle 이 봇 토큰으로 그 채널을 읽어 시간순으로 보여 줍니다. 4개 서버 모두 피드 웹훅이 있어야 합니다.
+     */
+    public void relayChronicle(String text) {
+        if (feedWebhook().isEmpty()) return;
+        enqueue(new Payload(feedWebhook(), body("러크 연대기", null, trim(text, CONTENT_LIMIT), null)));
     }
 
     private String systemWebhook() {
@@ -396,12 +428,18 @@ public class DiscordRelayService {
         Payload payload = queue.poll();
         if (payload == null) return;
 
+        // 피드 상태: ID 를 알면 그 메시지를 고치고(PATCH), 모르면 새로 올려 ID 를 받습니다(?wait=true).
+        String id = payload.feed() ? feedMessageId : null;
+        String method = id != null ? "PATCH" : "POST";
+        String url = id != null ? payload.url() + "/messages/" + id
+                : payload.feed() ? payload.url() + "?wait=true" : payload.url();
+
         try {
-            HttpRequest request = HttpRequest.newBuilder(URI.create(payload.url()))
+            HttpRequest request = HttpRequest.newBuilder(URI.create(url))
                     .timeout(Duration.ofSeconds(8))
                     .header("Content-Type", "application/json")
                     .header("User-Agent", "RucCore/1.0 (+https://rucserver.kr)")
-                    .POST(HttpRequest.BodyPublishers.ofString(payload.body(),
+                    .method(method, HttpRequest.BodyPublishers.ofString(payload.body(),
                             java.nio.charset.StandardCharsets.UTF_8))
                     .build();
 
@@ -416,6 +454,16 @@ public class DiscordRelayService {
                 queue.offer(payload);          // 버리지 않고 다시 시도합니다
                 plugin.getLogger().warning("디스코드 중계 속도 제한 — " + waitMs + "ms 대기");
                 return;
+            }
+
+            if (payload.feed() && id != null && response.statusCode() == 404) {
+                saveFeedMessageId(null);       // 누가 지웠습니다 — 다음 차례에 새로 올립니다
+                queue.offer(payload);
+                return;
+            }
+            if (payload.feed() && id == null && response.statusCode() < 300) {
+                saveFeedMessageId(com.google.gson.JsonParser.parseString(response.body())
+                        .getAsJsonObject().get("id").getAsString());
             }
 
             if (response.statusCode() >= 400) {
@@ -512,5 +560,7 @@ public class DiscordRelayService {
     }
 
     /** 보낼 것 하나. url 이 곧 채널입니다. */
-    private record Payload(String url, String body) { }
+    private record Payload(String url, String body, boolean feed) {
+        Payload(String url, String body) { this(url, body, false); }
+    }
 }

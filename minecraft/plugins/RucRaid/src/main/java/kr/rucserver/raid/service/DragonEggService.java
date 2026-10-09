@@ -396,6 +396,7 @@ public class DragonEggService {
                 String name = p == null ? "?" : p.getName();
                 Bukkit.broadcast(plugin.msg().broadcast("egg.new-holder", "player", name));
                 plugin.core().getRelay().relaySystem("egg", "🥚 **" + name + "** 이(가) 드래곤 알을 차지했습니다.", 0x9B5DE5);
+                plugin.core().getRelay().relayChronicle("🥚 **" + name + "** 이(가) 드래곤 알을 차지했습니다.");
                 if (System.currentTimeMillis() - lastFeedAt > 30_000) postFeed();
             }
         }
