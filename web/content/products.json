@@ -3,7 +3,8 @@
     "상품표는 이 파일 한 곳에만 있습니다. 웹(/charge)과 디스코드 봇(/충전)이 같이 읽습니다.",
     "",
     "price:     현금 가격(원). 있으면 디스코드 /충전 에서 현금 또는 RUC 로 살 수 있습니다.",
-    "           RUC 가격 = price × (100 − rucDiscountPercent) / 100 (1 RUC = 1원 기준). ruc: 지급 상품은 현금만.",
+    "           RUC 가격 = price ÷ wonPerRuc (올림). ruc: 지급 상품은 현금만.",
+    "           현금으로 사면 RUC 가격의 cashbackPercent% 를 RUC 로 적립합니다 (ruc: 지급 상품 제외, 봇이 grants 에 붙임).",
     "gold:      Gold 가격. 게임 안 /등급 구매 로만 삽니다 — 실제 가격 · 지급은 RucCore config.yml 의 rank-shop 이",
     "           정하고, 여기 값은 웹 표시용입니다. 두 곳을 같이 고치세요.",
     "available: false 면 웹에는 '준비 중' 으로 보이고 봇은 주문을 받지 않습니다.",
@@ -20,16 +21,59 @@
   "reviewNote": "TODO: 운영진 검토 — 상품 구성과 가격은 초안입니다 (D7 후원 등급 기준).",
   "orderCodePrefix": "R",
   "orderTtlMinutes": 60,
-  "rucDiscountPercent": 10,
+  "wonPerRuc": 10,
+  "cashbackPercent": 5,
   "products": [
     {
-      "id": "ruc-5000",
-      "name": "RUC 5,000",
+      "id": "ruc-500",
+      "name": "RUC 500",
       "price": 5000,
       "period": "충전",
       "deliver": [
+        "RUC 500",
+        "10원 = 1 RUC"
+      ],
+      "category": "ruc",
+      "available": true,
+      "grants": "ruc:500",
+      "discordRoles": []
+    },
+    {
+      "id": "ruc-1000",
+      "name": "RUC 1,000",
+      "price": 10000,
+      "period": "충전",
+      "deliver": [
+        "RUC 1,000",
+        "10원 = 1 RUC"
+      ],
+      "category": "ruc",
+      "available": true,
+      "grants": "ruc:1000",
+      "discordRoles": []
+    },
+    {
+      "id": "ruc-3000",
+      "name": "RUC 3,000",
+      "price": 30000,
+      "period": "충전",
+      "deliver": [
+        "RUC 3,000",
+        "10원 = 1 RUC"
+      ],
+      "category": "ruc",
+      "available": true,
+      "grants": "ruc:3000",
+      "discordRoles": []
+    },
+    {
+      "id": "ruc-5000",
+      "name": "RUC 5,000",
+      "price": 50000,
+      "period": "충전",
+      "deliver": [
         "RUC 5,000",
-        "RUC 결제 시 10% 할인"
+        "10원 = 1 RUC"
       ],
       "category": "ruc",
       "available": true,
@@ -39,11 +83,11 @@
     {
       "id": "ruc-10000",
       "name": "RUC 10,000",
-      "price": 10000,
+      "price": 100000,
       "period": "충전",
       "deliver": [
         "RUC 10,000",
-        "RUC 결제 시 10% 할인"
+        "10원 = 1 RUC"
       ],
       "category": "ruc",
       "available": true,
@@ -51,17 +95,17 @@
       "discordRoles": []
     },
     {
-      "id": "ruc-30000",
-      "name": "RUC 30,000",
-      "price": 30000,
+      "id": "ruc-20000",
+      "name": "RUC 20,000",
+      "price": 200000,
       "period": "충전",
       "deliver": [
-        "RUC 30,000",
-        "RUC 결제 시 10% 할인"
+        "RUC 20,000",
+        "10원 = 1 RUC"
       ],
       "category": "ruc",
       "available": true,
-      "grants": "ruc:30000",
+      "grants": "ruc:20000",
       "discordRoles": []
     },
     {

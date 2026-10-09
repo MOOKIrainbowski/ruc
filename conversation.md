@@ -2000,3 +2000,11 @@ MOOKI 는 재시작해야 `/충전` 의 결제 수단 옵션 · 새 상품이 �
 - **남은 것 (소유자)**: 피드 채널 · 웹훅 → 약탈 `relay.feed-webhook-url` · Vercel `DISCORD_BOT_TOKEN` · `FEED_CHANNEL_ID` · 게임 안 확인
 - **함정**: `getConfig().getInt(path, 대체값)` 은 jar config 를 안 봅니다 — 새 코드의 대체값이 곧 기본값 (§16 함정과 같음).
   `rcon.js` 는 운영 포트 4개만 받습니다 (일부러) — 시험 서버는 스크래치패드 사본으로
+
+## 21. 2026-10-09 밤 — RUC 10원 = 1 RUC · 현금 구매 적립 · 충전 단위 추가
+
+- **환율**: 10원 = 1 RUC (`products.json` 의 `wonPerRuc`). RUC 가격 = 현금 ÷ 10 (올림). 바꿀 때 DB 의 RUC 원장은 0건이라 옮길 것 없었음
+- **RUC 결제 10% 할인 삭제** → **현금 구매 적립** `cashbackPercent` 5% (RUC 가격 기준, 내림). 봇이 현금 주문 grants 에 `ruc:N` 을 붙임
+  (`payment.js` 의 `cashGrants`) — 주문 줄이라 환불하면 같이 회수. RUC 충전 상품 · RUC 결제 · Gold 상품은 적립 없음
+- **충전 단위**: 500 · 1,000 · 3,000 · 5,000 · 10,000 · 20,000 RUC (5천 ~ 20만 원). 상품 id 는 `ruc-<RUC양>`
+- RucCore jar (게임 안 `/등급` 안내 문구만 바뀜) 4개 서버 배포, 옛 jar `*.bak-20261009-5`. **MOOKI 재시작해야** `/충전` 선택지가 바뀝니다

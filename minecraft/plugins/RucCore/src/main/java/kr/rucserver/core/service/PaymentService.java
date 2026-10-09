@@ -228,7 +228,7 @@ public class PaymentService {
     public RucBuyResult buyWithRuc(String discordId, String productId, int price, String grants) {
         try {
             List<Grant> parsed = parseGrants(grants);
-            // RUC 로 RUC 를 사는 것은 막습니다 (할인만큼 RUC 가 불어납니다).
+            // RUC 로 RUC 를 사는 것은 막습니다 (RUC 가 RUC 를 낳는 길을 열지 않습니다).
             if (parsed == null || parsed.stream().anyMatch(g -> g.type().equals("ruc"))) {
                 return RucBuyResult.of(RucBuyKind.BAD_GRANTS);
             }

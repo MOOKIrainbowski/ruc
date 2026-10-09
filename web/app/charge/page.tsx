@@ -96,7 +96,7 @@ export default function Page() {
         </h2>
         <p className="mb-5 text-[12px] leading-relaxed text-white/80">
           <strong className="text-white">Gold</strong> = 게임 화폐 · <strong className="text-white">RUC</strong> = 충전
-          화폐 (RUC 결제 {products.rucDiscountPercent}% 할인) · 잔고 <code className="inline-code">/등급</code>
+          화폐 ({products.wonPerRuc}원 = 1 RUC · 현금 구매 시 {products.cashbackPercent}% RUC 적립) · 잔고 <code className="inline-code">/등급</code>
         </p>
         <ul className="grid gap-4 sm:grid-cols-3">
           {CATEGORIES.map((c) => {

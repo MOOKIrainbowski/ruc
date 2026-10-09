@@ -1,8 +1,9 @@
-import { num, priceText, products, rucPrice, type Product } from "@/lib/charge";
+import { cashback, num, priceText, rucPrice, type Product } from "@/lib/charge";
 
 /** 충전 상품 카드 한 장 — /charge/[category] 에서 씁니다. */
 export default function ProductCard({ p }: { p: Product }) {
   const ruc = rucPrice(p);
+  const back = cashback(p);
   return (
     <li className={`glass flex flex-col rounded-2xl p-5 sm:p-6 ${p.available ? "" : "opacity-75"}`}>
       <div className="flex items-baseline justify-between gap-3">
@@ -14,8 +15,12 @@ export default function ProductCard({ p }: { p: Product }) {
       <p className="headline mt-2 text-2xl text-ruc-400">{priceText(p)}</p>
       {ruc !== null && (
         <p className="mt-1 text-[11.5px] text-sky-200">
-          또는 <strong>{num(ruc)} RUC</strong>{" "}
-          <span className="text-white/60">({products.rucDiscountPercent}% 할인)</span>
+          또는 <strong>{num(ruc)} RUC</strong>
+        </p>
+      )}
+      {back > 0 && (
+        <p className="mt-1 text-[11.5px] text-emerald-200">
+          현금 구매 시 <strong>{num(back)} RUC</strong> 적립
         </p>
       )}
       {!p.price && (

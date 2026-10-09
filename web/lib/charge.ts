@@ -27,8 +27,10 @@ export type ProductsData = {
   orderCodePrefix: string;
   /** 주문 후 이 시간 안에 입금해야 합니다 */
   orderTtlMinutes: number;
-  /** RUC 로 사면 깎아 주는 비율 (%) */
-  rucDiscountPercent: number;
+  /** 1 RUC 가 몇 원인지 */
+  wonPerRuc: number;
+  /** 현금으로 사면 RUC 가격의 몇 % 를 RUC 로 적립하는지 */
+  cashbackPercent: number;
   products: Product[];
 };
 
@@ -57,10 +59,16 @@ export function won(n: number) {
   return `${n.toLocaleString("ko-KR")}원`;
 }
 
-/** RUC 결제 가격 (1 RUC = 1원). RUC 충전 상품 · 현금 가격 없는 상품은 null. 봇(payment.js)과 같은 계산. */
+/** RUC 결제 가격 (price ÷ wonPerRuc, 올림). RUC 충전 상품 · 현금 가격 없는 상품은 null. 봇(payment.js)과 같은 계산. */
 export function rucPrice(p: Product): number | null {
   if (!p.price || /(^|,)ruc:/.test(p.grants)) return null;
-  return Math.round((p.price * (100 - products.rucDiscountPercent)) / 100);
+  return Math.ceil(p.price / products.wonPerRuc);
+}
+
+/** 현금으로 샀을 때 적립되는 RUC. 적립 대상이 아니면 0. 봇(payment.js)과 같은 계산. */
+export function cashback(p: Product): number {
+  const ruc = rucPrice(p);
+  return ruc === null ? 0 : Math.floor((ruc * products.cashbackPercent) / 100);
 }
 
 export function num(n: number) {
@@ -74,13 +82,13 @@ export const CATEGORIES: Category[] = [
   {
     slug: "member",
     name: "멤버 등급",
-    summary: "VIP · SVIP = Gold · MVP 이상 = 현금 · RUC · 30일",
+    summary: "VIP · SVIP = Gold · MVP 이상 = 현금 · RUC · 현금 구매 시 RUC 적립 · 30일",
     glyph: "★",
   },
   {
     slug: "ruc",
     name: "RUC 충전",
-    summary: "1 RUC = 1원 · RUC 결제 시 10% 할인",
+    summary: "10원 = 1 RUC · 한 번에 최대 20,000 RUC",
     glyph: "◆",
   },
   {

@@ -228,7 +228,7 @@ rank:
   none: "Default"
   status: "&fRank &d%rank% &8· &fRUC &b%ruc% &8· &f%symbol% &e%gold%"
   offer: "&7- &f%name% &7(%period%) &e%cost% %symbol% &8— &f/rank buy %id%"
-  cash-hint: "&7MVP+ ranks and RUC top-ups: &f/충전 &7on Discord (cash, or RUC for 10% off)"
+  cash-hint: "&7MVP+ ranks and RUC top-ups: &f/충전 &7on Discord (cash or RUC · 10 KRW = 1 RUC · 5% back in RUC on cash buys)"
   bought: "&aYou now have %name%! &7(%period%)"
   unknown: "&cNo such rank product. &7See &f/rank&7."
   need-verify: "&cVerify your Discord account first. &f/verify"

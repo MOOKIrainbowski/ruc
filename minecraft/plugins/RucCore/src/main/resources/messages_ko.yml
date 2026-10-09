@@ -228,7 +228,7 @@ rank:
   none: "일반"
   status: "&f내 등급 &d%rank% &8· &fRUC &b%ruc% &8· &f%symbol% &e%gold%"
   offer: "&7- &f%name% &7(%period%) &e%cost% %symbol% &8— &f/등급 구매 %id%"
-  cash-hint: "&7MVP 이상 등급 · RUC 충전은 디스코드 &f/충전 &7(현금, 또는 RUC 로 10% 할인)"
+  cash-hint: "&7MVP 이상 등급 · RUC 충전은 디스코드 &f/충전 &7(현금 또는 RUC · 10원 = 1 RUC · 현금 구매 시 RUC 5% 적립)"
   bought: "&a%name% 등급을 받았습니다! &7(%period%)"
   unknown: "&c그런 등급 상품이 없습니다. &f/등급 &7으로 목록을 보세요."
   need-verify: "&c디스코드 인증을 마친 뒤에 살 수 있습니다. &f/인증"

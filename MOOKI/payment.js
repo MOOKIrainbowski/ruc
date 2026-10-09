@@ -83,10 +83,23 @@ function paidText(code, amount) {
     return code.startsWith('U') ? `${n} RUC` : code.startsWith('G') ? `${n} Gold` : won(amount);
 }
 
-/** RUC 결제 가격 (1 RUC = 1원, 할인 적용). RUC 충전 상품 · 현금 가격 없는 상품은 null. web/lib/charge.ts 와 같은 계산. */
+/** RUC 결제 가격 (price ÷ wonPerRuc, 올림). RUC 충전 상품 · 현금 가격 없는 상품은 null. web/lib/charge.ts 와 같은 계산. */
 function rucPrice(p) {
     if (!p.price || /(^|,)ruc:/.test(p.grants || '')) return null;
-    return Math.round(p.price * (100 - (catalog.rucDiscountPercent || 0)) / 100);
+    return Math.ceil(p.price / (catalog.wonPerRuc || 10));
+}
+
+/** 현금으로 샀을 때 적립되는 RUC. 적립 대상이 아니면 0. web/lib/charge.ts 와 같은 계산. */
+function cashback(p) {
+    const ruc = rucPrice(p);
+    return ruc === null ? 0 : Math.floor(ruc * (catalog.cashbackPercent || 0) / 100);
+}
+
+/** 현금 주문의 지급 명세 — 적립 RUC 를 붙입니다. 주문 줄로 남아서 환불하면 같이 회수됩니다. */
+function cashGrants(p) {
+    const grants = String(p.grants || '-').replace(/\s+/g, '');
+    const back = cashback(p);
+    return back > 0 ? `${grants},ruc:${back}` : grants;
 }
 
 // ── 화면 상태 (관리자 메시지 ID 등) ────────────────────────────────────
@@ -565,7 +578,7 @@ function buildChargeCommand() {
     cmd.addStringOption(o => o.setName('결제').setDescription('결제 수단 (기본: 현금)')
         .addChoices(
             { name: '현금 (토스 계좌 입금)', value: 'cash' },
-            { name: `RUC (${catalog.rucDiscountPercent || 0}% 할인)`, value: 'ruc' },
+            { name: 'RUC', value: 'ruc' },
         ));
     return cmd;
 }
@@ -602,7 +615,7 @@ async function handleCharge(interaction) {
     if (!acct) return interaction.editReply('<:minecraft_tnt:1557947116993646632> 입금 계좌가 설정되지 않았습니다. 운영진에게 알려 주세요.');
 
     const line = await rcon(['rucpay', 'order', interaction.user.id, token(p.id), p.price,
-        catalog.orderTtlMinutes || 60, String(p.grants || '-').replace(/\s+/g, '')].join(' '));
+        catalog.orderTtlMinutes || 60, cashGrants(p)].join(' '));
     const r = parse(line);
     if (!r) return interaction.editReply('<:minecraft_tnt:1557947116993646632> 마크 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.');
 
@@ -628,6 +641,7 @@ async function handleCharge(interaction) {
             '',
             `<:minecraft_clock:1557947961382670396> <t:${Math.floor(Number(r.expires) / 1000)}:R> 까지 입금해 주세요.`,
             `🎁 받는 계정: **${r.name}** — 입금이 확인되면 게임 안에서 바로 지급됩니다.`,
+            ...(cashback(p) > 0 ? [`💎 현금 구매 적립: **${cashback(p).toLocaleString('ko-KR')} RUC** 도 같이 들어갑니다.`] : []),
         ].join('\n'))
         .setFooter({ text: '취소: /충전취소 · 문제가 생기면 /ticket 에 주문 코드를 적어 주세요' });
 
@@ -669,7 +683,7 @@ async function payWithRuc(interaction, p) {
         embeds: [new EmbedBuilder().setColor(r.delivered === '1' ? COLOR.ok : COLOR.pending)
             .setTitle(`${p.name} — RUC 결제 완료`)
             .setDescription([
-                `**${price.toLocaleString('ko-KR')} RUC** 를 썼습니다 (${catalog.rucDiscountPercent || 0}% 할인). 남은 RUC: **${Number(r.balance).toLocaleString('ko-KR')}**`,
+                `**${price.toLocaleString('ko-KR')} RUC** 를 썼습니다. 남은 RUC: **${Number(r.balance).toLocaleString('ko-KR')}**`,
                 r.delivered === '1'
                     ? '게임 안에 바로 지급됐습니다. `/등급` · `/칭호` 로 확인하세요.'
                     : '결제는 됐고 지급을 준비하고 있습니다. 잠시 뒤 자동으로 지급됩니다.',
