@@ -130,3 +130,4 @@ minecraft/servers/*/plugins/*.jar.bak-*
 .vscode/
 startcommand.txt
 banner/
+minecraft/servers/*/plugins/RucCore/feed-message-id.txt
