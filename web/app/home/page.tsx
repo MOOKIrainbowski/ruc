@@ -16,6 +16,8 @@ type Card = {
   /** 카드 왼쪽 위 픽셀 글리프 */
   glyph: string;
   external?: boolean;
+  /** 두 칸을 다 쓰는 카드 */
+  wide?: boolean;
 };
 
 const CARDS: Card[] = [
@@ -43,6 +45,13 @@ const CARDS: Card[] = [
     title: "궁금한 것 찾기",
     desc: "러크 위키 — 접속 · 메뉴 · 화폐 · 기능 안내.",
     glyph: "?",
+  },
+  {
+    href: "/chronicle",
+    title: "러크 연대기",
+    desc: "드래곤 알의 주인 · 큰 현상금 · 새 길드 · 레벨 이정표 — 서버의 역사가 저절로 쓰입니다.",
+    glyph: "✦",
+    wide: true,
   },
 ];
 
@@ -104,7 +113,7 @@ export default function Page() {
       <h2 className="headline mt-12 mb-4 text-lg text-white/90">무엇을 하러 왔나요?</h2>
       <ul className="grid gap-4 sm:grid-cols-2">
         {CARDS.map((card) => (
-          <li key={card.href}>
+          <li key={card.href} className={card.wide ? "sm:col-span-2" : undefined}>
             {card.external ? (
               <a href={card.href} target="_blank" rel="noopener noreferrer" className={cardClass}>
                 <CardBody card={card} />

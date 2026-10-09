@@ -25,6 +25,7 @@ type Copy = {
     rules: string;
     wiki: string;
     charge: string;
+    chronicle: string;
     menu: string;
     /** 한국어 전용 페이지에서 EN 토글에 붙는 안내 */
     koOnly: string;
@@ -89,6 +90,7 @@ export const content: Record<Lang, Copy> = {
       rules: "규칙",
       wiki: "위키",
       charge: "충전",
+      chronicle: "러크 연대기",
       menu: "메뉴",
       koOnly: "이 페이지는 아직 한국어만 있습니다",
       search: "사이트 검색",
@@ -189,6 +191,7 @@ export const content: Record<Lang, Copy> = {
       rules: "Rules",
       wiki: "Wiki",
       charge: "Top-up",
+      chronicle: "Chronicle",
       menu: "Menu",
       koOnly: "This page is Korean only for now",
       search: "Search the site",

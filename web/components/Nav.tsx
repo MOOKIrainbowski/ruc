@@ -4,11 +4,9 @@ import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-import { DISCORD_INVITE, MC_ADDRESS, path, t, type Lang } from "@/lib/content";
-import CopyButton from "./CopyButton";
+import { DISCORD_INVITE, path, t, type Lang } from "@/lib/content";
 import NavIcon, { type NavIconName } from "./NavIcon";
 import SearchBox from "./SearchBox";
-import { useStatus } from "./useStatus";
 
 /**
  * 영어판이 있는 사이트 페이지. 나머지(/home /rules /wiki /charge)는 한국어 전용입니다.
@@ -36,9 +34,6 @@ export default function Nav({ lang }: { lang: Lang }) {
   const current = stripLang(pathname);
   const hasEn = EN_PAGES.includes(current);
   const [searchOpen, setSearchOpen] = useState(false);
-  // ponytail: /status · 랜딩 상태 띠와 따로 폴링합니다 (45초에 요청 1건 더). 늘어나면 Context 로 하나로.
-  const { data: status } = useStatus();
-  const live = Boolean(status?.servers.some((s) => s.online));
   // 위키에는 위키 전용 검색창이 따로 있어 "/" 단축키를 그쪽에 줍니다.
   const searchHotkey = !(current === "/wiki" || current.startsWith("/wiki/"));
   const searchProps = {
@@ -54,6 +49,7 @@ export default function Nav({ lang }: { lang: Lang }) {
     { href: "/wiki", match: "/wiki", label: c.nav.wiki, icon: "wiki" },
     { href: "/charge", match: "/charge", label: c.nav.charge, icon: "charge" },
     { href: path(lang, "/status"), match: "/status", label: c.nav.status, icon: "status" },
+    { href: "/chronicle", match: "/chronicle", label: c.nav.chronicle, icon: "chronicle" },
   ];
   const isActive = (match: string) => current === match || current.startsWith(`${match}/`);
 
@@ -101,19 +97,6 @@ export default function Nav({ lang }: { lang: Lang }) {
           <SearchBox {...searchProps} hotkey={searchHotkey} inputClassName="h-9 rounded-lg" />
         </div>
 
-        {/* 접속 주소 복사 + 살아 있는 서버 점 (lg 이상 — 휴대폰은 /home 접속 패널) */}
-        <CopyButton
-          value={MC_ADDRESS}
-          label={`${c.hero.copyAddress}: ${MC_ADDRESS}`}
-          toastText={`${MC_ADDRESS} ${c.hero.copied}`}
-          className="hidden shrink-0 items-center gap-2 rounded-md border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[11px] text-white/85 transition-colors hover:border-ruc-400/60 hover:text-ruc-300 lg:flex"
-        >
-          <span className={`dot ${live ? "dot-on" : "dot-off"}`} aria-hidden="true" />
-          {MC_ADDRESS}
-          {live && (
-            <span className="text-ruc-400" aria-hidden="true">{status?.totalOnline}</span>
-          )}
-        </CopyButton>
 
         <div className="ml-auto flex items-center gap-1 sm:gap-2 md:ml-0">
           {/* 휴대폰: 돋보기 → 바 전체를 덮는 검색창 */}

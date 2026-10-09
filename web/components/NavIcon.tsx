@@ -2,7 +2,7 @@
  * 상단 내비 아이콘 (2026-10-03). 글자 대신 아이콘 — 이름은 툴팁과 aria-label 로 둡니다.
  * 의존성 없이 인라인 SVG 로 그립니다 (24 격자, 선 아이콘).
  */
-export type NavIconName = "home" | "rules" | "wiki" | "charge" | "status" | "discord" | "search" | "close";
+export type NavIconName = "home" | "rules" | "wiki" | "charge" | "status" | "chronicle" | "discord" | "search" | "close";
 
 const PATHS: Record<NavIconName, React.ReactNode> = {
   home: <path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z" />,
@@ -25,6 +25,13 @@ const PATHS: Record<NavIconName, React.ReactNode> = {
     </>
   ),
   status: <path d="M3 12h4l2.5-7 5 14 2.5-7h4" />,
+  chronicle: (
+    <>
+      <path d="M3.5 12a8.5 8.5 0 1 0 2.5-6" />
+      <path d="M3 4v4h4" />
+      <path d="M12 7.5V12l3 2" />
+    </>
+  ),
   search: (
     <>
       <circle cx="11" cy="11" r="6.5" />

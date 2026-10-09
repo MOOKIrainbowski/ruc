@@ -24,7 +24,8 @@ type Message = { id: string; content?: string; timestamp: string; webhook_id?: s
  */
 async function feedMessages(): Promise<Message[] | null> {
   const token = process.env.DISCORD_BOT_TOKEN?.trim();
-  const channel = process.env.FEED_CHANNEL_ID?.trim();
+  // Vercel 에 FEED_CHANEL_ID (N 하나 빠짐) 로 들어가 있어 둘 다 받습니다 (2026-10-09).
+  const channel = (process.env.FEED_CHANNEL_ID || process.env.FEED_CHANEL_ID)?.trim();
   if (!token || !channel) return null;
   const out: Message[] = [];
   let before = "";
