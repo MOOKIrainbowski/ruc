@@ -163,7 +163,9 @@ export default function Landing({ lang }: { lang: Lang }) {
             <Image src="/icon.png" alt="" width={24} height={24} className="h-6 w-6" />
             <span className="text-[11px] text-white/60">{c.footer.tagline}</span>
           </div>
-          <span className="text-[11px] text-white/40">© 2026 {c.footer.madeWith}</span>
+          <span className="text-[11px] text-white/40">
+            © 2026 {c.footer.madeWith} · {c.footer.disclaimer}
+          </span>
         </div>
       </footer>
     </>

@@ -57,7 +57,14 @@ type Copy = {
     paused: string;
   };
   finalCta: { heading: string; lead: string; button: string };
-  footer: { tagline: string; madeWith: string; links: { label: string; href: string }[] };
+  footer: {
+    tagline: string;
+    madeWith: string;
+    address: string;
+    groups: { title: string; links: { label: string; href: string }[] }[];
+    contact: string;
+    disclaimer: string;
+  };
   status: {
     title: string;
     lead: string;
@@ -140,16 +147,33 @@ export const content: Record<Lang, Copy> = {
       button: "디스코드 참여하기",
     },
     footer: {
-      tagline: "Ruc Server, Season 1",
+      tagline: "네 개의 세계, 하나의 경제. 러크 서버 시즌 1",
       madeWith: "러크 서버",
-      links: [
-        { label: "홈", href: "/home" },
-        { label: "규칙", href: "/rules" },
-        { label: "위키", href: "/wiki" },
-        { label: "충전", href: "/charge" },
-        { label: "서버 상태", href: "/status" },
-        { label: "디스코드", href: DISCORD_INVITE },
+      address: "접속 주소",
+      groups: [
+        {
+          title: "서버",
+          links: [
+            { label: "홈", href: "/home" },
+            { label: "서버 상태", href: "/status" },
+            { label: "러크 연대기", href: "/chronicle" },
+          ],
+        },
+        {
+          title: "안내",
+          links: [
+            { label: "규칙", href: "/rules" },
+            { label: "위키", href: "/wiki" },
+            { label: "충전", href: "/charge" },
+          ],
+        },
+        {
+          title: "커뮤니티",
+          links: [{ label: "디스코드", href: DISCORD_INVITE }],
+        },
       ],
+      contact: "문의 · 신고 · 환불은 디스코드 /ticket 으로 받습니다.",
+      disclaimer: "마인크래프트 공식 서비스가 아닙니다. Mojang · Microsoft 와 관련이 없습니다.",
     },
     status: {
       title: "서버 상태",
@@ -241,15 +265,32 @@ export const content: Record<Lang, Copy> = {
       button: "Join the Discord",
     },
     footer: {
-      tagline: "Four worlds, one economy.",
+      tagline: "Four worlds, one economy. Ruc Server Season 1",
       madeWith: "Ruc Server",
-      links: [
-        { label: "Home", href: "/home" },
-        { label: "Rules", href: "/rules" },
-        { label: "Wiki", href: "/wiki" },
-        { label: "Server status", href: "/en/status" },
-        { label: "Discord", href: DISCORD_INVITE },
+      address: "Server address",
+      groups: [
+        {
+          title: "Server",
+          links: [
+            { label: "Home", href: "/home" },
+            { label: "Server status", href: "/en/status" },
+            { label: "Chronicle", href: "/chronicle" },
+          ],
+        },
+        {
+          title: "Guides",
+          links: [
+            { label: "Rules", href: "/rules" },
+            { label: "Wiki", href: "/wiki" },
+          ],
+        },
+        {
+          title: "Community",
+          links: [{ label: "Discord", href: DISCORD_INVITE }],
+        },
       ],
+      contact: "Questions, reports and refunds go through /ticket on Discord.",
+      disclaimer: "NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR MICROSOFT.",
     },
     status: {
       title: "Server Status",
