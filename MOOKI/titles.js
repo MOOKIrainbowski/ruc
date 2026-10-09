@@ -260,7 +260,7 @@ async function handleTitleSync(interaction) {
 
     const embed = new EmbedBuilder()
         .setColor(result.error ? 0xff4444 : 0x93e93e)
-        .setTitle(result.error ? '❌ 칭호 동기화 실패' : '✅ 칭호 동기화 완료')
+        .setTitle(result.error ? '<:minecraft_barrier:1557947126024245328> 칭호 동기화 실패' : '<:minecraft_emerald_block:1557947122802757673> 칭호 동기화 완료')
         .setTimestamp();
 
     if (result.error) {

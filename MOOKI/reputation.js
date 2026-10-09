@@ -265,20 +265,20 @@ async function handleSetup(interaction) {
 
     if (!interaction.guild) return interaction.editReply('서버 안에서만 됩니다.');
     if (!roles.isStaff(interaction.member)) {
-        return interaction.editReply('❌ 스태프 전용 명령어입니다.');
+        return interaction.editReply('<:minecraft_barrier:1557947126024245328> 스태프 전용 명령어입니다.');
     }
 
     let result;
     try {
         result = await ensureRoles(interaction.guild);
     } catch (err) {
-        return interaction.editReply(`❌ 역할을 만들지 못했습니다: ${err.message}\n`
+        return interaction.editReply(`<:minecraft_barrier:1557947126024245328> 역할을 만들지 못했습니다: ${err.message}\n`
             + '봇에게 "역할 관리" 권한이 있는지 확인해 주세요.');
     }
 
     const embed = new EmbedBuilder()
         .setColor(0x93e93e)
-        .setTitle('✅ 평판 역할 설정 완료')
+        .setTitle('<:minecraft_emerald_block:1557947122802757673> 평판 역할 설정 완료')
         .setDescription(
             (result.created.length ? `**새로 만듦 (${result.created.length})**\n`
                 + result.created.join('\n') + '\n\n' : '')
@@ -300,7 +300,7 @@ async function handleSync(interaction) {
 
     if (!interaction.guild) return interaction.editReply('서버 안에서만 됩니다.');
     if (!roles.isStaff(interaction.member)) {
-        return interaction.editReply('❌ 스태프 전용 명령어입니다.');
+        return interaction.editReply('<:minecraft_barrier:1557947126024245328> 스태프 전용 명령어입니다.');
     }
 
     const result = await sync(interaction.guild);
@@ -315,7 +315,7 @@ async function handleSync(interaction) {
 
     return interaction.editReply({
         embeds: [new EmbedBuilder().setColor(0x93e93e)
-            .setTitle('✅ 평판 동기화 완료')
+            .setTitle('<:minecraft_emerald_block:1557947122802757673> 평판 동기화 완료')
             .setDescription(`연동자 **${result.checked}명** 확인 · `
                 + `역할 변경 **${result.changed}건**`
                 + (result.skipped ? ` · 건너뜀 ${result.skipped}건` : ''))

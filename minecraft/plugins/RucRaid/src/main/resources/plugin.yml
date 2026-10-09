@@ -23,6 +23,14 @@ commands:
     description: 지정한 홈을 삭제합니다.
     usage: /delhome
     aliases: [홈삭제]
+  eggrank:
+    description: 이번 시즌 드래곤 알 통치 순위와 지금 소지자를 봅니다.
+    usage: /알순위
+    aliases: [알순위]
+  bounty:
+    description: 현상금 풀과 지금 수배 중인 사람을 봅니다.
+    usage: /현상금
+    aliases: [현상금, wanted]
   raid:
     description: (스태프) 드래곤 알 회수 / 처형 취소 / 상태 확인 / 전투 태그 테스트
     usage: /raid <egg|pardon|status|tag>

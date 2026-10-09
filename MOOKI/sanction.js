@@ -220,7 +220,7 @@ function historyText(h) {
     ];
     if (h.active && h.active !== '-') {
         const [id, until] = h.active.split(':');
-        lines.push(`⚠️ **지금 밴 중** (#${id}, `
+        lines.push(`<:minecraft_tnt:1557947116993646632> **지금 밴 중** (#${id}, `
             + (until === 'perm' ? '영구' : `<t:${Math.floor(Number(until) / 1000)}:f> 까지`) + ')');
     }
     return lines.join('\n');
@@ -228,9 +228,9 @@ function historyText(h) {
 
 function statusMark(part) {
     if (!part) return '➖';
-    if (part.ok) return '✅';
+    if (part.ok) return '<:minecraft_emerald_block:1557947122802757673>';
     if (part.skipped) return '➖';
-    return '❌';
+    return '<:minecraft_barrier:1557947126024245328>';
 }
 
 function caseEmbed(c) {
@@ -243,10 +243,10 @@ function caseEmbed(c) {
 
     const title = {
         pending: `⏳ 제재 승인 대기 — ${c.tier}단계`,
-        done: `🔨 제재 집행 — ${c.tier}단계`,
-        partial: `⚠️ 제재 일부 실패 — ${c.tier}단계`,
+        done: `<:minecraft_iron_axe:1557969621481693254> 제재 집행 — ${c.tier}단계`,
+        partial: `<:minecraft_tnt:1557947116993646632> 제재 일부 실패 — ${c.tier}단계`,
         revoked: `↩️ 제재 해제됨 — ${c.tier}단계`,
-        rejected: `🚫 제재 반려 — ${c.tier}단계`,
+        rejected: `<:minecraft_red_concrete:1557969470801186946> 제재 반려 — ${c.tier}단계`,
     }[c.status] || `제재 — ${c.tier}단계`;
 
     const embed = new EmbedBuilder()
@@ -475,7 +475,7 @@ async function handleSanction(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!interaction.guild) return interaction.editReply('서버 안에서만 됩니다.');
     if (!canIssue(interaction.member)) {
-        return interaction.editReply('❌ 제재 권한이 없습니다. (roles.json 의 sanctionRoles 또는 Manager 이상)');
+        return interaction.editReply('<:minecraft_barrier:1557947126024245328> 제재 권한이 없습니다. (roles.json 의 sanctionRoles 또는 Manager 이상)');
     }
 
     const name = interaction.options.getString('닉네임').trim();
@@ -487,18 +487,18 @@ async function handleSanction(interaction) {
     if (history === null) {
         // 대상의 디스코드 연동을 마크 서버가 알고 있습니다. 모르는 채로 걸면
         // 디스코드 쪽이 통째로 빠지므로 여기서 멈춥니다 (아직 아무것도 안 걸림).
-        return interaction.editReply('❌ 마크 서버에 연결하지 못했습니다. 서버 상태를 확인해 주세요.\n'
+        return interaction.editReply('<:minecraft_barrier:1557947126024245328> 마크 서버에 연결하지 못했습니다. 서버 상태를 확인해 주세요.\n'
             + '아직 아무것도 집행되지 않았습니다.');
     }
     if (!history.found) {
-        return interaction.editReply(`❌ \`${name}\` — 서버 기록에 없는 닉네임입니다.`);
+        return interaction.editReply(`<:minecraft_barrier:1557947126024245328> \`${name}\` — 서버 기록에 없는 닉네임입니다.`);
     }
 
     const discordId = history.discord && history.discord !== '-' ? history.discord : null;
     if (discordId) {
         const member = await interaction.guild.members.fetch(discordId).catch(() => null);
         if (member && roles.isStaff(member)) {
-            return interaction.editReply('❌ 스태프는 제재할 수 없습니다. 역할을 먼저 내려 주세요.');
+            return interaction.editReply('<:minecraft_barrier:1557947126024245328> 스태프는 제재할 수 없습니다. 역할을 먼저 내려 주세요.');
         }
     }
 
@@ -524,7 +524,7 @@ async function handleSanction(interaction) {
             { name: '이력', value: historyText(history) },
             { name: '제안 단계', value: suggestion === tier ? `**${suggestion}단계** (선택과 같음)`
                 : `**${suggestion}단계**` + (tier < suggestion
-                    ? ' — ⚠️ 선택한 단계가 누범 기준보다 낮습니다' : '') },
+                    ? ' — <:minecraft_tnt:1557947116993646632> 선택한 단계가 누범 기준보다 낮습니다' : '') },
             { name: '사유', value: reason },
             { name: '증거', value: evidence },
         )
@@ -573,12 +573,12 @@ function newCase(draft) {
 async function handleRevoke(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!canApprove(interaction.member)) {
-        return interaction.editReply('❌ 제재 해제는 Manager 이상만 할 수 있습니다.');
+        return interaction.editReply('<:minecraft_barrier:1557947126024245328> 제재 해제는 Manager 이상만 할 수 있습니다.');
     }
 
     const no = interaction.options.getInteger('사건');
     const c = data.cases[no];
-    if (!c) return interaction.editReply(`❌ 사건 #${no} 을 찾지 못했습니다.`);
+    if (!c) return interaction.editReply(`<:minecraft_barrier:1557947126024245328> 사건 #${no} 을 찾지 못했습니다.`);
     if (c.status === 'revoked') return interaction.editReply(`사건 #${no} 은 이미 해제되었습니다.`);
     if (c.status === 'pending' || c.status === 'rejected') {
         return interaction.editReply(`사건 #${no} 은 집행되지 않았습니다 (${c.status}).`);
@@ -587,9 +587,9 @@ async function handleRevoke(interaction) {
     const notes = [];
     if (c.mcId) {
         const response = await rcon(`rucsanction revoke ${c.mcId} ${token(interaction.user.username)}`);
-        if (response && /REVOKED|ALREADY/.test(response)) notes.push('✅ 마크 밴 해제');
+        if (response && /REVOKED|ALREADY/.test(response)) notes.push('<:minecraft_emerald_block:1557947122802757673> 마크 밴 해제');
         else {
-            notes.push('❌ 마크 밴 해제 실패 — 서버 연결 확인 후 다시 실행하세요');
+            notes.push('<:minecraft_barrier:1557947126024245328> 마크 밴 해제 실패 — 서버 연결 확인 후 다시 실행하세요');
             await interaction.editReply(notes.join('\n'));
             return;   // 상태를 바꾸지 않습니다. 다시 실행하면 이어서 합니다.
         }
@@ -598,18 +598,18 @@ async function handleRevoke(interaction) {
         if (TIERS[c.tier].discordBan) {
             try {
                 await interaction.guild.bans.remove(c.discordId, `제재 #${no} 해제`);
-                notes.push('✅ 디스코드 밴 해제');
+                notes.push('<:minecraft_emerald_block:1557947122802757673> 디스코드 밴 해제');
             } catch (err) {
                 notes.push(err?.code === 10026 ? '➖ 디스코드 밴 이미 없음'
-                    : `❌ 디스코드 밴 해제 실패: ${err.message}`);
+                    : `<:minecraft_barrier:1557947126024245328> 디스코드 밴 해제 실패: ${err.message}`);
             }
             c.unbanned = true;
         } else {
             const member = await interaction.guild.members.fetch(c.discordId).catch(() => null);
             if (member) {
                 await member.timeout(null, `제재 #${no} 해제`)
-                    .then(() => notes.push('✅ 뮤트 해제'))
-                    .catch(err => notes.push(`❌ 뮤트 해제 실패: ${err.message}`));
+                    .then(() => notes.push('<:minecraft_emerald_block:1557947122802757673> 뮤트 해제'))
+                    .catch(err => notes.push(`<:minecraft_barrier:1557947126024245328> 뮤트 해제 실패: ${err.message}`));
             }
         }
     }
@@ -627,7 +627,7 @@ async function handleRevoke(interaction) {
 async function handleHistory(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     if (!roles.isStaff(interaction.member)) {
-        return interaction.editReply('❌ 스태프 전용 명령어입니다.');
+        return interaction.editReply('<:minecraft_barrier:1557947126024245328> 스태프 전용 명령어입니다.');
     }
 
     const name = interaction.options.getString('닉네임').trim();
@@ -680,7 +680,7 @@ async function handleButton(interaction) {
             return true;
         }
         if (draft.issuerId !== interaction.user.id) {
-            await interaction.reply({ content: '❌ 미리보기를 연 사람만 누를 수 있습니다.',
+            await interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> 미리보기를 연 사람만 누를 수 있습니다.',
                 flags: MessageFlags.Ephemeral });
             return true;
         }
@@ -694,7 +694,7 @@ async function handleButton(interaction) {
             return true;
         }
 
-        await interaction.update({ content: `🔨 사건 #${c.no} 집행 중…`, embeds: [], components: [] });
+        await interaction.update({ content: `<:minecraft_iron_axe:1557969621481693254> 사건 #${c.no} 집행 중…`, embeds: [], components: [] });
         await execute(interaction.guild, c);
         await interaction.editReply({ content: '', embeds: [caseEmbed(c)], components: resultButtons(c) });
         await postLog(interaction.guild, c);
@@ -706,7 +706,7 @@ async function handleButton(interaction) {
         const no = parseInt(id.split('_').pop(), 10);
         const c = data.cases[no];
         if (!canApprove(interaction.member)) {
-            await interaction.reply({ content: '❌ 승인은 Manager 이상만 할 수 있습니다.',
+            await interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> 승인은 Manager 이상만 할 수 있습니다.',
                 flags: MessageFlags.Ephemeral });
             return true;
         }
@@ -742,7 +742,7 @@ async function handleButton(interaction) {
         }
         const allowed = c.tier >= APPROVAL_FROM ? canApprove(interaction.member) : canIssue(interaction.member);
         if (!allowed) {
-            await interaction.reply({ content: '❌ 권한이 없습니다.', flags: MessageFlags.Ephemeral });
+            await interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> 권한이 없습니다.', flags: MessageFlags.Ephemeral });
             return true;
         }
         if (c.status !== 'partial') {

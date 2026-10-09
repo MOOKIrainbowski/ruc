@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { DISCORD_INVITE, MC_ADDRESS, SERVER_KEYS, t, type Lang } from "@/lib/content";
 import Nav from "./Nav";
 import Footer from "./Footer";
+import RaidFeedPanel from "./RaidFeedPanel";
 import { useStatus } from "./useStatus";
 
 export default function StatusDashboard({ lang }: { lang: Lang }) {
@@ -164,6 +165,9 @@ export default function StatusDashboard({ lang }: { lang: Lang }) {
               );
             })}
           </div>
+
+          {/* ─── 드래곤 알 · 현상금 (게임 → 디스코드 피드) — 문구가 한국어라 한국어 페이지만 ─── */}
+          {lang === "ko" && <RaidFeedPanel />}
 
           {/* ─── 공지 + 바로가기 ───────────────────────────── */}
           <div className="mt-4 grid gap-3 lg:grid-cols-[2fr_1fr]">

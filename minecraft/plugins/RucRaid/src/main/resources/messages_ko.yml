@@ -11,7 +11,7 @@ combat:
 execution:
   title: "&4&l처 형"
   subtitle: "&f전투 중 접속을 종료했습니다"
-  chat: "&c전투 중 접속을 종료해 처형되었습니다. &7(상대: %opponent%) &f소지품과 경험치가 모두 소멸했습니다."
+  chat: "&c전투 중 접속을 종료해 처형되었습니다. &7(상대: %opponent%) &f경험치는 소멸, 소지품은 나간 자리의 무덤에 남았습니다."
   unknown-opponent: "알 수 없음"
 
 home:
@@ -42,6 +42,9 @@ egg:
   announce: "&5&l[드래곤 알] &f현재 소지자: &e%player%"
   announce-none: "&5&l[드래곤 알] &7현재 소지자가 없습니다."
   returned: "&5드래곤 알이 제단으로 돌아갔습니다."
+  new-holder: "&5&l[드래곤 알] &e%player%&f 이(가) 알을 차지했습니다! &7통치 시간이 쌓이기 시작합니다 — /알순위"
+  ranking: "&5&l[드래곤 알 %season%] &f지금: &e%holder% &8| &7%ranking%"
+  ranking-nobody: "없음"
 
 staff:
   no-permission: "&c권한이 없습니다."
@@ -50,3 +53,18 @@ staff:
   pardoned: "&a%player% 님의 처형 예약을 취소했습니다."
   status: "&f드래곤 알 소지자: &e%holder% &7| &f전투 중: &c%tagged%명"
   tagged: "&e%player% 님에게 전투 태그를 걸었습니다. 지금 접속을 끊으면 처형됩니다."
+
+grave:
+  created: "&4☠ &f%player%&c 이(가) 전투 중 도망쳤습니다! &7무덤: &f%x%, %z% &7근처 — 처음 %minutes%분은 &f%opponent%&7 만 열 수 있습니다."
+  locked: "&c아직 &f%opponent%&c 만 열 수 있습니다. &7%seconds%초 뒤 누구나."
+  own: "&c도망친 사람은 자기 무덤을 열 수 없습니다."
+
+bounty:
+  you-are-wanted: "&4⚠ 당신은 수배자입니다. &7평판이 &5보라&7 이하라 약탈 서버에서 현상금이 걸립니다. 평판이 빨강으로 오르면 풀립니다."
+  actionbar: "&4☠ 수배 중 &7— 처치당하면 상대가 현상금을 받습니다"
+  cleared: "&a수배가 풀렸습니다."
+  reveal: "&4🎯 수배자 &f%player% &7— &f%x%, %z% &7근처 · 처치 현상금 &6%payout% %symbol%"
+  claimed: "&6🎯 &f%killer%&6 이(가) 수배자 &f%player%&6 을(를) 처치하고 현상금 &f%amount% %symbol%&6 을(를) 받았습니다!"
+  claimed-none: "&6🎯 &f%killer%&6 이(가) 수배자 &f%player%&6 을(를) 처치했습니다."
+  info: "&6현상금 풀 &f%pool% %symbol% &7(다음 처치 &f%payout%&7) · 지금 수배자: &f%wanted% &8— &7평판 보라 이하 = 수배 · 풀 = 제재로 몰수된 Gold"
+  none: "없음"

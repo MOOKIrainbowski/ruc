@@ -1984,3 +1984,19 @@ MOOKI 는 재시작해야 `/충전` 의 결제 수단 옵션 · 새 상품이 �
   결제 지급정지 · 제재 전 재산 빼돌리기 · 버그 "먼저 쓰고 나중에 신고" · 협박. 여전히 **운영진 검토 대기 초안**
 - **규칙 페이지**: 탭(공통 · 디스코드 · 마인크래프트)과 제재 단계마다 [복사] · [.txt 다운로드] (`lib/rules.ts` 의 `sectionText` · `sanctionsText`)
 - 발견만 함: 약탈 서버는 서버 종료 때 전투 태그가 남은 사람도 처형 기록됨 (`RaidListener.onQuit`) — 규칙 6.2 에 "티켓으로 복구" 를 적었음
+
+## 20. 2026-10-09 — 웹 디자인 개선 · 러크만의 기능 4개
+
+- **웹 디자인** (`780b5cc`, 배포됨): `docs/07-WEB-REDESIGN-PLAN.md`. 상단 접속 주소 칩 · Ctrl/Cmd+K · 규칙 검색 · `#rule-0.5` 링크 ·
+  제재 히트맵 · 랜딩 motion 연출(`components/LandingMotion.tsx`) · 상태 카운트다운 · 충전 타임라인
+- **러크만의 기능** (`docs/08-UNIQUE-FEATURES.md`, 소유자 승인 A · B · C · D) — **미커밋**. jar 는 4개 서버에 배포(서버 꺼진 상태)
+  - A 평판 현상금 (`BountyService` · `/현상금`, 풀 = 제재 몰수 Gold) · B 알 통치 (`/알순위` · 홈 광장 기념비 · 웹 피드) ·
+    C 도망자의 무덤 (`GraveService`) · D 평판 = 신용 (`/추천` · 평판별 상점 수수료)
+  - 함께 고침: 서버 종료 때 전투 태그 처형 · 전투로그 시 드래곤 알 영구 소실
+  - 시험 서버(DB 사본 · 포트 25667/25677 · 가짜 웹훅)에서 기동 · 풀 SQL · 피드 JSON 확인. **게임 안 확인은 소유자 대기**
+- **배포본 config 에 새 항목을 넣었습니다** (값 = jar 기본값, 옛 파일 `config.yml.bak-20261009`, gitignore 됨):
+  4개 서버 RucCore `shop.fee-by-reputation` · `shop.cautious` · `endorse` / 홈 `egg-reign.monument` (hub 0.5, 66.5, 12.5 — 스폰 정면) ·
+  약탈 `egg-reign.season` · `relay.feed-webhook-url: ""` / 약탈 RucRaid `grave` · `bounty`
+- **남은 것 (소유자)**: 피드 채널 · 웹훅 → 약탈 `relay.feed-webhook-url` · Vercel `DISCORD_BOT_TOKEN` · `FEED_CHANNEL_ID` · 게임 안 확인
+- **함정**: `getConfig().getInt(path, 대체값)` 은 jar config 를 안 봅니다 — 새 코드의 대체값이 곧 기본값 (§16 함정과 같음).
+  `rcon.js` 는 운영 포트 4개만 받습니다 (일부러) — 시험 서버는 스크래치패드 사본으로

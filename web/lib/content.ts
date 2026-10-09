@@ -112,11 +112,12 @@ export const content: Record<Lang, Copy> = {
     },
     highlights: {
       eyebrow: "AT A GLANCE",
-      heading: "러크가 다른 세 가지.",
+      heading: "러크에만 있는 네 가지.",
       items: [
-        { glyph: "₩", title: "하나의 지갑", desc: "Gold · 레벨 모든 서버 공용." },
-        { glyph: "⚔", title: "도망은 없다", desc: "약탈 서버 전투 중 접속 종료 = 전부 잃음." },
-        { glyph: "✓", title: "돈으로 못 사는 강함", desc: "판매는 꾸미기 · 편의뿐. 능력치 판매 없음." },
+        { glyph: "☠", title: "평판이 나쁘면, 목에 값이 붙는다", desc: "평판 보라 이하는 약탈 서버의 수배자. 현상금은 제재로 몰수된 Gold 에서." },
+        { glyph: "◆", title: "서버에 하나뿐인 알", desc: "누가 얼마나 오래 쥐었는지 실시간 기록. 지금 주인은 서버 상태 페이지에. 시즌 1위는 광장에 이름이 남는다." },
+        { glyph: "▣", title: "도망쳐도 짐은 남는다", desc: "전투 중 접속 종료 = 그 자리에 무덤. 5분간은 싸우던 상대만 연다." },
+        { glyph: "✓", title: "신뢰가 곧 신용", desc: "같이 플레이한 사람의 /추천 으로 평판이 오르고, 평판이 좋으면 거래 수수료가 싸다. 평판은 돈으로 못 산다." },
       ],
     },
     modes: {
@@ -211,11 +212,12 @@ export const content: Record<Lang, Copy> = {
     },
     highlights: {
       eyebrow: "AT A GLANCE",
-      heading: "Three things make Ruc different.",
+      heading: "Four things only Ruc has.",
       items: [
-        { glyph: "₩", title: "One wallet", desc: "Gold and your level follow you to every server." },
-        { glyph: "⚔", title: "No running away", desc: "Log out mid-fight on the Raiding Server and you lose it all." },
-        { glyph: "✓", title: "Power can't be bought", desc: "Support only buys cosmetics and convenience." },
+        { glyph: "☠", title: "Bad reputation puts a price on your head", desc: "Purple reputation or lower means WANTED on the Raid server. Bounties are paid from Gold confiscated by sanctions." },
+        { glyph: "◆", title: "One egg for the whole server", desc: "Who holds it, and for how long, is tracked live. The season's longest reign is carved into the plaza." },
+        { glyph: "▣", title: "Flee, and your loot stays behind", desc: "Log out mid-fight and a grave appears where you stood. For 5 minutes, only your opponent can open it." },
+        { glyph: "✓", title: "Trust is credit", desc: "Endorsements from people you've played with raise your reputation, and good reputation means lower trading fees." },
       ],
     },
     modes: {

@@ -70,6 +70,16 @@ public class DragonEggService {
     private BukkitTask glowTask;
     private BukkitTask announceTask;
 
+    // ── 통치 (2026-10-09, docs/08 B) ──
+    /** DB 에 아직 안 쓴 통치 초 (메인 스레드) */
+    private final Map<UUID, Long> reignPending = new HashMap<>();
+    /** 마지막 소지자 (잠깐 나갔다 와도 같은 사람이면 "교체" 가 아님) · 그 사람이 알을 잡은 시각 */
+    private UUID lastHolder;
+    private long holderSince;
+    private long reignTicks;
+    private long lastFeedAt;
+    private BukkitTask reignTask;
+
     public DragonEggService(RucRaid plugin, RaidRepository repository, String serverId) {
         this.plugin = plugin;
         this.repository = repository;
@@ -114,6 +124,8 @@ public class DragonEggService {
         announceTask = Bukkit.getScheduler().runTaskTimer(plugin, this::announceHolder,
                 announceMinutes * 60L * 20L, announceMinutes * 60L * 20L);
 
+        reignTask = Bukkit.getScheduler().runTaskTimer(plugin, this::reignTick, 20L, 20L);
+
         placeIfMissing();
     }
 
@@ -121,6 +133,8 @@ public class DragonEggService {
         if (buffTask != null) buffTask.cancel();
         if (glowTask != null) glowTask.cancel();
         if (announceTask != null) announceTask.cancel();
+        if (reignTask != null) reignTask.cancel();
+        flushReign(false);   // 종료 중이라 동기로
 
         // 서버가 내려갈 때 보정을 남기면, 알 없이도 체력이 늘어난 채로 남습니다.
         for (Player player : Bukkit.getOnlinePlayers()) removeHealthBonus(player);
@@ -361,6 +375,112 @@ public class DragonEggService {
         for (Player online : Bukkit.getOnlinePlayers()) {
             online.playSound(online.getLocation(), Sound.ENTITY_ENDER_DRAGON_GROWL, 0.4f, 1.0f);
         }
+    }
+
+    // ── 통치 시간 · 웹 피드 ────────────────────────────────────────────
+
+    private String season() {
+        return plugin.core().getConfig().getString("egg-reign.season", "S1");
+    }
+
+    /** 1초마다 — 소지자의 통치 시간을 쌓고, 바뀌면 알립니다. 1분마다 DB, 10분마다(또는 교체 때) 웹 피드. */
+    private void reignTick() {
+        reignTicks++;
+        UUID h = holder;
+        if (h != null) {
+            reignPending.merge(h, 1L, Long::sum);
+            if (!h.equals(lastHolder)) {
+                lastHolder = h;
+                holderSince = System.currentTimeMillis();
+                Player p = Bukkit.getPlayer(h);
+                String name = p == null ? "?" : p.getName();
+                Bukkit.broadcast(plugin.msg().broadcast("egg.new-holder", "player", name));
+                plugin.core().getRelay().relaySystem("egg", "🥚 **" + name + "** 이(가) 드래곤 알을 차지했습니다.", 0x9B5DE5);
+                if (System.currentTimeMillis() - lastFeedAt > 30_000) postFeed();
+            }
+        }
+        if (reignTicks % 60 == 0) flushReign(true);
+        if (reignTicks % 600 == 0) postFeed();
+    }
+
+    private void flushReign(boolean async) {
+        if (reignPending.isEmpty() || plugin.core().getEggReign() == null) return;
+        Map<UUID, Long> batch = new HashMap<>(reignPending);
+        Map<UUID, String> names = new HashMap<>();
+        for (UUID u : batch.keySet()) names.put(u, Bukkit.getOfflinePlayer(u).getName());
+        reignPending.clear();
+        String season = season();
+        Runnable write = () -> {
+            for (Map.Entry<UUID, Long> e : batch.entrySet()) {
+                try {
+                    plugin.core().getEggReign().addSeconds(season, e.getKey(),
+                            names.getOrDefault(e.getKey(), "?"), e.getValue());
+                } catch (SQLException ex) {
+                    plugin.getLogger().log(Level.WARNING, "[알 통치] 기록 실패", ex);
+                }
+            }
+        };
+        if (async) Bukkit.getScheduler().runTaskAsynchronously(plugin, write); else write.run();
+    }
+
+    /**
+     * 웹이 읽는 피드 한 줄 (Core DiscordRelayService.relayFeed → 디스코드 피드 채널 → web/app/api/feed).
+     * 이름은 마인크래프트 닉네임(영문 · 숫자 · _)이라 JSON 이스케이프가 필요 없습니다.
+     */
+    private void postFeed() {
+        if (plugin.core().getEggReign() == null) return;
+        lastFeedAt = System.currentTimeMillis();
+        UUID h = lastHolder;
+        String holderName = h == null ? null : Bukkit.getOfflinePlayer(h).getName();
+        boolean online = h != null && h.equals(holder);
+        long since = holderSince;
+        long pool = plugin.getBounty() == null ? 0 : plugin.getBounty().pool();
+        int wanted = plugin.getBounty() == null ? 0 : plugin.getBounty().wantedCount();
+        String season = season();
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            StringBuilder top = new StringBuilder("[");
+            try {
+                var list = plugin.core().getEggReign().top(season, 5);
+                for (int i = 0; i < list.size(); i++) {
+                    if (i > 0) top.append(',');
+                    top.append("{\"name\":\"").append(list.get(i).name())
+                            .append("\",\"seconds\":").append(list.get(i).seconds()).append('}');
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.WARNING, "[알 통치] 순위 조회 실패", e);
+            }
+            top.append(']');
+            String json = "{\"type\":\"raid\",\"season\":\"" + season + "\""
+                    + ",\"egg\":{\"holder\":" + (holderName == null ? "null" : "\"" + holderName + "\"")
+                    + ",\"since\":" + (h == null ? "null" : String.valueOf(since)) + ",\"online\":" + online + "}"
+                    + ",\"top\":" + top
+                    + ",\"bounty\":{\"pool\":" + pool + ",\"wanted\":" + wanted + "}"
+                    + ",\"at\":" + System.currentTimeMillis() + "}";
+            plugin.core().getRelay().relayFeed(json);
+        });
+    }
+
+    /** /알순위 — 이번 시즌 통치 상위 5 · 지금 소지자 */
+    public void showRanking(org.bukkit.command.CommandSender to) {
+        if (plugin.core().getEggReign() == null) return;
+        String season = season();
+        UUID h = holder;
+        String holderName = h == null ? plugin.msg().raw(to, "egg.ranking-nobody") : Bukkit.getOfflinePlayer(h).getName();
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            StringBuilder sb = new StringBuilder();
+            try {
+                var list = plugin.core().getEggReign().top(season, 5);
+                for (int i = 0; i < list.size(); i++) {
+                    sb.append(i == 0 ? "" : " · ").append(i + 1).append(". ").append(list.get(i).name())
+                            .append(' ').append(kr.rucserver.core.storage.EggReignRepository.format(list.get(i).seconds()));
+                }
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.WARNING, "[알 통치] 순위 조회 실패", e);
+            }
+            String ranking = sb.length() == 0 ? plugin.msg().raw(to, "egg.ranking-nobody") : sb.toString();
+            Bukkit.getScheduler().runTask(plugin, () -> plugin.msg().send(to, "egg.ranking",
+                    "season", season, "holder", holderName, "ranking", ranking));
+        });
     }
 
     /** 소지자가 바뀌었을 때 즉시 반영. 줍기/버리기 이벤트에서 부릅니다. */

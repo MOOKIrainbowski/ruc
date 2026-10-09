@@ -11,7 +11,7 @@ combat:
 execution:
   title: "&4&lEXECUTED"
   subtitle: "&fYou disconnected during combat"
-  chat: "&cYou were executed for combat logging. &7(opponent: %opponent%) &fAll items and XP are gone."
+  chat: "&cYou were executed for combat logging. &7(opponent: %opponent%) &fXP is gone; your items were left in a grave where you logged out."
   unknown-opponent: "unknown"
 
 home:
@@ -35,6 +35,9 @@ teleport:
   already-warming: "&cA teleport is already in progress."
 
 egg:
+  new-holder: "&5&l[Dragon Egg] &e%player%&f claimed the egg! &7Their reign has begun — /eggrank"
+  ranking: "&5&l[Dragon Egg %season%] &fNow: &e%holder% &8| &7%ranking%"
+  ranking-nobody: "nobody"
   no-storage: "&cThe Dragon Egg cannot be placed in any container."
   dropped-on-death: "&cYou dropped the Dragon Egg."
   exposed: "&eThe Dragon Egg reveals your position"
@@ -50,3 +53,18 @@ staff:
   pardoned: "&aCancelled the pending execution for %player%."
   status: "&fDragon Egg holder: &e%holder% &7| &fIn combat: &c%tagged%"
   tagged: "&eApplied a combat tag to %player%. Disconnecting now triggers execution."
+
+grave:
+  created: "&4☠ &f%player%&c fled mid-fight! &7Grave near &f%x%, %z% &7— only &f%opponent%&7 can open it for the first %minutes% min."
+  locked: "&cOnly &f%opponent%&c can open this yet. &7Anyone in %seconds%s."
+  own: "&cYou can't open your own grave after fleeing."
+
+bounty:
+  you-are-wanted: "&4⚠ You are WANTED. &7Your reputation is Purple or lower, so there's a bounty on you on the Raid server. It clears at Red."
+  actionbar: "&4☠ WANTED &7— whoever kills you collects the bounty"
+  cleared: "&aYou are no longer wanted."
+  reveal: "&4🎯 Wanted: &f%player% &7— near &f%x%, %z% &7· bounty &6%payout% %symbol%"
+  claimed: "&6🎯 &f%killer%&6 took down wanted player &f%player%&6 and collected &f%amount% %symbol%&6!"
+  claimed-none: "&6🎯 &f%killer%&6 took down wanted player &f%player%&6."
+  info: "&6Bounty pool &f%pool% %symbol% &7(next kill &f%payout%&7) · Wanted now: &f%wanted% &8— &7Purple reputation or lower = wanted · pool = Gold confiscated by sanctions"
+  none: "none"

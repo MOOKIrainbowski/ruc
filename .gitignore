@@ -90,6 +90,7 @@ minecraft/servers/*/server.properties
 # 형상 관리 대상은 **소스의 템플릿** 쪽입니다:
 #   minecraft/plugins/*/src/main/resources/config.yml
 minecraft/servers/*/plugins/*/config.yml
+minecraft/servers/*/plugins/*/config.yml.bak-*
 minecraft/proxy/plugins/*/config.yml
 
 # Paper가 실행 중 생성하는 것들

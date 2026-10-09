@@ -30,13 +30,13 @@ async function handleCommand(interaction) {
     const key = { welcome: 'welcome', donation: 'donation' }[interaction.commandName];
     if (!key) return false;
     if (!interaction.memberPermissions?.has(PermissionFlagsBits.Administrator)) {
-        await interaction.reply({ content: '❌ 관리자 전용 명령어입니다.', flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> 관리자 전용 명령어입니다.', flags: MessageFlags.Ephemeral });
         return true;
     }
     const ch = interaction.options.getChannel('채널');
     channels[`${interaction.guildId}:${key}`] = ch.id;
     fs.writeFileSync(FILE, JSON.stringify(channels, null, 4));
-    await interaction.reply({ content: `✅ ${key === 'welcome' ? '환영 인사' : '후원 감사'} 채널: ${ch}`, flags: MessageFlags.Ephemeral });
+    await interaction.reply({ content: `<:minecraft_emerald_block:1557947122802757673> ${key === 'welcome' ? '환영 인사' : '후원 감사'} 채널: ${ch}`, flags: MessageFlags.Ephemeral });
     return true;
 }
 
@@ -49,7 +49,7 @@ async function channelOf(guild, key) {
 
 const WELCOME = [
     '러크 서버에 착지 완료! 낙하 데미지는 없었길 바라요 🪂',
-    '어서 오세요! 크리퍼는 저희가 미리 치워 뒀습니다… 아마도요 💥',
+    '어서 오세요! 크리퍼는 저희가 미리 치워 뒀습니다… 아마도요 <:minecraft_tnt_minecart:1557947115337154732>',
     '새로운 모험가 등장! 인벤토리는 비었어도 기대는 가득 🎒',
     '환영합니다! 다이아는 못 드려도 환영 인사는 무한 제공 💎',
     '스폰 지점에 새 얼굴이 생겼어요. 침대부터 꼭 설치하세요 🛏️',
@@ -59,7 +59,7 @@ const WELCOME = [
     '반가워요! 여기선 돌을 캐도, 친구를 캐도 됩니다 ⛏️',
     '환영합니다! 용암 앞에서는 늘 한 칸 떨어져 계세요 🔥',
     '새 플레이어 합류! 서버 TPS 가 기뻐서 1 올랐습니다 (기분상) 📈',
-    '어서 오세요! 첫 번째 미션: 채널 구경하고 `/인증` 하기 ✅',
+    '어서 오세요! 첫 번째 미션: 채널 구경하고 `/인증` 하기 <:minecraft_emerald_block:1557947122802757673>',
 ];
 
 async function welcome(member) {

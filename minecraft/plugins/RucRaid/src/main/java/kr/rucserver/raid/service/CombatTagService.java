@@ -102,6 +102,12 @@ public class CombatTagService {
         return left <= 0 ? 0 : (int) Math.ceil(left / 1000.0);
     }
 
+    /** 마지막 상대의 UUID. 수동 태그(스태프)면 자기 자신이라 null 로 돌려줍니다. */
+    public UUID opponent(UUID uuid) {
+        Tag tag = tags.get(uuid);
+        return tag == null || uuid.equals(tag.opponent()) ? null : tag.opponent();
+    }
+
     /** 마지막 교전 상대의 이름. 없으면 null. */
     public String opponentName(UUID uuid) {
         Tag tag = tags.get(uuid);

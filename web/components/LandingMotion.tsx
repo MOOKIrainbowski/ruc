@@ -164,7 +164,7 @@ function Scene({ item, i, n, p }: { item: Highlight; i: number; n: number; p: Mo
       <p className="text-[11px] tracking-[0.3em] text-ruc-300">
         {String(i + 1).padStart(2, "0")} / {String(n).padStart(2, "0")}
       </p>
-      <h3 className="headline mt-4 text-3xl sm:text-5xl">{item.title}</h3>
+      <h3 className="headline mt-4 text-2xl sm:text-4xl">{item.title}</h3>
       <p className="mx-auto mt-4 max-w-md text-[13px] leading-relaxed text-white/75 sm:text-sm">{item.desc}</p>
     </motion.div>
   );

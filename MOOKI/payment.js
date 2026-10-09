@@ -258,8 +258,8 @@ async function announce(guild, r, by) {
     if (r.kind === 'DEPOSIT' && r.result === 'MATCHED') {
         const delivered = r.delivered === '1';
         const state = delivered
-            ? { color: COLOR.ok, text: `✅ ${by} · 지급 완료${r.late === '1' ? ' (만료 후 입금)' : ''}` }
-            : { color: COLOR.bad, text: `⚠️ ${by} · 결제는 확인했지만 **지급 실패** — 5분마다 자동 재시도합니다.` };
+            ? { color: COLOR.ok, text: `<:minecraft_emerald_block:1557947122802757673> ${by} · 지급 완료${r.late === '1' ? ' (만료 후 입금)' : ''}` }
+            : { color: COLOR.bad, text: `<:minecraft_tnt:1557947116993646632> ${by} · 결제는 확인했지만 **지급 실패** — 5분마다 자동 재시도합니다.` };
         await settleOrderMessage(guild, r.code, r, state);
         if (r.reason && r.reason.startsWith('LINKED')) await settleDepositMessage(guild, r.id, state.text);
 
@@ -599,21 +599,21 @@ async function handleCharge(interaction) {
         return interaction.editReply('충전은 아직 준비 중입니다. 열리면 공지로 알려 드릴게요.');
     }
     const acct = account();
-    if (!acct) return interaction.editReply('⚠️ 입금 계좌가 설정되지 않았습니다. 운영진에게 알려 주세요.');
+    if (!acct) return interaction.editReply('<:minecraft_tnt:1557947116993646632> 입금 계좌가 설정되지 않았습니다. 운영진에게 알려 주세요.');
 
     const line = await rcon(['rucpay', 'order', interaction.user.id, token(p.id), p.price,
         catalog.orderTtlMinutes || 60, String(p.grants || '-').replace(/\s+/g, '')].join(' '));
     const r = parse(line);
-    if (!r) return interaction.editReply('⚠️ 마크 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.');
+    if (!r) return interaction.editReply('<:minecraft_tnt:1557947116993646632> 마크 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.');
 
     const fail = {
         NOT_VERIFIED: '마인크래프트 계정 인증이 먼저 필요합니다. 게임에서 코드를 받아 `/인증` 을 해 주세요.',
         LIMIT: '입금하지 않은 주문이 이미 있습니다. 먼저 입금하거나 `/충전취소` 로 취소해 주세요.',
         COOLDOWN: '조금 전에 주문하셨습니다. 1분 뒤에 다시 시도해 주세요.',
-        BAD_GRANTS: '⚠️ 상품 설정에 문제가 있습니다. 운영진에게 알려 주세요.',
+        BAD_GRANTS: '<:minecraft_tnt:1557947116993646632> 상품 설정에 문제가 있습니다. 운영진에게 알려 주세요.',
         CAP: '이미 최대 개수까지 가지고 있어서 더 살 수 없습니다.',
     };
-    if (r.kind !== 'ORDER') return interaction.editReply(fail[r.kind] || '⚠️ 주문을 만들지 못했습니다.');
+    if (r.kind !== 'ORDER') return interaction.editReply(fail[r.kind] || '<:minecraft_tnt:1557947116993646632> 주문을 만들지 못했습니다.');
 
     data.lastOrderAt = Date.now();
     save();
@@ -626,7 +626,7 @@ async function handleCharge(interaction) {
             '',
             `> ${acct.bank} **${acct.number}** (${acct.holder})`,
             '',
-            `⏰ <t:${Math.floor(Number(r.expires) / 1000)}:R> 까지 입금해 주세요.`,
+            `<:minecraft_clock:1557947961382670396> <t:${Math.floor(Number(r.expires) / 1000)}:R> 까지 입금해 주세요.`,
             `🎁 받는 계정: **${r.name}** — 입금이 확인되면 게임 안에서 바로 지급됩니다.`,
         ].join('\n'))
         .setFooter({ text: '취소: /충전취소 · 문제가 생기면 /ticket 에 주문 코드를 적어 주세요' });
@@ -655,14 +655,14 @@ async function payWithRuc(interaction, p) {
 
     const r = parse(await rcon(['rucpay', 'rucbuy', interaction.user.id, token(p.id), price,
         String(p.grants || '-').replace(/\s+/g, '')].join(' ')));
-    if (!r) return interaction.editReply('⚠️ 마크 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.');
+    if (!r) return interaction.editReply('<:minecraft_tnt:1557947116993646632> 마크 서버에 연결하지 못했습니다. 잠시 뒤 다시 시도해 주세요.');
     const fail = {
         NOT_VERIFIED: '마인크래프트 계정 인증이 먼저 필요합니다. 게임에서 코드를 받아 `/인증` 을 해 주세요.',
         SHORT: `RUC 가 부족합니다. (필요 ${price.toLocaleString('ko-KR')} · 보유 ${Number(r.balance || 0).toLocaleString('ko-KR')}) — \`/충전\` 에서 RUC 를 충전할 수 있습니다.`,
         CAP: '지금 등급으로는 더 살 수 없습니다 (엔더상자 확장: 일반 1 · VIP 2 · SVIP 3 · MVP 이상 6).',
-        BAD_GRANTS: '⚠️ 상품 설정에 문제가 있습니다. 운영진에게 알려 주세요.',
+        BAD_GRANTS: '<:minecraft_tnt:1557947116993646632> 상품 설정에 문제가 있습니다. 운영진에게 알려 주세요.',
     };
-    if (r.kind !== 'BOUGHT') return interaction.editReply(fail[r.kind] || '⚠️ 결제하지 못했습니다.');
+    if (r.kind !== 'BOUGHT') return interaction.editReply(fail[r.kind] || '<:minecraft_tnt:1557947116993646632> 결제하지 못했습니다.');
 
     console.log(`[충전] RUC 결제 ${r.code} ${p.id} ${price} RUC — ${interaction.user.tag}`);
     await interaction.editReply({
@@ -683,7 +683,7 @@ async function handleCancel(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     const code = interaction.options.getString('코드').trim().toUpperCase();
     const r = parse(await rcon(`rucpay cancel ${token(code)} ${interaction.user.id} ${interaction.user.id}`));
-    if (!r) return interaction.editReply('⚠️ 마크 서버에 연결하지 못했습니다.');
+    if (!r) return interaction.editReply('<:minecraft_tnt:1557947116993646632> 마크 서버에 연결하지 못했습니다.');
     if (r.kind === 'CANCELLED') {
         const status = parse(await rcon(`rucpay status ${token(code)}`));
         if (status?.kind === 'STATUS') {
@@ -697,17 +697,17 @@ async function handleCancel(interaction) {
 
 async function handleLookup(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-    if (!isAdmin(interaction.member)) return interaction.editReply('❌ Manager 이상만 볼 수 있습니다.');
+    if (!isAdmin(interaction.member)) return interaction.editReply('<:minecraft_barrier:1557947126024245328> Manager 이상만 볼 수 있습니다.');
     const q = interaction.options.getString('대상').trim();
 
     if (/^[RUG]\d{4}$/i.test(q)) {
         const r = parse(await rcon(`rucpay status ${token(q.toUpperCase())}`));
-        if (!r) return interaction.editReply('⚠️ 마크 서버에 연결하지 못했습니다.');
+        if (!r) return interaction.editReply('<:minecraft_tnt:1557947116993646632> 마크 서버에 연결하지 못했습니다.');
         if (r.kind !== 'STATUS') return interaction.editReply('그 코드의 주문이 없습니다.');
         return interaction.editReply({ embeds: [orderEmbed(r, { color: COLOR.info, text: `상태: **${r.status}**\n지급 명세: \`${r.grants}\`` })] });
     }
     const r = parse(await rcon(`rucpay lookup ${token(q)}`));
-    if (!r) return interaction.editReply('⚠️ 마크 서버에 연결하지 못했습니다.');
+    if (!r) return interaction.editReply('<:minecraft_tnt:1557947116993646632> 마크 서버에 연결하지 못했습니다.');
     const rows = items(r);
     if (rows.length === 0) return interaction.editReply('주문 기록이 없습니다.');
     const lines = rows.map(([id, code, status, pid, amount, created]) =>
@@ -717,11 +717,11 @@ async function handleLookup(interaction) {
 
 async function handleReview(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-    if (!isAdmin(interaction.member)) return interaction.editReply('❌ Manager 이상만 볼 수 있습니다.');
+    if (!isAdmin(interaction.member)) return interaction.editReply('<:minecraft_barrier:1557947126024245328> Manager 이상만 볼 수 있습니다.');
     const r = parse(await rcon('rucpay review'));
-    if (!r) return interaction.editReply('⚠️ 마크 서버에 연결하지 못했습니다.');
+    if (!r) return interaction.editReply('<:minecraft_tnt:1557947116993646632> 마크 서버에 연결하지 못했습니다.');
     const rows = items(r);
-    if (rows.length === 0) return interaction.editReply('✅ 확인을 기다리는 입금이 없습니다.');
+    if (rows.length === 0) return interaction.editReply('<:minecraft_emerald_block:1557947122802757673> 확인을 기다리는 입금이 없습니다.');
     for (const [id, amount, depositor, reason] of rows) {
         await postReview(interaction.guild, { id, amount, depositor, reason, order: '-' });
     }
@@ -736,7 +736,7 @@ async function handleButton(interaction) {
     if (!id.startsWith('pay_')) return false;
 
     if (!isAdmin(interaction.member)) {
-        await interaction.reply({ content: '❌ Manager 이상만 누를 수 있습니다.', flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> Manager 이상만 누를 수 있습니다.', flags: MessageFlags.Ephemeral });
         return true;
     }
     const admin = token(interaction.user.username);
@@ -745,7 +745,7 @@ async function handleButton(interaction) {
         const code = id.slice('pay_ok_'.length);
         await interaction.deferUpdate();
         const r = parse(await rcon(`rucpay approve ${token(code)} ${admin}`));
-        if (!r) return replyLater(interaction, '⚠️ 마크 서버에 연결하지 못했습니다. 다시 눌러 주세요.');
+        if (!r) return replyLater(interaction, '<:minecraft_tnt:1557947116993646632> 마크 서버에 연결하지 못했습니다. 다시 눌러 주세요.');
         if (r.kind === 'DEPOSIT' || r.kind === 'DUP') {
             if (r.kind === 'DUP') return replyLater(interaction, '이미 확인된 주문입니다.');
             await announce(interaction.guild, r, `${interaction.user.username} 확인`);
@@ -776,7 +776,7 @@ async function handleButton(interaction) {
             }
             return true;
         }
-        return replyLater(interaction, '⚠️ 취소하지 못했습니다.');
+        return replyLater(interaction, '<:minecraft_tnt:1557947116993646632> 취소하지 못했습니다.');
     }
 
     if (id.startsWith('pay_linkto_')) {
@@ -800,10 +800,10 @@ async function handleButton(interaction) {
         const depositId = id.slice(refund ? 'pay_refund_'.length : 'pay_ignore_'.length);
         await interaction.deferUpdate();
         const r = parse(await rcon(`rucpay ${refund ? 'refund' : 'ignore'} ${token(depositId)} ${admin}`));
-        if (!r) return replyLater(interaction, '⚠️ 마크 서버에 연결하지 못했습니다.');
+        if (!r) return replyLater(interaction, '<:minecraft_tnt:1557947116993646632> 마크 서버에 연결하지 못했습니다.');
         if (r.kind === 'REFUNDED' || r.kind === 'IGNORED') {
             const text = refund
-                ? `💸 ${interaction.user.username} — 환불 처리됨${r.revoked > 0 ? ` · 지급 ${r.revoked}건 회수` : ''}${r.manual === '1' ? ' · ⚠️ 우편 아이템은 수동 회수' : ''}\n**토스로 돈을 돌려보냈는지 다시 확인하세요.**`
+                ? `💸 ${interaction.user.username} — 환불 처리됨${r.revoked > 0 ? ` · 지급 ${r.revoked}건 회수` : ''}${r.manual === '1' ? ' · <:minecraft_tnt:1557947116993646632> 우편 아이템은 수동 회수' : ''}\n**토스로 돈을 돌려보냈는지 다시 확인하세요.**`
                 : `🙈 ${interaction.user.username} — 무시함`;
             await settleDepositMessage(interaction.guild, depositId, text);
             return true;
@@ -819,7 +819,7 @@ async function handleButton(interaction) {
             delete data.retries[orderId];
             save();
             await grantRoles(interaction.guild);
-            await interaction.editReply({ components: [], content: `✅ ${interaction.user.username} — 재지급 성공` }).catch(() => {});
+            await interaction.editReply({ components: [], content: `<:minecraft_emerald_block:1557947122802757673> ${interaction.user.username} — 재지급 성공` }).catch(() => {});
             return true;
         }
         return replyLater(interaction, `재지급 실패: ${r ? r.raw : '서버 연결 실패'}`);
@@ -830,7 +830,7 @@ async function handleButton(interaction) {
 async function handleModal(interaction) {
     if (!interaction.customId.startsWith('pay_linkmodal_')) return false;
     if (!isAdmin(interaction.member)) {
-        await interaction.reply({ content: '❌ Manager 이상만 할 수 있습니다.', flags: MessageFlags.Ephemeral });
+        await interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> Manager 이상만 할 수 있습니다.', flags: MessageFlags.Ephemeral });
         return true;
     }
     const depositId = interaction.customId.slice('pay_linkmodal_'.length);
@@ -842,10 +842,10 @@ async function handleModal(interaction) {
 
 async function linkDeposit(interaction, depositId, code, admin) {
     const r = parse(await rcon(`rucpay link ${token(depositId)} ${token(code)} ${admin}`));
-    if (!r) return replyLater(interaction, '⚠️ 마크 서버에 연결하지 못했습니다.');
+    if (!r) return replyLater(interaction, '<:minecraft_tnt:1557947116993646632> 마크 서버에 연결하지 못했습니다.');
     if (r.kind === 'DEPOSIT' && r.result === 'MATCHED') {
         await announce(interaction.guild, r, `${interaction.user.username} 연결`);
-        if (interaction.deferred && !interaction.isButton()) await interaction.editReply(`✅ ${code} 에 연결하고 지급했습니다.`);
+        if (interaction.deferred && !interaction.isButton()) await interaction.editReply(`<:minecraft_emerald_block:1557947122802757673> ${code} 에 연결하고 지급했습니다.`);
         return true;
     }
     const why = { NOT_FOUND: '입금이나 주문을 찾지 못했습니다.', NOT_PENDING: `그 주문은 이미 처리됐습니다 (${r.status}).`, NOT_REVIEW: `이미 처리된 입금입니다 (${r.status}).` };

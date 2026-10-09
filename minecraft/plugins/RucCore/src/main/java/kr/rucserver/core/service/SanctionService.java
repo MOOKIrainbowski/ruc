@@ -187,6 +187,14 @@ public class SanctionService {
             // 내림입니다. 100% 는 정확히 0 이 됩니다.
             long taken = Math.min(before, before * s.confiscatePct() / 100);
             data.setRuc(before - taken);
+            // 몰수한 Gold 는 사라지지 않고 약탈 서버 현상금 풀로 갑니다 (docs/08 A).
+            if (plugin.getBounties() != null) {
+                try {
+                    plugin.getBounties().addToPool(taken);
+                } catch (java.sql.SQLException e) {
+                    plugin.getLogger().log(Level.WARNING, "[제재] 현상금 풀 적립 실패 #" + s.id() + " (" + taken + ")", e);
+                }
+            }
         }
 
         int rep = data.getReputation();

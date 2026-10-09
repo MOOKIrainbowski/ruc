@@ -11,7 +11,7 @@
 const { Rcon } = require('rcon-client');
 const {
     EmbedBuilder, SlashCommandBuilder, MessageFlags, PermissionFlagsBits,
-    ActionRowBuilder, StringSelectMenuBuilder, ModalBuilder, TextInputBuilder, TextInputStyle,
+    ActionRowBuilder, ButtonBuilder, ButtonStyle, ModalBuilder, TextInputBuilder, TextInputStyle,
 } = require('discord.js');
 const roles = require('./roles');
 
@@ -121,12 +121,12 @@ async function callServer(code, discordId, discordName) {
 const RESULT_MESSAGES = {
     SUCCESS: {
         color: 0x93e93e,
-        title: '✅ 인증 완료',
+        title: '<:minecraft_emerald_block:1557947122802757673> 인증 완료',
         body: '마인크래프트 계정이 연동되었습니다.\n게임으로 돌아가시면 잠시 후 자동으로 이동됩니다.',
     },
     INVALID_CODE: {
         color: 0xff4444,
-        title: '❌ 잘못된 코드',
+        title: '<:minecraft_barrier:1557947126024245328> 잘못된 코드',
         body: '해당 코드를 찾을 수 없습니다.\n게임에서 `/인증` 을 입력해 코드를 다시 확인해 주세요.',
     },
     EXPIRED: {
@@ -136,7 +136,7 @@ const RESULT_MESSAGES = {
     },
     DISCORD_ALREADY_LINKED: {
         color: 0xff4444,
-        title: '❌ 이미 연동된 디스코드 계정',
+        title: '<:minecraft_barrier:1557947126024245328> 이미 연동된 디스코드 계정',
         body: '이 디스코드 계정은 이미 다른 마인크래프트 계정에 연동되어 있습니다.\n'
             + '한 디스코드 계정당 마인크래프트 계정 하나만 연동할 수 있습니다.\n'
             + '연동 해제가 필요하면 스태프에게 문의해 주세요.',
@@ -148,7 +148,7 @@ const RESULT_MESSAGES = {
     },
     ERROR: {
         color: 0xff4444,
-        title: '❌ 처리 실패',
+        title: '<:minecraft_barrier:1557947126024245328> 처리 실패',
         body: '인증 처리 중 오류가 발생했습니다. 잠시 후 다시 시도해 주세요.',
     },
 };
@@ -177,40 +177,23 @@ const verifyPanelCommand = new SlashCommandBuilder()
 function buildVerifyPanel() {
     const embed = new EmbedBuilder()
         .setColor(0x93e93e)
-        .setTitle('✅ 마인크래프트 계정 인증')
-        .setDescription(
-            '러크 서버는 **디스코드 계정 1개당 마인크래프트 계정 1개**를 연동하여 플레이할 수 있습니다.\n'
-            + '아래 순서대로 진행해 주세요.')
-        .addFields(
-            {
-                name: '> 📋 인증 방법',
-                value: '1. 마인크래프트로 러크 서버에 접속합니다.\n'
-                    + '2. 화면 상단과 채팅에 표시되는 **6자리 코드**를 확인합니다.\n'
-                    + '3. 아래 메뉴에서 ✅ **인증하기**를 골라 코드를 입력합니다.\n'
-                    + '　　(또는 채팅에 `/인증 코드:(발급받은 코드)` 입력)\n'
-                    + '4. 인증이 끝나면 역할이 지급되고, 게임에서 잠시 후 자동으로 이동됩니다.\n',
-            },
-            {
-                name: '> ⚠️ 인증이 안 될 때',
-                value: '• **잘못된 코드 / 코드 만료** — 코드는 **10분** 동안만 유효합니다. 게임에서 `/인증` 을 입력해 새 코드를 받으세요. (재발급은 1분에 한 번)\n'
-                    + `• **계정 생성 후 기간 부족** — 디스코드 계정이 만들어진 지 **${MIN_ACCOUNT_AGE_DAYS}일** 이 지나야 합니다. 예외가 필요하면 문의해 주세요.\n`
-                    + `• **시도 횟수 초과** — ${MAX_ATTEMPTS}번 틀리면 **${LOCKOUT_MS / 60000}분** 동안 막힙니다. 잠시 후 다시 시도하세요.\n`
-                    + '• **이미 연동된 디스코드 계정** — 한 디스코드 계정에는 마인크래프트 계정 하나만 연동됩니다. 연동 해제는 문의로 요청하세요.\n'
-                    + '• **서버 연결 실패** — 마인크래프트 서버가 점검 중일 수 있습니다. 잠시 후 다시 시도하세요.\n'
-                    + '• **역할 지급 실패** — 인증은 된 상태입니다. 다시 인증하지 말고 문의해 주세요.\n',
-            },
-            {
-                name: '> 📬 그래도 해결되지 않았을 때,',
-                value: '아래 메뉴에서 **📬 문의하기**를 골라 티켓을 열어 주세요. 스태프가 확인합니다.\n',
-            })
-        .setFooter({ text: '인증 코드는 다른 사람에게 알려 주지 마세요!' });
+        .setTitle('마인크래프트 계정 인증')
+        .setDescription('디스코드 계정 1개에 마인크래프트 계정 1개를 연결합니다.\n\n'
+            + '**1.** 마인크래프트로 러크 서버에 접속\n'
+            + '**2.** 화면에 뜨는 **6자리 코드** 확인\n'
+            + '**3.** 아래 **인증하기** 를 눌러 코드 입력')
+        .addFields({
+            name: '안 될 때',
+            value: `<:minecraft_clock:1557947961382670396> 코드는 **10분** 동안만 — 게임에서 \`/인증\` 으로 새로 받기\n`
+                + `<:minecraft_barrier:1557947126024245328> 디스코드 가입 **${MIN_ACCOUNT_AGE_DAYS}일** 이후부터 · **${MAX_ATTEMPTS}번** 틀리면 **${LOCKOUT_MS / 60000}분** 잠김\n`
+                + `<:minecraft_chest:1557947110668902521> 그래도 안 되면 **문의하기**`,
+        })
+        .setFooter({ text: '코드는 다른 사람에게 알려 주지 마세요' });
 
-    // 값은 MOOKIbot.js 의 버튼 처리로 그대로 갑니다 (문의는 티켓 패널의 문의와 같은 값)
+    // 버튼 ID 는 MOOKIbot.js 의 버튼 처리로 그대로 갑니다 (문의는 티켓 패널의 문의와 같은 ID)
     const row = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder().setCustomId('panel_select').setPlaceholder('📂 원하는 항목을 선택하세요').addOptions(
-            { label: '인증하기', value: 'verify_open', emoji: '✅', description: '게임에서 받은 코드를 입력합니다' },
-            { label: '문의하기', value: 'ticket_type_inquiry', emoji: '📬', description: '인증이 안 될 때 스태프에게 문의합니다' },
-        ),
+        new ButtonBuilder().setCustomId('verify_open').setLabel('인증하기').setStyle(ButtonStyle.Success).setEmoji('<:minecraft_emerald_block:1557947122802757673>'),
+        new ButtonBuilder().setCustomId('ticket_type_inquiry').setLabel('문의하기').setStyle(ButtonStyle.Secondary).setEmoji('<:minecraft_chest:1557947110668902521>'),
     );
     return { embeds: [embed], components: [row] };
 }
@@ -254,7 +237,7 @@ async function handleVerify(interaction, code = interaction.options.getString('�
         return interaction.editReply({
             embeds: [new EmbedBuilder()
                 .setColor(0xff4444)
-                .setTitle('❌ 서버에서 실행해 주세요')
+                .setTitle('<:minecraft_barrier:1557947126024245328> 서버에서 실행해 주세요')
                 .setDescription('이 명령어는 러크 서버 디스코드 안에서만 사용할 수 있습니다.')],
         });
     }
@@ -267,7 +250,7 @@ async function handleVerify(interaction, code = interaction.options.getString('�
         return interaction.editReply({
             embeds: [new EmbedBuilder()
                 .setColor(0xff4444)
-                .setTitle('❌ 계정 생성 후 기간 부족')
+                .setTitle('<:minecraft_barrier:1557947126024245328> 계정 생성 후 기간 부족')
                 .setDescription(
                     `디스코드 계정 생성 후 **${MIN_ACCOUNT_AGE_DAYS}일** 이상 지나야 인증할 수 있습니다.\n`
                     + `현재 계정 나이: **${ageDays}일**\n\n`

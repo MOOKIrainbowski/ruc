@@ -100,3 +100,17 @@ dragon-egg:
   glow-duration-seconds: 6
   reveal-radius: 200           # 이 반경 안의 전원에게 알림
   announce-interval-minutes: 1440   # 하루 1회 전 서버 공지
+
+# ── 2026-10-09 추가 (docs/08) — 값은 jar 기본값과 같습니다 ──
+# 도망자의 무덤
+grave:
+  lock-minutes: 5
+  expire-minutes: 30
+
+# 평판 현상금
+bounty:
+  share-percent: 10
+  min-payout: 2000
+  min-level: 10
+  immunity-hours: 24
+  reveal-minutes: 2

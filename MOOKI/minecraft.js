@@ -199,7 +199,7 @@ async function handleStatus(interaction) {
         return interaction.editReply({
             embeds: [new EmbedBuilder()
                 .setColor(0xff4444)
-                .setTitle('🔴 서버 오프라인')
+                .setTitle('<:minecraft_red_concrete:1557969470801186946> 서버 오프라인')
                 .setDescription('지금 서버에 접속할 수 없습니다.')
                 .addFields(
                     { name: '주소', value: '`' + display + '`', inline: true },
@@ -211,7 +211,7 @@ async function handleStatus(interaction) {
 
     const embed = new EmbedBuilder()
         .setColor(0x93e93e)
-        .setTitle('🟢 서버 온라인')
+        .setTitle('<:minecraft_lime_concrete:1557969373023707180> 서버 온라인')
         .addFields(
             { name: '접속 인원', value: `**${info.players}** / ${info.max}`, inline: true },
             { name: '응답 속도', value: `${info.latency}ms`, inline: true },

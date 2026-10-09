@@ -47,9 +47,10 @@ const cmd = (name) => ({
         assert.strictEqual((await titleOf('cash', 59000))[1], '💎 다이아몬드 후원');
         assert.deepStrictEqual(await titleOf('boost'), ['<@u1>님, 부스트 후원 감사합니다.', '🚀 부스트 후원 · 레벨 2']);
 
-        // 패널: 선택 메뉴 값이 버튼 처리 ID 와 맞는지
-        const vp = v.buildVerifyPanel().components[0].toJSON().components[0];
-        assert.deepStrictEqual(vp.options.map(o => o.value), ['verify_open', 'ticket_type_inquiry']);
+        // 패널: 버튼 ID 가 버튼 처리(MOOKIbot.js)와 맞는지 — 2026-10-09 선택 메뉴 → 버튼으로 되돌림
+        const vp = v.buildVerifyPanel().components[0].toJSON().components;
+        assert.deepStrictEqual(vp.map(b => b.custom_id), ['verify_open', 'ticket_type_inquiry']);
+        assert.ok(vp.every(b => b.emoji && b.emoji.id), '패널 버튼은 애플리케이션 이모지(이미지)를 씁니다');
         console.log('OK');
     } finally {
         if (backup) fs.writeFileSync(file, backup); else fs.rmSync(file, { force: true });

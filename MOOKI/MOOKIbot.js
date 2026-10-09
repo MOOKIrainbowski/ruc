@@ -1,7 +1,7 @@
 const {
     Client, GatewayIntentBits, EmbedBuilder, ActionRowBuilder, ButtonBuilder, ButtonStyle,
     SlashCommandBuilder, ModalBuilder, TextInputBuilder, TextInputStyle, PermissionsBitField,
-    ChannelType, InteractionType, Events, MessageFlags, StringSelectMenuBuilder
+    ChannelType, InteractionType, Events, MessageFlags
 } = require('discord.js');
 const fs = require('fs');
 const path = require('path');
@@ -237,8 +237,8 @@ async function createTicketChannel(guild, member, type, title, description) {
         .setFooter({ text: '스태프가 곧 답변드리겠습니다.' });
 
     const controlRow = new ActionRowBuilder().addComponents(
-        new ButtonBuilder().setCustomId(`close_ticket_${ticketId}`).setLabel('티켓 닫기').setStyle(ButtonStyle.Danger).setEmoji('🔒'),
-        new ButtonBuilder().setCustomId(`resolve_ticket_${ticketId}`).setLabel('해결 완료').setStyle(ButtonStyle.Success).setEmoji('✅')
+        new ButtonBuilder().setCustomId(`close_ticket_${ticketId}`).setLabel('티켓 닫기').setStyle(ButtonStyle.Danger).setEmoji('<:minecraft_shulker_shell:1557948244409983026>'),
+        new ButtonBuilder().setCustomId(`resolve_ticket_${ticketId}`).setLabel('해결 완료').setStyle(ButtonStyle.Success).setEmoji('<:minecraft_emerald_block:1557947122802757673>')
     );
 
     const msg = await channel.send({ content: `<@${member.id}> ${staffRole ? `<@&${staffRole.id}>` : ''}`, embeds: [embed], components: [controlRow] });
@@ -260,26 +260,21 @@ async function createTicketChannel(guild, member, type, title, description) {
     return { channel, ticketId };
 }
 
-/** /ticket panel — 선택 값은 아래 ticket_type_ 처리가 그대로 받습니다 */
+/** /ticket panel — 버튼 ID 는 아래 ticket_type_ 처리가 그대로 받습니다 (버튼 3개가 한눈에 보이게 · 2026-10-09 되돌림) */
 function buildTicketPanel() {
     const embed = new EmbedBuilder()
         .setColor(0x5865f2)
-        .setTitle('🎫 러크 서버 티켓')
-        .setDescription('스태프에게 전할 내용이 있으면 아래에서 **유형을 골라** 티켓을 열어 주세요.\n'
-            + '본인과 스태프만 볼 수 있는 전용 채널이 만들어집니다.\n')
-        .addFields(
-            { name: TICKET_TYPES.inquiry, value: '서버 이용 · 인증 · 결제 · 계정 등 궁금한 점이나 도움이 필요할 때\n' },
-            { name: TICKET_TYPES.report, value: '규칙 위반 플레이어 신고 — **가해자 닉네임 · 발생 시각 · 사유**를 적어 주세요. 증거(스크린샷 · 영상 링크)가 있으면 빨리 처리됩니다.\n' },
-            { name: TICKET_TYPES.suggestion, value: '서버 · 컨텐츠 · 디스코드에 대한 아이디어나 개선 의견을 건의할 때\n' },
-            { name: '📌 안내', value: '• 스태프가 답변하면 DM 으로 알려 드립니다.\n• 장난 · 도배 티켓은 제재 대상입니다.\n' })
-        .setFooter({ text: '명령어로도 열 수 있습니다: /ticket create · /신고' });
+        .setTitle('🎫 티켓 열기')
+        .setDescription('스태프와 1:1 로 이야기할 채널이 열립니다. 아래에서 골라 주세요.\n\n'
+            + '<:minecraft_chest:1557947110668902521> **문의** — 이용 · 인증 · 결제 · 계정\n'
+            + '<:minecraft_creeper_head:1557947124463833088> **신고** — 규칙 위반 (닉네임 · 시각 · 증거)\n'
+            + '<:minecraft_light:1557947119745114155> **건의** — 서버를 더 좋게 할 아이디어')
+        .setFooter({ text: '답변이 오면 DM 으로 알려 드립니다 · 장난 티켓은 제재 대상' });
 
     const row = new ActionRowBuilder().addComponents(
-        new StringSelectMenuBuilder().setCustomId('panel_select').setPlaceholder('📂 위 상황에 맞게 선택해주세요.').addOptions(
-            { label: '문의', value: 'ticket_type_inquiry', emoji: '📬', description: '이용 · 인증 · 결제 · 계정 문의' },
-            { label: '신고', value: 'ticket_type_report', emoji: '🚨', description: '규칙 위반 플레이어 신고' },
-            { label: '건의', value: 'ticket_type_suggestion', emoji: '💡', description: '서버 · 컨텐츠 개선 의견' },
-        ),
+        new ButtonBuilder().setCustomId('ticket_type_inquiry').setLabel('문의').setStyle(ButtonStyle.Primary).setEmoji('<:minecraft_chest:1557947110668902521>'),
+        new ButtonBuilder().setCustomId('ticket_type_report').setLabel('신고').setStyle(ButtonStyle.Danger).setEmoji('<:minecraft_creeper_head:1557947124463833088>'),
+        new ButtonBuilder().setCustomId('ticket_type_suggestion').setLabel('건의').setStyle(ButtonStyle.Success).setEmoji('<:minecraft_light:1557947119745114155>'),
     );
     return { embeds: [embed], components: [row] };
 }
@@ -533,9 +528,9 @@ client.on('interactionCreate', async interaction => {
             if ((commandName === 'ticket' || commandName === 'verify')
                 && interaction.options.getSubcommand() === 'panel') {
                 if (!interaction.memberPermissions?.has(PermissionsBitField.Flags.Administrator))
-                    return interaction.reply({ content: '❌ 관리자 전용 명령어입니다.', flags: MessageFlags.Ephemeral });
+                    return interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> 관리자 전용 명령어입니다.', flags: MessageFlags.Ephemeral });
                 await interaction.channel.send(commandName === 'ticket' ? buildTicketPanel() : buildVerifyPanel());
-                return interaction.reply({ content: '✅ 패널을 올렸습니다.', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '<:minecraft_emerald_block:1557947122802757673> 패널을 올렸습니다.', flags: MessageFlags.Ephemeral });
             }
 
             if (commandName === 'ticket') {
@@ -579,7 +574,7 @@ client.on('interactionCreate', async interaction => {
             // ── sendmessage (모달 기반, 멀티라인 공지) ───────────────
             if (commandName === '메시지') {
                 if (!roles.isStaff(interaction.member)) {
-                    return interaction.reply({ content: '❌ 스태프 전용 명령어입니다.', flags: MessageFlags.Ephemeral });
+                    return interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> 스태프 전용 명령어입니다.', flags: MessageFlags.Ephemeral });
                 }
                 const modal = new ModalBuilder().setCustomId('modal_sendmessage').setTitle('메시지 작성');
                 modal.addComponents(
@@ -612,9 +607,9 @@ client.on('interactionCreate', async interaction => {
             }
             if (commandName === 'channel') {
                 if (!roles.isStaff(interaction.member))
-                    return interaction.reply({ content: '❌ 스태프 전용 명령어입니다.', flags: MessageFlags.Ephemeral });
+                    return interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> 스태프 전용 명령어입니다.', flags: MessageFlags.Ephemeral });
                 sendChannels.set(interaction.guildId, interaction.options.getChannel('채널').id);
-                return interaction.reply({ content: `✅ 채널 설정 완료: **${interaction.options.getChannel('채널').name}**`, flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: `<:minecraft_emerald_block:1557947122802757673> 채널 설정 완료: **${interaction.options.getChannel('채널').name}**`, flags: MessageFlags.Ephemeral });
             }
             if (commandName === 'add') {
                 const msgId = interaction.options.getString('message_id');
@@ -624,7 +619,7 @@ client.on('interactionCreate', async interaction => {
                 if (!reactionRoles[interaction.guildId][msgId]) reactionRoles[interaction.guildId][msgId] = {};
                 reactionRoles[interaction.guildId][msgId][emoji] = role.id;
                 fs.writeFileSync(REACTION_FILE, JSON.stringify(reactionRoles, null, 4));
-                return interaction.reply({ content: `✅ 리액션 롤 설정 완료: ${emoji} → ${role.name}`, flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: `<:minecraft_emerald_block:1557947122802757673> 리액션 롤 설정 완료: ${emoji} → ${role.name}`, flags: MessageFlags.Ephemeral });
             }
             if (commandName === 'embedbuilder') {
                 const initialEmbed = createDefaultEmbed(interaction.user);
@@ -682,15 +677,15 @@ client.on('interactionCreate', async interaction => {
                     // 작성자를 알 수 없으므로 스태프만, 티켓 분류 안의 채널일 때만 닫습니다.
                     const ch = interaction.channel;
                     if (roles.isStaff(interaction.member) && ch?.parent?.name === TICKET_CATEGORY_NAME) {
-                        await interaction.reply({ content: '🔒 기록이 없는 티켓이라 채널만 정리합니다...', flags: MessageFlags.Ephemeral });
+                        await interaction.reply({ content: '<:minecraft_shulker_shell:1557948244409983026> 기록이 없는 티켓이라 채널만 정리합니다...', flags: MessageFlags.Ephemeral });
                         await closeTicketChannel(ch, interaction.user.id);
                         return;
                     }
-                    return interaction.reply({ content: '❌ 티켓 기록이 없습니다. 스태프에게 닫아 달라고 요청해 주세요.', flags: MessageFlags.Ephemeral });
+                    return interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> 티켓 기록이 없습니다. 스태프에게 닫아 달라고 요청해 주세요.', flags: MessageFlags.Ephemeral });
                 }
                 if (!roles.isStaff(interaction.member) && interaction.user.id !== ticket.creatorId)
-                    return interaction.reply({ content: '❌ 권한이 없습니다.', flags: MessageFlags.Ephemeral });
-                await interaction.reply({ content: '🔒 티켓을 종료합니다...', flags: MessageFlags.Ephemeral });
+                    return interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> 권한이 없습니다.', flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: '<:minecraft_shulker_shell:1557948244409983026> 티켓을 종료합니다...', flags: MessageFlags.Ephemeral });
                 await closeTicket(ticketId, interaction.user.id, interaction.guild);
                 return;
             }
@@ -699,7 +694,7 @@ client.on('interactionCreate', async interaction => {
             if (customId.startsWith('ticket_read_')) {
                 const ticketId = parseInt(customId.replace('ticket_read_', ''));
                 const ticket = ticketsData.tickets[ticketId];
-                if (!ticket) return interaction.reply({ content: '❌ 티켓을 찾을 수 없습니다.', flags: MessageFlags.Ephemeral });
+                if (!ticket) return interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> 티켓을 찾을 수 없습니다.', flags: MessageFlags.Ephemeral });
                 ticket.notifiedUser = true;
                 saveTickets();
 
@@ -710,13 +705,13 @@ client.on('interactionCreate', async interaction => {
                         await ch.send({
                             content: `<@${ticket.creatorId}>`,
                             embeds: [new EmbedBuilder()
-                                .setDescription('✅ 사용자가 답변을 확인했습니다. 해결이 완료되었다면 아래 **티켓 닫기** 버튼을 눌러 티켓을 종료해주세요.')
+                                .setDescription('<:minecraft_emerald_block:1557947122802757673> 사용자가 답변을 확인했습니다. 해결이 완료되었다면 아래 **티켓 닫기** 버튼을 눌러 티켓을 종료해주세요.')
                                 .setColor(0x00CC00)]
                         });
                     }
                 } catch { /* guild unavailable */ }
 
-                return interaction.update({ content: '✅ 확인 완료! 스태프에게 알렸습니다.', components: [] });
+                return interaction.update({ content: '<:minecraft_emerald_block:1557947122802757673> 확인 완료! 스태프에게 알렸습니다.', components: [] });
             }
 
             // ── 제재 버튼 (집행·승인·재시도) ─────────────────────────
@@ -727,15 +722,15 @@ client.on('interactionCreate', async interaction => {
 
             // ── 임베드 빌더 버튼 ─────────────────────────────────────
             const draft = embedBuilders.get(interaction.user.id);
-            if (!draft) return interaction.reply({ content: '❌ 세션이 만료되었습니다. 다시 명령어를 입력하세요.', flags: MessageFlags.Ephemeral });
+            if (!draft) return interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> 세션이 만료되었습니다. 다시 명령어를 입력하세요.', flags: MessageFlags.Ephemeral });
 
             if (customId === 'send_embed') {
                 const chId = sendChannels.get(interaction.guildId);
-                if (!chId) return interaction.reply({ content: '❌ `/channel`로 채널을 먼저 설정하세요.', flags: MessageFlags.Ephemeral });
+                if (!chId) return interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> `/channel`로 채널을 먼저 설정하세요.', flags: MessageFlags.Ephemeral });
                 const ch = await client.channels.fetch(chId);
                 await ch.send({ embeds: [draft.embed] });
                 embedBuilders.delete(interaction.user.id);
-                return interaction.reply({ content: '✅ 전송 완료!', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '<:minecraft_emerald_block:1557947122802757673> 전송 완료!', flags: MessageFlags.Ephemeral });
             }
             if (customId === 'cancel_builder') {
                 embedBuilders.delete(interaction.user.id);
@@ -800,7 +795,7 @@ client.on('interactionCreate', async interaction => {
                 const desc  = interaction.fields.getTextInputValue('ticket_desc');
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                 const { channel } = await createTicketChannel(interaction.guild, interaction.member, type, title, desc);
-                return interaction.editReply({ content: `✅ 티켓이 생성되었습니다: ${channel}` });
+                return interaction.editReply({ content: `<:minecraft_emerald_block:1557947122802757673> 티켓이 생성되었습니다: ${channel}` });
             }
 
             // ── 티켓 생성 모달 (직접 팝업 방식 — /ticket 신규) ──────
@@ -819,20 +814,20 @@ client.on('interactionCreate', async interaction => {
 
                 if (!type) {
                     return interaction.reply({
-                        content: `❌ 올바른 유형을 입력해주세요.\n> 📬 \`문의\` · 🚨 \`신고\` · 💡 \`건의\``,
+                        content: `<:minecraft_barrier:1557947126024245328> 올바른 유형을 입력해주세요.\n> <:minecraft_chest:1557947110668902521> \`문의\` · <:minecraft_creeper_head:1557947124463833088> \`신고\` · <:minecraft_light:1557947119745114155> \`건의\``,
                         flags: MessageFlags.Ephemeral
                     });
                 }
 
                 await interaction.deferReply({ flags: MessageFlags.Ephemeral });
                 const { channel } = await createTicketChannel(interaction.guild, interaction.member, type, title, desc);
-                return interaction.editReply({ content: `✅ 티켓이 생성되었습니다: ${channel}` });
+                return interaction.editReply({ content: `<:minecraft_emerald_block:1557947122802757673> 티켓이 생성되었습니다: ${channel}` });
             }
 
             // ── sendmessage 모달 ──────────────────────────────────────
             if (interaction.customId === 'modal_sendmessage') {
                 const chId = sendChannels.get(interaction.guildId);
-                if (!chId) return interaction.reply({ content: '❌ `/channel`로 채널을 먼저 설정하세요.', flags: MessageFlags.Ephemeral });
+                if (!chId) return interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> `/channel`로 채널을 먼저 설정하세요.', flags: MessageFlags.Ephemeral });
 
                 const title   = interaction.fields.getTextInputValue('msg_title');
                 const content = interaction.fields.getTextInputValue('msg_content').replace(/\\n/g, '\n');
@@ -857,12 +852,12 @@ client.on('interactionCreate', async interaction => {
 
                 const ch = await client.channels.fetch(chId);
                 await ch.send({ embeds: [embed] });
-                return interaction.reply({ content: '✅ 공지 메시지를 전송했습니다.', flags: MessageFlags.Ephemeral });
+                return interaction.reply({ content: '<:minecraft_emerald_block:1557947122802757673> 공지 메시지를 전송했습니다.', flags: MessageFlags.Ephemeral });
             }
 
             // ── 임베드 빌더 모달 ──────────────────────────────────────
             const draft = embedBuilders.get(interaction.user.id);
-            if (!draft) return interaction.reply({ content: '❌ 세션 만료.', flags: MessageFlags.Ephemeral });
+            if (!draft) return interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> 세션 만료.', flags: MessageFlags.Ephemeral });
 
             const embed = draft.embed;
             if (interaction.customId === 'modal_content') {
@@ -891,14 +886,14 @@ client.on('interactionCreate', async interaction => {
                 await msg.edit({ embeds: [embed] });
                 await interaction.deferUpdate();
             } catch {
-                await interaction.reply({ content: '❌ 메시지 업데이트 실패', flags: MessageFlags.Ephemeral });
+                await interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> 메시지 업데이트 실패', flags: MessageFlags.Ephemeral });
             }
         }
 
     } catch (error) {
         console.error('❌ Interaction Error:', error);
         if (!interaction.replied && !interaction.deferred)
-            await interaction.reply({ content: '❌ 오류가 발생했습니다.', flags: MessageFlags.Ephemeral }).catch(() => {});
+            await interaction.reply({ content: '<:minecraft_barrier:1557947126024245328> 오류가 발생했습니다.', flags: MessageFlags.Ephemeral }).catch(() => {});
     }
 });
 
@@ -933,7 +928,7 @@ client.on('messageCreate', safeListener('messageCreate', async message => {
         try {
             const creator = await client.users.fetch(ticket.creatorId);
             const readRow = new ActionRowBuilder().addComponents(
-                new ButtonBuilder().setCustomId(`ticket_read_${ticketId}`).setLabel('✅ 답변 확인 완료').setStyle(ButtonStyle.Success)
+                new ButtonBuilder().setCustomId(`ticket_read_${ticketId}`).setLabel('답변 확인 완료').setEmoji('<:minecraft_emerald_block:1557947122802757673>').setStyle(ButtonStyle.Success)
             );
             await creator.send({
                 embeds: [new EmbedBuilder()
@@ -951,7 +946,7 @@ client.on('messageCreate', safeListener('messageCreate', async message => {
     // 사례를 공유하려고 링크를 붙이는 순간 본인이 뮤트됐습니다.
     if (!isStaff && isSuspiciousLink(message.content)) {
         await message.delete().catch(() => {});
-        await message.channel.send({ content: `⚠️ <@${message.author.id}> 의심스러운 링크가 감지되어 삭제되었습니다.` }).catch(() => {});
+        await message.channel.send({ content: `<:minecraft_tnt:1557947116993646632> <@${message.author.id}> 의심스러운 링크가 감지되어 삭제되었습니다.` }).catch(() => {});
         await sendSecurityLog(message.guild, '의심 링크 감지', `**${message.author.tag}**가 의심 링크를 전송했습니다.\n채널: <#${message.channelId}>\n내용: \`${message.content.substring(0, 200)}\``);
         if (member) await muteUser(member, '의심 링크 전송');
         return;
@@ -983,7 +978,7 @@ client.on('guildMemberAdd', safeListener('guildMemberAdd', async member => {
     recentJoins.push(now);
     while (recentJoins.length && now - recentJoins[0] > JOIN_WINDOW_MS) recentJoins.shift();
     if (recentJoins.length >= JOIN_THRESHOLD) {
-        await sendSecurityLog(member.guild, '🚨 레이드 경고',
+        await sendSecurityLog(member.guild, '<:minecraft_creeper_head:1557947124463833088> 레이드 경고',
             `10초 내 **${recentJoins.length}명**이 입장했습니다! 레이드 가능성이 있습니다.\n최근 입장: <@${member.id}>`,
             0xFF0000);
     }

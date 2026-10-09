@@ -283,19 +283,19 @@ async function handleRoleAudit(interaction) {
         return interaction.editReply('이 명령어는 서버 안에서만 사용할 수 있습니다.');
     }
     if (!isStaff(interaction.member)) {
-        return interaction.editReply('❌ 스태프 전용 명령어입니다.');
+        return interaction.editReply('<:minecraft_barrier:1557947126024245328> 스태프 전용 명령어입니다.');
     }
 
     let rows;
     try {
         rows = await audit(interaction.guild);
     } catch (err) {
-        return interaction.editReply(`❌ 역할 설정을 읽지 못했습니다: ${err.message}`);
+        return interaction.editReply(`<:minecraft_barrier:1557947126024245328> 역할 설정을 읽지 못했습니다: ${err.message}`);
     }
 
     const broken = rows.filter(r => !r.ok);
     const lines = rows.map(r => {
-        const mark = r.ok ? (r.problem ? '➖' : '✅') : '❌';
+        const mark = r.ok ? (r.problem ? '➖' : '<:minecraft_emerald_block:1557947122802757673>') : '<:minecraft_barrier:1557947126024245328>';
         const note = r.problem ? ` — ${r.problem}` : '';
         return `${mark} **${r.label}** \`${r.key}\` (${r.kind}, ${r.priority})${note}`;
     });
@@ -304,7 +304,7 @@ async function handleRoleAudit(interaction) {
         .setColor(broken.length > 0 ? 0xff4444 : 0x93e93e)
         .setTitle(broken.length > 0
             ? `⚠️ 역할 점검 — 문제 ${broken.length}건`
-            : '✅ 역할 점검 — 전부 정상')
+            : '<:minecraft_emerald_block:1557947122802757673> 역할 점검 — 전부 정상')
         .setDescription(lines.join('\n').slice(0, 4000))
         .setFooter({ text: '설정 파일: config/roles.json' })
         .setTimestamp();

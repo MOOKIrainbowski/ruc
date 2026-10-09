@@ -94,7 +94,7 @@ public class DiscordRelayService {
     }
 
     public void start() {
-        if (!isEnabled()) {
+        if (!isEnabled() && feedWebhook().isEmpty()) {
             plugin.getLogger().info("디스코드 중계 꺼짐 (relay.enabled 또는 webhook-url 미설정)");
             return;
         }
@@ -135,6 +135,20 @@ public class DiscordRelayService {
     }
 
     /** 시스템 알림용 웹훅. 비어 있으면 발언과 같은 채널로 갑니다. */
+    /**
+     * 웹이 읽는 기계용 채널 (2026-10-09, docs/08 B) — 사람이 볼 채널이 아닙니다. 채팅 중계를 꺼도 따로 돕니다.
+     * 웹(app/api/feed)이 봇 토큰으로 이 채널의 최근 메시지를 읽습니다.
+     */
+    private String feedWebhook() {
+        return plugin.getConfig().getString("relay.feed-webhook-url", "").trim();
+    }
+
+    /** {@code RUCFEED <json>} 한 줄을 피드 채널에 올립니다. json 은 호출부가 만듭니다. */
+    public void relayFeed(String json) {
+        if (feedWebhook().isEmpty()) return;
+        enqueue(new Payload(feedWebhook(), body("Ruc Feed", null, trim("RUCFEED " + json, CONTENT_LIMIT), null)));
+    }
+
     private String systemWebhook() {
         String url = plugin.getConfig().getString("relay.system-webhook-url", "").trim();
         return url.isEmpty() ? webhook() : url;

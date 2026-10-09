@@ -7,6 +7,8 @@ import kr.rucserver.raid.listener.DragonEggListener;
 import kr.rucserver.raid.listener.RaidListener;
 import kr.rucserver.raid.service.CombatTagService;
 import kr.rucserver.raid.service.DragonEggService;
+import kr.rucserver.raid.service.GraveService;
+import kr.rucserver.raid.service.BountyService;
 import kr.rucserver.raid.service.ExecutionService;
 import kr.rucserver.raid.service.HomeService;
 import kr.rucserver.raid.service.RaidMessages;
@@ -38,6 +40,8 @@ public class RucRaid extends JavaPlugin {
     private ExecutionService executions;
     private HomeService homes;
     private DragonEggService eggs;
+    private GraveService graves;
+    private BountyService bounty;
 
     private List<String> raidWorlds;
 
@@ -72,15 +76,33 @@ public class RucRaid extends JavaPlugin {
         executions = new ExecutionService(this, repository, serverId);
         homes = new HomeService(this, core.getHomeRepository(), serverId);
         eggs = new DragonEggService(this, repository, serverId);
+        graves = new GraveService(this, repository, serverId);
+        if (core.getBounties() != null) bounty = new BountyService(this, core.getBounties());
 
         getServer().getPluginManager().registerEvents(new CombatListener(this), this);
         getServer().getPluginManager().registerEvents(new RaidListener(this), this);
         getServer().getPluginManager().registerEvents(new DragonEggListener(this), this);
+        getServer().getPluginManager().registerEvents(graves, this);
+        var ranking = getCommand("eggrank");
+        if (ranking != null) ranking.setExecutor((sender, command, label, args) -> {
+            eggs.showRanking(sender);
+            return true;
+        });
+        if (bounty != null) {
+            getServer().getPluginManager().registerEvents(bounty, this);
+            var cmd = getCommand("bounty");
+            if (cmd != null) cmd.setExecutor((sender, command, label, args) -> {
+                bounty.show(sender);
+                return true;
+            });
+        }
         new RaidCommands(this).register();
 
         applyWorldRules();
         combatTags.start();
         eggs.start();
+        graves.start();
+        if (bounty != null) bounty.start();
 
         // 리로드로 켜진 경우, 이미 접속해 있는 사람의 처형 기록도 확인합니다.
         for (var player : getServer().getOnlinePlayers()) {
@@ -96,6 +118,8 @@ public class RucRaid extends JavaPlugin {
         if (combatTags != null) combatTags.stop();
         if (homes != null) homes.stop();
         if (eggs != null) eggs.stop();
+        if (graves != null) graves.stop();
+        if (bounty != null) bounty.stop();
         getLogger().info("RucRaid 비활성화");
     }
 
@@ -149,4 +173,7 @@ public class RucRaid extends JavaPlugin {
     public ExecutionService getExecutions() { return executions; }
     public HomeService getHomes() { return homes; }
     public DragonEggService getEggs() { return eggs; }
+    public GraveService getGraves() { return graves; }
+    /** 현상금 — Core 의 현상금 테이블이 없으면 null */
+    public BountyService getBounty() { return bounty; }
 }

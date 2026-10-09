@@ -125,13 +125,13 @@ const TIERS = {
 function playerFields(info, reportedName) {
     if (info === null) {
         return [{
-            name: '🔍 가해자 기록',
+            name: '<:minecraft_recovery_compass:1557969718340755547> 가해자 기록',
             value: '마크 서버에 연결하지 못해 조회하지 못했습니다.\n스태프가 직접 확인해 주세요.',
         }];
     }
     if (!info.found) {
         return [{
-            name: '🔍 가해자 기록',
+            name: '<:minecraft_recovery_compass:1557969718340755547> 가해자 기록',
             value: `**${reportedName}** — 서버 기록에 없는 닉네임입니다.\n`
                 + '오타이거나, 아직 접속한 적 없는 사람입니다.',
         }];
@@ -147,11 +147,11 @@ function playerFields(info, reportedName) {
 
     return [
         {
-            name: '🔍 가해자 기록',
+            name: '<:minecraft_recovery_compass:1557969718340755547> 가해자 기록',
             value: [
                 `**${info.name}**`,
                 `레벨 **${info.level}** · 평판 **${info.rep}** (${tier.label})`,
-                `인증 ${info.verified === 'y' ? '✅ 완료' : '❌ 미인증'}`
+                `인증 ${info.verified === 'y' ? '<:minecraft_emerald_block:1557947122802757673> 완료' : '<:minecraft_barrier:1557947126024245328> 미인증'}`
                     + (info.discord && info.discord !== '-' ? ` · <@${info.discord}>` : ''),
                 `K/D ${info.kills}/${info.deaths}`
                     + (days !== null ? ` · 가입 ${days}일째` : ''),
@@ -234,7 +234,7 @@ async function handleSubmit(interaction, createTicketChannel) {
     if (!time) {
         // 폼을 다시 받는 것보다 왜 안 되는지 알려 주는 쪽이 낫습니다.
         return interaction.reply({
-            content: `❌ 발생 시각을 이해하지 못했습니다: \`${rawTime}\`\n`
+            content: `<:minecraft_barrier:1557947126024245328> 발생 시각을 이해하지 못했습니다: \`${rawTime}\`\n`
                 + '`21:30:15` 처럼 시:분:초로 적어 주세요. (`21:30` 도 됩니다)',
             flags: require('discord.js').MessageFlags.Ephemeral,
         });
@@ -274,7 +274,7 @@ async function handleSubmit(interaction, createTicketChannel) {
     }
 
     return interaction.editReply(
-        `✅ 신고가 접수되었습니다.${channel ? ` <#${channel.id}>` : ''}\n`
+        `<:minecraft_emerald_block:1557947122802757673> 신고가 접수되었습니다.${channel ? ` <#${channel.id}>` : ''}\n`
         + '스태프가 확인 후 처리합니다. 결과는 티켓에서 알려드립니다.');
 }
 

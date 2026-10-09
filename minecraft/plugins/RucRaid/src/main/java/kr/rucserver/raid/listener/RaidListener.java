@@ -1,6 +1,7 @@
 package kr.rucserver.raid.listener;
 
 import kr.rucserver.raid.RucRaid;
+import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
@@ -42,9 +43,12 @@ public class RaidListener implements Listener {
         Player player = event.getPlayer();
         var uuid = player.getUniqueId();
 
-        if (plugin.getCombatTags().isTagged(uuid)) {
-            plugin.getExecutions().recordCombatLog(
-                    player, plugin.getCombatTags().opponentName(uuid));
+        // 서버를 끄면 모두가 퇴장 처리됩니다 — 그때 태그가 남은 사람을 처형하면 안 됩니다 (규칙 6.2).
+        if (plugin.getCombatTags().isTagged(uuid) && !Bukkit.isStopping()) {
+            String opponentName = plugin.getCombatTags().opponentName(uuid);
+            // 짐을 무덤으로 먼저 옮긴 뒤 처형을 예약합니다 (처형은 재접속 때 빈 인벤토리로).
+            plugin.getGraves().create(player, plugin.getCombatTags().opponent(uuid), opponentName);
+            plugin.getExecutions().recordCombatLog(player, opponentName);
         }
 
         plugin.getCombatTags().clear(uuid);

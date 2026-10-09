@@ -6,6 +6,11 @@ import kr.rucserver.core.command.EnderCommands;
 import kr.rucserver.core.command.RankCommands;
 import kr.rucserver.core.service.CosmeticService;
 import kr.rucserver.core.storage.CosmeticRepository;
+import kr.rucserver.core.service.EndorseService;
+import kr.rucserver.core.storage.EndorseRepository;
+import kr.rucserver.core.storage.BountyRepository;
+import kr.rucserver.core.storage.EggReignRepository;
+import kr.rucserver.core.service.EggMonumentService;
 import kr.rucserver.core.command.GuideCommands;
 import kr.rucserver.core.command.GuildCommands;
 import kr.rucserver.core.command.PaymentCommands;
@@ -82,6 +87,10 @@ public class RucCore extends JavaPlugin {
     private PaymentService payments;
     private EnderService ender;
     private CosmeticService cosmetics;
+    private EndorseService endorse;
+    private BountyRepository bounties;
+    private EggReignRepository eggReign;
+    private EggMonumentService eggMonument;
     private ShopService shop;
     private GuideService guide;
     private XpService xp;
@@ -192,6 +201,15 @@ public class RucCore extends JavaPlugin {
         }
         sanctions = new SanctionService(this, sanctionRepository);
 
+        // 평판 현상금 풀 (2026-10-09). 없으면 몰수 Gold 가 예전처럼 사라질 뿐입니다.
+        BountyRepository bountyRepository = new BountyRepository(database);
+        try {
+            bountyRepository.createSchema();
+            bounties = bountyRepository;
+        } catch (SQLException e) {
+            getLogger().log(Level.SEVERE, "현상금 테이블 생성에 실패했습니다. 현상금을 끕니다.", e);
+        }
+
         // 현금 충전 (docs/payment-design.md). 돈 기록이라 테이블이 없으면 기동을 멈춥니다 —
         // 봇이 주문을 못 만드는 것보다, 입금을 받고도 기록을 못 남기는 쪽이 훨씬 나쁩니다.
         PaymentRepository paymentRepository = new PaymentRepository(database);
@@ -222,6 +240,25 @@ public class RucCore extends JavaPlugin {
             cosmetics = new CosmeticService(this, messages, cosmeticRepository);
         } catch (SQLException e) {
             getLogger().log(Level.SEVERE, "코스메틱 테이블 생성에 실패했습니다. 코스메틱을 끕니다.", e);
+        }
+
+        // 주간 추천 (2026-10-09). 기록 테이블이 없으면 이 기능만 끕니다.
+        EndorseRepository endorseRepository = new EndorseRepository(database);
+        try {
+            endorseRepository.createSchema();
+            endorse = new EndorseService(this, messages, endorseRepository);
+        } catch (SQLException e) {
+            getLogger().log(Level.SEVERE, "추천 테이블 생성에 실패했습니다. /추천 을 끕니다.", e);
+        }
+
+        // 드래곤 알 통치 시간 (2026-10-09). 약탈이 쌓고 홈 기념비가 읽습니다. 없으면 이 기능만 끕니다.
+        EggReignRepository eggReignRepository = new EggReignRepository(database);
+        try {
+            eggReignRepository.createSchema();
+            eggReign = eggReignRepository;
+            eggMonument = new EggMonumentService(this, eggReignRepository);
+        } catch (SQLException e) {
+            getLogger().log(Level.SEVERE, "알 통치 테이블 생성에 실패했습니다. 통치 기록을 끕니다.", e);
         }
 
         // 유저 상점 (Phase 10). 매물 · 대금 기록이라 테이블이 없으면 기동을 멈춥니다.
@@ -287,6 +324,11 @@ public class RucCore extends JavaPlugin {
             getServer().getPluginManager().registerEvents(cosmetics, this);
             cosmetics.start();
         }
+        if (endorse != null) {
+            getServer().getPluginManager().registerEvents(endorse, this);
+            endorse.start();
+        }
+        if (eggMonument != null) eggMonument.start();
         var cosmeticCommand = getCommand("cosmetic");
         if (cosmeticCommand != null) cosmeticCommand.setExecutor((sender, command, label, args) -> {
             if (!(sender instanceof org.bukkit.entity.Player player)) {
@@ -336,6 +378,8 @@ public class RucCore extends JavaPlugin {
         // DB 를 닫기 전에 — 열린 확장 페이지와 저장 큐를 끝까지 씁니다.
         if (ender != null) ender.stop();
         if (cosmetics != null) cosmetics.stop();
+        if (endorse != null) endorse.stop();
+        if (eggMonument != null) eggMonument.stop();
         if (shop != null) shop.stop();
         if (guide != null) guide.stop();
         if (network != null) network.stop();
@@ -382,6 +426,11 @@ public class RucCore extends JavaPlugin {
     public PaymentService getPayments() { return payments; }
     public EnderService getEnder() { return ender; }
     public CosmeticService getCosmetics() { return cosmetics; }
+    public EndorseService getEndorse() { return endorse; }
+    /** 현상금 풀 · 처치 기록. 테이블 생성 실패면 null. */
+    public BountyRepository getBounties() { return bounties; }
+    /** 알 통치 시간. 테이블 생성 실패면 null. */
+    public EggReignRepository getEggReign() { return eggReign; }
     public ShopService getShop() { return shop; }
     public GuideService getGuide() { return guide; }
     public BonusRegistry getBonuses() { return bonuses; }

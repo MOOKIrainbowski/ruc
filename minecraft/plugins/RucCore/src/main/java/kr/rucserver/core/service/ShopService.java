@@ -96,6 +96,44 @@ public class ShopService {
 
     public long fee(long price) { return price * feePercent() / 100; }
 
+    // ── 평판 = 신용 (2026-10-09, docs/08 D) ─────────────────────────────
+
+    /** 판매자 평판별 수수료 (천분율). 없으면 기본 fee-percent. */
+    private int feePermille(ReputationTier tier) {
+        // 대체값이 곧 기본값입니다 — getInt(path, 대체값) 은 jar config 를 보지 않아서, 배포본에 이 섹션이 없으면 이 값이 씁니다.
+        int fallback = switch (tier) {
+            case GREEN -> 20;
+            case YELLOW -> 35;
+            default -> feePercent() * 10;
+        };
+        return Math.max(0, Math.min(500, plugin.getConfig().getInt("shop.fee-by-reputation." + tier.key(), fallback)));
+    }
+
+    public long fee(long price, ReputationTier sellerTier) { return price * feePermille(sellerTier) / 1000; }
+
+    /** "3.5" 처럼 화면에 보일 수수료 % */
+    private String feeText(ReputationTier tier) {
+        int pm = feePermille(tier);
+        return pm % 10 == 0 ? String.valueOf(pm / 10) : String.format("%.1f", pm / 10.0);
+    }
+
+    /** 주의 티어(보라 · 파랑 · 남색)는 매물 수 · 가격에 상한 */
+    private static boolean cautious(ReputationTier t) {
+        return t == ReputationTier.PURPLE || t == ReputationTier.BLUE || t == ReputationTier.INDIGO;
+    }
+
+    /** 판매자 평판 — 접속 중이면 캐시, 아니면 DB (io 스레드에서 부릅니다). */
+    private ReputationTier sellerTier(UUID seller) {
+        RucPlayer cached = plugin.getPlayerData().get(seller);
+        if (cached != null) return ReputationTier.of(cached.getReputation());
+        try {
+            RucPlayer p = plugin.getPlayerData().getRepository().find(seller);
+            return p == null ? ReputationTier.RED : ReputationTier.of(p.getReputation());
+        } catch (Exception e) {
+            return ReputationTier.RED;   // 조회 실패면 기본 수수료
+        }
+    }
+
     public void start() {
         String sweeper = plugin.getConfig().getString("shop.sweep-server", "home");
         if (!sweeper.equals(plugin.getConfig().getString("server-id", "unknown"))) return;
@@ -132,9 +170,13 @@ public class ShopService {
     public void register(Player player, long price) {
         if (!enabled()) { say(player, "shop.disabled"); return; }
         if (!allowed(player)) return;
-        if (price < minPrice() || price > maxPrice()) {
-            say(player, "shop.price-range", "min", EconomyService.format(minPrice()),
-                    "max", EconomyService.format(maxPrice()), "symbol", plugin.getEconomy().symbol());
+        ReputationTier tier = ReputationTier.of(plugin.getPlayerData().get(player).getReputation());
+        boolean capped = cautious(tier);
+        long priceCap = capped ? Math.min(maxPrice(), plugin.getConfig().getLong("shop.cautious.max-price", 50_000)) : maxPrice();
+        int listingCap = capped ? Math.min(maxListings(), plugin.getConfig().getInt("shop.cautious.max-listings", 3)) : maxListings();
+        if (price < minPrice() || price > priceCap) {
+            say(player, capped ? "shop.price-range-cautious" : "shop.price-range", "min", EconomyService.format(minPrice()),
+                    "max", EconomyService.format(priceCap), "symbol", plugin.getEconomy().symbol());
             return;
         }
         ItemStack hand = player.getInventory().getItemInMainHand();
@@ -161,7 +203,7 @@ public class ShopService {
             long id;
             String fail = null;
             try {
-                if (repository.countActive(uuid, now) >= maxListings()) {
+                if (repository.countActive(uuid, now) >= listingCap) {
                     id = -1;
                     fail = "shop.too-many";
                 } else {
@@ -177,14 +219,14 @@ public class ShopService {
                 busy.remove(uuid);
                 if (listing <= 0) {
                     giveBack(player, item);
-                    if (reason != null) say(player, reason, "max", String.valueOf(maxListings()));
+                    if (reason != null) say(player, reason, "max", String.valueOf(listingCap));
                     else say(player, "shop.error");
                     return;
                 }
                 plugin.getLogger().info("[상점] #" + listing + " 등록 — " + name + " " + item.getType()
                         + " x" + item.getAmount() + " " + price + " Ruc");
                 say(player, "shop.registered", "price", EconomyService.format(price),
-                        "symbol", plugin.getEconomy().symbol(), "fee", String.valueOf(feePercent()));
+                        "symbol", plugin.getEconomy().symbol(), "fee", feeText(tier));
             });
         });
     }
@@ -259,7 +301,8 @@ public class ShopService {
         inv.setItem(SLOT_MINE, icon(mine ? Material.EMERALD : Material.CHEST,
                 messages.raw(lang, mine ? "shop.to-all" : "shop.to-mine"), List.of()));
         inv.setItem(Pages.SLOT_ACTION, icon(Material.BOOK, messages.raw(lang, "shop.info-name"),
-                lines(messages.raw(lang, "shop.info-lore").replace("%fee%", String.valueOf(feePercent())))));
+                lines(messages.raw(lang, "shop.info-lore").replace("%fee%",
+                        feeText(ReputationTier.GREEN) + "~" + feeText(ReputationTier.RED)))));
 
         player.openInventory(inv);
         player.playSound(player.getLocation(), Sound.BLOCK_BARREL_OPEN, 0.6f, 1.2f);
@@ -365,8 +408,9 @@ public class ShopService {
                     return;
                 }
                 String buyerName = player.getName();
-                long fee = fee(listing.price());
                 io.execute(() -> {
+                    // 수수료는 판매자 평판으로 — 판매자가 접속 중이 아닐 수 있어 io 스레드에서 정합니다.
+                    long fee = fee(listing.price(), sellerTier(listing.seller()));
                     boolean won;
                     try {
                         won = repository.markSold(id, uuid, buyerName, fee, System.currentTimeMillis());
