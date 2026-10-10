@@ -41,15 +41,15 @@ egg:
   nearby: "&d근처에서 드래곤 알의 기운이 느껴집니다 &7— %player%"
   announce: "&5&l[드래곤 알] &f현재 소지자: &e%player%"
   announce-none: "&5&l[드래곤 알] &7현재 소지자가 없습니다."
-  returned: "&5드래곤 알이 제단으로 돌아갔습니다."
+  dropped: "&5&l[드래곤 알] &f엔더 드래곤이 쓰러졌습니다! &d드래곤 알&f이 엔드 출구 포탈 위에 나타났습니다."
+  lost: "&5&l[드래곤 알] &7알이 공허로 사라졌습니다. &f다음에 엔더 드래곤을 처치하면 다시 나타납니다."
   new-holder: "&5&l[드래곤 알] &e%player%&f 이(가) 알을 차지했습니다! &7통치 시간이 쌓이기 시작합니다 — /알순위"
   ranking: "&5&l[드래곤 알 %season%] &f지금: &e%holder% &8| &7%ranking%"
   ranking-nobody: "없음"
 
 staff:
   no-permission: "&c권한이 없습니다."
-  egg-respawned: "&a드래곤 알을 제단에 배치했습니다."
-  egg-failed: "&c제단 월드를 찾지 못했습니다. config를 확인하세요."
+  egg-failed: "&c이미 버프 알이 유통 중입니다. 분실된 경우에만 지급할 수 있습니다."
   pardoned: "&a%player% 님의 처형 예약을 취소했습니다."
   status: "&f드래곤 알 소지자: &e%holder% &7| &f전투 중: &c%tagged%명"
   tagged: "&e%player% 님에게 전투 태그를 걸었습니다. 지금 접속을 끊으면 처형됩니다."

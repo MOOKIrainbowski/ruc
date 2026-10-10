@@ -1,8 +1,16 @@
 package kr.rucserver.raid.listener;
 
 import kr.rucserver.raid.RucRaid;
-import org.bukkit.Material;
+import org.bukkit.entity.EnderDragon;
+import org.bukkit.entity.Item;
+import org.bukkit.entity.ItemFrame;
 import org.bukkit.entity.Player;
+import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.entity.EntityDeathEvent;
+import org.bukkit.event.entity.EntityRemoveEvent;
+import org.bukkit.event.entity.ItemSpawnEvent;
+import org.bukkit.event.inventory.InventoryPickupItemEvent;
+import org.bukkit.event.player.PlayerInteractEntityEvent;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -33,7 +41,56 @@ public class DragonEggListener implements Listener {
     }
 
     private boolean isEgg(ItemStack item) {
-        return item != null && item.getType() == Material.DRAGON_EGG;
+        return plugin.getEggs().isBuffEgg(item);
+    }
+
+    // ── 획득 · 분실 (2026-10-10 — 드래곤 처치 알만) ─────────────────────
+
+    @EventHandler
+    public void onDragonDeath(EntityDeathEvent event) {
+        if (event.getEntity() instanceof EnderDragon dragon) plugin.getEggs().onDragonKilled(dragon.getWorld());
+    }
+
+    /** 땅에 떨어진 버프 알은 타지도, 사라지지도, 몹이 줍지도 않습니다. 남는 분실 경로는 공허뿐. */
+    @EventHandler(ignoreCancelled = true)
+    public void onItemSpawn(ItemSpawnEvent event) {
+        if (!isEgg(event.getEntity().getItemStack())) return;
+        Item item = event.getEntity();
+        item.setInvulnerable(true);
+        item.setUnlimitedLifetime(true);
+        item.setCanMobPickup(false);
+        item.setGlowing(true);
+    }
+
+    @EventHandler
+    public void onItemRemoved(EntityRemoveEvent event) {
+        if (!(event.getEntity() instanceof Item item) || !isEgg(item.getItemStack())) return;
+        switch (event.getCause()) {
+            case DEATH, DESPAWN, OUT_OF_WORLD, DISCARD, EXPLODE -> plugin.getEggs().markLost();
+            default -> { }   // 줍기 · 청크 언로드 · 플러그인 정리는 분실이 아닙니다
+        }
+    }
+
+    /** 블록으로 놓으면 태그가 사라집니다 (= 버프 알이 평범한 알이 됨). */
+    @EventHandler(ignoreCancelled = true)
+    public void onPlace(BlockPlaceEvent event) {
+        if (!isEgg(event.getItemInHand())) return;
+        event.setCancelled(true);
+        plugin.msg().send(event.getPlayer(), "egg.no-storage");
+    }
+
+    /** 호퍼가 바닥의 알을 빨아들이는 경로 · 액자 */
+    @EventHandler(ignoreCancelled = true)
+    public void onHopperPickup(InventoryPickupItemEvent event) {
+        if (isEgg(event.getItem().getItemStack())) event.setCancelled(true);
+    }
+
+    @EventHandler(ignoreCancelled = true)
+    public void onFrame(PlayerInteractEntityEvent event) {
+        if (!(event.getRightClicked() instanceof ItemFrame)) return;
+        if (!isEgg(event.getPlayer().getInventory().getItem(event.getHand()))) return;
+        event.setCancelled(true);
+        plugin.msg().send(event.getPlayer(), "egg.no-storage");
     }
 
     // ── 컨테이너 보관 차단 ──────────────────────────────────────────────
@@ -106,15 +163,8 @@ public class DragonEggListener implements Listener {
 
         Player player = event.getEntity();
 
-        // 전투로그 처형은 인벤토리를 이미 비운 뒤에 죽입니다.
-        // 알을 들고 콤벳로그했다면 알도 같이 사라지는데, 그러면 네트워크에서
-        // 알이 영구 소멸합니다. 그 경우만 예외로 제단에 돌려놓습니다.
-        if (plugin.getExecutions().isExecuting(player.getUniqueId())) {
-            if (player.getUniqueId().equals(plugin.getEggs().getHolder())) {
-                plugin.getEggs().respawnAtAltar();
-            }
-            return;
-        }
+        // 전투로그 처형은 알을 그 자리에 떨군 뒤 인벤토리를 비웁니다 (ExecutionService).
+        if (plugin.getExecutions().isExecuting(player.getUniqueId())) return;
 
         if (!event.getKeepInventory()) return;
 

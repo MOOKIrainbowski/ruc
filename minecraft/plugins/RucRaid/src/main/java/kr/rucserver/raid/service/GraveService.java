@@ -117,7 +117,7 @@ public class GraveService implements Listener {
         List<ItemStack> items = new ArrayList<>();
         for (ItemStack item : inv.getContents()) {   // 장비칸 · 보조손 포함
             if (item == null || item.getType().isAir()) continue;
-            if (item.getType() == Material.DRAGON_EGG) {
+            if (plugin.getEggs().isBuffEgg(item)) {
                 at.getWorld().dropItemNaturally(at, item);
                 continue;
             }

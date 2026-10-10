@@ -172,6 +172,8 @@ public class WarScheduleService {
         }
         // 방어에 성공한 코어를 확정합니다 (§2.6).
         plugin.getTerritory().confirmSurvivors();
+        // 배틀로얄식 보급 (2026-10-10)
+        plugin.getSupply().dropAll();
     }
 
     // ── 판정 ──────────────────────────────────────────────────────────

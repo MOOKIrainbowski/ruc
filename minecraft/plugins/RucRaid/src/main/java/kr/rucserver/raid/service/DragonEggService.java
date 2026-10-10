@@ -14,6 +14,7 @@ import org.bukkit.attribute.AttributeInstance;
 import org.bukkit.attribute.AttributeModifier;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
+import org.bukkit.persistence.PersistentDataType;
 import org.bukkit.potion.PotionEffect;
 import org.bukkit.potion.PotionEffectType;
 import org.bukkit.scheduler.BukkitTask;
@@ -27,8 +28,8 @@ import java.util.logging.Level;
 /**
  * 드래곤 알 (D3).
  *
- * 네트워크 전역에 레이드 1개 + 평화 1개, 총 2개만 존재합니다. 여기서는 레이드
- * 쪽 1개를 다룹니다.
+ * 엔더 드래곤을 처치하면 떨어지는 알만 버프 알입니다 (2026-10-10 — 오버월드 제단 폐지).
+ * 서버당 동시에 1개만 유통됩니다.
  *
  * 설계 의도는 "강력하되 숨길 수 없게"입니다. 버프만 빨아먹고 잠수하면 콘텐츠가
  * 죽으므로, 이득에는 반드시 <b>추적당하는 대가</b>가 붙습니다.
@@ -48,6 +49,8 @@ public class DragonEggService {
 
     /** 최대 체력 보정을 나중에 정확히 되돌리기 위한 고정 키. */
     private final NamespacedKey healthKey;
+    /** 버프 알 표식 (드래곤 처치로 나온 알만). */
+    private final NamespacedKey eggKey;
 
     private final RucRaid plugin;
     private final RaidRepository repository;
@@ -85,6 +88,7 @@ public class DragonEggService {
         this.repository = repository;
         this.serverId = serverId;
         this.healthKey = new NamespacedKey(plugin, "dragon_egg_health");
+        this.eggKey = new NamespacedKey(plugin, "buff_egg");
 
         this.enabled = plugin.getConfig().getBoolean("dragon-egg.enabled", true);
         this.bonusHealth = plugin.getConfig().getDouble("dragon-egg.bonus-health", 4.0);
@@ -126,7 +130,7 @@ public class DragonEggService {
 
         reignTask = Bukkit.getScheduler().runTaskTimer(plugin, this::reignTick, 20L, 20L);
 
-        placeIfMissing();
+        clearLegacyAltar();
     }
 
     public void stop() {
@@ -140,126 +144,107 @@ public class DragonEggService {
         for (Player player : Bukkit.getOnlinePlayers()) removeHealthBonus(player);
     }
 
-    // ── 배치 ───────────────────────────────────────────────────────────
+    // ── 배치 (2026-10-10 개편) ─────────────────────────────────────────
+    //
+    // 오버월드 제단은 없앴습니다. 버프 알은 <b>엔더 드래곤을 처치했을 때 떨어지는 알</b>뿐이고,
+    // PDC 태그로 구분합니다 — 바닐라 알(출구 포탈 위 블록, 크리에이티브 등)은 버프가 없습니다.
+    // 서버당 동시에 1개: DB 상태 dragon_egg_live 가 "true" 면 드래곤을 다시 잡아도 알이 안 나옵니다.
+    // 알이 사라지면(공허 · 소멸) 플래그를 내리고, 다음 드래곤 처치 때 다시 떨어집니다.
+
+    private static final String LIVE = "dragon_egg_live";
+
+    /** 버프 알 하나. 태그가 곧 정품 증명입니다 (모루 이름으로 위조 불가). */
+    public ItemStack createEgg() {
+        ItemStack egg = new ItemStack(Material.DRAGON_EGG);
+        egg.editMeta(meta -> {
+            meta.getPersistentDataContainer().set(eggKey, PersistentDataType.BYTE, (byte) 1);
+            meta.lore(java.util.List.of(net.kyori.adventure.text.Component.text("엔더 드래곤의 유산 — 소지 시 버프",
+                    net.kyori.adventure.text.format.NamedTextColor.LIGHT_PURPLE)
+                    .decoration(net.kyori.adventure.text.format.TextDecoration.ITALIC, false)));
+        });
+        return egg;
+    }
+
+    public boolean isBuffEgg(ItemStack item) {
+        return item != null && item.getType() == Material.DRAGON_EGG && item.hasItemMeta()
+                && item.getItemMeta().getPersistentDataContainer().has(eggKey, PersistentDataType.BYTE);
+    }
 
     /**
-     * 알을 아직 한 번도 놓지 않았다면 제단 위치에 놓습니다.
-     *
-     * "지금 월드에 알이 있는가"로 판정하면 안 됩니다 — 누군가 주워서 인벤토리에
-     * 넣은 상태도 그렇게 보이기 때문에, 그때마다 새 알이 생겨 개수 제한이
-     * 무너집니다. 그래서 DB에 배치 여부 플래그를 하나 둡니다.
+     * 드래곤 사망 (EntityDeathEvent). 바닐라 알은 막고, 유통 중인 알이 없으면 버프 알을 떨어뜨립니다.
+     * 사망 연출(200틱)이 끝난 뒤 출구 포탈 위에 떨굽니다 — 바로 떨구면 공중에서 섬 밖으로 떨어지기도 합니다.
      */
-    private void placeIfMissing() {
+    public void onDragonKilled(World end) {
+        if (!enabled) return;
+        // previouslyKilled 가 true 면 바닐라는 포탈 위에 알 블록을 놓지 않습니다 (연출 끝에 판정).
+        if (end.getEnderDragonBattle() != null) end.getEnderDragonBattle().setPreviouslyKilled(true);
+
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            String placed;
             try {
-                placed = repository.getState(serverId, "dragon_egg_placed");
+                if ("true".equals(repository.getState(serverId, LIVE))) return;
+                repository.setState(serverId, LIVE, "true");
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "드래곤 알 상태 조회 실패 — 이번 처치는 알 없음", e);
+                return;
+            }
+            Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                var battle = end.getEnderDragonBattle();
+                Location at = battle != null && battle.getEndPortalLocation() != null
+                        ? battle.getEndPortalLocation().clone()
+                        : new Location(end, 0, end.getHighestBlockYAt(0, 0), 0);
+                at = new Location(end, at.getBlockX() + 0.5, end.getHighestBlockYAt(at.getBlockX(), at.getBlockZ()) + 1.5, at.getBlockZ() + 0.5);
+                end.dropItem(at, createEgg());
+                Bukkit.broadcast(plugin.msg().broadcast("egg.dropped"));
+                plugin.core().getRelay().relayChronicle("🐉 엔더 드래곤이 쓰러지고 **드래곤 알**이 나타났습니다.");
+            }, 220L);
+        });
+    }
+
+    /** 버프 알이 월드에서 사라졌습니다. 다음 드래곤 처치 때 다시 떨어집니다. */
+    public void markLost() {
+        Bukkit.broadcast(plugin.msg().broadcast("egg.lost"));
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try {
+                repository.setState(serverId, LIVE, "false");
+            } catch (SQLException e) {
+                plugin.getLogger().log(Level.SEVERE, "드래곤 알 상태 저장 실패", e);
+            }
+        });
+    }
+
+    /** (스태프) 분실 복구 — 버프 알을 손에 줍니다. 이미 유통 중이면 거절 (개수 보존). */
+    public void giveTo(Player staff, Runnable onDenied) {
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            boolean live;
+            try {
+                live = "true".equals(repository.getState(serverId, LIVE));
+                if (!live) repository.setState(serverId, LIVE, "true");
             } catch (SQLException e) {
                 plugin.getLogger().log(Level.SEVERE, "드래곤 알 상태 조회 실패", e);
                 return;
             }
-            if ("true".equals(placed)) return;
-
             Bukkit.getScheduler().runTask(plugin, () -> {
-                Location altar = altarLocation();
-                if (altar == null) {
-                    plugin.getLogger().warning("드래곤 알 제단 월드를 찾지 못했습니다. 배치를 건너뜁니다.");
-                    return;
-                }
-                if (plugin.getConfig().getBoolean("dragon-egg.altar.build", true)) {
-                    buildAltar(altar);
-                }
-                altar.getBlock().setType(Material.DRAGON_EGG);
-                plugin.getLogger().info("드래곤 알 배치: " + altar.getWorld().getName()
-                        + " " + altar.getBlockX() + " " + altar.getBlockY() + " " + altar.getBlockZ());
-
-                Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                    try {
-                        repository.setState(serverId, "dragon_egg_placed", "true");
-                    } catch (SQLException e) {
-                        plugin.getLogger().log(Level.SEVERE, "드래곤 알 상태 저장 실패", e);
-                    }
-                });
+                if (live) { onDenied.run(); return; }
+                staff.getInventory().addItem(createEgg()).values()
+                        .forEach(left -> staff.getWorld().dropItem(staff.getLocation(), left));
             });
         });
     }
 
-    /**
-     * 제단 좌표.
-     *
-     * y 를 -1 로 두면 지표면에 맞춥니다. 고정값을 그대로 쓰면 그 높이가 허공일 때
-     * <b>알이 떨어집니다</b> — 드래곤 알은 모래처럼 중력을 받는 블록이라,
-     * 제단이 아니라 엉뚱한 땅바닥에 박힙니다.
-     */
-    private Location altarLocation() {
-        String worldName = plugin.getConfig().getString("dragon-egg.altar.world", "world");
-        World world = Bukkit.getWorld(worldName);
-        if (world == null) return null;
-
+    /** 옛 오버월드 제단의 알 블록을 한 번만 치웁니다 (배포본 config 의 altar 좌표). */
+    private void clearLegacyAltar() {
+        if (!plugin.getConfig().isConfigurationSection("dragon-egg.altar")) return;
+        World world = Bukkit.getWorld(plugin.getConfig().getString("dragon-egg.altar.world", "world"));
+        if (world == null) return;
         int x = plugin.getConfig().getInt("dragon-egg.altar.x", 0);
         int z = plugin.getConfig().getInt("dragon-egg.altar.z", 0);
-        int y = plugin.getConfig().getInt("dragon-egg.altar.y", -1);
-
-        if (y < 0) {
-            // getHighestBlockYAt 은 최상단 고체 블록의 Y 입니다. 그 위가 알 자리.
-            y = world.getHighestBlockYAt(x, z) + 1;
-        }
-        return new Location(world, x, y, z);
-    }
-
-    /**
-     * 제단 구조물.
-     *
-     * 알이 그냥 풀밭에 놓여 있으면 랜드마크로 읽히지 않고, 밑을 파면 굴러떨어집니다.
-     * 흑요석 받침 위에 올려 두면 시각적으로도 목표물이 되고 밑을 파기도 어렵습니다.
-     * (완전히 막지는 않습니다 — 알을 옮기는 것 자체가 콘텐츠입니다.)
-     */
-    private void buildAltar(Location egg) {
-        World world = egg.getWorld();
-        int cx = egg.getBlockX(), cy = egg.getBlockY(), cz = egg.getBlockZ();
-
-        // 받침 3x3, 두 단
-        for (int dx = -2; dx <= 2; dx++) {
-            for (int dz = -2; dz <= 2; dz++) {
-                boolean outer = Math.abs(dx) == 2 || Math.abs(dz) == 2;
-                world.getBlockAt(cx + dx, cy - 2, cz + dz).setType(
-                        outer ? Material.POLISHED_BLACKSTONE_BRICKS : Material.OBSIDIAN);
-                if (!outer) {
-                    world.getBlockAt(cx + dx, cy - 1, cz + dz).setType(Material.OBSIDIAN);
-                }
-                // 지면이 비어 있으면 받침이 공중에 뜹니다. 땅에 닿을 때까지 메웁니다.
-                // 8칸 정도로 끊으면 경사지나 절벽에서 제단이 공중에 뜬 채 남습니다.
-                for (int y = cy - 3; y > cy - 40 && y > world.getMinHeight(); y--) {
-                    if (!world.getBlockAt(cx + dx, y, cz + dz).getType().isAir()) break;
-                    world.getBlockAt(cx + dx, y, cz + dz).setType(Material.POLISHED_BLACKSTONE);
-                }
+        world.getChunkAtAsync(x >> 4, z >> 4).thenAccept(c -> {
+            var top = world.getHighestBlockAt(x, z);
+            if (top.getType() == Material.DRAGON_EGG) {
+                top.setType(Material.AIR);
+                plugin.getLogger().info("옛 제단의 드래곤 알 블록을 치웠습니다 (" + x + ", " + top.getY() + ", " + z + ")");
             }
-        }
-
-        // 알 자리 위쪽은 비워 둡니다 (지형이 덮고 있으면 보이지 않습니다)
-        for (int y = cy; y < cy + 4; y++) {
-            world.getBlockAt(cx, y, cz).setType(Material.AIR);
-        }
-
-        // 네 모서리 기둥 + 조명
-        for (int[] o : new int[][]{{2, 2}, {2, -2}, {-2, 2}, {-2, -2}}) {
-            for (int y = cy - 1; y <= cy + 1; y++) {
-                world.getBlockAt(cx + o[0], y, cz + o[1]).setType(Material.POLISHED_BLACKSTONE_BRICKS);
-            }
-            world.getBlockAt(cx + o[0], cy + 2, cz + o[1]).setType(Material.SEA_LANTERN);
-        }
-    }
-
-    /** (스태프) 알을 제단에 다시 놓습니다. 분실 복구용. */
-    public boolean respawnAtAltar() {
-        Location altar = altarLocation();
-        if (altar == null) return false;
-        if (plugin.getConfig().getBoolean("dragon-egg.altar.build", true)) {
-            buildAltar(altar);
-        }
-        altar.getBlock().setType(Material.DRAGON_EGG);
-        Bukkit.broadcast(plugin.msg().broadcast("egg.returned"));
-        return true;
+        });
     }
 
     // ── 버프 ───────────────────────────────────────────────────────────
@@ -306,9 +291,9 @@ public class DragonEggService {
 
     public boolean holdsEgg(Player player) {
         for (ItemStack item : player.getInventory().getContents()) {
-            if (item != null && item.getType() == Material.DRAGON_EGG) return true;
+            if (isBuffEgg(item)) return true;
         }
-        return player.getInventory().getItemInOffHand().getType() == Material.DRAGON_EGG;
+        return isBuffEgg(player.getItemOnCursor());
     }
 
     private void addHealthBonus(Player player) {

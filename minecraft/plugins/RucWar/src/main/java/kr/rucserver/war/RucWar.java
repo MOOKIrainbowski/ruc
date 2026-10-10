@@ -14,6 +14,10 @@ import kr.rucserver.war.service.StorageService;
 import kr.rucserver.war.service.TerritoryService;
 import kr.rucserver.war.service.WarMessages;
 import kr.rucserver.war.service.WarScheduleService;
+import kr.rucserver.war.service.RichOrePopulator;
+import kr.rucserver.war.service.SupplyCrateService;
+import kr.rucserver.war.service.TerritoryWatchService;
+import kr.rucserver.war.service.UpgradeService;
 import kr.rucserver.war.storage.WarRepository;
 import org.bukkit.Difficulty;
 import org.bukkit.GameRule;
@@ -52,6 +56,9 @@ public class RucWar extends JavaPlugin {
     private StorageService storage;
     private CoreWarpService warps;
     private SealMerchantService seals;
+    private UpgradeService upgrades;
+    private SupplyCrateService supply;
+    private TerritoryWatchService watch;
 
     private List<String> warWorlds;
 
@@ -87,12 +94,17 @@ public class RucWar extends JavaPlugin {
         storage = new StorageService(this);
         warps = new CoreWarpService(this);
         seals = new SealMerchantService(this);
+        upgrades = new UpgradeService(this);
+        supply = new SupplyCrateService(this);
+        watch = new TerritoryWatchService(this);
 
         TerritoryListener territoryListener = new TerritoryListener(this);
         getServer().getPluginManager().registerEvents(territoryListener, this);
         getServer().getPluginManager().registerEvents(new CoreListener(this), this);
         getServer().getPluginManager().registerEvents(new CraftGuardListener(this), this);
         getServer().getPluginManager().registerEvents(new WarpListener(this), this);
+        getServer().getPluginManager().registerEvents(upgrades, this);
+        getServer().getPluginManager().registerEvents(supply, this);
         getServer().getPluginManager().registerEvents(
                 new WarListener(this, territoryListener), this);
 
@@ -104,6 +116,15 @@ public class RucWar extends JavaPlugin {
         schedule.start();
         storage.start();
         seals.spawn();
+        watch.start();
+
+        // 광물이 풍부한 오버월드 — 새로 생성되는 청크부터
+        if (getConfig().getBoolean("rich-ores.enabled", true)) {
+            RichOrePopulator ores = new RichOrePopulator(getConfig().getConfigurationSection("rich-ores.ores"), getLogger());
+            for (World world : getServer().getWorlds()) {
+                if (world.getEnvironment() == World.Environment.NORMAL && isWarWorld(world)) world.getPopulators().add(ores);
+            }
+        }
 
         getLogger().info("RucWar 활성화 완료 — 전쟁 시간대 " + schedule.describe()
                 + ", 거점 " + territory.sites().size() + "곳");
@@ -113,6 +134,7 @@ public class RucWar extends JavaPlugin {
     public void onDisable() {
         if (schedule != null) schedule.stop();
         if (warps != null) warps.stop();
+        if (watch != null) watch.stop();
 
         // 창고 저장은 마지막에, 동기로. 비동기로 넘기면 스케줄러가 이미 멈춰서
         // 길드가 모아 둔 자원이 통째로 유실됩니다.
@@ -160,4 +182,7 @@ public class RucWar extends JavaPlugin {
     public StorageService getStorage() { return storage; }
     public CoreWarpService getWarps() { return warps; }
     public SealMerchantService getSeals() { return seals; }
+    public UpgradeService getUpgrades() { return upgrades; }
+    public SupplyCrateService getSupply() { return supply; }
+    public TerritoryWatchService getWatch() { return watch; }
 }

@@ -11,7 +11,17 @@ import org.bukkit.Material;
 import org.bukkit.Sound;
 import org.bukkit.World;
 import org.bukkit.block.Block;
+import org.bukkit.NamespacedKey;
+import org.bukkit.entity.BlockDisplay;
+import org.bukkit.entity.Display;
+import org.bukkit.entity.Entity;
+import org.bukkit.entity.Interaction;
+import org.bukkit.entity.Item;
 import org.bukkit.entity.Player;
+import org.bukkit.persistence.PersistentDataType;
+import org.bukkit.util.Transformation;
+import org.joml.AxisAngle4f;
+import org.joml.Vector3f;
 import org.bukkit.inventory.ItemStack;
 
 import java.sql.SQLException;
@@ -58,6 +68,19 @@ public class TerritoryService {
     private final double neutralRadius;
     private final String neutralWorld;
 
+    /** 2026-10-10 — 러크 코어는 오버월드 어디에나 (지정 거점 없음). 신호기처럼 빛 기둥이 위치를 드러냅니다. */
+    private final boolean freePlacement;
+
+    /** 거점 이름 → 남은 내구도. 무기로 때려 깎습니다. ponytail: 메모리만 — 재시작하면 가득 참 */
+    private final Map<String, Double> coreHp = new ConcurrentHashMap<>();
+
+    /** 코어 몸체 엔티티(겉모습 · 판정)에 붙이는 거점 이름. 재시작 뒤에도 엔티티 → 코어를 찾습니다. */
+    private final NamespacedKey bodyKey;
+
+    /** 코어 크기 5×5×5 — 놓은 자리가 바닥 한가운데. */
+    public static final int HALF = 2, SIZE = 5;
+    private final Map<String, Long> lastAlert = new ConcurrentHashMap<>();
+
     public TerritoryService(RucWar plugin, WarRepository repository) {
         this.plugin = plugin;
         this.repository = repository;
@@ -66,6 +89,8 @@ public class TerritoryService {
         this.siteRadius = plugin.getConfig().getInt("territory.site-radius", 6);
         this.neutralRadius = plugin.getConfig().getDouble("territory.neutral-radius", 100);
         this.neutralWorld = plugin.getConfig().getString("territory.neutral-world", "world");
+        this.freePlacement = plugin.getConfig().getBoolean("core.free-placement", true);
+        this.bodyKey = new NamespacedKey(plugin, "war_core_body");
 
         loadSites();
     }
@@ -156,7 +181,7 @@ public class TerritoryService {
      * 붙잡아 두는 방법은 256청크 제한에서 조용히 실패하는 함정이 있어 쓰지 않습니다.
      */
     public void buildPedestals() {
-        if (!plugin.getConfig().getBoolean("territory.build-pedestals", true)) return;
+        if (freePlacement || !plugin.getConfig().getBoolean("territory.build-pedestals", true)) return;
 
         for (CoreSite site : sites) {
             World world = Bukkit.getWorld(site.world());
@@ -216,6 +241,7 @@ public class TerritoryService {
         WRONG_GUILD,
         SITE_TAKEN,
         ALREADY_HAVE_CORE,
+        NO_SPACE,
         ERROR
     }
 
@@ -226,10 +252,17 @@ public class TerritoryService {
      * 압도적으로 많고, 그때 DB 를 건드릴 이유가 없습니다.
      */
     public PlaceResult tryPlace(Player player, Block block, ItemStack item) {
-        CoreSite site = siteAt(block.getLocation());
-        if (site == null) return PlaceResult.NOT_A_SITE;
+        CoreSite site = freePlacement ? null : siteAt(block.getLocation());
+        if (freePlacement) {
+            // 영토는 오버월드에만 (네더 · 엔드는 모두의 땅). 중립 구역과 남의 영토 범위에는 못 박습니다.
+            if (block.getWorld().getEnvironment() != World.Environment.NORMAL) return PlaceResult.NOT_A_SITE;
+            if (overlapsTerritory(block.getLocation())) return PlaceResult.NOT_A_SITE;
+        } else if (site == null) {
+            return PlaceResult.NOT_A_SITE;
+        }
 
         if (!plugin.getSchedule().isOpen()) return PlaceResult.WAR_CLOSED;
+        if (!hasRoom(block)) return PlaceResult.NO_SPACE;
 
         Guild guild = plugin.core().getGuilds().of(player);
         if (guild == null) return PlaceResult.NOT_IN_GUILD;
@@ -242,26 +275,33 @@ public class TerritoryService {
         Integer owner = plugin.getItems().coreOwner(item);
         if (owner != null && owner != guild.getId()) return PlaceResult.WRONG_GUILD;
 
+        if (freePlacement) site = new CoreSite(autoName(guild), block.getWorld().getName(), block.getX(), block.getZ());
         if (cores.containsKey(site.name())) return PlaceResult.SITE_TAKEN;
 
         int limit = plugin.getConfig().getInt("territory.max-cores-per-guild", 2);
         if (countCores(guild.getId()) >= limit) return PlaceResult.ALREADY_HAVE_CORE;
 
+        final CoreSite chosen = site;
         WarRepository.CoreRow row = new WarRepository.CoreRow(
-                site.name(), guild.getId(), block.getWorld().getName(),
+                chosen.name(), guild.getId(), block.getWorld().getName(),
                 block.getX(), block.getY(), block.getZ(),
                 System.currentTimeMillis(), false);
 
         // 캐시에 먼저 넣어 같은 서버에서 동시에 두 명이 놓는 것을 막고,
         // DB 의 PK 충돌이 다른 서버와의 경쟁까지 막습니다.
-        if (cores.putIfAbsent(site.name(), row) != null) return PlaceResult.SITE_TAKEN;
+        if (cores.putIfAbsent(chosen.name(), row) != null) return PlaceResult.SITE_TAKEN;
+        coreHp.put(chosen.name(), maxHp());
+        // 놓인 신호기 블록을 다음 틱에 5×5×5 몸체로 바꿉니다 (이벤트 안에서는 아직 안 놓였음).
+        Bukkit.getScheduler().runTask(plugin, () -> {
+            if (cores.get(chosen.name()) == row) buildBody(row);
+        });
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             boolean placed;
             try {
                 placed = repository.placeCore(row);
             } catch (SQLException e) {
-                plugin.getLogger().log(Level.SEVERE, "코어 설치 기록 실패: " + site.name(), e);
+                plugin.getLogger().log(Level.SEVERE, "코어 설치 기록 실패: " + chosen.name(), e);
                 placed = false;
             }
             if (placed) return;
@@ -272,15 +312,10 @@ public class TerritoryService {
             int guildId = guild.getId();
             String guildName = guild.getName();
             Bukkit.getScheduler().runTask(plugin, () -> {
-                cores.remove(site.name(), row);
+                cores.remove(chosen.name(), row);
 
                 World world = Bukkit.getWorld(row.world());
-                if (world != null) {
-                    Block placedBlock = world.getBlockAt(row.x(), row.y(), row.z());
-                    if (placedBlock.getType() == Material.BEACON) {
-                        placedBlock.setType(Material.AIR, false);
-                    }
-                }
+                removeBody(row);
 
                 ItemStack refund = plugin.getItems().createCore(guildId, guildName);
                 if (player.isOnline() && player.getInventory().firstEmpty() != -1) {
@@ -301,16 +336,141 @@ public class TerritoryService {
         return PlaceResult.OK;
     }
 
+    /** 자유 설치일 때 코어 이름: 길드이름 + 번호 (/tp 에 씁니다). */
+    private String autoName(Guild guild) {
+        String base = guild.getName().length() > 28 ? guild.getName().substring(0, 28) : guild.getName();
+        for (int i = 1; ; i++) {
+            if (!cores.containsKey(base + i)) return base + i;
+        }
+    }
+
+    /** 여기 박으면 영토가 중립 구역이나 다른 코어(설치 중 포함)의 영토와 겹치는지. */
+    public boolean overlapsTerritory(Location at) {
+        int cx = at.getBlockX() >> 4, cz = at.getBlockZ() >> 4;
+        for (WarRepository.CoreRow row : cores.values()) {
+            if (!row.world().equals(at.getWorld().getName())) continue;
+            if (Math.abs(cx - (row.x() >> 4)) <= claimChunkRadius * 2
+                    && Math.abs(cz - (row.z() >> 4)) <= claimChunkRadius * 2) return true;
+        }
+        if (!at.getWorld().getName().equals(neutralWorld)) return false;
+        Location spawn = at.getWorld().getSpawnLocation();
+        double reach = neutralRadius + (claimChunkRadius + 1) * 16;
+        return Math.abs(at.getX() - spawn.getX()) <= reach && Math.abs(at.getZ() - spawn.getZ()) <= reach;
+    }
+
+    public boolean isFreePlacement() { return freePlacement; }
+
+    private double maxHp() {
+        return Math.max(1, plugin.getConfig().getDouble("core.hp", 500));
+    }
+
+    // ── 코어 몸체 (5×5×5) ──────────────────────────────────────────────
+    //
+    // 바리케이드(barrier) 125칸 = 충돌, 5배 크기 신호기 BlockDisplay = 겉모습,
+    // 조금 더 큰 Interaction = 공격 판정. 여럿이 사방에서 동시에 때릴 수 있습니다.
+    // 바리케이드는 서바이벌에서 안 부서지고 폭발에도 견딥니다 — 코어는 무기로만 깎입니다.
+
+    /** 몸체 자리가 비어 있는지 (풀 · 눈 같은 대체 가능 블록은 빈 것으로). 놓으려는 칸은 제외. */
+    private boolean hasRoom(Block base) {
+        for (int dx = -HALF; dx <= HALF; dx++) {
+            for (int dy = 0; dy < SIZE; dy++) {
+                for (int dz = -HALF; dz <= HALF; dz++) {
+                    if (dx == 0 && dy == 0 && dz == 0) continue;
+                    if (!base.getRelative(dx, dy, dz).isReplaceable()) return false;
+                }
+            }
+        }
+        return true;
+    }
+
+    public void buildBody(WarRepository.CoreRow row) {
+        World world = Bukkit.getWorld(row.world());
+        if (world == null) return;
+        for (int dx = -HALF; dx <= HALF; dx++) {
+            for (int dy = 0; dy < SIZE; dy++) {
+                for (int dz = -HALF; dz <= HALF; dz++) {
+                    world.getBlockAt(row.x() + dx, row.y() + dy, row.z() + dz).setType(Material.BARRIER, false);
+                }
+            }
+        }
+        world.spawn(new Location(world, row.x() - HALF, row.y(), row.z() - HALF), BlockDisplay.class, d -> {
+            d.setBlock(Material.BEACON.createBlockData());
+            d.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(),
+                    new Vector3f(SIZE, SIZE, SIZE), new AxisAngle4f()));
+            d.setBrightness(new Display.Brightness(15, 15));
+            d.getPersistentDataContainer().set(bodyKey, PersistentDataType.STRING, row.site());
+        });
+        // 판정 상자는 바리케이드보다 조금 크게 — 그래야 클라이언트가 블록이 아니라 엔티티를 때립니다.
+        world.spawn(new Location(world, row.x() + 0.5, row.y() - 0.05, row.z() + 0.5), Interaction.class, i -> {
+            i.setInteractionWidth(SIZE + 0.1f);
+            i.setInteractionHeight(SIZE + 0.1f);
+            i.setResponsive(true);
+            i.getPersistentDataContainer().set(bodyKey, PersistentDataType.STRING, row.site());
+        });
+    }
+
+    public void removeBody(WarRepository.CoreRow row) {
+        World world = Bukkit.getWorld(row.world());
+        if (world == null) return;
+        for (int dx = -HALF; dx <= HALF; dx++) {
+            for (int dy = 0; dy < SIZE; dy++) {
+                for (int dz = -HALF; dz <= HALF; dz++) {
+                    Block b = world.getBlockAt(row.x() + dx, row.y() + dy, row.z() + dz);
+                    if (b.getType() == Material.BARRIER || b.getType() == Material.BEACON) b.setType(Material.AIR, false);
+                }
+            }
+        }
+        Location center = new Location(world, row.x() + 0.5, row.y() + 2.5, row.z() + 0.5);
+        for (Entity e : world.getNearbyEntities(center, 6, 6, 6)) {
+            if (row.site().equals(siteOfBody(e))) e.remove();
+        }
+    }
+
+    /** 이 엔티티가 코어 몸체면 그 거점 이름. */
+    public String siteOfBody(Entity entity) {
+        return entity.getPersistentDataContainer().get(bodyKey, PersistentDataType.STRING);
+    }
+
+    public WarRepository.CoreRow coreBySite(String site) {
+        return site == null ? null : cores.get(site);
+    }
+
+    /**
+     * 전쟁 중 코어에 피해. 0 이 되면 true (호출부가 부숩니다).
+     * 주인 국가에는 10초에 한 번 "공격받는 중" 을 알립니다.
+     */
+    public boolean damageCore(WarRepository.CoreRow row, Player attacker, double amount) {
+        double left = coreHp.compute(row.site(), (k, v) -> Math.max(0, (v == null ? maxHp() : v) - amount));
+        if (left <= 0) {
+            coreHp.remove(row.site());
+            return true;
+        }
+        String hp = String.valueOf((int) Math.ceil(left));
+        String max = String.valueOf((int) maxHp());
+        long now = System.currentTimeMillis();
+        if (now - lastAlert.getOrDefault(row.site(), 0L) > 10_000) {
+            lastAlert.put(row.site(), now);
+            for (Player member : Bukkit.getOnlinePlayers()) {
+                Guild g = plugin.core().getGuilds().of(member);
+                if (g == null || g.getId() != row.guildId()) continue;
+                plugin.msg().send(member, "war.core-under-attack", "site", row.site(), "hp", hp, "max", max);
+                member.playSound(member.getLocation(), Sound.BLOCK_BELL_USE, 1f, 0.6f);
+            }
+        }
+        plugin.msg().sendActionBar(attacker, "war.core-hp", "hp", hp, "max", max);
+        return false;
+    }
+
     /** 설치가 확정된 뒤의 연출과 공지. */
-    public void announcePlaced(Player player, CoreSite site, Guild guild) {
+    public void announcePlaced(Player player, String site, Guild guild) {
         plugin.msg().broadcastAll("war.core-placed",
-                "guild", guild.getName(), "site", site.name());
+                "guild", guild.getName(), "site", site);
 
         for (Player online : Bukkit.getOnlinePlayers()) {
             online.playSound(online.getLocation(), Sound.BLOCK_BEACON_ACTIVATE, 0.8f, 1.0f);
         }
         plugin.msg().send(player, "war.core-placed-self",
-                "site", site.name(),
+                "site", site,
                 "minutes", String.valueOf(plugin.getSchedule().minutesUntilClose()));
     }
 
@@ -319,11 +479,21 @@ public class TerritoryService {
      *
      * @return 부서진 코어. 그 자리에 코어가 없었으면 null
      */
-    public WarRepository.CoreRow onCoreBroken(Block block, Player breaker) {
-        WarRepository.CoreRow row = coreAt(block);
-        if (row == null) return null;
+    public WarRepository.CoreRow onCoreBroken(WarRepository.CoreRow row, Player breaker) {
+        if (row == null || !cores.remove(row.site(), row)) return null;
+        coreHp.remove(row.site());
+        removeBody(row);
 
-        cores.remove(row.site());
+        // 부서진 코어는 아이템으로 떨어집니다 (2026-10-10). 귀속 없음 — 주운 국가가 다시 박을 수 있습니다.
+        World world = Bukkit.getWorld(row.world());
+        if (world != null) {
+            Location center = new Location(world, row.x() + 0.5, row.y() + 1, row.z() + 0.5);
+            Item dropped = world.dropItem(center, plugin.getItems().create(CoreItems.Part.CORE, 1));
+            dropped.setInvulnerable(true);
+            dropped.setUnlimitedLifetime(true);
+            dropped.setGlowing(true);
+            plugin.getUpgrades().dropFromCore(center.clone());
+        }
 
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
             try {
@@ -351,10 +521,11 @@ public class TerritoryService {
         return row;
     }
 
-    /** 이 블록이 설치된 코어인지. */
+    /** 이 블록이 코어 몸체(5×5×5) 안인지. */
     public WarRepository.CoreRow coreAt(Block block) {
         for (WarRepository.CoreRow row : cores.values()) {
-            if (row.x() == block.getX() && row.y() == block.getY() && row.z() == block.getZ()
+            if (Math.abs(block.getX() - row.x()) <= HALF && Math.abs(block.getZ() - row.z()) <= HALF
+                    && block.getY() >= row.y() && block.getY() < row.y() + SIZE
                     && row.world().equals(block.getWorld().getName())) {
                 return row;
             }
@@ -469,14 +640,9 @@ public class TerritoryService {
      */
     public boolean canBuild(Player player, Location location) {
         if (player.hasPermission("rucwar.bypass.territory")) return true;
-        if (isNeutral(location)) return false;
-        if (plugin.getSchedule().isOpen()) return true;
-
-        Integer owner = ownerOf(location);
-        if (owner == null) return true;
-
-        Guild guild = plugin.core().getGuilds().of(player);
-        return guild != null && guild.getId() == owner;
+        // 2026-10-10 — 평시에도 남의 영토에서 채집 · 약탈 · 파괴가 됩니다. 대신 침입자는 발광하고
+        // 주인 국가에 거리 · 방향이 알려집니다 (TerritoryWatchService). 막는 것은 중립 구역 · 코어 · 보급 상자뿐.
+        return !isNeutral(location);
     }
 
     /** 코어 블록을 부술 수 있는지. 평시에는 누구도 못 부숩니다. */

@@ -54,6 +54,7 @@ public class WarCommands implements CommandExecutor, TabCompleter {
 
         // /전쟁 은 콘솔에서도 현황 확인용으로 쓸 수 있게 해 둡니다.
         if (command.getName().equalsIgnoreCase("warstatus")) {
+            if (args.length > 0 && sender.hasPermission("rucwar.admin") && staff(sender, args)) return true;
             sendStatus(sender);
             return true;
         }
@@ -128,6 +129,25 @@ public class WarCommands implements CommandExecutor, TabCompleter {
         }
     }
 
+    /** 스태프 점검용: /전쟁 강화석 [수] · /전쟁 보급 */
+    private boolean staff(CommandSender sender, String[] args) {
+        switch (args[0]) {
+            case "강화석", "stone" -> {
+                if (!(sender instanceof Player player)) return false;
+                int amount = args.length > 1 ? Integer.parseInt(args[1]) : 16;
+                player.getInventory().addItem(plugin.getUpgrades().createStone(amount));
+                return true;
+            }
+            case "보급", "supply" -> {
+                plugin.getSupply().dropAll();
+                return true;
+            }
+            default -> {
+                return false;
+            }
+        }
+    }
+
     // ── /전쟁 ─────────────────────────────────────────────────────────
 
     private void sendStatus(CommandSender sender) {
@@ -150,7 +170,19 @@ public class WarCommands implements CommandExecutor, TabCompleter {
         plugin.msg().sendPlain(sender, "war.status-sites-header");
         Map<String, WarRepository.CoreRow> cores = plugin.getTerritory().coreMap();
 
-        for (var site : plugin.getTerritory().sites()) {
+        if (plugin.getTerritory().isFreePlacement()) {
+            // 자유 설치 — 남의 코어 좌표는 알려 주지 않습니다 (빛 기둥으로 찾아야 함). 스태프는 다 봅니다.
+            Guild mine = sender instanceof Player p ? plugin.core().getGuilds().of(p) : null;
+            for (WarRepository.CoreRow row : cores.values()) {
+                Guild owner = plugin.core().getGuilds().byId(row.guildId());
+                boolean visible = !(sender instanceof Player) || sender.hasPermission("rucwar.admin")
+                        || (mine != null && mine.getId() == row.guildId());
+                plugin.msg().sendPlain(sender, row.confirmed() ? "war.status-site-held" : "war.status-site-contested",
+                        "site", row.site(), "guild", owner == null ? "?" : owner.getName(),
+                        "x", visible ? String.valueOf(row.x()) : "?", "z", visible ? String.valueOf(row.z()) : "?");
+            }
+        }
+        for (var site : plugin.getTerritory().isFreePlacement() ? java.util.List.<kr.rucserver.war.service.TerritoryService.CoreSite>of() : plugin.getTerritory().sites()) {
             WarRepository.CoreRow row = cores.get(site.name());
             if (row == null) {
                 plugin.msg().sendPlain(sender, "war.status-site-free",

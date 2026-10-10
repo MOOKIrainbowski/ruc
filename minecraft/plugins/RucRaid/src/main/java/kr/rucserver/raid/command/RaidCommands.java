@@ -68,11 +68,12 @@ public class RaidCommands implements CommandExecutor {
 
         switch (args[0].toLowerCase()) {
             case "egg" -> {
-                if (plugin.getEggs().respawnAtAltar()) {
-                    plugin.msg().send(sender, "staff.egg-respawned");
-                } else {
-                    plugin.msg().send(sender, "staff.egg-failed");
+                // 분실 복구: 유통 중인 알이 없을 때만 버프 알을 손에 줍니다.
+                if (!(sender instanceof Player staff)) {
+                    sender.sendMessage("§c게임 안에서만 쓸 수 있습니다.");
+                    return true;
                 }
+                plugin.getEggs().giveTo(staff, () -> plugin.msg().send(sender, "staff.egg-failed"));
             }
             case "pardon" -> {
                 if (args.length < 2) {

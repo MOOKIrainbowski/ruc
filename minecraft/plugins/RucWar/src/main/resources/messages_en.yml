@@ -14,8 +14,8 @@ war:
   status-closed: "&7Peacetime. &fWar window: %schedule% &7(in %minutes% min)"
 
   # ── Core placement ───────────────────────────────────────────────
-  core-placed: "&c%guild% &fplaced a core at &e%site%&f!"
-  core-placed-self: "&aCore placed at %site%. &fHold it until ceasefire (%minutes% min) to claim the land."
+  core-placed: "&c%guild% &fplanted a Luck Core (&e%site%&f) somewhere! &7Look for the light beam in the sky."
+  core-placed-self: "&aLuck Core %site% placed. &fHold it until ceasefire (%minutes% min) to claim the land."
   core-not-a-site: "&cCores can only be placed at designated sites. &7Sites: %sites%"
   core-war-closed: "&cCores can only be placed during the war window. &7%schedule% &8(in %minutes% min)"
   core-no-guild: "&cYou are not in a guild."
@@ -87,3 +87,20 @@ war:
   seal-not-enough: "&cThe guild bank is short. (need %price% %symbol% / have %bank% %symbol%)"
   seal-inventory-full: "&cYour inventory is full."
   seal-bought: "&aNation Seal purchased. &7(-%price% %symbol% from the guild bank)"
+
+  # ── Luck Core · territory (2026-10-10) ─────────────────────────
+  core-bad-spot: "&cYou can't place a Luck Core here. &7Overworld only, far enough from spawn and other nations' territory."
+  core-under-attack: "&4&l⚠ Core under attack! &e%site% &7(HP %hp%/%max%)"
+  core-hp: "&cLuck Core HP &f%hp%&7/%max%"
+  core-no-space: "&cA Luck Core is 5×5×5. &7Clear a 5-wide, 5-high space around where you place it."
+  core-hit-it: "&cLuck Cores can't be mined. &7Hit it with a weapon (war window only)."
+  core-own: "&7This is your own nation's core."
+  intruder-self: "&cYou entered %guild%'s territory. &7You are glowing and they can see where you are."
+  intruder-alarm: "&4&l⚠ Intruder! &f%player% &centered our territory."
+  intruder-bar: "&4⚠ %count% intruder(s) &8| &f%player% &e%distance%m %direction%"
+
+  # ── Supply crates ────────────────────────────────────────────────
+  supply-incoming: "&6&l[Supply] &fThe war is over. &e%count%&f supply crates are dropping!"
+  supply-landed: "&6[Supply] &fCrate #%index% &7— &e%x%, %y%, %z%"
+  supply-landed-territory: "&6[Supply] &fCrate #%index% &7— &e%x%, %y%, %z% &c(%guild% territory)"
+  supply-denied: "&cThis crate is in %guild%'s territory. &7Only they can open it outside war time."

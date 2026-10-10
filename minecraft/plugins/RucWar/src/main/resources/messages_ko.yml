@@ -6,7 +6,7 @@ war:
   closed: "&7종전. 살아남은 코어의 영토가 확정됩니다."
   opening-soon: "&e%minutes%분 후 개전합니다."
   title-opened: "&c&l개전"
-  subtitle-opened: "&f영토 보호가 풀렸습니다"
+  subtitle-opened: "&f러크 코어를 박고, 부술 수 있습니다"
   title-closed: "&7&l종전"
   subtitle-closed: "&f방어에 성공한 코어가 영토를 얻습니다"
 
@@ -14,8 +14,8 @@ war:
   status-closed: "&7평시입니다. &f전쟁 시간대: %schedule% &7(%minutes%분 후)"
 
   # ── 코어 설치 ────────────────────────────────────────────────────
-  core-placed: "&c%guild% &f길드가 &e%site% &f거점에 코어를 설치했습니다!"
-  core-placed-self: "&a%site% 거점에 코어를 설치했습니다. &f종전(%minutes%분 후)까지 지키면 영토가 됩니다."
+  core-placed: "&c%guild% &f국가가 어딘가에 러크 코어(&e%site%&f)를 박았습니다! &7하늘의 빛 기둥을 찾으세요."
+  core-placed-self: "&a러크 코어 %site% 설치 완료. &f종전(%minutes%분 후)까지 지키면 영토가 됩니다."
   core-not-a-site: "&c코어는 지정된 거점에만 설치할 수 있습니다. &7거점: %sites%"
   core-war-closed: "&c코어는 전쟁 시간대에만 설치할 수 있습니다. &7%schedule% &8(%minutes%분 후)"
   core-no-guild: "&c길드에 소속되어 있지 않습니다."
@@ -27,12 +27,12 @@ war:
   core-error: "&c코어를 설치할 수 없습니다."
   core-place-taken: "&c거점을 다른 길드가 먼저 차지했습니다. 코어는 돌려받았습니다."
 
-  core-destroyed: "&c&l코어 파괴! &e%site% &f거점의 &c%guild% &f코어가 &c%attacker% &f에게 파괴되었습니다."
+  core-destroyed: "&c&l코어 파괴! &c%guild% &f의 러크 코어 &e%site%&f 이(가) &c%attacker% &f에게 파괴되었습니다."
   core-break-closed: "&c코어는 전쟁 시간대에만 부술 수 있습니다. &7%schedule%"
   core-no-container: "&c코어는 상자에 넣을 수 없습니다."
   core-no-drop: "&c코어는 버릴 수 없습니다. 분실을 막기 위한 제한입니다."
 
-  territory-confirmed: "&a&l영토 확정! &c%guild% &f길드가 &e%site% &f거점을 지켜냈습니다."
+  territory-confirmed: "&a&l영토 확정! &c%guild% &f국가가 러크 코어 &e%site%&f 를 지켜냈습니다."
 
   # ── 영토 ─────────────────────────────────────────────────────────
   territory-protected: "&c%guild% 길드의 영토입니다. &7전쟁 시간대(%schedule%)에만 손댈 수 있습니다."
@@ -46,7 +46,7 @@ war:
   status-schedule: "&7전쟁 시간대: &f%schedule%"
   status-now-open: "&c● 개전 중 &7— 종전까지 %minutes%분"
   status-now-closed: "&7● 평시 &7— 개전까지 %minutes%분"
-  status-sites-header: "&7거점:"
+  status-sites-header: "&7러크 코어:"
   status-site-free: "  &8● &f%site% &7- 비어 있음 &8(%x%, %z%)"
   status-site-held: "  &a● &f%site% &7- &c%guild% &7영토 &8(%x%, %z%)"
   status-site-contested: "  &e● &f%site% &7- &c%guild% &7방어 중 &8(%x%, %z%)"
@@ -57,7 +57,7 @@ war:
 
   # ── /tp [코어명] ─────────────────────────────────────────────────
   warp-no-guild: "&c길드에 소속되어 있지 않습니다."
-  warp-no-core: "&c이동할 코어가 없습니다. 먼저 거점에 코어를 설치하세요."
+  warp-no-core: "&c이동할 코어가 없습니다. 먼저 러크 코어를 설치하세요."
   warp-not-yours: "&c우리 국가의 거점이 아닙니다. &7보유: %sites%"
   warp-pick: "&7코어가 여러 개입니다. &f/tp <거점> &7- 보유: %sites%"
   warp-already: "&c이미 이동 중입니다."
@@ -87,3 +87,20 @@ war:
   seal-not-enough: "&c길드 금고가 부족합니다. (필요: %price% %symbol% / 보유: %bank% %symbol%)"
   seal-inventory-full: "&c인벤토리에 빈 칸이 없습니다."
   seal-bought: "&a국가 인장을 구매했습니다. &7(-%price% %symbol%, 길드 금고)"
+
+  # ── 러크 코어 · 영토 (2026-10-10) ────────────────────────────────
+  core-bad-spot: "&c여기에는 러크 코어를 박을 수 없습니다. &7오버월드만 · 스폰 중립 구역과 다른 국가 영토에서 충분히 떨어진 곳"
+  core-under-attack: "&4&l⚠ 코어 공격! &e%site% &f코어가 공격받고 있습니다 &7(내구도 %hp%/%max%)"
+  core-hp: "&c러크 코어 내구도 &f%hp%&7/%max%"
+  core-no-space: "&c러크 코어는 5×5×5 크기입니다. &7놓는 자리 주변(가로 5 · 높이 5)을 비워 주세요."
+  core-hit-it: "&c러크 코어는 캐서 부술 수 없습니다. &7무기로 때리세요 (전쟁 시간대에만)."
+  core-own: "&7우리 국가의 코어입니다."
+  intruder-self: "&c%guild% 국가의 영토에 들어왔습니다. &7당신은 발광하며, 그 국가에 위치가 알려집니다."
+  intruder-alarm: "&4&l⚠ 침입자! &f%player% &c이(가) 우리 영토에 들어왔습니다."
+  intruder-bar: "&4⚠ 침입자 %count%명 &8| &f%player% &e%distance%m %direction%"
+
+  # ── 보급 상자 ────────────────────────────────────────────────────
+  supply-incoming: "&6&l[보급] &f전쟁이 끝났습니다. 보급 상자 &e%count%개&f가 떨어집니다!"
+  supply-landed: "&6[보급] &f상자 #%index% &7— &e%x%, %y%, %z%"
+  supply-landed-territory: "&6[보급] &f상자 #%index% &7— &e%x%, %y%, %z% &c(%guild% 영토)"
+  supply-denied: "&c%guild% 국가 영토의 보급 상자입니다. &7평시에는 그 국가만 열 수 있습니다."

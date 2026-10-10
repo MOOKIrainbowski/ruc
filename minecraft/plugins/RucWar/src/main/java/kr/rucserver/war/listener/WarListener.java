@@ -1,7 +1,10 @@
 package kr.rucserver.war.listener;
 
 import kr.rucserver.war.RucWar;
+import kr.rucserver.core.model.Guild;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.Listener;
 import org.bukkit.event.inventory.InventoryCloseEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
@@ -50,6 +53,18 @@ public class WarListener implements Listener {
     public void onQuit(PlayerQuitEvent event) {
         territoryListener.forget(event.getPlayer().getUniqueId());
         plugin.getTerritory().cleanup(event.getPlayer().getUniqueId());
+        plugin.getWatch().forget(event.getPlayer().getUniqueId());
+    }
+
+    /** 전쟁 중 다른 국가 사람을 처치하면 시즌 점수 (§3.5 랭킹의 재료). */
+    @EventHandler
+    public void onKill(PlayerDeathEvent event) {
+        Player killer = event.getEntity().getKiller();
+        if (killer == null || !plugin.getSchedule().isOpen()) return;
+        Guild mine = plugin.core().getGuilds().of(killer);
+        Guild theirs = plugin.core().getGuilds().of(event.getEntity());
+        if (mine == null || (theirs != null && theirs.getId() == mine.getId())) return;
+        plugin.core().getGuilds().addPoints(mine.getId(), plugin.getConfig().getLong("territory.points.kill", 10));
     }
 
     /** 국가창고를 닫으면 저장합니다. 마지막 사람일 때만 메모리에서 비웁니다. */

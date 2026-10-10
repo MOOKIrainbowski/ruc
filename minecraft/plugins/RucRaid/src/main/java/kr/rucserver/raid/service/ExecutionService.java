@@ -6,6 +6,7 @@ import kr.rucserver.raid.storage.RaidRepository;
 import org.bukkit.Bukkit;
 import org.bukkit.Sound;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
 
 import java.sql.SQLException;
@@ -104,6 +105,10 @@ public class ExecutionService {
             // 1) 인벤토리를 먼저 비웁니다. 이 순서가 규칙의 전부입니다.
             //    clear() 는 장비칸과 보조손까지 포함하지만, 의존하지 않고 명시합니다.
             PlayerInventory inventory = player.getInventory();
+            // 버프 알만은 지우지 않고 그 자리에 떨굽니다 — 지우면 서버에서 알이 사라집니다.
+            for (ItemStack item : inventory.getContents()) {
+                if (plugin.getEggs().isBuffEgg(item)) player.getWorld().dropItemNaturally(player.getLocation(), item);
+            }
             inventory.clear();
             inventory.setArmorContents(null);
             inventory.setItemInOffHand(null);

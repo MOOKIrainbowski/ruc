@@ -91,6 +91,7 @@ minecraft/servers/*/server.properties
 #   minecraft/plugins/*/src/main/resources/config.yml
 minecraft/servers/*/plugins/*/config.yml
 minecraft/servers/*/plugins/*/config.yml.bak-*
+minecraft/servers/*/plugins/*/messages_*.yml.bak-*
 minecraft/proxy/plugins/*/config.yml
 
 # Paper가 실행 중 생성하는 것들

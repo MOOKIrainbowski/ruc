@@ -44,12 +44,12 @@ egg:
   nearby: "&dYou sense the Dragon Egg nearby &7— %player%"
   announce: "&5&l[Dragon Egg] &fCurrent holder: &e%player%"
   announce-none: "&5&l[Dragon Egg] &7No one is holding it."
-  returned: "&5The Dragon Egg has returned to its altar."
+  dropped: "&5&l[Dragon Egg] &fThe Ender Dragon has fallen! &dThe Dragon Egg&f appeared atop the End exit portal."
+  lost: "&5&l[Dragon Egg] &7The egg fell into the void. &fIt will reappear the next time the Ender Dragon is slain."
 
 staff:
   no-permission: "&cYou do not have permission."
-  egg-respawned: "&aDragon Egg placed at the altar."
-  egg-failed: "&cAltar world not found. Check the config."
+  egg-failed: "&cA buff egg is already in circulation. Only lost eggs can be replaced."
   pardoned: "&aCancelled the pending execution for %player%."
   status: "&fDragon Egg holder: &e%holder% &7| &fIn combat: &c%tagged%"
   tagged: "&eApplied a combat tag to %player%. Disconnecting now triggers execution."

@@ -5,7 +5,13 @@ import kr.rucserver.war.RucWar;
 import kr.rucserver.war.service.CoreItems;
 import kr.rucserver.war.service.TerritoryService;
 import kr.rucserver.war.storage.WarRepository;
-import org.bukkit.Material;
+import io.papermc.paper.event.player.PrePlayerAttackEntityEvent;
+import org.bukkit.Location;
+import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.attribute.Attribute;
+import org.bukkit.attribute.AttributeInstance;
+import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
@@ -52,16 +58,16 @@ public class CoreListener implements Listener {
             return;
         }
 
-        var site = plugin.getTerritory().siteAt(event.getBlock().getLocation());
+        WarRepository.CoreRow placed = plugin.getTerritory().coreAt(event.getBlock());
         Guild guild = plugin.core().getGuilds().of(event.getPlayer());
-        if (site != null && guild != null) {
-            plugin.getTerritory().announcePlaced(event.getPlayer(), site, guild);
+        if (placed != null && guild != null) {
+            plugin.getTerritory().announcePlaced(event.getPlayer(), placed.site(), guild);
         }
     }
 
     private String messageKey(TerritoryService.PlaceResult result) {
         return switch (result) {
-            case NOT_A_SITE -> "war.core-not-a-site";
+            case NOT_A_SITE -> plugin.getTerritory().isFreePlacement() ? "war.core-bad-spot" : "war.core-not-a-site";
             case WAR_CLOSED -> "war.core-war-closed";
             case NOT_IN_GUILD -> "war.core-no-guild";
             case NOT_A_NATION -> "war.core-not-nation";
@@ -69,34 +75,63 @@ public class CoreListener implements Listener {
             case WRONG_GUILD -> "war.core-wrong-guild";
             case SITE_TAKEN -> "war.core-site-taken";
             case ALREADY_HAVE_CORE -> "war.core-limit";
+            case NO_SPACE -> "war.core-no-space";
             default -> "war.core-error";
         };
     }
 
-    /**
-     * 코어 파괴.
-     *
-     * 평시에는 아무도 부술 수 없습니다. 막지 않으면 새벽에 몰래 부수는 것이
-     * 최적해가 되어 "전쟁 시간대" 라는 규칙 자체가 사라집니다.
-     *
-     * 부서진 코어는 <b>드랍하지 않습니다</b> (D2 — 1회용, 회수 불가).
-     */
+    /** 코어 몸체(바리케이드)는 캐서 부술 수 없습니다 — 무기로 때려야 합니다. 크리에이티브 운영자도 마찬가지. */
     @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
     public void onBreak(BlockBreakEvent event) {
-        if (event.getBlock().getType() != Material.BEACON) return;
+        if (plugin.getTerritory().coreAt(event.getBlock()) == null) return;
+        event.setCancelled(true);
+        plugin.msg().send(event.getPlayer(), "war.core-hit-it");
+    }
 
-        WarRepository.CoreRow row = plugin.getTerritory().coreAt(event.getBlock());
-        if (row == null) return;
+    /**
+     * 코어 공격 (2026-10-10). 5×5×5 몸체의 판정 엔티티를 무기로 때리면 내구도(500)가 깎이고,
+     * 0 이 되면 코어 아이템으로 떨어집니다.
+     *
+     * 평시에는 아무도 깎을 수 없습니다. 막지 않으면 새벽에 몰래 부수는 것이
+     * 최적해가 되어 "전쟁 시간대" 라는 규칙 자체가 사라집니다.
+     *
+     * 피해 = 무기 공격력 × 공격 쿨다운 보정(바닐라 공식) × 강화 배율. 이벤트를 취소하므로
+     * 쿨다운은 직접 초기화합니다 — 안 하면 연타가 전부 최대 피해가 됩니다.
+     */
+    @EventHandler(priority = EventPriority.HIGH)
+    public void onAttack(PrePlayerAttackEntityEvent event) {
+        TerritoryService territory = plugin.getTerritory();
+        String site = territory.siteOfBody(event.getAttacked());
+        if (site == null) return;
+        event.setCancelled(true);
 
-        if (!plugin.getTerritory().canBreakCore(event.getPlayer())) {
-            event.setCancelled(true);
-            plugin.msg().send(event.getPlayer(), "war.core-break-closed",
-                    "schedule", plugin.getSchedule().describe());
+        Player player = event.getPlayer();
+        WarRepository.CoreRow row = territory.coreBySite(site);
+        if (row == null) {
+            event.getAttacked().remove();   // 코어가 없어졌는데 남은 몸체 조각
+            return;
+        }
+        if (!territory.canBreakCore(player)) {
+            plugin.msg().send(player, "war.core-break-closed", "schedule", plugin.getSchedule().describe());
+            return;
+        }
+        Guild guild = plugin.core().getGuilds().of(player);
+        if (guild != null && guild.getId() == row.guildId()) {
+            plugin.msg().sendActionBar(player, "war.core-own");
             return;
         }
 
-        event.setDropItems(false);
-        plugin.getTerritory().onCoreBroken(event.getBlock(), event.getPlayer());
+        AttributeInstance attack = player.getAttribute(Attribute.ATTACK_DAMAGE);
+        float charge = player.getAttackCooldown();
+        double damage = (attack == null ? 1 : attack.getValue()) * (0.2 + charge * charge * 0.8)
+                * plugin.getUpgrades().attackMultiplier(player.getInventory().getItemInMainHand());
+        player.resetCooldown();
+
+        Location at = event.getAttacked().getLocation().add(0, 2.5, 0);
+        at.getWorld().spawnParticle(Particle.CRIT, at, 12, 1.2, 1.2, 1.2, 0.1);
+        at.getWorld().playSound(at, Sound.BLOCK_ANVIL_PLACE, 0.6f, 1.6f);
+
+        if (territory.damageCore(row, player, damage)) territory.onCoreBroken(row, player);
     }
 
     /**

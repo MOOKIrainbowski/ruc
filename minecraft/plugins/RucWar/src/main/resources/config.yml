@@ -90,9 +90,20 @@ territory:
     defended: 500
     # 남의 코어를 부쉈을 때
     core-destroyed: 200
+    # 전쟁 중 다른 국가 사람 처치
+    kill: 10
 
 # ── 코어 아이템 (D2) ──────────────────────────────────────────────────
 core:
+  # 2026-10-10 — 러크 코어는 오버월드 어디에나 설치 (위 core-sites 는 false 일 때만 씀).
+  # 영토가 중립 구역이나 다른 코어의 영토와 겹치는 자리에는 못 박습니다.
+  free-placement: true
+  # 코어 내구도. 5×5×5 몸체를 무기로 때려 깎습니다 (피해 = 무기 공격력 × 쿨다운 × 강화 배율).
+  # 0 이 되면 코어 아이템(귀속 없음)으로 떨어집니다. 주인 국가에 10초마다 "공격받는 중" 경보.
+  hp: 500
+  # 신호기처럼 쏘아 올리는 빛 기둥 높이 (블록). 위치가 드러나는 대가입니다.
+  beam-height: 96
+
   # 국가 인장 가격. 제작 불가이므로 이 값이 코어 하나의 비용 하한이 됩니다.
   # 길드 금고에서 차감되고, 길드장만 살 수 있습니다.
   seal-price: 250000
@@ -124,3 +135,67 @@ warp:
   # 아예 없애 버립니다.
   warmup-seconds-war: 10
   cooldown-seconds: 60
+
+# ── 강화 (2026-10-10) ─────────────────────────────────────────────────
+# 강화대 = 화살 제작대(리소스팩으로 다시 그림). 마법이 붙은 장비만, 최대 +10.
+# 표의 n번째 칸 = +n → +(n+1) 시도. 성공 / 하락(-1) / 파괴는 % (나머지 = 그대로).
+upgrade:
+  success:   [100, 90, 80, 70, 60, 50, 40, 30, 20, 10]
+  downgrade: [  0,  0,  0, 10, 20, 25, 30, 35, 40, 45]
+  destroy:   [  0,  0,  0,  0,  0,  2,  5,  8, 12, 15]
+  cost:      [  1,  1,  2,  2,  3,  4,  5,  6,  8, 10]   # 러크 강화석 개수 (합 42)
+
+  effect:
+    damage-per-level: 0.04            # 근접 · 활 · 쇠뇌 · 삼지창 피해 +4%/단계 (+10 = +40%)
+    armor-reduction-per-level: 0.0075 # 부위 합산 (풀세트 +10 = -30%, 최대 -40%)
+    tool-efficiency-per-level: 2      # 채굴 효율 속성 (+10 = +20)
+
+  # 광석을 캘 때 강화석이 나올 확률 (실크터치 · 크리에이티브 제외)
+  stone-drops:
+    DIAMOND_ORE: 0.05
+    DEEPSLATE_DIAMOND_ORE: 0.05
+    EMERALD_ORE: 0.06
+    DEEPSLATE_EMERALD_ORE: 0.06
+    GOLD_ORE: 0.01
+    DEEPSLATE_GOLD_ORE: 0.01
+    ANCIENT_DEBRIS: 0.15
+  # 남의 코어를 부순 자리에 떨어지는 강화석
+  core-destroy-stones: 8
+
+# ── 보급 상자 (2026-10-10) ────────────────────────────────────────────
+# 종전 때마다 오버월드 곳곳에 배틀로얄식 상자(통)를 떨구고 좌표를 공지합니다.
+# 남의 영토에 떨어진 상자는 평시에 그 국가만 엽니다. 다음 보급 때 옛 상자는 사라집니다.
+supply:
+  enabled: true
+  world: world
+  count: 6
+  radius: 1500        # 스폰 기준
+  min-distance: 200   # 스폰 중립 구역 밖
+  stones-min: 2
+  stones-max: 5
+  # "재료 최소-최대 확률%"
+  loot:
+    - "DIAMOND 2-6 70%"
+    - "NETHERITE_SCRAP 1-2 25%"
+    - "NETHERITE_INGOT 1 6%"
+    - "ENCHANTED_GOLDEN_APPLE 1 8%"
+    - "GOLDEN_APPLE 2-5 60%"
+    - "TOTEM_OF_UNDYING 1 10%"
+    - "ENDER_PEARL 4-8 60%"
+    - "EXPERIENCE_BOTTLE 8-24 60%"
+    - "ECHO_SHARD 1-2 20%"
+    - "NETHER_STAR 1 3%"
+    - "ELYTRA 1 2%"
+
+# ── 광물이 풍부한 오버월드 (2026-10-10) ────────────────────────────────
+# 새로 생성되는 청크에만 광맥을 더 박습니다. "청크당 광맥 수  최저y  최고y  광맥 크기"
+rich-ores:
+  enabled: true
+  ores:
+    DIAMOND: "3 -64 16 5"
+    GOLD: "4 -64 32 7"
+    IRON: "8 -32 72 9"
+    EMERALD: "3 -16 160 3"
+    LAPIS: "3 -64 32 6"
+    REDSTONE: "3 -64 16 7"
+    COPPER: "4 0 96 9"
