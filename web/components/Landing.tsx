@@ -3,7 +3,7 @@
 import Image from "next/image";
 import Link from "next/link";
 import { useState } from "react";
-import { DISCORD_INVITE, MC_ADDRESS, t, type Lang } from "@/lib/content";
+import { DISCORD_INVITE, MC_ADDRESS, POLICY_LINKS, t, type Lang } from "@/lib/content";
 import LandingNav from "./LandingNav";
 import { Magnetic, ParallaxHero, RevealText, StickyScenes, TiltCard, ZoomIn } from "./LandingMotion";
 import StatusStrip from "./StatusStrip";
@@ -156,7 +156,7 @@ export default function Landing({ lang }: { lang: Lang }) {
         </Section>
       </main>
 
-      {/* 랜딩 전용 푸터 — 사이트 링크 없이 한 줄 */}
+      {/* 랜딩 전용 푸터 — 한 줄 + 정책 링크 */}
       <footer className="mt-10 border-t border-white/8">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4 py-8 sm:px-6">
           <div className="flex items-center gap-2.5">
@@ -166,6 +166,13 @@ export default function Landing({ lang }: { lang: Lang }) {
           <span className="text-[11px] text-white/40">
             © 2026 {c.footer.madeWith} · {c.footer.disclaimer}
           </span>
+          <nav aria-label="Policies" className="flex w-full flex-wrap gap-x-4 gap-y-1.5 text-[11px]">
+            {POLICY_LINKS[lang].map((l) => (
+              <Link key={l.href} href={l.href} className="text-white/55 transition-colors hover:text-ruc-400">
+                {l.label}
+              </Link>
+            ))}
+          </nav>
         </div>
       </footer>
     </>

@@ -39,7 +39,7 @@ export type WikiHeading = { id: string; text: string };
 
 export type WikiDoc = WikiMeta & { html: string; headings: WikiHeading[] };
 
-function parseFrontMatter(src: string): { data: Record<string, string>; body: string } {
+export function parseFrontMatter(src: string): { data: Record<string, string>; body: string } {
   // CRLF 로 저장된 파일도 받습니다 (윈도우에서 편집하면 그렇게 됩니다).
   const m = src.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n?/);
   if (!m) return { data: {}, body: src };
@@ -113,7 +113,11 @@ export function groupedDocs(): { category: string; docs: WikiMeta[] }[] {
 export function getDoc(slug: string): WikiDoc | null {
   if (!listSlugs().includes(slug)) return null;
   const { data, body } = readFile(slug);
+  return { ...toMeta(slug, data), ...renderMarkdown(body) };
+}
 
+/** 마크다운 → HTML + 목차(h2). 정책 문서(lib/policy.ts)도 같은 렌더러를 씁니다. */
+export function renderMarkdown(body: string): { html: string; headings: WikiHeading[] } {
   const headings: WikiHeading[] = [];
   const seen = new Map<string, number>();
   const renderer: RendererObject = {
@@ -145,7 +149,7 @@ export function getDoc(slug: string): WikiDoc | null {
     .replace(/<table>/g, '<div class="table-wrap" tabindex="0"><table>')
     .replace(/<\/table>/g, "</table></div>");
 
-  return { ...toMeta(slug, data), html, headings };
+  return { html, headings };
 }
 
 /** 마크다운 → 검색용 평문 */

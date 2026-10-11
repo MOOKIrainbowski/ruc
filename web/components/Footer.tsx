@@ -7,7 +7,7 @@ export default function Footer({ lang }: { lang: Lang }) {
   const linkClass = "text-white/60 transition-colors hover:text-ruc-400";
   return (
     <footer className="mt-10 border-t border-white/8">
-      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1.4fr_repeat(3,1fr)]">
+      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-10 sm:px-6 md:grid-cols-[1.4fr_repeat(4,1fr)]">
         <div className="space-y-3">
           <div className="flex items-center gap-2.5">
             <Image src="/icon.png" alt="" width={24} height={24} className="h-6 w-6" />

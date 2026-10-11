@@ -18,6 +18,7 @@ const report = require('./report');
 const reputation = require('./reputation');
 const sanction = require('./sanction');
 const payment = require('./payment');
+const purchaseLog = require('./purchase-log');
 const greet = require('./greet');
 
 const REACTION_FILE = path.join(__dirname, 'reaction_roles.json');
@@ -402,6 +403,7 @@ client.once(Events.ClientReady, async () => {
         payment.cancelCommand,
         payment.lookupCommand,
         payment.reviewCommand,
+        purchaseLog.historyCommand,
     ];
 
     try {
@@ -523,6 +525,7 @@ client.on('interactionCreate', async interaction => {
             if (commandName === '충전취소') { await payment.handleCancel(interaction); return; }
             if (commandName === '결제조회') { await payment.handleLookup(interaction); return; }
             if (commandName === '결제대기') { await payment.handleReview(interaction); return; }
+            if (commandName === '구매기록') { await purchaseLog.handleHistory(interaction); return; }
 
             // ── 안내 패널 (/ticket panel · /verify panel) — 관리자 전용 ──
             if ((commandName === 'ticket' || commandName === 'verify')
@@ -719,6 +722,7 @@ client.on('interactionCreate', async interaction => {
             // "세션 만료" 로 처리합니다.
             if (await sanction.handleButton(interaction)) return;
             if (await payment.handleButton(interaction)) return;
+            if (await purchaseLog.handleButton(interaction)) return;
 
             // ── 임베드 빌더 버튼 ─────────────────────────────────────
             const draft = embedBuilders.get(interaction.user.id);

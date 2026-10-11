@@ -2061,3 +2061,15 @@ MOOKI 는 재시작해야 `/충전` 의 결제 수단 옵션 · 새 상품이 �
   `ruc_core` 는 비어 있어 DB 정리 필요 없었음. 새 지형 검증: 청크당 심층 다이아 광석 28~51개 (바닐라 ≈ 4~8). `war supply` 로 상자 6개 낙하 · 내용물 확인
   - 한계: 광맥 추가는 RucWar 활성화 이후 생성되는 청크부터라, 스폰 주변 미리 생성 구역(중립 구역 안)은 바닐라 그대로
 - **강화석 텍스처**: 청록 가루 더미 + 반짝이 16×16 (`resourcepack/assets/ruc/textures/item/upgrade_stone.png`). `pack.py` → 새 sha1 `2c5fc2c1…`
+
+## §25 정책 문서 공개 · MOOKI 구매 로그 (2026-10-11)
+
+- **정책 문서** `web/content/policy/*.md` → `/policy` · `/policy/{terms,privacy,refund,operation,guardian-consent}`.
+  렌더러는 위키와 공용(`lib/wiki.ts` 의 `renderMarkdown`). 모든 푸터(공용 Footer · 랜딩 푸터)에 링크 (`POLICY_LINKS`).
+  `[ ]` 칸(대표자 · 이메일 · 시행일 · 사업자 정보)은 아직 비어 있습니다.
+- **결정**: ① 통신판매업 = 보류 (충전 페이지 · PAY_ENABLED · 상품표 그대로) ② 만 14세 미만 = 보호자 동의 절차 운영
+  ④ 이의 신청 = 통지 후 14일 · 제재 중에도 · 영구 밴은 이메일 1회 (`rules.json` notes · 위키 · `sanction.js` DM, 이메일은 `SANCTION_APPEAL_EMAIL` 이 있을 때만 안내)
+- **구매 로그** `MOOKI/purchase-log.js`: 현금 입금 매칭 · RUC 결제 때 `purchase_log.jsonl`(gitignore, 덧붙이기만) + 로그 카테고리 `🛒ㅣ구매로그`
+  (`PURCHASE_LOG_CHANNEL_ID`). 분류 = 상품표 `category` (member 멤버 등급 · ruc 러크 · convenience 편의 기능).
+  `/구매기록 닉네임:<닉> [분류]` — 그 채널 · Manager 이상만, UUID 로 묶어 닉네임 변경 전 기록도 나옴, 10건씩 페이지.
+  Gold 구매(VIP · SVIP)는 돈이 오가지 않아 기록하지 않습니다. 점검: `node MOOKI/tools/check-purchase-log.js`

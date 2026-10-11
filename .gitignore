@@ -115,6 +115,8 @@ mapfile/
 MOOKI*/sanctions_data.json
 # 충전 화면 상태 (관리자 메시지 ID · 디스코드 ID)
 MOOKI*/pay_data.json
+# 구매 로그 (디스코드 ID · 닉네임 · 금액) — 환불 근거 사본. 공개 저장소에 올리지 않습니다
+MOOKI*/purchase_log.jsonl
 # 티켓 내용(유저 문의 · 신고)과 반응 역할은 런타임 데이터 — 저장소가 공개입니다
 MOOKI*/tickets_data.json
 MOOKI*/reaction_roles.json

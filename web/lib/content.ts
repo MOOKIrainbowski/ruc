@@ -11,6 +11,24 @@ export const MC_ADDRESS = process.env.NEXT_PUBLIC_MC_ADDRESS ?? "play.rucserver.
 // 주의: 아래 키("raid" 등)는 화면에 보이는 이름이 아니라 내부 식별자입니다.
 // 환경변수(MC_HOST_RAID)와 API 응답에 그대로 쓰이므로 바꾸지 마세요.
 // 표시 이름은 serverLabels / modes.items.name 에서만 바꿉니다.
+/** 정책 문서 (content/policy) — 모든 페이지 푸터에 붙습니다. 랜딩 푸터도 이 목록을 씁니다. */
+export const POLICY_LINKS = {
+  ko: [
+    { label: "이용약관", href: "/policy/terms" },
+    { label: "개인정보처리방침", href: "/policy/privacy" },
+    { label: "환불 정책", href: "/policy/refund" },
+    { label: "운영정책", href: "/policy/operation" },
+    { label: "보호자 동의 절차", href: "/policy/guardian-consent" },
+  ],
+  en: [
+    { label: "Terms of Service", href: "/policy/terms" },
+    { label: "Privacy Policy", href: "/policy/privacy" },
+    { label: "Refund Policy", href: "/policy/refund" },
+    { label: "Operation Policy", href: "/policy/operation" },
+    { label: "Guardian Consent", href: "/policy/guardian-consent" },
+  ],
+};
+
 export const SERVER_KEYS = ["home", "raid", "war", "peace"] as const;
 export type ServerKey = (typeof SERVER_KEYS)[number];
 
@@ -170,6 +188,9 @@ export const content: Record<Lang, Copy> = {
         {
           title: "커뮤니티",
           links: [{ label: "디스코드", href: DISCORD_INVITE }],
+        },        {
+          title: "정책",
+          links: POLICY_LINKS.ko,
         },
       ],
       contact: "문의 · 신고 · 환불은 디스코드 /ticket 으로 받습니다.",
@@ -287,6 +308,9 @@ export const content: Record<Lang, Copy> = {
         {
           title: "Community",
           links: [{ label: "Discord", href: DISCORD_INVITE }],
+        },        {
+          title: "Policies (Korean)",
+          links: POLICY_LINKS.en,
         },
       ],
       contact: "Questions, reports and refunds go through /ticket on Discord.",

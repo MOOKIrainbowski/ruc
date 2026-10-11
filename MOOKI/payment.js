@@ -26,6 +26,7 @@ const {
 } = require('discord.js');
 const roles = require('./roles');
 const greet = require('./greet');
+const purchaseLog = require('./purchase-log');
 
 const DATA_FILE = path.join(__dirname, 'pay_data.json');
 const PRODUCTS_FILE = process.env.PAY_PRODUCTS_FILE
@@ -260,6 +261,15 @@ async function dm(client, discordId, payload) {
     }
 }
 
+/** 구매 로그 한 줄 (purchase-log.js). 분류는 상품표의 category 입니다. */
+function logEntry(r, p, unit, delivered) {
+    return {
+        order: r.order, code: r.code, name: r.name || '-', uuid: r.uuid || null, discord: r.discord,
+        category: p?.category || 'convenience', product: p?.id || r.product, productName: p?.name || r.product,
+        amount: Number(r.price ?? r.amount) || 0, unit, delivered,
+    };
+}
+
 // ── 입금 처리 결과 → 디스코드 ─────────────────────────────────────────
 
 /**
@@ -277,6 +287,7 @@ async function announce(guild, r, by) {
         if (r.reason && r.reason.startsWith('LINKED')) await settleDepositMessage(guild, r.id, state.text);
 
         const p = product(r.product);
+        await purchaseLog.record(guild, logEntry(r, p, 'won', delivered));
         await dm(guild.client, r.discord, {
             embeds: [new EmbedBuilder().setColor(delivered ? COLOR.ok : COLOR.pending)
                 .setTitle(delivered ? '충전 상품이 지급되었습니다' : '입금이 확인되었습니다')
@@ -679,6 +690,11 @@ async function payWithRuc(interaction, p) {
     if (r.kind !== 'BOUGHT') return interaction.editReply(fail[r.kind] || '<:minecraft_tnt:1557947116993646632> 결제하지 못했습니다.');
 
     console.log(`[충전] RUC 결제 ${r.code} ${p.id} ${price} RUC — ${interaction.user.tag}`);
+    // BOUGHT 응답에는 닉네임 · UUID 가 없어 주문을 한 번 더 읽습니다. 못 읽어도 기록은 남깁니다.
+    const status = parse(await rcon(`rucpay status ${token(r.code)}`));
+    await purchaseLog.record(interaction.guild, logEntry(
+        { ...(status?.kind === 'STATUS' ? status : {}), order: r.order, code: r.code, price, discord: interaction.user.id },
+        p, 'RUC', r.delivered === '1'));
     await interaction.editReply({
         embeds: [new EmbedBuilder().setColor(r.delivered === '1' ? COLOR.ok : COLOR.pending)
             .setTitle(`${p.name} — RUC 결제 완료`)
