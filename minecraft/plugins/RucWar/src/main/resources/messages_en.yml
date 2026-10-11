@@ -101,6 +101,7 @@ war:
 
   # ── Supply crates ────────────────────────────────────────────────
   supply-incoming: "&6&l[Supply] &fThe war is over. &e%count%&f supply crates are dropping!"
+  supply-incoming-timer: "&6&l[Supply] &e%count% &fsupply crates are dropping!"
   supply-landed: "&6[Supply] &fCrate #%index% &7— &e%x%, %y%, %z%"
   supply-landed-territory: "&6[Supply] &fCrate #%index% &7— &e%x%, %y%, %z% &c(%guild% territory)"
   supply-denied: "&cThis crate is in %guild%'s territory. &7Only they can open it outside war time."

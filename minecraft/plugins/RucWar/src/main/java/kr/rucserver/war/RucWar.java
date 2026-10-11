@@ -117,6 +117,7 @@ public class RucWar extends JavaPlugin {
         storage.start();
         seals.spawn();
         watch.start();
+        supply.start();
 
         // 광물이 풍부한 오버월드 — 새로 생성되는 청크부터
         if (getConfig().getBoolean("rich-ores.enabled", true)) {

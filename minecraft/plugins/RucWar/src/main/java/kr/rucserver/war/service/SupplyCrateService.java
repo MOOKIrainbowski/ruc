@@ -31,7 +31,8 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
- * 보급 상자 (2026-10-10) — 전쟁 시간대가 끝날 때마다 오버월드 곳곳에 떨어지는 배틀로얄식 상자.
+ * 보급 상자 (2026-10-10) — 전쟁 시간대가 끝날 때, 그리고 평시에도 {@code supply.interval-minutes} 마다
+ * 오버월드 곳곳에 떨어지는 배틀로얄식 상자.
  *
  * 좌표를 전 서버에 공지합니다. 남의 영토에 떨어진 상자는 평시에 그 국가만 열 수 있습니다
  * (다른 활동 — 채집 · 약탈 · 파괴 — 은 영토에서도 됩니다. 상자만 예외).
@@ -50,8 +51,23 @@ public class SupplyCrateService implements Listener {
         this.crateKey = new NamespacedKey(plugin, "supply_crate");
     }
 
+    /** 평시 자동 보급 (2026-10-11). 국가전 서버에 아무도 없으면 건너뜁니다 — 보는 사람 없는 상자를 위해 청크를 만들 이유가 없습니다. */
+    public void start() {
+        long minutes = plugin.getConfig().getLong("supply.interval-minutes", 30);
+        if (minutes <= 0) return;
+        long period = minutes * 60 * 20;
+        long first = Math.min(period, plugin.getConfig().getLong("supply.first-drop-minutes", 5) * 60 * 20);
+        Bukkit.getScheduler().runTaskTimer(plugin, () -> {
+            if (!Bukkit.getOnlinePlayers().isEmpty()) dropAll("war.supply-incoming-timer");
+        }, Math.max(1, first), period);
+    }
+
     /** 종전 때 부릅니다. 옛 상자를 치우고 새로 떨굽니다. */
     public void dropAll() {
+        dropAll("war.supply-incoming");
+    }
+
+    private void dropAll(String announceKey) {
         if (!plugin.getConfig().getBoolean("supply.enabled", true)) return;
         clearOld();
 
@@ -62,7 +78,7 @@ public class SupplyCrateService implements Listener {
         int minDistance = plugin.getConfig().getInt("supply.min-distance", 200);
         Location spawn = world.getSpawnLocation();
 
-        plugin.msg().broadcastAll("war.supply-incoming", "count", String.valueOf(count));
+        plugin.msg().broadcastAll(announceKey, "count", String.valueOf(count));
         for (int i = 1; i <= count; i++) {
             int x, z;
             do {

@@ -167,6 +167,10 @@ upgrade:
 # 남의 영토에 떨어진 상자는 평시에 그 국가만 엽니다. 다음 보급 때 옛 상자는 사라집니다.
 supply:
   enabled: true
+  # 평시 자동 보급 주기 (분). 0 = 종전 때만. 국가전 서버에 아무도 없으면 건너뜁니다.
+  interval-minutes: 30
+  # 서버가 켜진 뒤 첫 보급까지 (분)
+  first-drop-minutes: 5
   world: world
   count: 6
   radius: 1500        # 스폰 기준

@@ -101,6 +101,7 @@ war:
 
   # ── 보급 상자 ────────────────────────────────────────────────────
   supply-incoming: "&6&l[보급] &f전쟁이 끝났습니다. 보급 상자 &e%count%개&f가 떨어집니다!"
+  supply-incoming-timer: "&6&l[보급] &f보급 상자 &e%count%개&f가 떨어집니다!"
   supply-landed: "&6[보급] &f상자 #%index% &7— &e%x%, %y%, %z%"
   supply-landed-territory: "&6[보급] &f상자 #%index% &7— &e%x%, %y%, %z% &c(%guild% 영토)"
   supply-denied: "&c%guild% 국가 영토의 보급 상자입니다. &7평시에는 그 국가만 열 수 있습니다."
