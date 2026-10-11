@@ -140,13 +140,16 @@ public class MenuListener implements Listener {
                         "language", next));
             }
 
-            case MenuService.SLOT_SPAWN -> {
-                player.closeInventory();
-                // 서버마다 스폰의 의미가 달라서 명령으로 넘깁니다. 각 서버 모듈이
-                // 전투 태그·시전 시간 같은 자기 규칙을 그대로 적용하게 됩니다.
-                if (!player.performCommand("spawn")) {
-                    player.teleport(player.getWorld().getSpawnLocation());
+            case MenuService.SLOT_WAR -> {
+                if ("war".equals(plugin.getNetwork().getCurrentServer())) {
+                    plugin.getMenus().click(player, "menu.server.already-here");
+                    return;
                 }
+                player.closeInventory();
+                player.sendMessage(plugin.getMessages().prefixed(lang, "menu.server.connecting",
+                        "server", plugin.getMessages().raw(lang, "menu.server.war-name")));
+                player.playSound(player.getLocation(), Sound.ENTITY_ENDERMAN_TELEPORT, 0.7f, 1.2f);
+                plugin.getNetwork().connect(player, "war");
             }
 
             case MenuService.SLOT_HELP -> plugin.getMenus().openHelp(player);

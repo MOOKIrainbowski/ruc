@@ -43,6 +43,9 @@ public class ScoreboardService {
             "§a", "§b", "§c", "§d", "§e", "§f"
     };
 
+    /** 구분선 자리표시. 가운데 정렬 때 사이드바 폭에 맞춰 늘립니다. */
+    private static final String DIVIDER = "&8&m";
+
     private final RucCore plugin;
     private final MessageService messages;
     private final XpService xp;
@@ -129,7 +132,8 @@ public class ScoreboardService {
             return;
         }
 
-        List<String> lines = buildLines(player, data);
+        List<String> lines = center(buildLines(player, data),
+                plugin.getConfig().getString("scoreboard.title", "&a&lRUC SERVER"));
 
         // 줄 수가 줄었을 때 이전 줄이 남지 않도록 정리
         for (String entry : board.getEntries()) {
@@ -184,7 +188,7 @@ public class ScoreboardService {
                 .replace("%online%", String.valueOf(Bukkit.getOnlinePlayers().size()))
                 .replace("%max%", String.valueOf(Bukkit.getMaxPlayers())));
 
-        lines.add("&8&m                    ");
+        lines.add(DIVIDER);
 
         // 5줄 — Ruc 잔고
         lines.add(messages.raw(lang, "scoreboard.balance")
@@ -220,18 +224,67 @@ public class ScoreboardService {
     }
 
     /**
-     * 10칸짜리 진행바.
+     * 사이드바는 왼쪽 정렬뿐이라, 가장 넓은 줄(제목 포함)에 맞춰 앞에 공백을 채워 가운데로 보냅니다.
+     * 구분선은 그 폭만큼 늘립니다.
+     */
+    static List<String> center(List<String> lines, String title) {
+        int max = width(title);
+        for (String line : lines) if (!DIVIDER.equals(line)) max = Math.max(max, width(line));
+
+        List<String> out = new ArrayList<>(lines.size());
+        for (String line : lines) {
+            if (DIVIDER.equals(line)) {
+                out.add(DIVIDER + " ".repeat(max / 4));
+            } else {
+                out.add(" ".repeat(Math.round((max - width(line)) / 8f)) + line);   // 공백 = 4px
+            }
+        }
+        return out;
+    }
+
+    /**
+     * 기본 폰트 기준 화면 폭(px, 글자 사이 1px 포함). & 색코드는 0, 굵게는 글자당 +1.
+     * ponytail: 한글·기호는 일괄 9px 로 어림 — 글리프마다 1~2px 어긋날 수 있음. 거슬리면 글자별 표로 바꾸세요.
+     */
+    static int width(String text) {
+        int w = 0;
+        boolean bold = false;
+        for (int i = 0; i < text.length(); i++) {
+            char c = text.charAt(i);
+            if ((c == '&' || c == '§') && i + 1 < text.length()) {
+                char code = Character.toLowerCase(text.charAt(++i));
+                if (code == 'l') bold = true;
+                else if ("0123456789abcdefr".indexOf(code) >= 0) bold = false;
+                continue;
+            }
+            w += charWidth(c) + (bold ? 1 : 0);
+        }
+        return w;
+    }
+
+    private static int charWidth(char c) {
+        if (c == ' ') return 4;
+        if ("!',.:;i|".indexOf(c) >= 0) return 2;
+        if ("l`".indexOf(c) >= 0) return 3;
+        if ("It[]".indexOf(c) >= 0) return 4;
+        if ("\"()*<>fk{}".indexOf(c) >= 0) return 5;
+        if ("@~".indexOf(c) >= 0) return 7;
+        return c < 128 ? 6 : 9;
+    }
+
+    /**
+     * 5칸짜리 진행바 (사이드바 폭을 줄이려고 10칸에서 줄임).
      *
-     * 반올림을 쓰면 95%에서 이미 10칸이 다 차서, 레벨업이 안 되는 것처럼 보입니다.
+     * 반올림을 쓰면 90%에서 이미 5칸이 다 차서, 레벨업이 안 되는 것처럼 보입니다.
      * 내림을 써야 "막대가 꽉 참 = 레벨업 직전"이 실제와 맞습니다.
      */
     private String progressBar(double progress) {
-        int filled = (int) Math.floor(progress * 10);
-        if (filled > 10) filled = 10;
+        int filled = (int) Math.floor(progress * 5);
+        if (filled > 5) filled = 5;
         if (filled < 0) filled = 0;
 
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 5; i++) {
             sb.append(i < filled ? "&a" : "&8").append("▰");
         }
         return sb.toString();

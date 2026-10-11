@@ -34,7 +34,7 @@ function Start-Backend($name, $xms, $xmx) {
 #   그리고 servers/home,raid 의 plugins/RucCore/config.yml 에서
 #   network.servers 목록에 war, peace 를 다시 넣으세요 (Shift+F 메뉴).
 #
-$Servers = @("home", "raid")
+$Servers = @("home", "raid", "war")
 
 $Spec = @{
     home  = @("1G",   "2G")

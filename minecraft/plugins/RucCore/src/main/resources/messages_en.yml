@@ -105,7 +105,7 @@ menu:
     raid-name: "&c&lRaiding"
     raid-lore: "&7Open PvP · full drop on death|&cCombat logging means execution"
     war-name: "&6&lNation War"
-    war-lore: "&7Found a guild and fight for land|&7Nation members only"
+    war-lore: "&7Found a guild and fight for land|&7Guild members only"
     peace-name: "&b&lPeace"
     peace-lore: "&7Direct and indirect kills blocked|&7Building and gathering"
     count: "&7Online &f%count%"
@@ -147,10 +147,6 @@ menu:
   guide:
     name: "&6&lGuide"
     lore: "&7Try each Ruc feature|&7and earn rewards|&e▶ Click to open"
-
-  spawn:
-    name: "&f&lGo to spawn"
-    lore: "&7Teleport to this server's spawn|&8The Raiding server has a warmup"
 
   close:
     name: "&c&lClose"

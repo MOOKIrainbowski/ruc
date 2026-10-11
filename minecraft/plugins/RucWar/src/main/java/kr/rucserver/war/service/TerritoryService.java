@@ -266,7 +266,8 @@ public class TerritoryService {
 
         Guild guild = plugin.core().getGuilds().of(player);
         if (guild == null) return PlaceResult.NOT_IN_GUILD;
-        if (!guild.isNation()) return PlaceResult.NOT_A_NATION;
+        // 2026-10-11 시범 운영: 길드면 코어를 박을 수 있습니다. 국가 전용으로 되돌리려면 아래 줄 주석을 푸세요.
+        // if (!guild.isNation()) return PlaceResult.NOT_A_NATION;
 
         GuildRank rank = guild.rankOf(player.getUniqueId());
         if (rank == null || !rank.atLeast(GuildRank.VICE)) return PlaceResult.NO_PERMISSION;

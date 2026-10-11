@@ -68,7 +68,10 @@ public class GateDatabase {
     }
 
     /**
-     * 국가 소속 여부. 이것이 §2.6 입장 판정의 전부입니다.
+     * 입장 자격. 이것이 §2.6 입장 판정의 전부입니다.
+     *
+     * 2026-10-11 국가전 시범 운영: 국가 조건을 빼고 <b>길드 소속이면 통과</b>입니다.
+     * 국가 전용으로 되돌리려면 두 쿼리에 {@code AND g.nation = TRUE} 를 다시 넣으세요.
      *
      * 백엔드의 {@code GuildService.isInNation()} 과 같은 규칙(소속 길드의 nation
      * 플래그)을 봅니다. 양쪽이 어긋나면 프록시는 통과시켰는데 서버가 막는 상황이
@@ -76,7 +79,7 @@ public class GateDatabase {
      */
     public boolean isInNation(UUID uuid) throws SQLException {
         String sql = """
-                SELECT g.nation FROM ruc_guild_member m
+                SELECT 1 FROM ruc_guild_member m
                 JOIN ruc_guild g ON g.id = m.guild_id
                 WHERE m.uuid = ?
                 """;
@@ -84,17 +87,16 @@ public class GateDatabase {
              PreparedStatement ps = conn.prepareStatement(sql)) {
             ps.setString(1, uuid.toString());
             try (ResultSet rs = ps.executeQuery()) {
-                return rs.next() && rs.getBoolean(1);
+                return rs.next();
             }
         }
     }
 
-    /** 국가 소속원 전체. 주기 갱신으로 캐시를 채웁니다. */
+    /** 입장 자격자 전체 (시범 운영 중에는 길드원 전체). 주기 갱신으로 캐시를 채웁니다. */
     public Set<UUID> nationMembers() throws SQLException {
         String sql = """
                 SELECT m.uuid FROM ruc_guild_member m
                 JOIN ruc_guild g ON g.id = m.guild_id
-                WHERE g.nation = TRUE
                 """;
         Set<UUID> out = new HashSet<>();
         try (Connection conn = dataSource.getConnection();

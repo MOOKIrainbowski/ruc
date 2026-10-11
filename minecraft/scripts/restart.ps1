@@ -34,7 +34,7 @@ $Spec = @{
 }
 
 # 지금 운영 중인 서버 (축소 운영). all 이 가리키는 대상입니다.
-$Running = @("home", "raid")
+$Running = @("home", "raid", "war")
 
 if (-not $Targets -or $Targets.Count -eq 0) {
     Write-Host "무엇을 재시작할지 적어 주세요." -ForegroundColor Yellow

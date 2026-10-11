@@ -76,9 +76,9 @@ public class GateConfig {
 
                 # 안내 문구. & 색코드를 씁니다.
                 # 프록시에는 플레이어별 언어 설정이 없어 기본 언어(한국어)로 냅니다.
-                message.denied=&c[러크] &f국가에 소속되어야 국가전 서버에 들어갈 수 있습니다.
-                message.denied-hint=&7길드를 만들거나 가입해서 길드원 수를 채우면 국가가 됩니다. &f/길드
-                message.unavailable=&c[러크] &f국가 소속을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.
+                message.denied=&c[러크] &f길드에 소속되어야 국가전 서버에 들어갈 수 있습니다.
+                message.denied-hint=&7길드를 만들거나 가입하세요. &f/길드
+                message.unavailable=&c[러크] &f길드 소속을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.
 
                 # ── 네트워크 밴 (Phase 6-7) ──
                 # 접속 중인 사람 중 밴된 사람을 찾아 끊는 주기 (초). 디스코드에서
@@ -134,17 +134,17 @@ public class GateConfig {
 
     public String messageDenied() {
         return get("message.denied",
-                "&c[러크] &f국가에 소속되어야 국가전 서버에 들어갈 수 있습니다.");
+                "&c[러크] &f길드에 소속되어야 국가전 서버에 들어갈 수 있습니다.");
     }
 
     public String messageDeniedHint() {
         return get("message.denied-hint",
-                "&7길드를 만들거나 가입해서 길드원 수를 채우면 국가가 됩니다. &f/길드");
+                "&7길드를 만들거나 가입하세요. &f/길드");
     }
 
     public String messageUnavailable() {
         return get("message.unavailable",
-                "&c[러크] &f국가 소속을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.");
+                "&c[러크] &f길드 소속을 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.");
     }
 
     // ── 밴 (Phase 6-7) ────────────────────────────────────────────────

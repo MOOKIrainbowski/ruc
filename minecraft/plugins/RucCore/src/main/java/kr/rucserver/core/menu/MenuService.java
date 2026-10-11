@@ -42,12 +42,13 @@ public class MenuService {
     public static final int SLOT_VERIFY = 15;
     public static final int SLOT_LANGUAGE = 16;
 
-    // 기능 줄. 28 · 30 · 32 · 34 로 좌우 대칭입니다 (우편함 · 엔더상자 · 유저 상점 · 스폰).
+    // 기능 줄. 28 · 30 · 32 · 34 로 좌우 대칭입니다 (우편함 · 엔더상자 · 유저 상점 · 국가전).
     // 도움말은 맨 아랫줄 38, 닫기 40, 가이드(Phase 11) 42 — 좌우 대칭.
     public static final int SLOT_MAILBOX = 28;
     public static final int SLOT_ENDER = 29;
     public static final int SLOT_SHOP = 30;
-    public static final int SLOT_SPAWN = 11;
+    /** 국가전 바로가기 (2026-10-11 — 스폰 버튼은 허브 칸과 겹쳐서 대체). */
+    public static final int SLOT_WAR = 11;
     public static final int SLOT_HELP = 33;
     public static final int SLOT_GUIDE = 34;
     public static final int SLOT_COSMETIC = 31;
@@ -241,10 +242,10 @@ public class MenuService {
                 messages.raw(lang, "menu.guide.name"),
                 loreOf(lang, "menu.guide.lore")));
 
-        // ── 스폰 이동
-        inv.setItem(SLOT_SPAWN, item(Material.RECOVERY_COMPASS,
-                messages.raw(lang, "menu.spawn.name"),
-                loreOf(lang, "menu.spawn.lore")));
+        // ── 국가전 바로가기. 서버 칸과 같은 이름·설명을 씁니다.
+        inv.setItem(SLOT_WAR, item(Material.SHIELD,
+                messages.raw(lang, "menu.server.war-name"),
+                loreOf(lang, "menu.server.war-lore")));
 
         // ── 도움말
         inv.setItem(SLOT_HELP, item(Material.WRITABLE_BOOK,
