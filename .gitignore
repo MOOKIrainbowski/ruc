@@ -134,3 +134,6 @@ minecraft/servers/*/plugins/*.jar.bak-*
 startcommand.txt
 banner/
 minecraft/servers/*/plugins/RucCore/feed-message-id.txt
+
+# 디스코드 권한 백업 (역할 · 채널 권한 전체) — 로컬 보관만
+docs/backup/discord-perms-*.json
