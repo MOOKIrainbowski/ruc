@@ -244,7 +244,8 @@ public class ScoreboardService {
 
     /**
      * 기본 폰트 기준 화면 폭(px, 글자 사이 1px 포함). & 색코드는 0, 굵게는 글자당 +1.
-     * ponytail: 한글·기호는 일괄 9px 로 어림 — 글리프마다 1~2px 어긋날 수 있음. 거슬리면 글자별 표로 바꾸세요.
+     * 1.21.11 클라이언트 폰트에서 잰 값입니다 (ascii.png · unifont). ▰ · ● = 5px, 한글 = 평균 8px.
+     * ponytail: 한글은 글자마다 7~8.5px 이라 줄당 1~2px 어긋날 수 있음. 거슬리면 음절별 표로 바꾸세요.
      */
     static int width(String text) {
         int w = 0;
@@ -269,7 +270,8 @@ public class ScoreboardService {
         if ("It[]".indexOf(c) >= 0) return 4;
         if ("\"()*<>fk{}".indexOf(c) >= 0) return 5;
         if ("@~".indexOf(c) >= 0) return 7;
-        return c < 128 ? 6 : 9;
+        if (c == '▰' || c == '●') return 5;
+        return c < 128 ? 6 : 8;
     }
 
     /**

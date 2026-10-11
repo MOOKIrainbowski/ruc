@@ -257,6 +257,9 @@ public class UpgradeService implements Listener {
         ItemStack stones = top.getItem(SLOT_STONE);
         if (!isStone(stones) || stones.getAmount() < cost) {
             player.sendMessage(plain("러크 강화석이 " + cost + "개 필요합니다.", NamedTextColor.RED));
+            if (player.hasPermission("rucwar.admin")) {
+                player.sendMessage(plain("스태프: /전쟁 강화석 [개수] 로 받을 수 있습니다 (크리에이티브 창에는 없습니다).", NamedTextColor.GRAY));
+            }
             return;
         }
         stones.setAmount(stones.getAmount() - cost);

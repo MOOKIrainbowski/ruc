@@ -134,8 +134,18 @@ public class WarCommands implements CommandExecutor, TabCompleter {
         switch (args[0]) {
             case "강화석", "stone" -> {
                 if (!(sender instanceof Player player)) return false;
-                int amount = args.length > 1 ? Integer.parseInt(args[1]) : 16;
-                player.getInventory().addItem(plugin.getUpgrades().createStone(amount));
+                int amount = 16;
+                if (args.length > 1) {
+                    try {
+                        amount = Math.max(1, Math.min(64 * 36, Integer.parseInt(args[1])));
+                    } catch (NumberFormatException e) {
+                        return false;
+                    }
+                }
+                // 인벤토리가 차서 못 들어간 만큼은 발밑에 떨굽니다.
+                player.getInventory().addItem(plugin.getUpgrades().createStone(amount)).values()
+                        .forEach(left -> player.getWorld().dropItemNaturally(player.getLocation(), left));
+                player.sendMessage("§a러크 강화석 " + amount + "개를 받았습니다.");
                 return true;
             }
             case "보급", "supply" -> {
@@ -225,6 +235,11 @@ public class WarCommands implements CommandExecutor, TabCompleter {
     @Override
     public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
                                       @NotNull String label, @NotNull String[] args) {
+        // 스태프 점검용 /전쟁 하위 명령. 강화석은 플러그인 아이템이라 크리에이티브 창에 없습니다.
+        if (command.getName().equalsIgnoreCase("warstatus")) {
+            if (args.length != 1 || !sender.hasPermission("rucwar.admin")) return Collections.emptyList();
+            return List.of("강화석", "보급").stream().filter(o -> o.startsWith(args[0])).toList();
+        }
         if (!command.getName().equalsIgnoreCase("coretp")) return Collections.emptyList();
         if (!(sender instanceof Player player) || args.length != 1) {
             return Collections.emptyList();
