@@ -117,6 +117,8 @@ MOOKI*/sanctions_data.json
 MOOKI*/pay_data.json
 # 구매 로그 (디스코드 ID · 닉네임 · 금액) — 환불 근거 사본. 공개 저장소에 올리지 않습니다
 MOOKI*/purchase_log.jsonl
+# 상품표 사본 (web/content/products.json 이 없는 기기에서 받아 둔 것)
+MOOKI*/products_cache.json
 # 티켓 내용(유저 문의 · 신고)과 반응 역할은 런타임 데이터 — 저장소가 공개입니다
 MOOKI*/tickets_data.json
 MOOKI*/reaction_roles.json
@@ -137,3 +139,5 @@ minecraft/servers/*/plugins/RucCore/feed-message-id.txt
 
 # 디스코드 권한 백업 (역할 · 채널 권한 전체) — 로컬 보관만
 docs/backup/discord-perms-*.json
+# 보급 상자 위치 (런타임)
+minecraft/servers/*/plugins/RucWar/supply-crates.txt

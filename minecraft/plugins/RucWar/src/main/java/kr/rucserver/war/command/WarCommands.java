@@ -149,7 +149,7 @@ public class WarCommands implements CommandExecutor, TabCompleter {
                 return true;
             }
             case "보급", "supply" -> {
-                plugin.getSupply().dropAll();
+                plugin.getSupply().dropNow();
                 return true;
             }
             default -> {

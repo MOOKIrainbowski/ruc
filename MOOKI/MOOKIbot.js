@@ -399,7 +399,7 @@ client.once(Events.ClientReady, async () => {
         sanction.historyCommand,
 
         // 현금 충전 (docs/payment-design.md)
-        payment.chargeCommand,
+        await payment.chargeCommandFresh(),
         payment.cancelCommand,
         payment.lookupCommand,
         payment.reviewCommand,

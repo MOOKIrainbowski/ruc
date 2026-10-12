@@ -100,8 +100,7 @@ war:
   intruder-bar: "&4⚠ 침입자 %count%명 &8| &f%player% &e%distance%m %direction%"
 
   # ── 보급 상자 ────────────────────────────────────────────────────
-  supply-incoming: "&6&l[보급] &f전쟁이 끝났습니다. 보급 상자 &e%count%개&f가 떨어집니다!"
-  supply-incoming-timer: "&6&l[보급] &f보급 상자 &e%count%개&f가 떨어집니다!"
-  supply-landed: "&6[보급] &f상자 #%index% &7— &e%x%, %y%, %z%"
-  supply-landed-territory: "&6[보급] &f상자 #%index% &7— &e%x%, %y%, %z% &c(%guild% 영토)"
+  supply-incoming: "&6&l[보급] &f전쟁이 끝났습니다. 보급 상자 &e%count%개&f가 어딘가에 떨어집니다! &7(%minutes%분 뒤 회수)"
+  supply-incoming-timer: "&6&l[보급] &f보급 상자 &e%count%개&f가 어딘가에 떨어집니다! &7불꽃과 폭음을 찾으세요. (%minutes%분 뒤 회수)"
+  supply-expired: "&6[보급] &7남은 보급 상자를 회수했습니다. 다음 보급을 기다리세요."
   supply-denied: "&c%guild% 국가 영토의 보급 상자입니다. &7평시에는 그 국가만 열 수 있습니다."

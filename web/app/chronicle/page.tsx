@@ -52,7 +52,15 @@ export default async function Page() {
                 {list.map((e) => (
                   <li key={e.id} className="flex gap-4 px-5 py-3 text-[13px] leading-relaxed">
                     <time dateTime={e.at} className="w-14 shrink-0 text-white/50">{TIME.format(new Date(e.at))}</time>
-                    <span className="min-w-0 break-words text-white/85"><Line text={e.text} /></span>
+                    <span className="min-w-0 break-words text-white/85">
+                      {e.server && (
+                        <span className="mr-2 inline-block rounded-md bg-white/8 px-1.5 py-0.5 align-[1px] text-[10.5px] text-white/60">
+                          {e.server}
+                          {e.title && ` · ${e.title}`}
+                        </span>
+                      )}
+                      <Line text={e.text} />
+                    </span>
                   </li>
                 ))}
               </ol>

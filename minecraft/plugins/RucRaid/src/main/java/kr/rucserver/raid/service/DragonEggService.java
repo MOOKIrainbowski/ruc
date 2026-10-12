@@ -195,7 +195,7 @@ public class DragonEggService {
                 at = new Location(end, at.getBlockX() + 0.5, end.getHighestBlockYAt(at.getBlockX(), at.getBlockZ()) + 1.5, at.getBlockZ() + 0.5);
                 end.dropItem(at, createEgg());
                 Bukkit.broadcast(plugin.msg().broadcast("egg.dropped"));
-                plugin.core().getRelay().relayChronicle("🐉 엔더 드래곤이 쓰러지고 **드래곤 알**이 나타났습니다.");
+                plugin.core().getRelay().relayChronicle("드래곤 출현", "🐉 엔더 드래곤이 쓰러지고 **드래곤 알**이 나타났습니다.");
             }, 220L);
         });
     }
@@ -381,7 +381,7 @@ public class DragonEggService {
                 String name = p == null ? "?" : p.getName();
                 Bukkit.broadcast(plugin.msg().broadcast("egg.new-holder", "player", name));
                 plugin.core().getRelay().relaySystem("egg", "🥚 **" + name + "** 이(가) 드래곤 알을 차지했습니다.", 0x9B5DE5);
-                plugin.core().getRelay().relayChronicle("🥚 **" + name + "** 이(가) 드래곤 알을 차지했습니다.");
+                plugin.core().getRelay().relayChronicle("드래곤 알 획득", "🥚 **" + name + "** 이(가) 드래곤 알을 차지했습니다.");
                 if (System.currentTimeMillis() - lastFeedAt > 30_000) postFeed();
             }
         }
@@ -442,7 +442,23 @@ public class DragonEggService {
                     + ",\"top\":" + top
                     + ",\"bounty\":{\"pool\":" + pool + ",\"wanted\":" + wanted + "}"
                     + ",\"at\":" + System.currentTimeMillis() + "}";
-            plugin.core().getRelay().relayFeed(json);
+            StringBuilder desc = new StringBuilder();
+            desc.append("🥚 **드래곤 알** ").append(holderName == null ? "주인 없음"
+                    : "**" + holderName + "**" + (online ? " (접속 중)" : " (오프라인)")
+                    + (h == null ? "" : " · <t:" + since / 1000 + ":R> 부터"));
+            desc.append("\n🎯 **현상금** ").append(String.format("%,d", pool)).append(" Gold · 수배자 ").append(wanted).append("명");
+            try {
+                var list = plugin.core().getEggReign().top(season, 5);
+                if (!list.isEmpty()) desc.append("\n\n👑 **시즌 ").append(season).append(" 알 통치 순위**");
+                for (int i = 0; i < list.size(); i++) {
+                    long s = list.get(i).seconds();
+                    desc.append("\n").append(i + 1).append(". ").append(list.get(i).name())
+                            .append(" — ").append(s / 3600).append("시간 ").append(s % 3600 / 60).append("분");
+                }
+            } catch (SQLException e) {
+                // 위에서 이미 남겼습니다
+            }
+            plugin.core().getRelay().relayFeed(json, "약탈 서버 현황", desc.toString());
         });
     }
 

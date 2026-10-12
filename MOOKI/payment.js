@@ -31,6 +31,11 @@ const purchaseLog = require('./purchase-log');
 const DATA_FILE = path.join(__dirname, 'pay_data.json');
 const PRODUCTS_FILE = process.env.PAY_PRODUCTS_FILE
     || path.join(__dirname, '..', 'web', 'content', 'products.json');
+// 봇을 MOOKI 폴더만 있는 다른 기기에서 돌리면 위 파일이 없습니다 (2026-10-12 /충전 선택지가 비었던 원인).
+// 그때는 공개 저장소의 상품표를 받아 아래 사본에 두고 씁니다.
+const PRODUCTS_URL = process.env.PAY_PRODUCTS_URL
+    || 'https://raw.githubusercontent.com/MOOKIrainbowski/ruc/main/web/content/products.json';
+const PRODUCTS_CACHE = path.join(__dirname, 'products_cache.json');
 
 const COLOR = { pending: 0xfacc15, ok: 0x93e93e, review: 0xf97316, bad: 0xef4444, info: 0x60a5fa };
 
@@ -60,14 +65,32 @@ function isAdmin(member) {
 
 let catalog = { products: [], orderTtlMinutes: 60 };
 
+/** 저장소의 상품표 → 받아 둔 사본 순서로 읽습니다. 둘 다 못 읽으면 직전 상품표를 그대로 둡니다 (비우지 않음). */
 function loadProducts() {
-    try {
-        catalog = JSON.parse(fs.readFileSync(PRODUCTS_FILE, 'utf8'));
-    } catch (e) {
-        console.error(`[충전] 상품표를 읽지 못했습니다 (${PRODUCTS_FILE}):`, e.message);
-        catalog = { products: [], orderTtlMinutes: 60 };
+    for (const file of [PRODUCTS_FILE, PRODUCTS_CACHE]) {
+        try {
+            catalog = JSON.parse(fs.readFileSync(file, 'utf8'));
+            return catalog;
+        } catch { /* 다음 후보 */ }
     }
+    console.error(`[충전] 상품표를 읽지 못했습니다 (${PRODUCTS_FILE} · ${PRODUCTS_CACHE}) — refreshProducts() 를 기다립니다`);
     return catalog;
+}
+
+/** 저장소 파일이 없을 때만 웹에서 받아 사본을 갱신합니다. 명령 등록 전에 부릅니다. */
+async function refreshProducts() {
+    if (fs.existsSync(PRODUCTS_FILE)) return loadProducts();
+    try {
+        const res = await fetch(PRODUCTS_URL, { signal: AbortSignal.timeout(10_000) });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const json = await res.json();
+        if (!Array.isArray(json.products)) throw new Error('products 없음');
+        fs.writeFileSync(PRODUCTS_CACHE, JSON.stringify(json, null, 2));
+        console.log(`[충전] 상품표를 받았습니다 (${json.products.length}개) — ${PRODUCTS_URL}`);
+    } catch (e) {
+        console.warn(`[충전] 상품표 받기 실패 (${e.message}) — 받아 둔 사본을 씁니다`);
+    }
+    return loadProducts();
 }
 
 function product(id) {
@@ -594,7 +617,11 @@ function buildChargeCommand() {
     return cmd;
 }
 
-const chargeCommand = buildChargeCommand();
+/** 명령 등록 직전에 부릅니다 — 상품표를 먼저 받아야 선택지가 채워집니다. */
+async function chargeCommandFresh() {
+    await refreshProducts();
+    return buildChargeCommand();
+}
 
 const cancelCommand = new SlashCommandBuilder()
     .setName('충전취소').setDescription('입금 전인 내 충전 주문을 취소합니다.')
@@ -888,7 +915,7 @@ async function replyLater(interaction, content) {
 }
 
 module.exports = {
-    chargeCommand, cancelCommand, lookupCommand, reviewCommand,
+    chargeCommandFresh, refreshProducts, cancelCommand, lookupCommand, reviewCommand,
     handleCharge, handleCancel, handleLookup, handleReview, handleButton, handleModal, start,
     _internals: { parse, items, parseNotification, verifySignature, token, loadProducts,
         grantRoles, clearExpiredRoles, retryFailed },

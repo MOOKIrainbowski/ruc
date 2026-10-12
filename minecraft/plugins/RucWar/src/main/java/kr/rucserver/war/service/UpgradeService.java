@@ -296,7 +296,7 @@ public class UpgradeService implements Listener {
         for (Player online : Bukkit.getOnlinePlayers()) {
             online.playSound(online.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.8f, 1f);
         }
-        plugin.core().getRelay().relayChronicle("⚒️ **" + player.getName() + "** 님이 **" + itemName
+        plugin.core().getRelay().relayChronicle("장비 강화", "⚒️ **" + player.getName() + "** 님이 **" + itemName
                 + " +" + MAX_LEVEL + "** 강화에 성공했습니다.");
     }
 

@@ -168,28 +168,34 @@ upgrade:
 supply:
   enabled: true
   # 평시 자동 보급 주기 (분). 0 = 종전 때만. 국가전 서버에 아무도 없으면 건너뜁니다.
-  interval-minutes: 30
+  interval-minutes: 40
+  # 떨어진 뒤 이만큼 지나면 남은 상자를 회수합니다 (분). 0 = 다음 보급 때까지 남김.
+  # interval 보다 짧아야 빈 시간(interval - lifetime)이 생깁니다.
+  lifetime-minutes: 25
   # 서버가 켜진 뒤 첫 보급까지 (분)
   first-drop-minutes: 5
   world: world
-  count: 6
+  count: 10
   radius: 1500        # 스폰 기준
   min-distance: 200   # 스폰 중립 구역 밖
-  stones-min: 2
-  stones-max: 5
+  stones-min: 4
+  stones-max: 8
   # "재료 최소-최대 확률%"
   loot:
-    - "DIAMOND 2-6 70%"
-    - "NETHERITE_SCRAP 1-2 25%"
-    - "NETHERITE_INGOT 1 6%"
-    - "ENCHANTED_GOLDEN_APPLE 1 8%"
-    - "GOLDEN_APPLE 2-5 60%"
-    - "TOTEM_OF_UNDYING 1 10%"
-    - "ENDER_PEARL 4-8 60%"
-    - "EXPERIENCE_BOTTLE 8-24 60%"
-    - "ECHO_SHARD 1-2 20%"
-    - "NETHER_STAR 1 3%"
-    - "ELYTRA 1 2%"
+    - "DIAMOND 4-10 85%"
+    - "NETHERITE_SCRAP 1-3 40%"
+    - "NETHERITE_INGOT 1 10%"
+    - "ENCHANTED_GOLDEN_APPLE 1 12%"
+    - "GOLDEN_APPLE 3-8 75%"
+    - "TOTEM_OF_UNDYING 1 15%"
+    - "ENDER_PEARL 6-12 75%"
+    - "EXPERIENCE_BOTTLE 16-32 80%"
+    - "ECHO_SHARD 1-3 30%"
+    - "NETHER_STAR 1 5%"
+    - "ELYTRA 1 3%"
+    - "GOLDEN_CARROT 16-32 70%"
+    - "IRON_BLOCK 2-4 50%"
+    - "OBSIDIAN 8-16 40%"
 
 # ── 광물이 풍부한 오버월드 (2026-10-10) ────────────────────────────────
 # 새로 생성되는 청크에만 광맥을 더 박습니다. "청크당 광맥 수  최저y  최고y  광맥 크기"

@@ -100,8 +100,7 @@ war:
   intruder-bar: "&4⚠ %count% intruder(s) &8| &f%player% &e%distance%m %direction%"
 
   # ── Supply crates ────────────────────────────────────────────────
-  supply-incoming: "&6&l[Supply] &fThe war is over. &e%count%&f supply crates are dropping!"
-  supply-incoming-timer: "&6&l[Supply] &e%count% &fsupply crates are dropping!"
-  supply-landed: "&6[Supply] &fCrate #%index% &7— &e%x%, %y%, %z%"
-  supply-landed-territory: "&6[Supply] &fCrate #%index% &7— &e%x%, %y%, %z% &c(%guild% territory)"
+  supply-incoming: "&6&l[Supply] &fThe war is over. &e%count%&f supply crates are dropping somewhere! &7(collected in %minutes% min)"
+  supply-incoming-timer: "&6&l[Supply] &e%count% &fsupply crates are dropping somewhere! &7Look for fireworks. (collected in %minutes% min)"
+  supply-expired: "&6[Supply] &7The remaining supply crates were collected. Wait for the next drop."
   supply-denied: "&cThis crate is in %guild%'s territory. &7Only they can open it outside war time."

@@ -112,7 +112,7 @@ public class XpService {
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
                 try {
                     int rank = plugin.getPlayerData().getRepository().countAtLeastLevel(m, uuid) + 1;
-                    plugin.getRelay().relayChronicle("⭐ **" + name + "** 이(가) Lv." + m + " 달성 — 서버 " + rank + "번째");
+                    plugin.getRelay().relayChronicle("레벨 달성", "⭐ **" + name + "** 이(가) Lv." + m + " 달성 — 서버 " + rank + "번째");
                 } catch (SQLException e) {
                     plugin.getLogger().log(Level.WARNING, "[연대기] 레벨 순위 조회 실패", e);
                 }

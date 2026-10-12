@@ -166,19 +166,63 @@ public class DiscordRelayService {
         return plugin.getConfig().getString("relay.feed-webhook-url", "").trim();
     }
 
-    /** 피드 채널의 상태 메시지({@code RUCFEED <json>})를 고쳐 씁니다. 처음이거나 지워졌으면 새로 올립니다. json 은 호출부가 만듭니다. */
-    public void relayFeed(String json) {
+    /**
+     * 피드 채널의 상태 메시지를 고쳐 씁니다. 처음이거나 지워졌으면 새로 올립니다.
+     * 사람이 보는 임베드(제목 · 본문)에, 웹이 읽는 {@code RUCFEED <json>} 을 푸터로 붙입니다 (web/lib/feed.ts).
+     */
+    public void relayFeed(String json, String title, String description) {
         if (feedWebhook().isEmpty()) return;
-        enqueue(new Payload(feedWebhook(), body("Ruc Feed", null, trim("RUCFEED " + json, CONTENT_LIMIT), null), true));
+        String embed = feedEmbed(title, description, null, "RUCFEED " + json);
+        // content "" — 예전 형식(본문에 RUCFEED)으로 올라간 메시지를 고쳐 쓸 때 본문을 비웁니다
+        enqueue(new Payload(feedWebhook(), body("Ruc Feed", null, "", embed), true));
     }
 
     /**
-     * 러크 연대기 (docs/08 E) — 서버 역사에 남길 사건 한 줄을 피드 채널에 새 메시지로 올립니다.
-     * 웹 /chronicle 이 봇 토큰으로 그 채널을 읽어 시간순으로 보여 줍니다. 4개 서버 모두 피드 웹훅이 있어야 합니다.
+     * 러크 연대기 (docs/08 E) — 서버 역사에 남길 사건 하나를 피드 채널에 새 임베드로 올립니다.
+     * 어느 서버의 일인지 작성자 줄 · 색 · "서버" 칸으로 보여 줍니다. 웹 /chronicle 이 봇 토큰으로 읽습니다.
+     *
+     * @param title 사건 종류 (예: "길드 창설")
+     * @param text  본문 한 줄 (디스코드 마크다운)
      */
-    public void relayChronicle(String text) {
+    public void relayChronicle(String title, String text) {
         if (feedWebhook().isEmpty()) return;
-        enqueue(new Payload(feedWebhook(), body("러크 연대기", null, trim(text, CONTENT_LIMIT), null)));
+        String field = "{\"name\":\"서버\",\"value\":" + json(serverLabel() + " 서버 — " + serverSummary()) + ",\"inline\":true}";
+        String embed = feedEmbed(title, text, field, "러크 연대기 · " + plugin.getConfig().getString("server-id", "ruc"));
+        enqueue(new Payload(feedWebhook(), body("러크 연대기", null, null, embed)));
+    }
+
+    private String feedEmbed(String title, String description, String field, String footer) {
+        StringBuilder e = new StringBuilder(512);
+        e.append("{\"author\":{\"name\":").append(json(serverLabel() + " 서버")).append('}')
+                .append(",\"title\":").append(json(trim(title, 256)))
+                .append(",\"description\":").append(json(trim(description, 4000)))
+                .append(",\"color\":").append(serverColor());
+        if (field != null) e.append(",\"fields\":[").append(field).append(']');
+        e.append(",\"footer\":{\"text\":").append(json(trim(footer, 2048))).append('}')
+                .append(",\"timestamp\":").append(json(java.time.Instant.now().toString()))
+                .append('}');
+        return e.toString();
+    }
+
+    /** 서버별 임베드 색 — 디스코드에서 한눈에 어느 서버 일인지 보이게. */
+    private int serverColor() {
+        return switch (plugin.getConfig().getString("server-id", "")) {
+            case "home" -> 0x93e93e;
+            case "raid" -> 0xef4444;
+            case "war" -> 0xf97316;
+            case "peace" -> 0x38bdf8;
+            default -> 0x9ca3af;
+        };
+    }
+
+    private String serverSummary() {
+        return switch (plugin.getConfig().getString("server-id", "")) {
+            case "home" -> "광장 · 상점 · 길드";
+            case "raid" -> "PvP · 약탈 허용";
+            case "war" -> "길드 · 국가 전쟁";
+            case "peace" -> "PvP 없는 생존";
+            default -> "러크 서버";
+        };
     }
 
     private String systemWebhook() {

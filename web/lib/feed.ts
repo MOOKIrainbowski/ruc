@@ -16,7 +16,18 @@ export type RaidFeed = {
   at: number;
 };
 
-type Message = { id: string; content?: string; timestamp: string; webhook_id?: string };
+type Embed = { title?: string; description?: string; author?: { name?: string }; footer?: { text?: string } };
+type Message = { id: string; content?: string; timestamp: string; webhook_id?: string; embeds?: Embed[] };
+
+/**
+ * 2026-10-12 부터 플러그인이 임베드로 올립니다 — 상태는 푸터에 `RUCFEED <json>`, 연대기는 본문(description).
+ * 그 전 메시지(본문 content)도 그대로 읽습니다.
+ */
+function feedPayload(m: Message): string | null {
+  if (m.content?.startsWith("RUCFEED ")) return m.content.slice(8);
+  const footer = m.embeds?.[0]?.footer?.text;
+  return footer?.startsWith("RUCFEED ") ? footer.slice(8) : null;
+}
 
 /**
  * 피드 채널의 웹훅 메시지, 최근 것부터. 상태 메시지 하나(고쳐 쓰임)와 연대기 줄이 섞여 있습니다.
@@ -38,7 +49,7 @@ async function feedMessages(): Promise<Message[] | null> {
       );
       if (!res.ok) return out.length ? out : null;
       const messages = (await res.json()) as Message[];
-      out.push(...messages.filter((m) => m.webhook_id && m.content));
+      out.push(...messages.filter((m) => m.webhook_id && (m.content || m.embeds?.length)));
       if (messages.length < 100) break;
       before = messages[messages.length - 1].id;
     }
@@ -50,9 +61,10 @@ async function feedMessages(): Promise<Message[] | null> {
 
 export async function getRaidFeed(): Promise<RaidFeed | null> {
   for (const m of (await feedMessages()) ?? []) {
-    if (!m.content!.startsWith("RUCFEED ")) continue;
+    const payload = feedPayload(m);
+    if (!payload) continue;
     try {
-      const data = JSON.parse(m.content!.slice(8));
+      const data = JSON.parse(payload);
       if (data?.type === "raid") return data as RaidFeed;
     } catch {
       // 잘못된 줄 — 다음 것
@@ -68,13 +80,24 @@ export function formatReign(seconds: number) {
   return h > 0 ? `${h}시간 ${m}분` : `${m}분`;
 }
 
-export type ChronicleEntry = { id: string; text: string; at: string };
+/** server: "약탈 서버" 같은 이름 (임베드 작성자 줄). 예전 메시지는 null. */
+export type ChronicleEntry = { id: string; text: string; at: string; server: string | null; title: string | null };
 
 /** 러크 연대기 (docs/08 E) — 피드 채널에서 상태 메시지(RUCFEED)를 뺀 나머지 웹훅 줄. 설정 전이면 null. */
 export async function getChronicle(): Promise<ChronicleEntry[] | null> {
   const messages = await feedMessages();
   if (!messages) return null;
   return messages
-    .filter((m) => !m.content!.startsWith("RUCFEED "))
-    .map((m) => ({ id: m.id, text: m.content!, at: m.timestamp }));
+    .filter((m) => !feedPayload(m))
+    .map((m) => {
+      const e = m.embeds?.[0];
+      return {
+        id: m.id,
+        text: m.content || e?.description || "",
+        at: m.timestamp,
+        server: e?.author?.name ?? null,
+        title: e?.title ?? null,
+      };
+    })
+    .filter((e) => e.text);
 }
