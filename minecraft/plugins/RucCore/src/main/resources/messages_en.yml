@@ -554,3 +554,9 @@ endorse:
   done-mutual: "&eYou endorsed %player%. &7Mutual endorsements count half (+%points%, yours adjusted too)."
   received: "&a%player% endorsed you! &7Reputation +%points%"
   error: "&cCouldn't process the endorsement. Please try again shortly."
+
+terms:
+  prompt: "&fYou have not agreed to the Ruc Server &eTerms of Service&f yet. Click below to agree on the website. &7(Discord login)"
+  button: "&a&l[ View & agree to the Terms ]"
+  hover: "Opens the Terms of Service on the website (Discord login)"
+  thanks: "&aYour agreement to the Terms of Service is confirmed. Thank you!"

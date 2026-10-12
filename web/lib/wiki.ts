@@ -121,6 +121,10 @@ export function renderMarkdown(body: string): { html: string; headings: WikiHead
   const headings: WikiHeading[] = [];
   const seen = new Map<string, number>();
   const renderer: RendererObject = {
+    // 원시 HTML 은 실행하지 않고 글자로 보여 줍니다 — 정책 문서는 웹에서 편집되므로 (2026-10-13)
+    html(token) {
+      return token.text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    },
     heading(token) {
       const inner = this.parser.parseInline(token.tokens);
       const id = slugify(token.text, seen);

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import PageShell from "@/components/PageShell";
+import EditLink from "@/components/EditLink";
 import { getPolicy, listPolicies } from "@/lib/policy";
 
 type Params = { slug: string };
@@ -9,17 +10,19 @@ type Params = { slug: string };
 export function generateStaticParams(): Params[] {
   return listPolicies().map(({ slug }) => ({ slug }));
 }
-export const dynamicParams = false;
+// dynamicParams = false 를 두면 저장 후 revalidatePath 가 NoFallbackError 로 실패합니다 (Next 15) — 없는 주소는 notFound()
+// 웹 편집본을 읽습니다 — 저장하면 바로 갱신(revalidateTag), 그 밖에는 60초마다
+export const revalidate = 60;
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { slug } = await params;
-  const doc = getPolicy(slug);
+  const doc = await getPolicy(slug);
   return doc ? { title: `${doc.title} · 러크 서버`, description: doc.description } : {};
 }
 
 export default async function Page({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
-  const doc = getPolicy(slug);
+  const doc = await getPolicy(slug);
   if (!doc) notFound();
 
   return (
@@ -31,6 +34,8 @@ export default async function Page({ params }: { params: Promise<Params> }) {
         doc.updated && (
           <>
             최종 수정 <time dateTime={doc.updated}>{doc.updated}</time>
+            {doc.revision && <> · 웹 편집 {doc.revision.by}</>}
+            <EditLink slug={slug} />
           </>
         )
       }

@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import { DISCORD_INVITE, path, t, type Lang } from "@/lib/content";
 import NavIcon, { type NavIconName } from "./NavIcon";
+import AuthBadge from "./AuthBadge";
 import SearchBox from "./SearchBox";
 
 /**
@@ -140,6 +141,9 @@ export default function Nav({ lang }: { lang: Lang }) {
           </ul>
 
           <span aria-hidden="true" className="mx-0.5 hidden h-6 w-px bg-white/15 sm:block" />
+
+          {/* 디스코드 로그인 (2026-10-13) */}
+          <AuthBadge />
 
           {/* KO / EN */}
           <div

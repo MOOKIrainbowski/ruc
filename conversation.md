@@ -2114,3 +2114,23 @@ MOOKI 는 재시작해야 `/충전` 의 결제 수단 옵션 · 새 상품이 �
   약탈 현황: 알 주인 · 현상금 · 통치 순위 임베드, 웹이 읽는 `RUCFEED <json>` 은 푸터로. 웹 `lib/feed.ts` 는 옛 형식(content)도 읽음,
   /chronicle 에 서버 · 종류 배지. **피드는 봇이 아니라 플러그인 웹훅이 올립니다** (MOOKI 가 꺼져 있어도 돎)
 - 배포: RucCore 4개 · RucRaid · RucWar jar 교체 (옛 jar `*.bak-20261012`). 서버는 전부 꺼진 상태로 둠
+
+## §27 2026-10-13 — 웹 디스코드 로그인 · 관리자 문서 편집 · 게임 첫 접속 약관 동의
+
+- **로그인**: `/login` → `/api/auth/login` (디스코드 OAuth, scope identify, 클라이언트 = MOOKI 앱 1425396419946221699) → `/api/auth/callback`
+  → 서명 쿠키 `ruc_session` 7일 (`lib/session.ts`). 상단 바 `AuthBadge`. 관리자 = Owner · Manager 역할 · 관리자 권한 역할 · 서버 주인 (`lib/discord.ts`)
+  저장 같은 쓰기는 매번 디스코드에 다시 확인 (역할 뺏기면 즉시 막힘)
+- **문서 편집** `/admin` · `/admin/<slug>` (정책 5종 + `rules`): 저장 = 디스코드 로그 카테고리 `🗂️ㅣ웹문서`(1559233710014996513)에
+  `RUCDOC {slug,by,at}` + 첨부 파일 한 판. 페이지는 최신 판을 읽고(없으면 저장소 파일), 저장하면 revalidateTag + revalidatePath 로 즉시 반영.
+  **저장소 파일은 자동으로 안 바뀜** — 웹 편집본을 저장소에 넣으려면 편집 화면 "현재 판 내려받기". 마크다운의 원시 HTML 은 글자로 렌더(XSS)
+  함정: `dynamicParams = false` 면 revalidatePath 가 NoFallbackError (Next 15) → 정책 페이지에서 뺐음
+- **약관 동의**: RucCore `TermsService` — 동의 안 한 플레이어가 접속하면 채팅에 클릭 링크 `/terms/agree?u&n&t&s` (HMAC, `terms.secret`).
+  로그인 전이면 `/login?next=` 로. 동의 → `📝ㅣ약관동의`(1559233713097674815)에 `RUCAGREE {json}` → 게임이 30초마다
+  `/api/terms/agreements?after&sig` 를 읽어 `ruc_terms_agreement` 에 기록, 접속 중이면 감사 메시지. 막지는 않음(접속마다 안내).
+  Java HttpClient 는 HTTP/1.1 고정 (기본 HTTP/2 가 http:// 에서 h2c 업그레이드 → Node 가 끊음)
+- **비밀값**: `secret("terms")` = `RUC_TERMS_SECRET` 또는 HMAC(봇 토큰, "ruc-terms"). 4개 서버 배포본 config 의 `terms.secret` 에 MOOKI 봇 토큰 기준 값을 넣어 둠.
+  세션 키도 같은 방식(`SESSION_SECRET` 또는 봇 토큰 파생)
+- **소유자가 할 것**: Discord 개발자 포털 OAuth2 Redirects 에 `https://ruc-server.vercel.app/api/auth/callback` 추가 ·
+  Vercel 에 `DISCORD_CLIENT_SECRET` (같은 페이지의 Client Secret). 둘 전엔 로그인만 "웹 설정이 아직" 오류
+- 검증 (로컬 next start + 실제 디스코드 채널 · 위조 세션): 관리 화면 · JSON 검사 · 다른 출처 거부 · 저장 즉시 반영 · `<script>` 무력화 ·
+  로그인 전 리디렉트 · 위조 서명 거부 · 동의 · 중복 동의 · API 서명 · 홈 서버 폴링 → DB 행. 시험 메시지 · DB 행은 지웠음. 실제 OAuth 왕복은 못 해 봄

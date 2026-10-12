@@ -1,6 +1,8 @@
 import PageShell from "@/components/PageShell";
 import Rules, { TextActions } from "@/components/Rules";
-import { rules, sanctionsText } from "@/lib/rules";
+import EditLink from "@/components/EditLink";
+import { currentText } from "@/lib/docstore";
+import { sanctionsText, type RulesData } from "@/lib/rules";
 import { banner } from "@/lib/og";
 
 export const metadata = {
@@ -20,7 +22,11 @@ function tierClass(tier: number) {
   return "text-red-300";
 }
 
-export default function Page() {
+// 웹 편집본(lib/docstore)을 읽습니다 — 저장하면 바로, 그 밖에는 60초마다 갱신
+export const revalidate = 60;
+
+export default async function Page() {
+  const rules = JSON.parse((await currentText("rules")).text) as RulesData;
   const { sanctions } = rules;
   return (
     <PageShell
@@ -30,6 +36,7 @@ export default function Page() {
       meta={
         <>
           최종 수정 <time dateTime={rules.updatedAt}>{rules.updatedAt}</time>
+          <EditLink slug="rules" />
         </>
       }
     >

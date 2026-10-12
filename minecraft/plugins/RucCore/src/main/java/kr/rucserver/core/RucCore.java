@@ -7,6 +7,7 @@ import kr.rucserver.core.command.RankCommands;
 import kr.rucserver.core.service.CosmeticService;
 import kr.rucserver.core.storage.CosmeticRepository;
 import kr.rucserver.core.service.EndorseService;
+import kr.rucserver.core.service.TermsService;
 import kr.rucserver.core.storage.EndorseRepository;
 import kr.rucserver.core.storage.BountyRepository;
 import kr.rucserver.core.storage.EggReignRepository;
@@ -88,6 +89,7 @@ public class RucCore extends JavaPlugin {
     private EnderService ender;
     private CosmeticService cosmetics;
     private EndorseService endorse;
+    private TermsService terms;
     private BountyRepository bounties;
     private EggReignRepository eggReign;
     private EggMonumentService eggMonument;
@@ -242,6 +244,15 @@ public class RucCore extends JavaPlugin {
             getLogger().log(Level.SEVERE, "코스메틱 테이블 생성에 실패했습니다. 코스메틱을 끕니다.", e);
         }
 
+        // 이용약관 동의 (2026-10-13). 테이블이 없으면 이 기능만 끕니다.
+        terms = new TermsService(this, messages);
+        try {
+            terms.createSchema();
+        } catch (SQLException e) {
+            getLogger().log(Level.SEVERE, "약관 동의 테이블 생성에 실패했습니다. 약관 안내를 끕니다.", e);
+            terms = null;
+        }
+
         // 주간 추천 (2026-10-09). 기록 테이블이 없으면 이 기능만 끕니다.
         EndorseRepository endorseRepository = new EndorseRepository(database);
         try {
@@ -329,6 +340,10 @@ public class RucCore extends JavaPlugin {
             endorse.start();
         }
         if (eggMonument != null) eggMonument.start();
+        if (terms != null) {
+            getServer().getPluginManager().registerEvents(terms, this);
+            terms.start();
+        }
         var cosmeticCommand = getCommand("cosmetic");
         if (cosmeticCommand != null) cosmeticCommand.setExecutor((sender, command, label, args) -> {
             if (!(sender instanceof org.bukkit.entity.Player player)) {
@@ -379,6 +394,7 @@ public class RucCore extends JavaPlugin {
         if (ender != null) ender.stop();
         if (cosmetics != null) cosmetics.stop();
         if (endorse != null) endorse.stop();
+        if (terms != null) terms.stop();
         if (eggMonument != null) eggMonument.stop();
         if (shop != null) shop.stop();
         if (guide != null) guide.stop();
@@ -413,6 +429,7 @@ public class RucCore extends JavaPlugin {
     }
 
     public Database getDatabase() { return database; }
+    public TermsService getTerms() { return terms; }
     public PlayerDataService getPlayerData() { return playerData; }
     public MessageService getMessages() { return messages; }
     public EconomyService getEconomy() { return economy; }

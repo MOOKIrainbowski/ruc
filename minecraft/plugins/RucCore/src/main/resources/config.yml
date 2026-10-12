@@ -246,6 +246,16 @@ chat:
 #
 # 디스코드 → 인게임은 봇이 RCON(/rucrelay)으로 넣습니다. 그쪽 메시지는 봇만
 # 볼 수 있기 때문입니다.
+# ── 이용약관 동의 (2026-10-13) ────────────────────────────────────────
+# 동의하지 않은 플레이어에게 접속할 때마다 웹 동의 링크를 보냅니다 (막지는 않음).
+# secret 은 Vercel 의 RUC_TERMS_SECRET 과 같은 값 — 비어 있으면 꺼집니다. 4개 서버 모두 같게.
+terms:
+  enabled: true
+  url: "https://ruc-server.vercel.app"
+  secret: ""
+  poll-seconds: 30
+  prompt-delay-seconds: 3
+
 relay:
   # 웹훅 URL 을 넣고 이것을 true 로 바꾸면 켜집니다.
   enabled: false
