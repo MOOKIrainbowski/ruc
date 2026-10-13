@@ -2134,3 +2134,22 @@ MOOKI 는 재시작해야 `/충전` 의 결제 수단 옵션 · 새 상품이 �
   Vercel 에 `DISCORD_CLIENT_SECRET` (같은 페이지의 Client Secret). 둘 전엔 로그인만 "웹 설정이 아직" 오류
 - 검증 (로컬 next start + 실제 디스코드 채널 · 위조 세션): 관리 화면 · JSON 검사 · 다른 출처 거부 · 저장 즉시 반영 · `<script>` 무력화 ·
   로그인 전 리디렉트 · 위조 서명 거부 · 동의 · 중복 동의 · API 서명 · 홈 서버 폴링 → DB 행. 시험 메시지 · DB 행은 지웠음. 실제 OAuth 왕복은 못 해 봄
+
+## §28 2026-10-13~14 — MOOKI 다른 기기 배포 · 로그인 마무리 · 로고 시안 · 현재 상태
+
+- **MOOKI 는 안드로이드 Termux 폰에서 pm2 로 돎** (프로세스 `MOOKI`, 폴더 `/sdcard/서버봇/MOOKI`). 게임 서버는 전부 이 PC.
+  코드만 tar 로 ssh 업로드 (데이터 · `.env` 는 안 덮음). 업로드 전 코드 백업 `/sdcard/서버봇/MOOKI_code_backup-20261013.tar`.
+  canvas 네이티브 모듈: `~/ruc-native/skia.android-arm64.node` 를 pm2 env `NAPI_RS_NATIVE_LIBRARY_PATH` 로 지정 후 `pm2 save`.
+  확인: 명령 24개 · 상품 14개 등록. ssh 키 `~/.ssh/bot_upload` (암호 있음 — 저장하지 않음, 채팅에 노출돼 변경 권장)
+- **로그인 마무리**: 개발자 포털 OAuth2 Redirects 가 비어 있어 400 "잘못된 OAuth2 redirect_uri" →
+  `https://ruc-server.vercel.app/api/auth/callback` 추가(API 로 등록 확인). 소유자가 Vercel 에 `DISCORD_CLIENT_SECRET` 입력 →
+  빈 커밋 `45d1967` 로 재배포. 가짜 code 로 콜백 → "디스코드 로그인에 실패했습니다"(= 시크릿 읽힘). **실제 로그인 결과는 소유자 확인 대기**
+  — 실제 로그인에서도 같은 오류면 시크릿 값 오타 · 공백
+- **로고 시안** `web/public/brand/` (사이트 · 디스코드에 아직 안 씀): 입체 픽셀 "R" · "RUC SERVER", 빨강→주황 그라데이션,
+  떠 있는 불씨 결정(드래곤 알 상징). `ruc-icon-1024/512.png`(정사각 타일 = 서버 아이콘 · 파비콘), `ruc-mark*.svg/png`,
+  `ruc-logo*.svg/png`(밝은 배경용 `-light`), 생성기 `gen-logo.py`. 미정: 사이트 · 디스코드 적용, 사이트 초록 테마 → 빨강
+- **남은 것**
+  - 폰 `.env`: `RUC_RCON_HOST=127.0.0.1` 이라 봇이 PC 서버 RCON 에 못 닿음 → 100.109.95.101 로 바꾸고 RCON 25576~25579 를
+    Tailscale 에만 열지 결정 필요. `PAY_ENABLED=true` (통신판매업 보류 중인데 켜져 있음). `SANCTION_APPEAL_EMAIL` 없음(두 기기 모두)
+  - 정책 `[ ]` 칸 공개 페이지에 그대로 · 서버 로그 IP 3개월 정리 미구현 · 충전 페이지 환불 문구 ↔ 새 환불 정책(Q5 와 함께)
+  - 호스팅(Q1) · 통신판매업(Q5) 미정 · 러크 코어 얻는 법 설명(제안만)
