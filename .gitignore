@@ -140,6 +140,6 @@ banner/
 minecraft/servers/*/plugins/RucCore/feed-message-id.txt
 
 # 디스코드 권한 백업 (역할 · 채널 권한 전체) — 로컬 보관만
-docs/backup/discord-perms-*.json
+docs/backup/discord-*.json
 # 보급 상자 위치 (런타임)
 minecraft/servers/*/plugins/RucWar/supply-crates.txt

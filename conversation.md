@@ -2172,3 +2172,30 @@ MOOKI 는 재시작해야 `/충전` 의 결제 수단 옵션 · 새 상품이 �
   삭제/5분 타임아웃 + 알림, 레이드(10초 8명) · 신규 계정(7일 미만) → 알림만. 제재 · 결제 채널이 비면 대신 받는 예비 채널이기도 함
   (지금은 각자 채널이 있어 보안 알림만 옴). **이 PC `MOOKI/.env:7` 에 있음 · dotenv 로 읽힘 확인. 폰 `.env` 는 미확인**
 - **없는 것**: `#🚨ㅣ신고` 는 안 만들어짐 → `relay.report-webhook-url` 비어 있음, `/신고` 는 게임 안 알림만
+
+## §30 2026-10-18 — 로그 채널 → 로그 포럼 포스트 · 폰 코드 합침 · 로그 3개월 정리
+
+- **로그 포럼** `테스트용-로그` `1560890049598464051` (로그 카테고리) 안 포스트 6개. ID 는 `MOOKI/config/log-posts.json` (원본) ·
+  `web/content/log-posts.json` (웹이 쓰는 docs · agree 두 개만 — 봇이 포스트를 새로 만들면 여기도 맞출 것)
+
+  | 키 | 포스트(= 옛 채널 이름) | 옛 채널 | 포스트 | 누가 씀 |
+  |---|---|---|---|---|
+  | device | 지플립5-로그 | 1554118464426479727 | 1561218647240740905 | 폰 상태 봇 Galaxy Z Flip5 (`1510976425216184460`, 폰 `서버봇/zf/bot.py`) |
+  | sanction | 제재로그 | 1554141323529822288 | 1561218651854479460 | MOOKI `/제재` 결과 + 승인 요청 (`SANCTION_APPROVAL_CHANNEL_ID` 없을 때) |
+  | security | 보안로그 | 1554430993148944444 | 1561218655713366077 | MOOKI `sendSecurityLog` + 결제 관리 채널 예비 (`PAY_ADMIN_CHANNEL_ID` 없을 때) |
+  | purchase | 소비자-구매로그 | 1558849105214840953 | 1561218660113191075 | MOOKI 구매 로그 · `/구매기록` 은 이 포스트에서만 |
+  | docs | 웹문서-수정로그 | 1559233710014996513 | 1561218664470941757 | 웹 `/admin` 판 저장 `RUCDOC` |
+  | agree | 소비자-약관동의-로그 | 1559233713097674815 | 1561218669445648484 | 웹 약관 동의 `RUCAGREE` (게임이 30초마다 읽음) |
+
+- `MOOKI/log-posts.js`: 저장된 ID → 포럼에서 같은 제목(활성 + 보관) → 없을 때만 생성 후 저장. 보낼 때마다 새로 받아 보관 · 잠금 해제.
+  시작할 때 `ensureAll` 이 6개 전부 확인 (웹 · 지플립5 봇 포스트도 MOOKI 가 만들어 줌). 웹은 `openThread` 로 쓰기 전에 엶.
+  검증: 재실행 · ID 비우기(이름으로 찾음) · 보관+잠금 상태에서 전송 · 폰 MOOKI 2회 재시작 → 포스트 6개 그대로.
+  웹: 로컬에서 동의 · 문서 저장(보관+잠금 상태) → 기록 확인 후 삭제, 배포된 `/api/terms/agreements` 가 새 포스트를 읽음
+- 쓰지 않게 된 env: `LOG_CHANNEL_ID` · `SANCTION_LOG_CHANNEL_ID` · `SANCTION_APPROVAL_CHANNEL_ID` · `PURCHASE_LOG_CHANNEL_ID` —
+  폰 `.env` 에서 주석 처리 (백업 `MOOKI/env.backup-20261018`). 승인 요청은 원래도 제재로그로 갔음 (`#제재승인` 1554264432211656794 은 안 쓰임)
+- **지플립5 봇** (Python, CR 줄바꿈): `guild_config.json` 의 `log_channel_id` = 포스트, 보내기 전 보관/잠금 해제, `/setlog` 가 포스트도 받음.
+  백업 `bot.py.bak-20261018` · `guild_config.json.bak-20261018`
+- **폰 코드가 저장소와 달랐음**: `payment.js` rucm 회계 연동 · `/회계연동테스트` 가 폰에만 → 저장소에 합침(`7caf6f2`). 배포 전에 md5 비교할 것
+- 옛 로그 채널 6개는 **아직 안 지움** (자동 승인이 막음). 기록 백업 `docs/backup/discord-log-channels-before-20261018.json` (지플립5 59건, 나머지 0건, gitignore)
+- 서버 로그: `start-network.ps1` 이 기동 때 3개월 지난 `servers/*/logs` · `proxy/logs` 의 `.log.gz` 삭제 (개인정보처리방침 제5조)
+- PC Tailscale 이 "NoState" 면 `tailscale-ipn.exe` (GUI) 를 켜야 폰(100.126.186.60)에 닿음
