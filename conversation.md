@@ -2175,7 +2175,7 @@ MOOKI 는 재시작해야 `/충전` 의 결제 수단 옵션 · 새 상품이 �
 
 ## §30 2026-10-18 — 로그 채널 → 로그 포럼 포스트 · 폰 코드 합침 · 로그 3개월 정리
 
-- **로그 포럼** `테스트용-로그` `1560890049598464051` (로그 카테고리) 안 포스트 6개. ID 는 `MOOKI/config/log-posts.json` (원본) ·
+- **로그 포럼** `로그` `1560890049598464051` (로그 카테고리) 안 포스트 6개. ID 는 `MOOKI/config/log-posts.json` (원본) ·
   `web/content/log-posts.json` (웹이 쓰는 docs · agree 두 개만 — 봇이 포스트를 새로 만들면 여기도 맞출 것)
 
   | 키 | 포스트(= 옛 채널 이름) | 옛 채널 | 포스트 | 누가 씀 |
@@ -2196,6 +2196,6 @@ MOOKI 는 재시작해야 `/충전` 의 결제 수단 옵션 · 새 상품이 �
 - **지플립5 봇** (Python, CR 줄바꿈): `guild_config.json` 의 `log_channel_id` = 포스트, 보내기 전 보관/잠금 해제, `/setlog` 가 포스트도 받음.
   백업 `bot.py.bak-20261018` · `guild_config.json.bak-20261018`
 - **폰 코드가 저장소와 달랐음**: `payment.js` rucm 회계 연동 · `/회계연동테스트` 가 폰에만 → 저장소에 합침(`7caf6f2`). 배포 전에 md5 비교할 것
-- 옛 로그 채널 6개는 **아직 안 지움** (자동 승인이 막음). 기록 백업 `docs/backup/discord-log-channels-before-20261018.json` (지플립5 59건, 나머지 0건, gitignore)
+- 옛 로그 채널 6개는 소유자 승인 후 **삭제함** (2026-10-18). 포럼 이름은 소유자가 `로그` 로 바꿈. 기록 백업 `docs/backup/discord-log-channels-before-20261018.json` (지플립5 59건, 나머지 0건, gitignore)
 - 서버 로그: `start-network.ps1` 이 기동 때 3개월 지난 `servers/*/logs` · `proxy/logs` 의 `.log.gz` 삭제 (개인정보처리방침 제5조)
 - PC Tailscale 이 "NoState" 면 `tailscale-ipn.exe` (GUI) 를 켜야 폰(100.126.186.60)에 닿음
