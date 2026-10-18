@@ -14,6 +14,7 @@ const {
     ButtonBuilder, ButtonStyle, PermissionFlagsBits,
 } = require('discord.js');
 const roles = require('./roles');
+const { logPost, postId } = require('./log-posts');
 
 const FILE = process.env.PURCHASE_LOG_FILE || path.join(__dirname, 'purchase_log.jsonl');
 const PAGE = 10;
@@ -24,9 +25,7 @@ const CATEGORY = {
     convenience: { label: '편의 기능', color: 0x60a5fa, icon: '🧰' },
 };
 
-function channelId() {
-    return process.env.PURCHASE_LOG_CHANNEL_ID || '';
-}
+const channelId = () => postId('purchase');
 
 // ── 저장 ──────────────────────────────────────────────────────────────
 
@@ -73,10 +72,9 @@ async function record(guild, e) {
         const entry = { at: Date.now(), ...e };
         fs.appendFileSync(FILE, JSON.stringify(entry) + '\n', 'utf8');
 
-        const id = channelId();
-        const channel = id && guild ? await guild.channels.fetch(id).catch(() => null) : null;
+        const channel = await logPost(guild, 'purchase');
         if (!channel) {
-            console.warn(`[구매로그] 채널이 없습니다 (PURCHASE_LOG_CHANNEL_ID) — ${entry.code} 는 파일에만 남겼습니다.`);
+            console.warn(`[구매로그] 포스트가 없습니다 (config/log-posts.json purchase) — ${entry.code} 는 파일에만 남겼습니다.`);
             return;
         }
         await channel.send({ embeds: [entryEmbed(entry)] });

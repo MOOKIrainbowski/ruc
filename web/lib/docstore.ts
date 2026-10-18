@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import { DOCS_CHANNEL_ID, bot, botToken, channelMessages, type Message } from "./discord";
+import { DOCS_CHANNEL_ID, bot, botToken, channelMessages, openThread, type Message } from "./discord";
 
 /**
  * 웹에서 편집하는 문서 (2026-10-13) — 정책 5종(content/policy/*.md)과 규칙 · 제재(content/rules.json).
@@ -102,5 +102,6 @@ export async function saveRevision(key: DocKey, text: string, by: { id: string; 
     }),
   );
   form.append("files[0]", new Blob([text], { type: "text/plain; charset=utf-8" }), `${key.slug}.${key.kind}`);
+  await openThread(DOCS_CHANNEL_ID);
   return bot(`/channels/${DOCS_CHANNEL_ID}/messages`, { method: "POST", body: form });
 }

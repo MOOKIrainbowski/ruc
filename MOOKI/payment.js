@@ -25,6 +25,7 @@ const {
     TextInputBuilder, TextInputStyle,
 } = require('discord.js');
 const roles = require('./roles');
+const { logPost } = require('./log-posts');
 const greet = require('./greet');
 const purchaseLog = require('./purchase-log');
 
@@ -54,7 +55,7 @@ function account() {
 }
 
 function adminChannelId() {
-    return process.env.PAY_ADMIN_CHANNEL_ID || process.env.LOG_CHANNEL_ID || '';
+    return process.env.PAY_ADMIN_CHANNEL_ID || '';
 }
 
 function isAdmin(member) {
@@ -259,8 +260,9 @@ function reviewButtons(depositId, orderCode) {
 
 async function adminChannel(guild) {
     const id = adminChannelId();
-    if (!id || !guild) return null;
-    return guild.channels.fetch(id).catch(() => null);
+    if (!guild) return null;
+    // 비워 두면 보안로그 포스트로 (예전 LOG_CHANNEL_ID 대체)
+    return id ? guild.channels.fetch(id).catch(() => null) : logPost(guild, 'security');
 }
 
 /** 주문의 관리자 메시지를 결과로 바꿉니다 (버튼 제거). */

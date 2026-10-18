@@ -25,6 +25,7 @@ const {
     ButtonBuilder, ButtonStyle, PermissionFlagsBits,
 } = require('discord.js');
 const roles = require('./roles');
+const { logPost } = require('./log-posts');
 
 const DATA_FILE = path.join(__dirname, 'sanctions_data.json');
 
@@ -394,9 +395,7 @@ function discordError(err, what) {
 
 /** 결과를 로그 채널에 남깁니다. D5 — 모든 제재는 기록을 보존합니다. */
 async function postLog(guild, c) {
-    const id = process.env.SANCTION_LOG_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
-    if (!id) return;
-    const channel = await guild.channels.fetch(id).catch(() => null);
+    const channel = await logPost(guild, 'sanction');
     if (!channel) return;
     await channel.send({ embeds: [caseEmbed(c)], components: resultButtons(c) }).catch(() => {});
 }
@@ -760,11 +759,10 @@ async function handleButton(interaction) {
     return false;
 }
 
-/** 승인 요청을 로그 채널(또는 SANCTION_APPROVAL_CHANNEL_ID)에 올립니다. */
+/** 승인 요청을 SANCTION_APPROVAL_CHANNEL_ID (없으면 제재로그 포스트)에 올립니다. */
 async function postApproval(guild, c) {
-    const id = process.env.SANCTION_APPROVAL_CHANNEL_ID
-        || process.env.SANCTION_LOG_CHANNEL_ID || process.env.LOG_CHANNEL_ID;
-    const channel = id ? await guild.channels.fetch(id).catch(() => null) : null;
+    const id = process.env.SANCTION_APPROVAL_CHANNEL_ID;
+    const channel = id ? await guild.channels.fetch(id).catch(() => null) : await logPost(guild, 'sanction');
     if (!channel) {
         console.warn(`[제재] 승인 채널이 없습니다 — 사건 #${c.no} 승인 요청을 올리지 못했습니다.`);
         return;

@@ -7,11 +7,12 @@ const os = require('os');
 const path = require('path');
 
 process.env.PURCHASE_LOG_FILE = path.join(os.tmpdir(), `plog-check-${process.pid}.jsonl`);
-process.env.PURCHASE_LOG_CHANNEL_ID = 'c1';
 const log = require('../purchase-log');
 
 const sent = [];
-const guild = { channels: { fetch: async () => ({ send: async m => sent.push(m) }) } };
+// 구매로그 포스트 = config/log-posts.json 의 포럼 안 스레드
+const forum = require('../config/log-posts.json').forum;
+const guild = { channels: { fetch: async () => ({ parentId: forum, send: async m => sent.push(m) }) } };
 const base = { uuid: 'u-1', discord: 'd1', unit: 'won', delivered: true };
 
 (async () => {

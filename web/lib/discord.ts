@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import posts from "@/content/log-posts.json";
 
 /**
  * 웹 ↔ 디스코드 (서버 전용). 봇 토큰은 Vercel 의 DISCORD_BOT_TOKEN (피드 · 연대기와 같은 값).
@@ -10,9 +11,9 @@ import crypto from "node:crypto";
 export const GUILD_ID = "1406632846986051605";
 /** MOOKI 봇 애플리케이션 — OAuth 클라이언트 ID 도 같습니다. */
 export const CLIENT_ID = process.env.DISCORD_CLIENT_ID?.trim() || "1425396419946221699";
-/** 로그 카테고리의 저장 채널 (2026-10-13 생성). 지우면 편집본 · 동의 기록이 사라집니다. */
-export const DOCS_CHANNEL_ID = process.env.DOCS_CHANNEL_ID?.trim() || "1559233710014996513";
-export const AGREE_CHANNEL_ID = process.env.AGREE_CHANNEL_ID?.trim() || "1559233713097674815";
+/** 로그 포럼의 저장 포스트 (content/log-posts.json, 2026-10-18 채널 → 포스트). 지우면 편집본 · 동의 기록이 사라집니다. */
+export const DOCS_CHANNEL_ID = posts.docs;
+export const AGREE_CHANNEL_ID = posts.agree;
 /** 웹 관리자 = 이 역할(Owner · Manager, MOOKI roles.json 의 priority ≥ 950) · 관리자 권한 역할 · 서버 주인. */
 const ADMIN_ROLE_IDS = ["1414495321349951508", "1406889344890966077"];
 
@@ -40,6 +41,18 @@ export async function bot(path: string, init: RequestInit & { next?: { revalidat
   });
   if (!res.ok) throw new Error(`디스코드 ${res.status} ${path}`);
   return res.status === 204 ? null : res.json();
+}
+
+/** 포스트에 쓰기 전에 — 자동 보관(archive)되거나 잠겼으면 다시 엽니다. */
+export async function openThread(id: string) {
+  const t = (await bot(`/channels/${id}`, { cache: "no-store" })) as { thread_metadata?: { archived: boolean; locked: boolean } };
+  if (t.thread_metadata?.archived || t.thread_metadata?.locked) {
+    await bot(`/channels/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ archived: false, locked: false }),
+    });
+  }
 }
 
 export type Message = {

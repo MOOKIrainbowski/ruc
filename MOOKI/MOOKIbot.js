@@ -20,12 +20,12 @@ const sanction = require('./sanction');
 const payment = require('./payment');
 const purchaseLog = require('./purchase-log');
 const greet = require('./greet');
+const { logPost, ensureAll: ensureLogPosts } = require('./log-posts');
 
 const REACTION_FILE = path.join(__dirname, 'reaction_roles.json');
 const TICKETS_FILE  = path.join(__dirname, 'tickets_data.json');
 
 const GUILD_ID   = process.env.GUILD_ID;
-const LOG_CHANNEL_ID = process.env.LOG_CHANNEL_ID || process.env.CHANNEL_ID; // admin log channel
 
 // ─── 클라이언트 설정 ───────────────────────────────────────────────────────────
 
@@ -151,8 +151,7 @@ function hasMassMention(message) {
 
 async function sendSecurityLog(guild, title, description, color = 0xFF4444) {
     try {
-        const ch = guild.channels.cache.get(LOG_CHANNEL_ID)
-            || await guild.channels.fetch(LOG_CHANNEL_ID).catch(() => null);
+        const ch = await logPost(guild, 'security');
         if (!ch) return;
         const embed = new EmbedBuilder()
             .setTitle(`🔒 보안 알림: ${title}`)
@@ -427,6 +426,7 @@ client.once(Events.ClientReady, async () => {
             relay.logConfig();
             reputation.logConfig();
             reputation.startSyncing(guild);
+            await ensureLogPosts(guild);
             sanction.start(guild);
             payment.start(guild);
 

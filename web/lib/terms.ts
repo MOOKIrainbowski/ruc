@@ -1,5 +1,5 @@
 import crypto from "node:crypto";
-import { AGREE_CHANNEL_ID, bot, channelMessages, secret, type Message } from "./discord";
+import { AGREE_CHANNEL_ID, bot, channelMessages, openThread, secret, type Message } from "./discord";
 
 /**
  * 이용약관 동의 (2026-10-13).
@@ -56,6 +56,7 @@ export async function findAgreement(uuid: string): Promise<Agreement | null> {
 }
 
 export async function recordAgreement(a: Omit<Agreement, "id">) {
+  await openThread(AGREE_CHANNEL_ID);
   return bot(`/channels/${AGREE_CHANNEL_ID}/messages`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
