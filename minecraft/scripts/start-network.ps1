@@ -43,6 +43,11 @@ $Spec = @{
     peace = @("512M", "1G")
 }
 
+# 개인정보처리방침 제5조 — 접속 기록(IP 가 든 서버 로그)은 3개월만 보관합니다.
+# ponytail: 기동할 때만 정리 — 서버를 몇 달씩 안 끄면 작업 스케줄러로 따로 돌리세요.
+Get-ChildItem (Join-Path $Root "servers\*\logs\*.log.gz"), (Join-Path $Root "proxy\logs\*.log.gz") -ErrorAction SilentlyContinue |
+    Where-Object { $_.LastWriteTime -lt (Get-Date).AddMonths(-3) } | Remove-Item -Force
+
 foreach ($name in $Servers) {
     Start-Backend $name $Spec[$name][0] $Spec[$name][1]
     Start-Sleep -Seconds 5
