@@ -402,6 +402,7 @@ client.once(Events.ClientReady, async () => {
         payment.cancelCommand,
         payment.lookupCommand,
         payment.reviewCommand,
+        payment.accountingTestCommand,
         purchaseLog.historyCommand,
     ];
 
@@ -525,6 +526,7 @@ client.on('interactionCreate', async interaction => {
             if (commandName === '충전취소') { await payment.handleCancel(interaction); return; }
             if (commandName === '결제조회') { await payment.handleLookup(interaction); return; }
             if (commandName === '결제대기') { await payment.handleReview(interaction); return; }
+            if (commandName === '회계연동테스트') { await payment.handleAccountingTest(interaction); return; }
             if (commandName === '구매기록') { await purchaseLog.handleHistory(interaction); return; }
 
             // ── 안내 패널 (/ticket panel · /verify panel) — 관리자 전용 ──

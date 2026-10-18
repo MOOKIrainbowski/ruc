@@ -115,6 +115,8 @@ mapfile/
 MOOKI*/sanctions_data.json
 # 충전 화면 상태 (관리자 메시지 ID · 디스코드 ID)
 MOOKI*/pay_data.json
+# rucm 회계 연동 대기열 (payment.js) — 폰에서만 생김
+MOOKI*/accounting_outbox.json
 # 구매 로그 (디스코드 ID · 닉네임 · 금액) — 환불 근거 사본. 공개 저장소에 올리지 않습니다
 MOOKI*/purchase_log.jsonl
 # 상품표 사본 (web/content/products.json 이 없는 기기에서 받아 둔 것)

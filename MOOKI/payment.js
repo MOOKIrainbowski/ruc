@@ -131,6 +131,128 @@ function cashGrants(p) {
 
 let data = load();
 
+// MOOKI cash deposits are mirrored to rucm's accounting ledger through a
+// localhost-only signed endpoint. Pending entries survive restarts.
+const ACCOUNTING_OUTBOX_FILE = path.join(__dirname, 'accounting_outbox.json');
+let accountingOutbox = loadAccountingOutbox();
+let accountingOutboxFlushing = false;
+
+function loadAccountingOutbox() {
+    try {
+        const value = JSON.parse(fs.readFileSync(ACCOUNTING_OUTBOX_FILE, 'utf8'));
+        return Array.isArray(value) ? value : [];
+    } catch {
+        return [];
+    }
+}
+
+function saveAccountingOutbox() {
+    const tmp = `${ACCOUNTING_OUTBOX_FILE}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(accountingOutbox, null, 2));
+    fs.renameSync(tmp, ACCOUNTING_OUTBOX_FILE);
+}
+
+function queueAccountingEntry(r, p) {
+    const secret = process.env.MOOKI_ACCOUNTING_SECRET;
+    const code = String(r.code || '').toUpperCase();
+    const amount = Math.trunc(Number(r.amount ?? r.price));
+    if (!secret || !process.env.MOOKI_ACCOUNTING_URL) return;
+    if (!/^R\d{4}$/.test(code) || !Number.isSafeInteger(amount) || amount < 1) {
+        console.warn(`[회계 연동] 입금 자료 형식이 올바르지 않습니다 (${code || '주문 코드 없음'}).`);
+        return;
+    }
+    const externalId = `MOOKI:${code}`;
+    if (accountingOutbox.some(e => e.external_id === externalId)) return;
+    const productName = String(p?.name || r.product || '상품').slice(0, 80);
+    const playerName = String(r.name || '-').slice(0, 40);
+    accountingOutbox.push({
+        external_id: externalId,
+        amount,
+        reason: `MOOKI 현금 충전 · ${productName} · ${playerName} · 주문 ${code}`.slice(0, 200),
+        product: productName,
+        player_name: playerName,
+        discord_id: String(r.discord || '').slice(0, 30),
+        paid_at: new Date().toISOString(),
+        attempts: 0,
+        next_attempt_at: 0,
+    });
+    try {
+        saveAccountingOutbox();
+        void flushAccountingOutbox();
+    } catch (error) {
+        console.error('[회계 연동] 전송 대기 자료를 저장하지 못했습니다:', error.message);
+    }
+}
+
+function queueAccountingTest(interaction) {
+    const secret = process.env.MOOKI_ACCOUNTING_SECRET;
+    const endpoint = process.env.MOOKI_ACCOUNTING_URL;
+    if (!secret || !endpoint) throw new Error('MOOKI_ACCOUNTING_SECRET 또는 MOOKI_ACCOUNTING_URL 설정이 없습니다.');
+    const externalId = `MOOKI:TEST:${interaction.id}`;
+    accountingOutbox.push({
+        external_id: externalId,
+        amount: 1,
+        reason: 'MOOKI 회계 연동 테스트 (자동 제외)',
+        product: '연동 확인',
+        player_name: String(interaction.user.username || '관리자').slice(0, 40),
+        discord_id: String(interaction.user.id),
+        paid_at: new Date().toISOString(),
+        test: true,
+        attempts: 0,
+        next_attempt_at: 0,
+    });
+    saveAccountingOutbox();
+    return externalId;
+}
+
+async function flushAccountingOutbox() {
+    const endpoint = process.env.MOOKI_ACCOUNTING_URL;
+    const secret = process.env.MOOKI_ACCOUNTING_SECRET;
+    if (!endpoint || !secret || accountingOutboxFlushing || accountingOutbox.length === 0) return;
+    accountingOutboxFlushing = true;
+    try {
+        for (const entry of [...accountingOutbox]) {
+            if (entry.next_attempt_at > Date.now()) continue;
+            const body = JSON.stringify(entry);
+            const timestamp = String(Math.floor(Date.now() / 1000));
+            const signature = crypto.createHmac('sha256', secret).update(`${timestamp}.${body}`).digest('hex');
+            let response;
+            try {
+                response = await fetch(endpoint, {
+                    method: 'POST',
+                    headers: {
+                        'content-type': 'application/json',
+                        'x-ruc-timestamp': timestamp,
+                        'x-ruc-signature': signature,
+                    },
+                    body,
+                    signal: AbortSignal.timeout(5000),
+                });
+            } catch (error) {
+                entry.attempts += 1;
+                entry.next_attempt_at = Date.now() + Math.min(15 * 60_000, 10_000 * (2 ** Math.min(entry.attempts - 1, 6)));
+                console.warn(`[회계 연동] ${entry.external_id} 전송 실패. 재시도 대기 중: ${error.message}`);
+                saveAccountingOutbox();
+                continue;
+            }
+            if (response.ok) {
+                accountingOutbox = accountingOutbox.filter(e => e.external_id !== entry.external_id);
+                saveAccountingOutbox();
+                console.log(`[회계 연동] ${entry.external_id} rucm 장부 반영 완료.`);
+            } else {
+                entry.attempts += 1;
+                entry.next_attempt_at = Date.now() + Math.min(15 * 60_000, 10_000 * (2 ** Math.min(entry.attempts - 1, 6)));
+                console.warn(`[회계 연동] ${entry.external_id} 전송 응답 ${response.status}. 재시도 대기 중.`);
+                saveAccountingOutbox();
+            }
+        }
+    } catch (error) {
+        console.error('[회계 연동] 대기 자료 처리 실패:', error.message);
+    } finally {
+        accountingOutboxFlushing = false;
+    }
+}
+
 function load() {
     try {
         return JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
@@ -312,6 +434,8 @@ async function announce(guild, r, by) {
         if (r.reason && r.reason.startsWith('LINKED')) await settleDepositMessage(guild, r.id, state.text);
 
         const p = product(r.product);
+        // B에 있는 회계 장부에는 현금 입금만 전달합니다. RUC 결제는 원화 입금이 아닙니다.
+        queueAccountingEntry(r, p);
         await purchaseLog.record(guild, logEntry(r, p, 'won', delivered));
         await dm(guild.client, r.discord, {
             embeds: [new EmbedBuilder().setColor(delivered ? COLOR.ok : COLOR.pending)
@@ -473,11 +597,13 @@ function start(guild) {
     const available = catalog.products.filter(p => p.available).map(p => p.id);
     console.log(`[충전] 판매 중 ${available.join(', ') || '없음'} · `
         + `${enabled() ? '운영' : '시험 모드(Manager 만)'} · 계좌 ${account() ? '✓' : '없음'}`
-        + ` · 알림 웹훅 ${process.env.PAY_WEBHOOK_SECRET ? '켜짐' : '꺼짐(버튼 확인만)'}`);
+        + ` · 알림 웹훅 ${process.env.PAY_WEBHOOK_SECRET ? '켜짐' : '꺼짐(버튼 확인만)'}`
+        + ` · rucm 회계 연동 ${process.env.MOOKI_ACCOUNTING_SECRET && process.env.MOOKI_ACCOUNTING_URL ? '켜짐' : '꺼짐'}`);
 
     const tick = async () => {
         try {
             await grantRoles(guild);
+            await flushAccountingOutbox();
             // 첫 RCON 이 실패했으면 서버가 꺼져 있습니다. 나머지는 같은 실패라 건너뜁니다.
             if (serverUp === false) return;
             await retryFailed(guild);
@@ -638,6 +764,9 @@ const reviewCommand = new SlashCommandBuilder()
     .setName('결제대기').setDescription('(스태프) 자동으로 처리되지 않은 입금 목록을 다시 올립니다.')
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild);
 
+const accountingTestCommand = new SlashCommandBuilder()
+    .setName('회계연동테스트').setDescription('(관리자/시니어 스태프) MOOKI와 rucm 회계 연동을 확인합니다.');
+
 async function handleCharge(interaction) {
     await interaction.deferReply({ flags: MessageFlags.Ephemeral });
     loadProducts(); // 가격을 고쳤으면 재시작 없이 반영됩니다 (선택지 목록만 재시작 필요).
@@ -787,6 +916,24 @@ async function handleReview(interaction) {
     return interaction.editReply(`확인 대기 ${rows.length}건을 관리자 채널에 다시 올렸습니다.`);
 }
 
+async function handleAccountingTest(interaction) {
+    await interaction.deferReply({ flags: MessageFlags.Ephemeral });
+    if (!isAdmin(interaction.member)) {
+        return interaction.editReply('<:minecraft_barrier:1557947126024245328> Manager 이상만 실행할 수 있습니다.');
+    }
+    let externalId;
+    try {
+        externalId = queueAccountingTest(interaction);
+        await flushAccountingOutbox();
+    } catch (error) {
+        return interaction.editReply(`연동 테스트를 준비하지 못했습니다: ${error.message}`);
+    }
+    if (accountingOutbox.some(entry => entry.external_id === externalId)) {
+        return interaction.editReply('테스트 자료를 저장했습니다. rucm에 연결되지 않아 대기 중이며, 자동 재시도합니다. rucm 로그와 거래내역을 확인해 주세요.');
+    }
+    return interaction.editReply('연동 테스트 전송이 완료됐습니다. rucm 거래내역에서 `MOOKI 회계 연동 테스트`를 확인해 주세요. 테스트 거래는 장부에 남지만 누적 합계에서는 자동 제외됩니다.');
+}
+
 // ── 버튼 · 모달 ───────────────────────────────────────────────────────
 
 /** @returns {Promise<boolean>} 이 모듈의 상호작용이었는가 */
@@ -917,8 +1064,8 @@ async function replyLater(interaction, content) {
 }
 
 module.exports = {
-    chargeCommandFresh, refreshProducts, cancelCommand, lookupCommand, reviewCommand,
-    handleCharge, handleCancel, handleLookup, handleReview, handleButton, handleModal, start,
-    _internals: { parse, items, parseNotification, verifySignature, token, loadProducts,
+    chargeCommandFresh, refreshProducts, cancelCommand, lookupCommand, reviewCommand, accountingTestCommand,
+    handleCharge, handleCancel, handleLookup, handleReview, handleAccountingTest, handleButton, handleModal, start,
+    _internals: { parse, items, parseNotification, verifySignature, token, loadProducts, flushAccountingOutbox,
         grantRoles, clearExpiredRoles, retryFailed },
 };
