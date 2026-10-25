@@ -158,7 +158,7 @@ menu:
     combat-name: "&c&lCombat rules"
     combat-lore: "&7Raiding tags you for 15 seconds|&cDisconnecting while tagged means|&cforced death, all items and XP gone|&7Travel commands are blocked while tagged"
     travel-name: "&b&lTravelling"
-    travel-lore: "&7Sneak and press &fF &7to open this menu|&7Or use the command: &f/menu|&7On Home, the compass works too"
+    travel-lore: "&7Sneak and press &fF &7to open this menu|&7Or use the command: &f/menu"
     economy-name: "&a&lEconomy and progress"
     economy-lore: "&7Gold is shared across every server|&7Custom XP is separate from vanilla|&fUse /ruc &7and &f/level"
 

@@ -153,7 +153,7 @@ export const content: Record<Lang, Copy> = {
       items: [
         { key: "home", name: "홈", tag: "HUB", hook: "첫 도착 광장 · 서버 이동." },
         { key: "raid", name: "약탈", tag: "PVP", hook: "PvP · 약탈 허용. 도주 = 처형." },
-        { key: "war", name: "국가전", tag: "WAR", hook: "길드 · 국가 · 영토 전쟁.", paused: true },
+        { key: "war", name: "국가전", tag: "WAR", hook: "길드 영토 전쟁 · 시범 운영." },
         { key: "peace", name: "평화", tag: "PEACE", hook: "살해 차단.", paused: true },
       ],
       live: "운영 중",
@@ -211,7 +211,7 @@ export const content: Record<Lang, Copy> = {
       serverDesc: {
         home: "첫 도착 광장",
         raid: "전투 중 접속 종료 = 처형",
-        war: "국가만 입장",
+        war: "길드 소속만 입장",
         peace: "살해 차단",
       },
       offlineNote: "서버 준비 중입니다",
@@ -274,7 +274,7 @@ export const content: Record<Lang, Copy> = {
       items: [
         { key: "home", name: "Home", tag: "HUB", hook: "The safe plaza everyone lands in first." },
         { key: "raid", name: "Raiding", tag: "PVP", hook: "PvP and looting. No running away." },
-        { key: "war", name: "Nation War", tag: "WAR", hook: "Guilds become nations and take land.", paused: true },
+        { key: "war", name: "Nation War", tag: "WAR", hook: "Guilds fight for land. Trial run." },
         { key: "peace", name: "Peace", tag: "PEACE", hook: "No one can kill you here.", paused: true },
       ],
       live: "Live",
@@ -331,7 +331,7 @@ export const content: Record<Lang, Copy> = {
       serverDesc: {
         home: "The plaza everyone lands in first",
         raid: "Combat-log and lose everything",
-        war: "Nation members only",
+        war: "Guild members only",
         peace: "Direct and indirect kills blocked",
       },
       offlineNote: "Server not live yet",

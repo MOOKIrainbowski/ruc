@@ -223,12 +223,13 @@ export default function Page() {
           유의사항
         </h2>
         <ul className="glass space-y-2.5 rounded-2xl p-5 text-[11.5px] leading-relaxed text-white/80 sm:p-6">
-          <li>· 상품은 지급된 순간 사용이 시작된 것으로 봅니다. 지급 전에는 전액 환불됩니다.</li>
+          <li>· 지급 전에는 언제든 전액 환불됩니다. 지급 후 7일 이내 청약철회 · 미사용 RUC 환불 등 자세한 기준은 <Link href="/policy/refund" className="link">환불 정책</Link>을 따릅니다.</li>
+          <li>· 멤버 등급 · 칭호 · 엔더상자 확장은 지급과 동시에 효과가 생기는 상품이라 청약철회가 제한될 수 있습니다 (환불 정책 제6조).</li>
           <li>· 지급 후 서버 오류로 상품을 쓸 수 없게 되면 남은 기간만큼 연장하거나 환불합니다.</li>
           <li>· 만 19세 미만은 보호자의 동의를 받고 후원해 주세요. 보호자 동의 없는 결제는 환불을 요청할 수 있습니다.</li>
           <li>· 제재(7단계 이상)를 받으면 후원 혜택이 정지됩니다. 이미 받은 혜택은 환불되지 않습니다.</li>
           <li>· 다른 사람 명의로 입금하거나 상품을 되파는 것은 금지입니다 (<Link href="/rules" className="link">규칙 0.5 · 0.11</Link>).</li>
-          <li className="text-white/60">· TODO: 운영진 검토 — 통신판매업 신고번호 · 사업자 정보 · 환불 정책 확정 후 기재</li>
+          <li className="text-white/60">· TODO: 운영진 검토 — 통신판매업 신고번호 · 사업자 정보 확정 후 기재</li>
         </ul>
         <p className="mt-5 text-[12px] text-white/75">
           문의는{" "}
