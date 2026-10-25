@@ -27,7 +27,7 @@ war:
 
   # HH:mm. end 가 start 보다 이르면 자정을 넘는 시간대로 해석합니다.
   start: "20:00"
-  end: "22:00"
+  end: "00:00"
 
   # 개전 몇 분 전에 예고할지
   warn-minutes:

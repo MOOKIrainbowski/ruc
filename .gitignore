@@ -143,3 +143,6 @@ minecraft/servers/*/plugins/RucCore/feed-message-id.txt
 docs/backup/discord-*.json
 # 보급 상자 위치 (런타임)
 minecraft/servers/*/plugins/RucWar/supply-crates.txt
+
+# 약관 동의 폴링 위치 (런타임)
+minecraft/servers/*/plugins/RucCore/terms-cursor.txt
