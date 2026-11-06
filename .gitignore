@@ -146,3 +146,6 @@ minecraft/servers/*/plugins/RucWar/supply-crates.txt
 
 # 약관 동의 폴링 위치 (런타임)
 minecraft/servers/*/plugins/RucCore/terms-cursor.txt
+
+# RPG 게임 서버 DB (런타임)
+RUC_RPG/server/data/

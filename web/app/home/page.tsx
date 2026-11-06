@@ -47,6 +47,13 @@ const CARDS: Card[] = [
     glyph: "?",
   },
   {
+    href: "/rpg",
+    title: "RPG 시작 (베타)",
+    desc: "브라우저에서 바로 하는 러크 픽셀 RPG. 디스코드 로그인 필요.",
+    glyph: "⚔",
+    wide: true,
+  },
+  {
     href: "/chronicle",
     title: "러크 연대기",
     desc: "드래곤 알의 주인 · 큰 현상금 · 새 길드 · 레벨 이정표 — 서버의 역사가 저절로 쓰입니다.",
