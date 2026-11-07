@@ -76,3 +76,116 @@
 .rpg-pixel { image-rendering: pixelated; }
 
 .rpg-range { accent-color: #a36a3c; width: 160px; }
+
+/* ── 전투 HUD (§23-2) ── */
+.rpg-orb {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  border-radius: 50%;
+  overflow: hidden;
+  border: 3px solid #7d4f2b;
+  background: #1b1420;
+  box-shadow: inset 0 0 0 2px #3a2a1e, 0 3px 0 #3a2a1e;
+}
+.rpg-orb-fill { position: absolute; left: 0; right: 0; bottom: 0; transition: height 0.25s; }
+/* 액체 표면 물결 */
+.rpg-orb-fill::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: -3px;
+  width: 200%;
+  height: 6px;
+  background: radial-gradient(ellipse at 50% 100%, rgba(255, 255, 255, 0.45) 0 45%, transparent 47%) 0 0 / 12px 6px repeat-x;
+  animation: rpg-wave 1.4s linear infinite;
+}
+@keyframes rpg-wave { to { transform: translateX(-12px); } }
+.rpg-orb::after {
+  content: "";
+  position: absolute;
+  left: 14px;
+  top: 10px;
+  width: 16px;
+  height: 9px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.28);
+}
+.rpg-orb-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 11px;
+  text-shadow: 0 1px 0 #1b1420, 1px 0 0 #1b1420, -1px 0 0 #1b1420, 0 -1px 0 #1b1420;
+  z-index: 1;
+}
+
+.rpg-slot {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  border: 2px solid #3a2a1e;
+  border-radius: 3px;
+  box-shadow: 0 2px 0 #1b1420;
+  background: #1b1420;
+}
+.rpg-slot img { display: block; width: 100%; height: 100%; image-rendering: pixelated; }
+.rpg-slot-cover { position: absolute; inset: 0; }
+.rpg-num {
+  position: absolute;
+  color: #fff;
+  font-size: 11px;
+  text-shadow: 0 1px 0 #1b1420, 1px 0 0 #1b1420, -1px 0 0 #1b1420, 0 -1px 0 #1b1420;
+  pointer-events: none;
+}
+
+.rpg-bar {
+  position: relative;
+  height: 14px;
+  background: #1b1420;
+  border: 2px solid #3a2a1e;
+  border-radius: 3px;
+  overflow: hidden;
+}
+.rpg-bar > div { position: absolute; top: 0; bottom: 0; left: 0; }
+.rpg-bar-lag { background: #fff4dc; transition: width 0.6s ease 0.35s; }
+.rpg-bar-fill { transition: width 0.1s; }
+.rpg-bar-text {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: #fff;
+  text-shadow: 0 1px 0 #1b1420, 1px 0 0 #1b1420, -1px 0 0 #1b1420;
+}
+
+/* 남은 3초 깜빡임 (§23-2) */
+.rpg-blink { animation: rpg-blink 0.5s steps(2) infinite; }
+@keyframes rpg-blink { 50% { opacity: 0.35; } }
+
+/* 값이 바뀌면 0.5초 반짝 (§23-2 스탯창) */
+.rpg-up { animation: rpg-up 0.5s; }
+.rpg-down { animation: rpg-down 0.5s; }
+@keyframes rpg-up { 0%, 60% { color: #4CC764; } }
+@keyframes rpg-down { 0%, 60% { color: #E5484D; } }
+
+.rpg-tip {
+  display: none;
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 220px;
+  padding: 8px 10px;
+  font-size: 11px;
+  line-height: 1.5;
+  z-index: 20;
+  text-align: left;
+  pointer-events: none;
+}
+.group:hover > .rpg-tip { display: block; }

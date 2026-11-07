@@ -2,9 +2,11 @@
 
 import "./rpg.css";
 import { useCallback, useEffect, useRef, useState } from "react";
-import plazaJson from "../shared/data/maps/plaza.json";
+import type { FullStats } from "../shared/combat";
+import type { RoomKind } from "../shared/constants";
 import { loadMap, type GameMap, type TiledMap } from "../shared/map";
 import type { ChannelInfo, S2C, You } from "../shared/protocol";
+import { CombatHud, DeathOverlay } from "./CombatHud";
 import CreateCharacter from "./CreateCharacter";
 import type { Game, HudState } from "./game";
 import { ChannelPicker, Compass, Minimap, TopRight, WorldMap } from "./Hud";
@@ -14,6 +16,14 @@ import SettingsModal from "./SettingsModal";
 import { loadLocal, mergeSettings, saveLocal, type Settings } from "./settings";
 
 type Phase = "loading" | "create" | "play" | "closed";
+
+/** 맵은 들어갈 때 불러옴 (§29 초기 로딩) */
+const MAP_JSON: Record<RoomKind, () => Promise<{ default: unknown }>> = {
+  plaza: () => import("../shared/data/maps/plaza.json"),
+  field: () => import("../shared/data/maps/field.json"),
+};
+const MAP_NAME: Record<RoomKind, string> = { plaza: "햇살광장 솔라스", field: "햇살 초원" };
+const mapCache = new Map<RoomKind, { map: GameMap; overview: HTMLCanvasElement }>();
 
 export default function RpgGame({ dev }: { dev?: string }) {
   const host = useRef<HTMLDivElement>(null);
@@ -29,8 +39,9 @@ export default function RpgGame({ dev }: { dev?: string }) {
   const [hud, setHud] = useState<HudState | null>(null);
   const [ping, setPing] = useState(0);
   const [settings, setSettings] = useState<Settings>(() => mergeSettings());
-  const [map] = useState<GameMap>(() => loadMap(plazaJson as unknown as TiledMap));
-  const [overview, setOverview] = useState<HTMLCanvasElement | null>(null);
+  const [world, setWorld] = useState<{ map: GameMap; overview: HTMLCanvasElement } | null>(null);
+  const [stats, setStats] = useState<FullStats | null>(null);
+  const toastTimer = useRef(0);
   const [popups, setPopups] = useState<("settings" | "map")[]>([]);
   const [capturing, setCapturing] = useState(false);
 
@@ -38,6 +49,11 @@ export default function RpgGame({ dev }: { dev?: string }) {
   useEffect(() => {
     let alive = true;
     const n = new Net();
+    const toast = (text: string) => {
+      setMsg(text);
+      clearTimeout(toastTimer.current);
+      toastTimer.current = window.setTimeout(() => alive && setMsg(""), 2500);
+    };
     net.current = n;
     n.onMessage = async (m: S2C) => {
       if (!alive) return;
@@ -46,11 +62,13 @@ export default function RpgGame({ dev }: { dev?: string }) {
         case "createError": setCreateErr(m.msg); return;
         case "kicked": setMsg(t(`kicked.${m.reason}` as StrKey)); setPhase("closed"); return;
         case "channels": setChannels(m.list); return;
-        case "error": setMsg(m.msg); setTimeout(() => alive && setMsg(""), 3000); return;
+        case "error": toast(m.msg); return;
+        case "stats": setStats(m.s); game.current?.onMessage(m); return;
         case "joined": {
           setYou(m.you);
           setRoom(m.room);
           setChannels(m.channels);
+          setStats(m.stats);
           const s = mergeSettings(loadLocal(), m.you.settings as Partial<Settings>);
           setSettings(s);
           if (game.current) {
@@ -58,10 +76,19 @@ export default function RpgGame({ dev }: { dev?: string }) {
             game.current = null;
           }
           const { Game, mapOverview } = await import("./game");
+          let w = mapCache.get(m.room.kind);
+          if (!w) {
+            const map = loadMap((await MAP_JSON[m.room.kind]()).default as TiledMap);
+            w = { map, overview: mapOverview(map) };
+            mapCache.set(m.room.kind, w);
+          }
           if (!alive || !host.current) return;
-          const g = new Game(map, n, m.you, m.me, s);
+          setWorld(w);
+          const g = new Game(w.map, m.room.kind, n, m.you, m.me, s, m.stats);
+          g.onToast = toast;
+          g.onXp = (_, exp, level) => setYou((y) => y && { ...y, exp, level });
           try {
-            await g.start(host.current, m.players);
+            await g.start(host.current, m.ents, m.fx);
           } catch {
             setMsg(t("noWebgl"));
             setPhase("closed");
@@ -70,7 +97,6 @@ export default function RpgGame({ dev }: { dev?: string }) {
           if (!alive) return g.destroy();
           game.current = g;
           if (process.env.NODE_ENV === "development") (window as unknown as { __rpg: Game }).__rpg = g; // 디버그 · E2E 용
-          setOverview((o) => o ?? mapOverview(map));
           setPhase("play");
           return;
         }
@@ -85,7 +111,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
       game.current?.destroy();
       game.current = null;
     };
-  }, [dev, map]);
+  }, [dev]);
 
   // HUD 갱신 (10Hz — FPS · 미니맵 · 나침반)
   useEffect(() => {
@@ -150,11 +176,11 @@ export default function RpgGame({ dev }: { dev?: string }) {
         </div>
       )}
 
-      {phase === "play" && you && hud && overview && (
+      {phase === "play" && you && hud && world && stats && (
         <div className="pointer-events-none absolute inset-0" style={{ zoom: settings.interfaceScale / 100 }}>
           <div className="absolute left-3 top-3" style={{ zoom: settings.hudScale / 100 }}>
             <div className="pointer-events-auto">
-              <Minimap map={map} overview={overview} hud={hud} size={settings.minimapSize} onOpenFull={() => toggle("map")} />
+              <Minimap map={world.map} overview={world.overview} hud={hud} size={settings.minimapSize} onOpenFull={() => toggle("map")} />
             </div>
             <Compass dir={hud.dir} />
             <br />
@@ -163,13 +189,17 @@ export default function RpgGame({ dev }: { dev?: string }) {
           <div className="absolute right-3 top-3" style={{ zoom: settings.hudScale / 100 }}>
             <TopRight fps={hud.fps} ping={ping} you={you} onSettings={() => toggle("settings")} />
           </div>
-          {msg && phase === "play" && <div className="rpg-chip absolute bottom-4 left-1/2 -translate-x-1/2">{msg}</div>}
+          <div style={{ zoom: settings.hudScale / 100 }} className="absolute inset-0">
+            <CombatHud hud={hud} stats={stats} you={you} settings={settings} />
+          </div>
+          {msg && <div className="rpg-chip absolute bottom-[200px] left-1/2 -translate-x-1/2 whitespace-nowrap">{msg}</div>}
+          {hud.dead > 0 && <DeathOverlay ms={hud.dead} />}
         </div>
       )}
 
-      {phase === "play" && hud && overview && popups.includes("map") && (
+      {phase === "play" && hud && world && popups.includes("map") && (
         <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
-          <WorldMap map={map} overview={overview} hud={hud} onClose={() => toggle("map")} />
+          <WorldMap map={world.map} overview={world.overview} hud={hud} title={MAP_NAME[hud.kind]} onClose={() => toggle("map")} />
         </div>
       )}
       {phase === "play" && top === "settings" && (

@@ -209,6 +209,37 @@ export function objectFrames(o: TiledObject): HTMLCanvasElement[] {
       p.set(14, 8, "#9ee7ff");
       p.set(18, 8, "#9ee7ff");
       break;
+    case "rock":
+      p.ellipse(8, 10, 7, 5, STONE[2]);
+      p.ellipse(7, 9, 6, 4, "#c9bfae");
+      p.rect(4, 7, 3, 1, STONE[0]);
+      break;
+    case "stump":
+      p.part(3, 6, 10, 9, WOOD);
+      p.ellipse(8, 6, 5, 2, "#e0b07a");
+      p.ellipse(8, 6, 2, 1, WOOD[1]);
+      break;
+    case "bush":
+      p.ellipse(8, 10, 7, 5, "#3d6f20");
+      p.ellipse(7, 9, 6, 4, "#5c9a33");
+      p.set(5, 7, "#ff6b6b");
+      p.set(10, 9, "#ff6b6b");
+      break;
+    case "campfire": {
+      const frames: HTMLCanvasElement[] = [];
+      for (let f = 0; f < 4; f++) {
+        const q = new Px(w, h);
+        q.part(1, 12, 14, 3, WOOD);
+        q.part(3, 10, 10, 2, ["#c98d58", "#8a5a33", "#6d4325"]);
+        const fl = [0, 1, 2, 1][f];
+        q.ellipse(8, 8 - fl / 2, 4, 4 + fl / 2, "#FF5A36");
+        q.ellipse(8, 9, 2, 2 + fl / 2, "#FFD27A");
+        q.set(6 + (f % 3), 2 - (f % 2), "#ffb347");
+        q.outline();
+        frames.push(q.toCanvas());
+      }
+      return frames;
+    }
     case "portal": {
       const col = o.properties?.find((x) => x.name === "target")?.value;
       const c: C3 = col === "dungeon" ? ["#d6b3ff", "#9B5DE5", "#5a2f99"] : col === "arena" ? ["#ffb3b3", "#E5484D", "#99262a"] : ["#c8ffb3", "#4CC764", "#2a7a3a"];

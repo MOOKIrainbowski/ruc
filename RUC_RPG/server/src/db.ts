@@ -36,7 +36,8 @@ export type CharacterRow = {
   exp: number;
   element: string;
   appearance: Appearance;
-  position: { map: string; x: number; y: number } | null;
+  /** 마지막 위치 + HP · 마나 · 기력 (§26-2 실시간 상태) */
+  position: { map: string; x: number; y: number; hp?: number; mp?: number; en?: number } | null;
   settings: Record<string, unknown> | null;
 };
 
@@ -49,6 +50,7 @@ const qFind = db.prepare("SELECT * FROM rpg_characters WHERE discord_id = ?");
 const qInsert = db.prepare("INSERT INTO rpg_characters (discord_id, nickname, element, appearance, created_at) VALUES (?, ?, ?, ?, ?)");
 const qPos = db.prepare("UPDATE rpg_characters SET position = ? WHERE id = ?");
 const qSettings = db.prepare("UPDATE rpg_characters SET settings = ? WHERE id = ?");
+const qProgress = db.prepare("UPDATE rpg_characters SET level = ?, exp = ? WHERE id = ?");
 
 export function findCharacter(discordId: string) {
   return parse(qFind.get(discordId) as Raw | undefined);
@@ -65,5 +67,6 @@ export function createCharacter(discordId: string, nickname: string, element: st
   return findCharacter(discordId);
 }
 
-export const savePosition = (id: number, p: { map: string; x: number; y: number }) => qPos.run(JSON.stringify(p), id);
+export const savePosition = (id: number, p: NonNullable<CharacterRow["position"]>) => qPos.run(JSON.stringify(p), id);
+export const saveProgress = (id: number, level: number, exp: number) => qProgress.run(level, exp, id);
 export const saveSettings = (id: number, s: unknown) => qSettings.run(JSON.stringify(s), id);

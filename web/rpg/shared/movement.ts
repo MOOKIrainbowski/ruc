@@ -1,12 +1,17 @@
+import { castMs } from "./combat.ts";
 import { SIM_MS, TILE } from "./constants.ts";
-import { MOVE, STAMINA } from "./data/stats.ts";
+import type { SkillDef, Slot } from "./data/skills.ts";
+import { MOVE, ROLL, STAMINA } from "./data/stats.ts";
 
 /**
  * 이동 한 스텝 — 클라이언트 예측과 서버가 똑같이 돌립니다 (§2-2).
  * 같은 입력이면 같은 결과입니다 — JSON 은 double 을 정확히 왕복시키므로 서버 ack 값으로 그대로 이어서 재생해도 떨림이 없습니다.
+ * 구르기 · 돌진 · 시전 고정 · 조준 방향도 여기서 다뤄 예측이 어긋나지 않게 합니다 (DECISIONS D12).
+ * 결정성 때문에 sqrt 만 쓰고 hypot · cos 는 쓰지 않습니다 (sqrt 는 어디서나 같은 값).
  */
 
-export type MoveInput = { seq: number; mx: number; my: number; run: boolean };
+/** dg = 구르기, k = 스킬 슬롯(A = 평타), ax · ay = 조준 지점(월드 px, 정수) */
+export type MoveInput = { seq: number; mx: number; my: number; run: boolean; dg?: 1; k?: Slot; ax?: number; ay?: number };
 
 export type Mover = {
   x: number; // 발밑 중심 (px)
@@ -19,17 +24,40 @@ export type Mover = {
   exhausted: boolean;
   moving: boolean;
   running: boolean;
+  /** 최종 이동 속도 · 지구력 · 공격 속도 (서버가 버프 · 디버프를 반영해 채움) */
+  spd: number;
+  endu: number;
+  aspd: number;
+  /** 이동 불가 (속박 · 기절 · 사망 …) */
+  root: boolean;
+  /** 강제 이동(구르기 · 돌진) 남은 스텝과 스텝당 이동량 */
+  mv: number;
+  mvx: number;
+  mvy: number;
+  /** 무적 남은 스텝 (구르기 앞부분) · 다음 구르기까지 · 시전 고정 · 조준 방향 유지 */
+  ifr: number;
+  rollCd: number;
+  lock: number;
+  aim: number;
 };
 
 export type Collider = { w: number; h: number; solid: Uint8Array };
 
-export type MoveStats = { moveSpeed: number; endurance: number };
+export function newMover(x: number, y: number, s: { stamina: number; moveSpeed: number; endurance: number; atkSpeed: number }): Mover {
+  return {
+    x, y, dir: 0, stamina: s.stamina, staminaMax: s.stamina, restMs: 0, exhausted: false, moving: false, running: false,
+    spd: s.moveSpeed, endu: s.endurance, aspd: s.atkSpeed, root: false, mv: 0, mvx: 0, mvy: 0, ifr: 0, rollCd: 0, lock: 0, aim: 0,
+  };
+}
 
 /** 이동 벡터 → 8방향 인덱스 (S=0, SE, E, NE, N, NW, W, SW). 화면 좌표계(y 아래). */
 export function dir8(dx: number, dy: number): number {
   const deg = (Math.atan2(dy, dx) * 180) / Math.PI;
   return ((Math.round((90 - deg) / 45) % 8) + 8) % 8;
 }
+const D = Math.SQRT1_2;
+/** 방향 인덱스 → 단위 벡터 */
+export const DIR_VEC: [number, number][] = [[0, 1], [D, D], [1, 0], [D, -D], [0, -1], [-D, -D], [-1, 0], [-D, D]];
 
 export function isSolidAt(c: Collider, px: number, py: number): boolean {
   const tx = Math.floor(px / TILE);
@@ -47,15 +75,76 @@ export function blocked(c: Collider, x: number, y: number): boolean {
   return isSolidAt(c, l, t) || isSolidAt(c, r, t) || isSolidAt(c, l, b) || isSolidAt(c, r, b);
 }
 
-export function step(m: Mover, input: MoveInput, stats: MoveStats, c: Collider): void {
+/** 축을 나눠 움직여 벽을 따라 미끄러지게 합니다 */
+export function slide(m: { x: number; y: number }, c: Collider, dx: number, dy: number) {
+  const nx = m.x + dx;
+  if (!blocked(c, nx, m.y)) m.x = nx;
+  const ny = m.y + dy;
+  if (!blocked(c, m.x, ny)) m.y = ny;
+}
+
+/** 스태미나 소모: 기본 × 100 / (100 + 지구력) (§6-3) */
+export function spend(m: Mover, base: number) {
+  if (!base) return;
+  m.stamina = Math.max(0, m.stamina - (base * 100) / (100 + m.endu));
+  m.restMs = 0;
+  if (m.stamina === 0) m.exhausted = true;
+}
+
+export const canRoll = (m: Mover) => !m.root && !m.exhausted && m.stamina > 0 && m.mv === 0 && m.lock === 0 && m.rollCd === 0;
+
+/** 구르기: 누르고 있는 방향, 없으면 바라보는 방향으로 */
+export function tryRoll(m: Mover, input: MoveInput) {
+  if (!canRoll(m)) return;
   const mx = Math.sign(input.mx);
   const my = Math.sign(input.my);
+  const d = mx || my ? dir8(mx, my) : m.dir;
+  const [vx, vy] = DIR_VEC[d];
+  spend(m, STAMINA.dodge);
+  m.dir = d;
+  m.mv = ROLL.steps;
+  m.mvx = (vx * ROLL.dist) / ROLL.steps;
+  m.mvy = (vy * ROLL.dist) / ROLL.steps;
+  m.ifr = ROLL.iframeSteps;
+  m.rollCd = ROLL.steps + ROLL.cdSteps;
+  m.aim = 0;
+}
+
+/** 시전 0.5초 뒤까지 마우스 쪽을 봄 (§5) */
+const AIM_HOLD = Math.round(500 / SIM_MS);
+
+/** 스킬이 받아들여졌을 때 움직임 쪽 효과 — 서버는 검증 뒤, 클라이언트는 예측 때 똑같이 부릅니다 */
+export function castMove(m: Mover, sk: SkillDef, ax: number, ay: number) {
+  spend(m, sk.cost.stamina ?? 0);
+  const dx = ax - m.x;
+  const dy = ay - m.y;
+  if (dx || dy) m.dir = dir8(dx, dy);
+  m.lock = sk.castMs ? Math.round(castMs(sk.castMs, m.aspd) / SIM_MS) : 0;
+  m.aim = m.lock + AIM_HOLD;
+  if (sk.targeting === "dash" && sk.dashSteps) {
+    const len = Math.sqrt(dx * dx + dy * dy);
+    const [ux, uy] = len ? [dx / len, dy / len] : DIR_VEC[m.dir];
+    m.mv = sk.dashSteps;
+    m.mvx = (ux * sk.range) / sk.dashSteps;
+    m.mvy = (uy * sk.range) / sk.dashSteps;
+  }
+}
+
+export function step(m: Mover, input: MoveInput, c: Collider): void {
+  if (m.rollCd > 0) m.rollCd--;
+  if (m.ifr > 0) m.ifr--;
+  if (m.aim > 0) m.aim--;
+  const forced = m.mv > 0;
+  const free = !forced && m.lock === 0 && !m.root;
+  if (m.lock > 0) m.lock--;
+  const mx = free ? Math.sign(input.mx) : 0;
+  const my = free ? Math.sign(input.my) : 0;
   const moving = mx !== 0 || my !== 0;
   const running = moving && input.run && !m.exhausted && m.stamina > 0;
 
   // 스태미나 (§6-3)
   if (running) {
-    m.stamina = Math.max(0, m.stamina - (STAMINA.runPerSec * (SIM_MS / 1000) * 100) / (100 + stats.endurance));
+    m.stamina = Math.max(0, m.stamina - (STAMINA.runPerSec * (SIM_MS / 1000) * 100) / (100 + m.endu));
     m.restMs = 0;
     if (m.stamina === 0) m.exhausted = true;
   } else {
@@ -66,18 +155,18 @@ export function step(m: Mover, input: MoveInput, stats: MoveStats, c: Collider):
     if (m.exhausted && m.stamina >= m.staminaMax * STAMINA.recoverPct) m.exhausted = false;
   }
 
-  m.moving = moving;
+  m.moving = moving || forced;
   m.running = running;
+  if (forced) {
+    m.mv--;
+    slide(m, c, m.mvx, m.mvy);
+    return;
+  }
   if (!moving) return;
 
-  m.dir = dir8(mx, my);
-  const speed = Math.min(stats.moveSpeed, MOVE.speedCap) * (running ? MOVE.runMul : 1) * (m.exhausted ? MOVE.exhaustedMul : 1);
+  if (m.aim === 0) m.dir = dir8(mx, my);
+  const speed = Math.min(m.spd, MOVE.speedCap) * (running ? MOVE.runMul : 1) * (m.exhausted ? MOVE.exhaustedMul : 1);
   let dist = (speed / 100) * MOVE.pxPerSecAt100 * (SIM_MS / 1000);
   if (mx !== 0 && my !== 0) dist *= Math.SQRT1_2;
-
-  // 축을 나눠 움직여 벽을 따라 미끄러지게 합니다
-  const nx = m.x + mx * dist;
-  if (!blocked(c, nx, m.y)) m.x = nx;
-  const ny = m.y + my * dist;
-  if (!blocked(c, m.x, ny)) m.y = ny;
+  slide(m, c, mx * dist, my * dist);
 }

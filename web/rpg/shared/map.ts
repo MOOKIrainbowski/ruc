@@ -55,3 +55,12 @@ export function loadMap(json: TiledMap): GameMap {
 }
 
 export const prop = (o: TiledObject, name: string) => o.properties?.find((p) => p.name === name)?.value;
+
+/** 오브젝트 그림 영역(발밑 기준 위로 height)까지의 거리 — 상호작용(F) 판정 */
+export function distToObj(o: TiledObject, x: number, y: number) {
+  const dx = Math.max(o.x - o.width / 2 - x, 0, x - (o.x + o.width / 2));
+  const dy = Math.max(o.y - o.height - y, 0, y - o.y);
+  return Math.sqrt(dx * dx + dy * dy);
+}
+/** 상호작용 거리 (px) */
+export const USE_RANGE = 24;

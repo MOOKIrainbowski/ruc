@@ -16,11 +16,12 @@ export const APPRENTICE: Outfit = {
   shoe: "#4a3428",
 };
 
-export const ACTIONS = ["idle", "walk", "run"] as const;
+/** 구르기 · 사망 · 피격은 시트 없이 스프라이트 회전 · 색으로 (game.ts) */
+export const ACTIONS = ["idle", "walk", "run", "attack", "cast"] as const;
 export type Action = (typeof ACTIONS)[number];
 export const FRAMES = 4;
-/** 동작별 재생 속도 (§8-2: 걷기 8fps · 달리기 12fps) */
-export const ACTION_FPS: Record<Action, number> = { idle: 3, walk: 8, run: 12 };
+/** 동작별 재생 속도 (§8-2: 걷기 8fps · 달리기 12fps, 공격은 공속 비례 — game.ts 가 배속) */
+export const ACTION_FPS: Record<Action, number> = { idle: 3, walk: 8, run: 12, attack: 12, cast: 8 };
 
 const BLUSH = "#f2a0a0";
 const MOUTH = "#b8505a";
@@ -33,8 +34,9 @@ function paint(view: number, action: Action, f: number, ap: Appearance, o: Outfi
   const skin = SKINS[ap.skin];
   const hair = HAIR_COLORS[ap.hairColor];
   const eye = EYES[ap.eyes];
-  const cyc = action === "idle" ? 0 : [0, 1, 0, -1][f] * (action === "run" ? 2 : 1);
-  const b = action === "idle" ? (f >= 2 ? 1 : 0) : f % 2 ? (action === "run" ? -2 : -1) : 0;
+  const still = action === "idle" || action === "attack" || action === "cast";
+  const cyc = still ? 0 : [0, 1, 0, -1][f] * (action === "run" ? 2 : 1);
+  const b = action === "idle" ? (f >= 2 ? 1 : 0) : still ? 0 : f % 2 ? (action === "run" ? -2 : -1) : 0;
   const lean = action === "run" && view === 2 ? 1 : 0;
   const front = view <= 1;
   const side = view === 2;
@@ -76,7 +78,8 @@ function paint(view: number, action: Action, f: number, ap: Appearance, o: Outfi
   p.part(tx, 39 + b, tw, 11 - b, sh);
   p.rect(tx, 48, tw, 1, o.pants[2]); // 허리띠
   if (front) p.rect(view === 1 ? 23 : 22, 39 + b, 4, 2, skin[1]); // 목깃
-  if (side) arm(24 + cyc + lean, 0);
+  if (action === "attack" || action === "cast") pose(p, view, action, f, sh, skin);
+  else if (side) arm(24 + cyc + lean, 0);
   else {
     const a = Math.sign(cyc);
     arm(view === 1 ? 15 : 14, a);
@@ -134,7 +137,36 @@ function paint(view: number, action: Action, f: number, ap: Appearance, o: Outfi
   return p;
 }
 
-/** 외형 하나의 전체 시트 (576 × 512) */
+/** 공격(주먹 뻗기) · 시전(두 팔 들기) 팔 모양. 프레임: 0 준비 · 1~2 뻗음 · 3 회수 */
+function pose(p: Px, view: number, action: "attack" | "cast", f: number, sh: C3, skin: readonly string[]) {
+  const ext = f === 1 || f === 2;
+  const hand = (x: number, y: number, w = 3, h = 3) => p.rect(x, y, w, h, skin[1]);
+  if (action === "cast") {
+    const up = ext ? 0 : 4;
+    if (view === 2) { p.part(25, 31 + up, 3, 10 - up, sh); hand(25, 28 + up); if (ext) p.set(26, 26, "#ffffff"); return; }
+    p.part(10, 30 + up, 3, 11 - up, sh); hand(10, 27 + up);
+    p.part(35, 30 + up, 3, 11 - up, sh); hand(35, 27 + up);
+    if (ext && view <= 1) { p.set(11, 25, "#ffffff"); p.set(36, 25, "#ffffff"); }
+    return;
+  }
+  switch (view) {
+    case 2: // 옆: 앞팔을 앞으로 쭉
+      if (ext) { p.part(26, 41, f === 1 ? 7 : 9, 3, sh); hand(f === 1 ? 33 : 35, 40, 3, 4); }
+      else { p.part(f === 0 ? 21 : 24, 40, 3, 7, sh); hand(f === 0 ? 21 : 24, 47, 3, 2); }
+      break;
+    case 0: // 정면: 오른팔이 화면 쪽으로
+    case 1:
+      p.part(view === 1 ? 15 : 14, 40, 3, 7, sh); hand(view === 1 ? 15 : 14, 47, 3, 2);
+      if (ext) { p.part(view === 1 ? 31 : 30, 42, 4, 5, sh); hand(view === 1 ? 31 : 30, 47, 5, 4); }
+      else p.part(31, f === 0 ? 38 : 40, 3, 7, sh);
+      break;
+    default: // 뒤 · 뒤 사선: 팔이 화면 안쪽으로 짧아짐
+      p.part(14, 40, 3, 7, sh);
+      p.part(view === 3 ? 32 : 31, ext ? 37 : 40, 3, ext ? 5 : 7, sh);
+  }
+}
+
+/** 외형 하나의 전체 시트 (960 × 512) */
 export function characterSheet(ap: Appearance, outfit: Outfit = APPRENTICE): HTMLCanvasElement {
   const cols = ACTIONS.length * FRAMES;
   const sheet = new Px(CHAR_W * cols, CHAR_H * 8);

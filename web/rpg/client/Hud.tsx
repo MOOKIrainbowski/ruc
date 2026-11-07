@@ -29,7 +29,7 @@ function drawMap(ctx: CanvasRenderingContext2D, overview: HTMLCanvasElement, map
     ctx.fillRect(Math.round(px - r), Math.round(py - r), r * 2, r * 2);
   };
   for (const o of map.objects) if (OBJ_DOT[o.type]) dot(o.x, o.y - 4, o.type === "portal" ? 3 : 2, OBJ_DOT[o.type]);
-  for (const o of s.others) dot(o.x, o.y, 2, "#8fdcff");
+  for (const o of s.others) dot(o.x, o.y, o.mob ? 1 : 2, o.mob ? "#E5484D" : "#8fdcff");
   // 나: 바라보는 쪽으로 삼각형
   const [mx, my] = at(s.x, s.y);
   const a = ((90 - s.dir * 45) * Math.PI) / 180;
@@ -65,9 +65,9 @@ export function Minimap({ map, overview, hud, size, onOpenFull }: { map: GameMap
   );
 }
 
-export function WorldMap({ map, overview, hud, onClose }: { map: GameMap; overview: HTMLCanvasElement; hud: HudState; onClose: () => void }) {
+export function WorldMap({ map, overview, hud, title, onClose }: { map: GameMap; overview: HTMLCanvasElement; hud: HudState; title: string; onClose: () => void }) {
   const ref = useRef<HTMLCanvasElement>(null);
-  const size = 576;
+  const size = Math.max(map.w, map.h) * 6;
   useEffect(() => {
     const ctx = ref.current?.getContext("2d");
     if (ctx) drawMap(ctx, overview, map, hud, size, map.w, true);
@@ -76,7 +76,7 @@ export function WorldMap({ map, overview, hud, onClose }: { map: GameMap; overvi
     <div className="rpg-modal-bg" onClick={onClose}>
       <div className="rpg-panel relative p-4" onClick={(e) => e.stopPropagation()}>
         <button className="rpg-x" onClick={onClose} aria-label={t("hud.close")}>✕</button>
-        <h2 className="mb-2 text-base font-bold">{t("hud.full")} — 햇살광장 솔라스</h2>
+        <h2 className="mb-2 text-base font-bold">{t("hud.full")} — {title}</h2>
         <canvas ref={ref} width={size} height={size} className="rpg-pixel block" />
       </div>
     </div>

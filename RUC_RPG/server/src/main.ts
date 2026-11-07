@@ -2,15 +2,17 @@ import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
 import { baseStats, validNickname } from "../../../web/rpg/shared/character.ts";
-import { INPUT_QUEUE_MAX, TICK_MS, WS_PORT } from "../../../web/rpg/shared/constants.ts";
+import { INPUT_QUEUE_MAX, TICK_MS, WS_PORT, type RoomKind } from "../../../web/rpg/shared/constants.ts";
 import { validAppearance } from "../../../web/rpg/shared/data/appearance.ts";
-import { ELEMENTS } from "../../../web/rpg/shared/data/elements.ts";
-import { loadMap, type TiledMap } from "../../../web/rpg/shared/map.ts";
-import { blocked, type Mover } from "../../../web/rpg/shared/movement.ts";
+import { ELEMENTS, type ElementId } from "../../../web/rpg/shared/data/elements.ts";
+import { SLOTS, type Slot } from "../../../web/rpg/shared/data/skills.ts";
+import { USE_RANGE, distToObj, loadMap, prop, type GameMap, type TiledMap } from "../../../web/rpg/shared/map.ts";
+import { blocked, newMover } from "../../../web/rpg/shared/movement.ts";
 import type { C2S, S2C } from "../../../web/rpg/shared/protocol.ts";
 import { DEV_TICKET_SECRET, verifyTicket, type Ticket } from "../../../web/rpg/shared/ticket.ts";
+import { fxRows, makeUnit, recalc } from "./combat.ts";
 import { createCharacter, findCharacter, savePosition, saveSettings, type CharacterRow } from "./db.ts";
-import { Channels, info, send, type Player } from "./room.ts";
+import { Channels, info, newId, playerSlots, send, type Player } from "./room.ts";
 
 const DEV = process.argv.includes("--dev");
 const SECRET = process.env.RPG_TICKET_SECRET?.trim() || (DEV ? DEV_TICKET_SECRET : "");
@@ -21,50 +23,128 @@ if (!SECRET) {
 const PORT = Number(process.env.PORT) || WS_PORT;
 const ORIGINS = (process.env.RPG_ALLOWED_ORIGINS || "http://localhost:3000,https://ruc-server.vercel.app").split(",").map((s) => s.trim());
 
-const plazaMap = loadMap(JSON.parse(readFileSync(new URL("../../../web/rpg/shared/data/maps/plaza.json", import.meta.url), "utf8")) as TiledMap);
-const plaza = new Channels("plaza", plazaMap);
+const mapFile = (name: string) => loadMap(JSON.parse(readFileSync(new URL(`../../../web/rpg/shared/data/maps/${name}.json`, import.meta.url), "utf8")) as TiledMap);
+const maps: Record<RoomKind, GameMap> = { plaza: mapFile("plaza"), field: mapFile("field") };
+const worlds: Record<RoomKind, Channels> = { plaza: new Channels("plaza", maps.plaza), field: new Channels("field", maps.field) };
 
 const online = new Map<string, Player>(); // 디스코드 ID → 접속 중인 플레이어
-let nextId = 1;
 
-function makePlayer(ws: WebSocket, t: Ticket, char: CharacterRow): Player {
+/** 저장된 맵 · 위치 · HP 로 플레이어를 만듦. kind = 들어갈 맵 */
+function makePlayer(ws: WebSocket, t: Ticket, char: CharacterRow): { p: Player; kind: RoomKind } {
   const s = baseStats(char.level);
-  const pos = char.position?.map === "plaza" && !blocked(plazaMap.collider, char.position.x, char.position.y) ? char.position : plazaMap.spawn;
-  const mover: Mover = { x: pos.x, y: pos.y, dir: 0, stamina: s.stamina, staminaMax: s.stamina, restMs: 0, exhausted: false, moving: false, running: false };
-  return { id: nextId++, ws, discordId: t.sub, char, mover, ms: { moveSpeed: s.moveSpeed, endurance: s.endurance }, inputs: [], credits: 0, lastSeq: -1, room: null };
+  const saved = char.position;
+  const kind: RoomKind = saved && saved.map in maps && !blocked(maps[saved.map as RoomKind].collider, saved.x, saved.y) ? (saved.map as RoomKind) : "plaza";
+  const pos = kind === saved?.map ? saved : maps.plaza.spawn;
+  const u = makeUnit({ id: newId(), kind: "p", name: char.nickname, el: char.element as ElementId, lv: char.level, x: pos.x, y: pos.y, r: 7, base: s, mover: newMover(pos.x, pos.y, s) });
+  if (saved?.hp && saved.hp > 0) {
+    u.hp = Math.min(saved.hp, u.st.hp);
+    u.mp = Math.min(saved.mp ?? u.mp, u.st.mana);
+    u.en = Math.min(saved.en ?? u.en, u.st.energy);
+  }
+  const p = Object.assign(u, {
+    kind: "p" as const, mover: u.mover!, ws, discordId: t.sub, char, inputs: [], credits: 0, lastSeq: -1, steps: 0, cd: {}, slots: playerSlots(), rtt: 0,
+    room: null, out: [], respawnAt: 0, statsSent: "",
+  });
+  return { p, kind };
 }
 
-function join(p: Player, ch?: number) {
-  const room = (ch && plaza.get(ch)) || plaza.pick();
-  if (room.full) return send(p, { t: "error", msg: "그 채널은 가득 찼습니다" });
-  if (p.room) p.room.remove(p);
+function join(p: Player, kind: RoomKind, ch?: number) {
+  const w = worlds[kind];
+  const prev = p.room;
+  if (ch) {
+    const t = w.get(ch);
+    if (!t || (t !== prev && t.full)) return send(p, { t: "error", msg: "그 채널은 가득 찼습니다" });
+  }
+  // 먼저 나간 뒤 고름 — 혼자 있던 채널이 trim 으로 닫혀도 닫힌 방에 들어가지 않게, 같은 맵 안 이동은 같은 채널 유지
+  if (prev) {
+    prev.remove(p);
+    worlds[prev.kind].trim();
+  }
+  const room = (ch && w.get(ch)) || (prev?.kind === kind && w.rooms.includes(prev) ? prev : w.pick());
   p.inputs = [];
   room.add(p);
+  const others = [...room.players.values(), ...room.mobs.values()].filter((u) => u !== p && !u.dead);
+  p.statsSent = JSON.stringify(p.st);
+  p.statsDirty = false;
   send(p, {
     t: "joined",
     you: {
       id: p.id, nickname: p.char.nickname, level: p.char.level, exp: p.char.exp, element: p.char.element, appearance: p.char.appearance,
-      ruc: 0, kda: [0, 0, 0], settings: p.char.settings, ms: p.ms,
+      ruc: 0, kda: [0, 0, 0], settings: p.char.settings, slots: p.slots,
     },
     room: { kind: room.kind, ch: room.ch },
     me: p.mover,
-    players: [...room.players.values()].filter((o) => o !== p).map(info),
-    channels: plaza.list(),
+    ents: others.map(info),
+    fx: [p, ...others].filter((u) => u.fx.length).map((u) => [u.id, fxRows(room, u)]),
+    channels: w.list(),
+    stats: p.st,
   });
+}
+
+/** 다른 맵(또는 같은 맵 다른 곳)으로 */
+function travel(p: Player, kind: RoomKind, x: number, y: number) {
+  const m = p.mover;
+  m.x = p.x = x;
+  m.y = p.y = y;
+  m.mv = m.lock = m.aim = 0;
+  join(p, kind);
+}
+
+function save(p: Player) {
+  if (!p.room) return;
+  if (p.dead) savePosition(p.char.id, { map: "plaza", ...maps.plaza.spawn });
+  else savePosition(p.char.id, { map: p.room.kind, x: p.x, y: p.y, hp: Math.round(p.hp), mp: Math.round(p.mp), en: Math.round(p.en) });
 }
 
 function leave(p: Player) {
   if (online.get(p.discordId) === p) online.delete(p.discordId);
   if (p.room) {
-    savePosition(p.char.id, { map: "plaza", x: p.mover.x, y: p.mover.y });
+    save(p);
+    const kind = p.room.kind;
     p.room.remove(p);
-    plaza.trim();
+    worlds[kind].trim();
   }
+}
+
+/** 광장 부활 (§13-4): 5초 뒤, 완전 회복. 경험치 손실은 쓰러질 때 이미 적용 */
+function respawn(p: Player) {
+  p.dead = false;
+  p.respawnAt = 0;
+  p.fx = [];
+  p.fxDirty = true;
+  recalc(p);
+  p.hp = p.st.hp;
+  p.mp = p.st.mana;
+  p.en = p.st.energy;
+  p.mover.stamina = p.mover.staminaMax;
+  p.mover.exhausted = false;
+  travel(p, "plaza", maps.plaza.spawn.x, maps.plaza.spawn.y);
+}
+
+/** 포털이 이어지는 곳: 도착 맵에서 출발 맵으로 가는 포털의 ax · ay (없으면 포털 아래) */
+function arrival(to: RoomKind, from: RoomKind) {
+  const o = maps[to].objects.find((x) => x.type === "portal" && prop(x, "target") === from);
+  if (!o) return maps[to].spawn;
+  return { x: Number(prop(o, "ax") ?? o.x), y: Number(prop(o, "ay") ?? o.y + 24) };
+}
+
+function use(p: Player, oid: number) {
+  const room = p.room;
+  const o = room?.map.objects.find((x) => x.id === oid);
+  if (!room || !o || p.dead) return;
+  if (distToObj(o, p.x, p.y) > USE_RANGE + 8) return send(p, { t: "error", msg: "조금 더 가까이 가세요" });
+  if (o.type === "portal") {
+    const target = String(prop(o, "target"));
+    if (!(target in maps)) return send(p, { t: "error", msg: `「${o.name}」은 아직 준비 중입니다 (던전 · 결투장은 P7)` });
+    const a = arrival(target as RoomKind, room.kind);
+    return travel(p, target as RoomKind, a.x, a.y);
+  }
+  if (o.type === "npc") return send(p, { t: "error", msg: `${o.name}: "조금만 기다려 줘요! 곧 이야기 나눌 수 있어요."` });
 }
 
 const http = createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ ok: true, online: online.size, channels: plaza.list() }));
+  res.end(JSON.stringify({ ok: true, online: online.size, plaza: worlds.plaza.list(), field: worlds.field.list() }));
 });
 const wss = new WebSocketServer({ server: http, maxPayload: 8 * 1024 });
 
@@ -99,9 +179,10 @@ wss.on("connection", (ws, req) => {
       if (old) { send(old, { t: "kicked", reason: "dup" }); leave(old); old.ws.close(); }
       const char = findCharacter(ticket.sub);
       if (!char) return reply({ t: "needCreate", defaultName: ticket.name.replace(/[^가-힣a-zA-Z0-9_]/g, "").slice(0, 12) });
-      player = makePlayer(ws, ticket, char);
+      const made = makePlayer(ws, ticket, char);
+      player = made.p;
       online.set(ticket.sub, player);
-      return join(player);
+      return join(player, made.kind);
     }
     if (!ticket) return;
 
@@ -110,21 +191,27 @@ wss.on("connection", (ws, req) => {
       if (!validAppearance(m.appearance) || !(m.element in ELEMENTS)) return reply({ t: "createError", msg: "외형 또는 속성이 올바르지 않습니다" });
       const char = findCharacter(ticket.sub) || createCharacter(ticket.sub, m.nickname, m.element, m.appearance);
       if (!char) return reply({ t: "createError", msg: "이미 쓰는 닉네임입니다" });
-      player = makePlayer(ws, ticket, char);
+      player = makePlayer(ws, ticket, char).p;
       online.set(ticket.sub, player);
-      return join(player);
+      return join(player, "plaza");
     }
     if (!player) return;
 
     switch (m.t) {
       case "in": {
         const seq = Number(m.seq);
-        if (!Number.isInteger(seq) || seq <= player.lastSeq) return;
+        const last = player.inputs.length ? player.inputs[player.inputs.length - 1].seq : player.lastSeq;
+        if (!Number.isInteger(seq) || seq <= last) return;
         if (player.inputs.length >= INPUT_QUEUE_MAX) return; // 너무 빨리 보내는 입력은 버림 (D9)
-        player.inputs.push({ seq, mx: Math.sign(Number(m.mx)) || 0, my: Math.sign(Number(m.my)) || 0, run: m.run === true });
+        const k = SLOTS.includes(m.k as Slot) ? (m.k as Slot) : undefined;
+        player.inputs.push({
+          seq, mx: Math.sign(Number(m.mx)) || 0, my: Math.sign(Number(m.my)) || 0, run: m.run === true,
+          dg: m.dg === 1 ? 1 : undefined, k, ax: k ? Math.round(Number(m.ax)) : undefined, ay: k ? Math.round(Number(m.ay)) : undefined,
+        });
         return;
       }
       case "ping":
+        player.rtt = Math.max(0, Math.min(1000, Number(m.r) || 0));
         return reply({ t: "pong", c: Number(m.c) || 0 });
       case "settings":
         if (m.data && typeof m.data === "object" && JSON.stringify(m.data).length < 4000) {
@@ -133,8 +220,17 @@ wss.on("connection", (ws, req) => {
         }
         return;
       case "channel":
-        if (player.room?.ch !== m.ch) join(player, Number(m.ch));
+        if (player.room && player.room.ch !== m.ch && !player.dead) join(player, player.room.kind, Number(m.ch));
         return;
+      case "use":
+        return use(player, Number(m.oid));
+      case "dev": {
+        const map = maps[m.map];
+        const x = Number(m.x);
+        const y = Number(m.y);
+        if (DEV && map && !blocked(map.collider, x, y)) travel(player, m.map, x, y);
+        return;
+      }
     }
   });
 
@@ -149,12 +245,13 @@ let next = performance.now();
 let tickCount = 0;
 function loop() {
   const now = Date.now();
-  for (const r of plaza.rooms) r.tick(now);
+  for (const w of Object.values(worlds)) for (const r of w.rooms) r.tick(now);
+  for (const p of online.values()) if (p.respawnAt && now >= p.respawnAt) respawn(p);
   if (++tickCount % 40 === 0) {
-    const list = plaza.list();
-    for (const p of online.values()) send(p, { t: "channels", list });
+    const lists = { plaza: worlds.plaza.list(), field: worlds.field.list() };
+    for (const p of online.values()) if (p.room) send(p, { t: "channels", list: lists[p.room.kind] });
   }
-  if (tickCount % 600 === 0) for (const p of online.values()) if (p.room) savePosition(p.char.id, { map: "plaza", x: p.mover.x, y: p.mover.y });
+  if (tickCount % 600 === 0) for (const p of online.values()) save(p);
   next += TICK_MS;
   setTimeout(loop, Math.max(0, next - performance.now()));
 }

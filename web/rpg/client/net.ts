@@ -5,6 +5,8 @@ import type { C2S, S2C } from "../shared/protocol";
 export class Net {
   ws: WebSocket | null = null;
   rtt = 0;
+  /** 입력 순번 — 맵 · 채널을 옮겨도 이어짐 (서버 lastSeq 와 맞춤, DECISIONS D12) */
+  seq = 0;
   private samples: number[] = [];
   private pingTimer = 0;
   onMessage: (m: S2C) => void = () => {};
@@ -35,7 +37,7 @@ export class Net {
       this.onClose(e.code);
     };
     this.send({ t: "hello", ticket });
-    const ping = () => this.send({ t: "ping", c: performance.now() });
+    const ping = () => this.send({ t: "ping", c: performance.now(), r: this.rtt });
     ping();
     this.pingTimer = window.setInterval(ping, 2000);
   }

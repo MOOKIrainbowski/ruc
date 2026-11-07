@@ -3,56 +3,16 @@
  * 실행: node RUC_RPG/scripts/gen-plaza.ts
  * 한 번 만든 뒤 Tiled 에디터로 고쳐도 됩니다 — 다시 돌리면 덮어쓰니 그때는 이 스크립트를 쓰지 마세요.
  */
-import { writeFileSync } from "node:fs";
 import { TILE } from "../../web/rpg/shared/constants.ts";
-import { MAP_LAYERS, TILE_NAMES, gid, type MapLayer, type TileName } from "../../web/rpg/shared/tiles.ts";
-import type { TiledObject } from "../../web/rpg/shared/map.ts";
+import { mapKit } from "./mapkit.ts";
 
-const W = 96;
-const H = 96;
-const layers = Object.fromEntries(MAP_LAYERS.map((n) => [n, new Array<number>(W * H).fill(0)])) as Record<MapLayer, number[]>;
-const used = new Uint8Array(W * H); // 오브젝트 · 길이 차지한 칸 (나무를 심지 않음)
-const objects: TiledObject[] = [];
-
-let seed = 20261107;
-const rand = () => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32);
-
-function fill(layer: MapLayer, name: TileName | 0, x0: number, y0: number, w: number, h: number) {
-  for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) {
-    if (x < 0 || y < 0 || x >= W || y >= H) continue;
-    layers[layer][y * W + x] = name === 0 ? 0 : gid(name);
-  }
-}
-const solid = (x: number, y: number, w: number, h: number) => fill("collision", "solid", x, y, w, h);
-const clear = (x: number, y: number, w: number, h: number) => fill("collision", 0, x, y, w, h);
-function reserve(x0: number, y0: number, w: number, h: number) {
-  for (let y = y0; y < y0 + h; y++) for (let x = x0; x < x0 + w; x++) if (x >= 0 && y >= 0 && x < W && y < H) used[y * W + x] = 1;
-}
-
-/** 오브젝트 — 칸 (tx, ty) 부터 w×h. 좌표는 발밑 중심 px. foot = 아래에서부터 막는 줄 수 */
-function obj(type: string, name: string, tx: number, ty: number, w: number, h: number, foot = h, props: Record<string, string | number> = {}) {
-  objects.push({
-    id: objects.length + 1,
-    name,
-    type,
-    x: (tx + w / 2) * TILE,
-    y: (ty + h) * TILE,
-    width: w * TILE,
-    height: h * TILE,
-    properties: Object.entries(props).map(([k, v]) => ({ name: k, type: typeof v === "number" ? "int" : "string", value: v })),
-  });
-  if (foot > 0) solid(tx, ty + h - foot, w, foot);
-  reserve(tx - 1, ty - 1, w + 2, h + 2);
-}
+const { W, H, rand, fill, solid, clear, reserve, obj, objects, hedgeBorder, trees, write } = mapKit(96, 96, 20261107);
 
 // ── 바닥: 잔디 + 얼룩 ─────────────────────────────────────────────
 fill("ground", "grass", 0, 0, W, H);
 for (let i = 0; i < 260; i++) fill("ground", "grass_dark", Math.floor(rand() * W), Math.floor(rand() * H), 1 + Math.floor(rand() * 3), 1 + Math.floor(rand() * 2));
 
-// 가장자리 산울타리
-fill("decor_below", "hedge", 0, 0, W, 2); fill("decor_below", "hedge", 0, H - 2, W, 2);
-fill("decor_below", "hedge", 0, 0, 2, H); fill("decor_below", "hedge", W - 2, 0, 2, H);
-solid(0, 0, W, 2); solid(0, H - 2, W, 2); solid(0, 0, 2, H); solid(W - 2, 0, 2, H);
+hedgeBorder();
 
 // ── 도랑 (사각형, 폭 3) + 돌 테두리 ─────────────────────────────────
 const M = { x0: 14, y0: 22, x1: 81, y1: 73 }; // 바깥 경계 (포함)
@@ -113,7 +73,7 @@ obj("board", "퀘스트 게시판", 37, 80, 3, 2, 1);
 obj("npc", "루미", 55, 80, 1, 1, 1, { npc: "lumi", role: "안내원" });
 obj("workbench", "연금술 작업대", 64, 80, 3, 2, 1);
 obj("npc", "미르", 68, 81, 1, 1, 1, { npc: "mir", role: "연금술사" });
-obj("portal", "햇살 초원", CX, 90, 4, 4, 0, { target: "field" });
+obj("portal", "햇살 초원", CX, 90, 4, 4, 0, { target: "field", ax: (CX + 2) * TILE, ay: 88 * TILE }); // ax · ay = 필드에서 돌아올 때 도착 지점
 
 // ── 동쪽: 결투장 포털 / 서쪽 끝 전망대 ─────────────────────────────────
 obj("portal", "결투장", 90, CY, 4, 4, 0, { target: "arena" });
@@ -123,31 +83,5 @@ obj("sign", "솔라스 전망대", 4, CY - 2, 1, 1, 1);
 objects.push({ id: objects.length + 1, name: "spawn", type: "spawn", x: 48 * TILE, y: 63 * TILE, width: 0, height: 0 });
 
 // ── 나무: 빈 잔디에 흩뿌림 (줄기 1칸만 막음) ───────────────────────────
-for (let tries = 0; tries < 2500; tries++) {
-  const x = 2 + Math.floor(rand() * (W - 6));
-  const y = 4 + Math.floor(rand() * (H - 8));
-  let free = true;
-  for (let yy = y - 3; yy <= y + 1 && free; yy++) for (let xx = x - 1; xx <= x + 2; xx++) if (used[yy * W + xx]) { free = false; break; }
-  if (!free) continue;
-  obj("tree", "나무", x, y - 3, 2, 4, 0);
-  solid(x, y, 2, 1);
-}
-
-const json = {
-  type: "map", version: "1.10", tiledversion: "1.10.2", orientation: "orthogonal", renderorder: "right-down",
-  width: W, height: H, tilewidth: TILE, tileheight: TILE, infinite: false,
-  nextlayerid: MAP_LAYERS.length + 2, nextobjectid: objects.length + 1,
-  tilesets: [{
-    firstgid: 1, name: "ruc_tiles", tilewidth: TILE, tileheight: TILE, tilecount: TILE_NAMES.length, columns: TILE_NAMES.length,
-    image: "ruc_tiles.png", imagewidth: TILE * TILE_NAMES.length, imageheight: TILE,
-    tiles: TILE_NAMES.map((name, id) => ({ id, properties: [{ name: "name", type: "string", value: name }] })),
-  }],
-  layers: [
-    ...MAP_LAYERS.map((name, i) => ({ id: i + 1, type: "tilelayer", name, x: 0, y: 0, width: W, height: H, opacity: 1, visible: name !== "collision", data: layers[name] })),
-    { id: MAP_LAYERS.length + 1, type: "objectgroup", name: "objects", x: 0, y: 0, opacity: 1, visible: true, draworder: "topdown", objects },
-  ],
-};
-
-const out = new URL("../../web/rpg/shared/data/maps/plaza.json", import.meta.url);
-writeFileSync(out, JSON.stringify(json));
-console.log(`plaza.json — 오브젝트 ${objects.length}개`);
+trees(2500);
+write("plaza");

@@ -2,11 +2,12 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { spawn } from "node:child_process";
-import { rmSync } from "node:fs";
+import { readFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { WebSocket } from "ws";
 import { DEV_TICKET_SECRET, signTicket } from "../../../web/rpg/shared/ticket.ts";
 import type { S2C } from "../../../web/rpg/shared/protocol.ts";
+import { loadMap, prop, type TiledMap } from "../../../web/rpg/shared/map.ts";
 
 const PORT = 25000 + Math.floor(Math.random() * 1000);
 const DB = `test-${PORT}.sqlite`;
@@ -61,7 +62,7 @@ test("두 명이 접속해 서로의 이동을 봄", async () => {
   await b.until((m) => m.t === "createError" && m.msg.includes("이미"));
   b.send({ t: "create", nickname: "베타", appearance: ap, element: "ice" });
   const jb = await b.until<Extract<S2C, { t: "joined" }>>((m) => m.t === "joined");
-  assert.deepEqual(jb.players.map((p) => p.name), ["알파"]);
+  assert.deepEqual(jb.ents.map((p) => p.name), ["알파"]);
   await a.until((m) => m.t === "spawn" && m.e.name === "베타");
 
   // A 가 오른쪽으로 30스텝 (0.5초) → B 의 스냅샷에서 A 가 약 32px 이동
@@ -85,4 +86,38 @@ test("위조 티켓은 끊김", async () => {
   const c = client("C", "wrong-secret");
   await c.open;
   await c.until((m) => m.t === "kicked" && m.reason === "auth");
+});
+
+test("광장은 안전지대 → 포털로 필드 이동 → 마력 화살 발사", async () => {
+  const c = client("D");
+  await c.open;
+  await c.until((m) => m.t === "needCreate");
+  c.send({ t: "create", nickname: "델타", appearance: ap, element: "water" });
+  await c.until((m) => m.t === "joined");
+  c.send({ t: "in", seq: 0, mx: 0, my: 0, run: false, k: "Q", ax: 0, ay: 0 });
+  const cf = await c.until<Extract<S2C, { t: "s" }>>((m) => m.t === "s" && !!m.pe?.some((e) => e[0] === "cf"));
+  assert.match(String(cf.pe!.find((e) => e[0] === "cf")![2]), /안전지대/);
+
+  const plaza = loadMap(JSON.parse(readFileSync(new URL("../../../web/rpg/shared/data/maps/plaza.json", import.meta.url), "utf8")) as TiledMap);
+  const portal = plaza.objects.find((o) => o.type === "portal" && prop(o, "target") === "field")!;
+  c.send({ t: "use", oid: portal.id });
+  await c.until((m) => m.t === "error" && m.msg.includes("가까이"));
+  c.send({ t: "dev", map: "plaza", x: portal.x, y: portal.y - 8 });
+  await c.until((m) => m.t === "joined" && m.room.kind === "plaza" && Math.abs(m.me.y - portal.y + 8) < 1);
+  c.send({ t: "use", oid: portal.id });
+  const jf = await c.until<Extract<S2C, { t: "joined" }>>((m) => m.t === "joined" && m.room.kind === "field");
+  assert.ok(jf.ents.some((e) => e.mob === "slime"), "필드에 슬라임");
+  c.send({ t: "in", seq: 1, mx: 0, my: 0, run: false, k: "Q", ax: Math.round(jf.me.x), ay: Math.round(jf.me.y) + 100 });
+  const s = await c.until<Extract<S2C, { t: "s" }>>((m) => m.t === "s" && !!m.ev?.some((e) => e[0] === "p" && e[2] === jf.you.id));
+  const p = s.ev!.find((e) => e[0] === "p")!;
+  assert.equal(p[3], "magic_arrow");
+  assert.equal(p[10], 1, "예측과 맞출 입력 seq");
+  // 같은 맵 안 이동: 같은 채널에 남고 스냅샷(몹 포함)이 계속 옴
+  c.send({ t: "dev", map: "field", x: Math.round(jf.me.x), y: Math.round(jf.me.y) + 32 });
+  const j2 = await c.until<Extract<S2C, { t: "joined" }>>((m) => m.t === "joined" && m.room.kind === "field" && m !== jf);
+  assert.equal(j2.room.ch, jf.room.ch);
+  const mobIds = new Set(j2.ents.filter((e) => e.mob).map((e) => e.id));
+  const n = c.inbox.length;
+  await c.until((m) => c.inbox.indexOf(m) >= n && m.t === "s" && m.e.some((r) => mobIds.has(r[0])));
+  c.ws.close();
 });
