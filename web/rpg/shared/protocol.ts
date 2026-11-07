@@ -1,6 +1,7 @@
 import type { FullStats } from "./combat.ts";
 import type { RoomKind } from "./constants.ts";
 import type { Appearance } from "./data/appearance.ts";
+import type { Price } from "./data/economy.ts";
 import type { Item, ItemPos, Rarity } from "./data/items.ts";
 import type { ElementId } from "./data/elements.ts";
 import type { LineId } from "./data/jobs.ts";
@@ -60,6 +61,7 @@ export const H_COUNTER = 64;
  *  ["get", 템플릿, 개수, 희귀도]                    주움
  *  ["du", 아이템 id, 내구도]                         내구도 바뀜
  *  ["sk", 스킬 id, 레벨, "learn" | "lv" | "grade"]  새로 배움 · 스킬 레벨업 · 등급 오름
+ *  ["ruc", 양]                                      몹 처치 RUC (베타 지갑)
  */
 export type Ev = (string | number | FxRow[] | string[])[];
 export type DropRow = ["dr", number, string, Rarity, number, number, number];
@@ -93,6 +95,14 @@ export type C2S =
   | { t: "job"; line?: LineId; job?: string; sub?: ElementId }
   /** 스킬 슬롯 장착 · 해제 (비전투 상태, §10-1) */
   | { t: "equip"; skill: string; slot: Slot | null }
+  /**
+   * 경제 (P5): 우편(mail · claim · claimAll) · 일반 상점(shop · buy) · 유저 상점(market · sell · mbuy · cancel) ·
+   * 대장간(enhance · enchant · repair) · 분해(disassemble) · 재조합(recombine). rid = 요청 id (같은 요청이 두 번 와도 한 번만)
+   */
+  | {
+      t: "econ"; op: string; id?: number; a?: ItemPos | "all"; b?: ItemPos; n?: number; cycle?: number; prices?: Price[]; opt?: number;
+      list?: ItemPos[]; blessed?: boolean; protect?: boolean; slot?: number; rid?: string;
+    }
   /** 아이템 (§15): 옮기기(n = 나눌 개수) · 사용/장착 · 버리기 · 정렬 */
   | { t: "item"; op: "move" | "use" | "drop" | "sort"; a?: ItemPos; b?: ItemPos; n?: number; loc?: "inventory" | "storage" }
   /** 개발 모드 전용: 순간이동 · 아이템 받기 */
@@ -110,6 +120,11 @@ export type S2C =
   | { t: "s"; st: number; ack: { seq: number; m: Mover }; v: Vitals; e: EntityRow[]; ev?: Ev[]; pe?: Ev[] }
   | { t: "stats"; s: FullStats }
   | { t: "inv"; items: Item[] }
+  /** 베타 지갑 잔액 · 서버 공지(+10 강화) · 알림(새 우편) · 경제 화면 데이터 */
+  | { t: "ruc"; ruc: number }
+  | { t: "notice"; text: string }
+  | { t: "notify"; kind: "mail"; n: number }
+  | { t: "econ"; view: "mail" | "shop" | "market" | "enhanced" | "recombined"; data: unknown }
   /** 성장 상태 (전직 · 스킬 · 숙련도) 바뀜 */
   | { t: "prog"; prog: Progress; slots: Partial<Record<Slot, string>> }
   | { t: "pong"; c: number }

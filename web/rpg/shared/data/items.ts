@@ -1,4 +1,5 @@
 import type { Mod, StatKey } from "../combat.ts";
+import type { ElementId } from "./elements.ts";
 import type { SkillGrade } from "../progress.ts";
 import { SKILLS } from "./skills.ts";
 
@@ -43,8 +44,16 @@ export const STACK = 64;
 export const POTION_CD_MS = 8000;
 
 export type Special = { id: string; v: number };
+/** 마법부여 · 강화 옵션 한 줄 (§16-1 · §16-2): 종류 · 수치 · (속성 방어면) 속성 */
+export type Ench = { k: string; v: number; el?: ElementId };
 /** 아이템 인스턴스 (§14-3). 장비는 1개짜리 고유 UUID, 소모품 · 재료는 한 칸에 64개까지 */
-export type Item = { id: string; tpl: string; loc: Loc; slot: number; qty: number; rarity: Rarity; enh: number; sp: Special[]; dur: number; durMax: number };
+export type Item = {
+  id: string; tpl: string; loc: Loc; slot: number; qty: number; rarity: Rarity; enh: number; sp: Special[]; dur: number; durMax: number;
+  /** 강화 옵션 · 마법부여 · +10 이름 (§16) */
+  opt?: Ench[]; ench?: Ench[]; name?: string;
+};
+/** DB 의 아이템 행 — 우편 · 유저 상점 에스크로에 있는 것도 (플레이어 목록 inv 에는 안 옴) */
+export type StoredItem = Omit<Item, "loc"> & { loc: Loc | "mail" | "escrow" };
 
 export type ItemKind = "weapon" | "armor" | "accessory" | "potion" | "material" | "book";
 export type Template = {
@@ -69,10 +78,16 @@ export type Template = {
   look?: [string, string, string] | string;
   /** 스킬북: 이 스킬을 배우거나 등급을 올림 */
   skill?: string;
+  /** 부가석: 마법부여 종류 (data/economy.ts ENCHANTS) */
+  enchant?: string;
+  /** 기본 가치 RUC (희귀도 배율 전) — 상점 가격 · 분해 환불 (§16-3) */
+  value?: number;
 };
 
-const potion = (name: string, icon: string, heal: Template["heal"], desc: string): Template => ({ name, kind: "potion", icon, lv: 1, heal, rarity: "common", desc });
-const mat = (name: string, icon: string, rarity: Rarity, desc: string): Template => ({ name, kind: "material", icon, lv: 1, rarity, desc });
+const potion = (name: string, icon: string, heal: Template["heal"], desc: string): Template =>
+  ({ name, kind: "potion", icon, lv: 1, heal, rarity: "common", desc, value: Math.round(((heal?.hp ?? 0) + ((heal?.mp ?? 0) + (heal?.en ?? 0)) * 2) / 16) });
+const mat = (name: string, icon: string, rarity: Rarity | undefined, desc: string, value: number, enchant?: string): Template =>
+  ({ name, kind: "material", icon, lv: 1, rarity, desc, value, enchant });
 
 export const ITEMS: Record<string, Template> = {
   // ── 무기 ──
@@ -110,17 +125,28 @@ export const ITEMS: Record<string, Template> = {
   en_potion_m: potion("기력 포션 (중)", "potion_en", { en: 100 }, "마시면 주먹이 불끈 쥐어진다."),
   en_potion_l: potion("기력 포션 (대)", "potion_en", { en: 220 }, "대장장이 볼트의 비밀 레시피."),
   // ── 재료 ──
-  slime_jelly: mat("슬라임 젤리", "jelly", "poor", "말랑말랑. 강화 재료로 쓰인다는 소문이 있다."),
-  rabbit_fluff: mat("토끼 솜털", "fluff", "poor", "손바닥 위에서 바람도 없이 둥실 떠오른다."),
-  goblin_coin: mat("고블린 동전", "coin", "common", "어느 나라 돈인지 아무도 모른다."),
-  wolf_pelt: mat("늑대 가죽", "pelt", "common", "덩굴 자국이 무늬처럼 남아 있다."),
-  enhance_stone: mat("강화석", "stone", "rare", "광장 대장간의 강화대에서 쓴다 (강화는 다음 업데이트)."),
+  slime_jelly: mat("슬라임 젤리", "jelly", "poor", "말랑말랑. 강화 재료로 쓰인다는 소문이 있다.", 2),
+  rabbit_fluff: mat("토끼 솜털", "fluff", "poor", "손바닥 위에서 바람도 없이 둥실 떠오른다.", 3),
+  goblin_coin: mat("고블린 동전", "coin", "common", "어느 나라 돈인지 아무도 모른다.", 4),
+  wolf_pelt: mat("늑대 가죽", "pelt", "common", "덩굴 자국이 무늬처럼 남아 있다.", 6),
+  enhance_stone: mat("강화석", "stone", "rare", "광장 대장간의 강화대에서 장비를 강화할 때 씁니다.", 15),
+  protect_scroll: mat("강화 보호 주문서", "scroll", "advanced", "강화가 파괴로 끝나도 실패(유지)로 바꿔 줍니다. 강화할 때 자동으로 한 장 씁니다.", 10),
+  blessed_stone: mat("축복 강화석", "stone", "mythic", "강화 성공률 +10%p (파괴율은 그대로). 강화할 때 고르면 한 개 씁니다.", 2),
+  // 부가석 (§16-2): 희귀도가 수치를 정함
+  ench_atk: mat("공격력 부가석", "gem", undefined, "마법부여: 공격력", 8, "atk"),
+  ench_ap: mat("주문력 부가석", "gem", undefined, "마법부여: 주문력", 8, "ap"),
+  ench_def: mat("방어 부가석", "gem", undefined, "마법부여: 물리 · 마법 방어력", 8, "def"),
+  ench_hp: mat("체력 부가석", "gem", undefined, "마법부여: 최대 체력", 8, "hp"),
+  ench_speed: mat("신속 부가석", "gem", undefined, "마법부여: 이동 속도", 10, "speed"),
+  ench_crit: mat("치명 부가석", "gem", undefined, "마법부여: 치명타 확률", 10, "crit"),
+  ench_eldef: mat("속성 방어 부가석", "gem", undefined, "마법부여: 속성 하나의 방어력 (속성은 부여할 때 정해짐)", 8, "eldef"),
+  ench_vamp: mat("흡혈 부가석", "gem", undefined, "마법부여: 흡혈", 12, "vamp"),
 };
 
 // 스킬북 (§10-3 습득 경로 · §10-4 등급): 스킬마다 한 종류, 희귀도가 등급을 정함
 for (const sk of Object.values(SKILLS))
   if (!sk.hidden && sk.slot !== "A")
-    ITEMS[`book_${sk.id}`] = { name: `스킬북: ${sk.name}`, kind: "book", icon: "book", lv: 1, skill: sk.id, desc: "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급." };
+    ITEMS[`book_${sk.id}`] = { name: `스킬북: ${sk.name}`, kind: "book", icon: "book", lv: 1, skill: sk.id, value: 30, desc: "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급." };
 export const BOOK_IDS = Object.keys(ITEMS).filter((id) => ITEMS[id].kind === "book");
 /** 스킬북 희귀도 → 스킬 등급: 하급 · 일반 = 하급, 희귀 · 고급 = 중급, 신화 = 상급, 전설 = 초월급 */
 export const bookGrade = (r: Rarity): SkillGrade => (r === "legendary" ? "trans" : r === "mythic" ? "high" : r === "rare" || r === "advanced" ? "mid" : "low");
@@ -172,11 +198,27 @@ export function durMaxOf(t: Template, r: Rarity, enh = 0) {
 export const working = (it: Item) => it.durMax === 0 || it.dur > 0;
 
 /** 장비 한 개의 스탯: 템플릿 × 희귀도 배율 × 강화(+6%/단계) + 스탯형 특수효과 */
+/**
+ * 마법부여 종류 (§16-2): range = 일반 희귀도 부가석의 수치 범위 (희귀도 배율은 data/economy.ts).
+ * 강화 옵션(§16-1)도 같은 종류를 쓰고 수치는 절반.
+ */
+export const ENCHANTS: Record<string, { name: string; range: [number, number]; mods: (v: number, el?: ElementId) => Mod[] }> = {
+  atk: { name: "공격력", range: [2, 4], mods: (v) => [{ k: "atk", add: v }] },
+  ap: { name: "주문력", range: [2, 4], mods: (v) => [{ k: "ap", add: v }] },
+  def: { name: "방어력", range: [2, 4], mods: (v) => [{ k: "pdef", add: v }, { k: "mdef", add: v }] },
+  hp: { name: "체력", range: [15, 30], mods: (v) => [{ k: "hp", add: v }] },
+  speed: { name: "이동 속도", range: [2, 4], mods: (v) => [{ k: "moveSpeed", add: v }] },
+  crit: { name: "치명타 확률", range: [0.01, 0.02], mods: (v) => [{ k: "crit", add: v }] },
+  eldef: { name: "속성 방어력", range: [5, 10], mods: (v, el) => (el ? [{ k: "elDef", el, add: v }] : []) },
+  vamp: { name: "흡혈", range: [0.01, 0.02], mods: (v) => [{ k: "lifesteal", add: v }] },
+};
+
 export function itemMods(it: Item): Mod[] {
   const t = ITEMS[it.tpl];
   if (!t?.slot || !working(it)) return [];
   const mul = RARITY[it.rarity].stat * (1 + 0.06 * it.enh);
   const out: Mod[] = Object.entries(t.stats ?? {}).map(([k, v]) => ({ k: k as StatKey, add: v * mul }));
+  for (const e of [...(it.opt ?? []), ...(it.ench ?? [])]) out.push(...(ENCHANTS[e.k]?.mods(e.v, e.el) ?? []));
   for (const s of it.sp) {
     const m = SPECIALS[s.id]?.mods;
     if (m) out.push(...m(s.v));

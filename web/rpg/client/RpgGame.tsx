@@ -9,7 +9,8 @@ import { loadMap, type GameMap, type TiledMap } from "../shared/map";
 import type { ChannelInfo, S2C, You } from "../shared/protocol";
 import { CombatHud, DeathOverlay } from "./CombatHud";
 import CreateCharacter from "./CreateCharacter";
-import type { Game, HudState } from "./game";
+import { AlchemyWindow, ForgeWindow, MailWindow, MarketWindow, ShopWindow, type EconData } from "./Economy";
+import type { Game, HudState, Place } from "./game";
 import { JobDialog, SkillWindow } from "./Growth";
 import { ChannelPicker, Compass, Minimap, TopRight, WorldMap } from "./Hud";
 import { t, type StrKey } from "./i18n";
@@ -19,9 +20,11 @@ import SettingsModal from "./SettingsModal";
 import { loadLocal, mergeSettings, saveLocal, type Settings } from "./settings";
 
 type Phase = "loading" | "create" | "play" | "closed";
-type Popup = "settings" | "map" | "inventory" | "storage" | "skills" | "job";
+type Popup = "settings" | "map" | "inventory" | "storage" | Place;
 /** 열려 있으면 게임 입력을 막는 팝업 */
-const BLOCKING: Popup[] = ["settings", "inventory", "storage", "skills", "job"];
+const BLOCKING: Popup[] = ["settings", "inventory", "storage", "skills", "job", "mail", "shop", "market", "forge", "alchemy"];
+/** 창이 열릴 때 서버에서 받아 올 목록 */
+const FETCH: Partial<Record<Place, string>> = { mail: "mail", shop: "shop", market: "market" };
 
 /** 맵은 들어갈 때 불러옴 (§29 초기 로딩) */
 const MAP_JSON: Record<RoomKind, () => Promise<{ default: unknown }>> = {
@@ -48,6 +51,8 @@ export default function RpgGame({ dev }: { dev?: string }) {
   const [world, setWorld] = useState<{ map: GameMap; overview: HTMLCanvasElement } | null>(null);
   const [stats, setStats] = useState<FullStats | null>(null);
   const [items, setItems] = useState<Item[]>([]);
+  const [econ, setEcon] = useState<EconData>({});
+  const [notice, setNotice] = useState<{ text: string; at: number } | null>(null);
   const toastTimer = useRef(0);
   const [popups, setPopups] = useState<Popup[]>([]);
   const toast = useCallback((text: string) => {
@@ -71,6 +76,15 @@ export default function RpgGame({ dev }: { dev?: string }) {
         case "channels": setChannels(m.list); return;
         case "error": toast(m.msg); return;
         case "stats": setStats(m.s); game.current?.onMessage(m); return;
+        case "ruc":
+          if (game.current) game.current.you.ruc = m.ruc;
+          setYou((y) => y && { ...y, ruc: m.ruc });
+          return;
+        case "notice": setNotice({ text: m.text, at: Date.now() }); return;
+        case "notify": if (m.n) toast(t("ec.mailWaiting", { n: m.n })); return;
+        case "econ":
+          setEcon((e) => ({ ...e, [m.view]: m.view === "enhanced" || m.view === "recombined" ? { ...(m.data as object), at: Date.now() } : m.data }));
+          return;
         case "joined": {
           setYou(m.you);
           setRoom(m.room);
@@ -97,7 +111,12 @@ export default function RpgGame({ dev }: { dev?: string }) {
           g.onXp = (_, exp, level) => setYou((y) => y && { ...y, exp, level });
           g.onItems = setItems;
           g.onProg = () => setYou({ ...g.you });
-          g.onNpc = (npc) => setPopups((s) => [...s.filter((x) => x !== "job" && x !== "skills"), npc === "sera" ? "job" : "skills"]);
+          g.onPlace = (place) => {
+            // 시설 창은 하나만 (인벤토리 · 창고와도 겹치지 않게)
+            setPopups((s) => [...s.filter((x) => x === "settings" || x === "map"), place]);
+            const op = FETCH[place];
+            if (op) n.send({ t: "econ", op });
+          };
           try {
             await g.start(host.current, m.ents, m.fx, m.drops);
           } catch {
@@ -179,6 +198,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
   }, [phase, capturing, settings.keys.map, settings.keys.inventory, settings.keys.storage, settings.keys.skills, popups, toggle, room.kind, toast]);
 
   const top = popups[popups.length - 1];
+  const send = useCallback((m: Parameters<Net["send"]>[0]) => net.current?.send(m), []);
 
   return (
     <div className="rpg-root" onContextMenu={(e) => e.preventDefault()}>
@@ -242,6 +262,18 @@ export default function RpgGame({ dev }: { dev?: string }) {
             <JobDialog you={you} send={(m) => net.current?.send(m)} onClose={() => toggle("job")} />
           )}
         </div>
+      )}
+      {phase === "play" && you && top && ["mail", "shop", "market", "forge", "alchemy"].includes(top) && (
+        <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
+          {top === "mail" && <MailWindow you={you} data={econ.mail as never} send={send} onClose={() => toggle("mail")} />}
+          {top === "shop" && <ShopWindow you={you} data={econ.shop as never} send={send} onClose={() => toggle("shop")} />}
+          {top === "market" && <MarketWindow you={you} items={items} data={econ.market as never} send={send} onClose={() => toggle("market")} />}
+          {top === "forge" && <ForgeWindow you={you} items={items} last={econ.enhanced} send={send} onClose={() => toggle("forge")} />}
+          {top === "alchemy" && <AlchemyWindow items={items} last={econ.recombined} send={send} onClose={() => toggle("alchemy")} />}
+        </div>
+      )}
+      {notice && Date.now() - notice.at < 6500 && (
+        <div key={notice.at} className="rpg-notice pointer-events-none absolute left-1/2 top-16 -translate-x-1/2 whitespace-nowrap text-[13px]">{notice.text}</div>
       )}
       {phase === "play" && top === "settings" && (
         <SettingsModal s={settings} onChange={setSettings} onClose={() => toggle("settings")} onCapture={setCapturing} />

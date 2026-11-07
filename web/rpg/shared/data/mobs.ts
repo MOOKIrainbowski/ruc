@@ -19,7 +19,7 @@ export type Grade = keyof typeof GRADES;
  * 몹 (§18 햇살 초원 · §20). 수치는 Lv1 기준, 레벨당 HP +30% · 공격 +15% · 방어 +1.
  * aggro = 먼저 덤비는 거리(0 = 맞아야 반격). leash = 리젠 구역 밖으로 이만큼 벗어나면 돌아감(귀환 중 무적 · 체력 회복).
  * attack.kind: melee = 사거리 안 근접, shot = 투사체. special = 바닥 경고 후 강한 공격 (§10-2).
- * drops = 드롭 테이블 (§20-2) — 종류별로 고정, 운이 높으면 개수가 늘어남. RUC 드롭은 P5 베타 지갑과 함께 (D22).
+ * drops = 드롭 테이블 (§20-2) — 종류별로 고정, 운이 높으면 개수가 늘어남. ruc = 처치한 사람 베타 지갑으로 [최소, 최대] × (1 + 등급 순번).
  */
 export type MobAttack = { kind: "melee" | "shot"; range: number; cdMs: number; windMs: number; speed?: number; fx?: { id: string; ms: number; v?: number; dot?: number; chance?: number } };
 export type MobSpecial = {
@@ -54,11 +54,12 @@ export type MobDef = {
   attack: MobAttack;
   special?: MobSpecial;
   drops: DropRoll[];
+  ruc: [number, number];
 };
 
 export const MOBS: Record<string, MobDef> = {
   slime: {
-    name: "초원 슬라임", el: "grass", r: 9, hp: 70, atk: 7, pdef: 3, mdef: 2, speed: 50, exp: 14, aggro: 0, leash: 120,
+    name: "초원 슬라임", el: "grass", r: 9, hp: 70, atk: 7, pdef: 3, mdef: 2, speed: 50, exp: 14, aggro: 0, leash: 120, ruc: [1, 3],
     attack: { kind: "melee", range: 18, cdMs: 1500, windMs: 350, fx: { id: "slow", ms: 1200, v: 0.2, chance: 0.3 } },
     drops: [
       { item: "slime_jelly", chance: 0.7, qty: [1, 2] }, { item: "hp_potion_s", chance: 0.12 }, { item: "mp_potion_s", chance: 0.08 },
@@ -67,7 +68,7 @@ export const MOBS: Record<string, MobDef> = {
     ],
   },
   rabbit: {
-    name: "토끼정령", el: "wind", r: 8, hp: 60, atk: 9, pdef: 2, mdef: 6, speed: 85, exp: 18, aggro: 0, leash: 140,
+    name: "토끼정령", el: "wind", r: 8, hp: 60, atk: 9, pdef: 2, mdef: 6, speed: 85, exp: 18, aggro: 0, leash: 140, ruc: [1, 4],
     attack: { kind: "shot", range: 110, cdMs: 1800, windMs: 300, speed: 150 },
     drops: [
       { item: "rabbit_fluff", chance: 0.7, qty: [1, 2] }, { item: "en_potion_s", chance: 0.1 }, { item: "hp_potion_s", chance: 0.08 },
@@ -75,7 +76,7 @@ export const MOBS: Record<string, MobDef> = {
     ],
   },
   goblin: {
-    name: "숲 고블린", el: "none", r: 10, hp: 140, atk: 12, pdef: 8, mdef: 4, speed: 62, exp: 30, aggro: 80, leash: 140,
+    name: "숲 고블린", el: "none", r: 10, hp: 140, atk: 12, pdef: 8, mdef: 4, speed: 62, exp: 30, aggro: 80, leash: 140, ruc: [2, 6],
     attack: { kind: "melee", range: 22, cdMs: 1400, windMs: 300 },
     special: { shape: "circle", size: 30, windMs: 800, mul: 2, every: 3, fx: { id: "stun", ms: 600 } },
     drops: [
@@ -85,7 +86,7 @@ export const MOBS: Record<string, MobDef> = {
     ],
   },
   wolf: {
-    name: "덩굴 늑대", el: "grass", r: 10, hp: 190, atk: 15, pdef: 8, mdef: 8, speed: 88, exp: 46, aggro: 110, leash: 160,
+    name: "덩굴 늑대", el: "grass", r: 10, hp: 190, atk: 15, pdef: 8, mdef: 8, speed: 88, exp: 46, aggro: 110, leash: 160, ruc: [4, 10],
     attack: { kind: "melee", range: 22, cdMs: 1100, windMs: 200, fx: { id: "bleed", ms: 3000, dot: 0.12, chance: 0.3 } },
     special: { shape: "line", size: 80, width: 20, windMs: 700, mul: 1.5, cdMs: 6000, minRange: 40, maxRange: 90, lunge: true, fx: { id: "root", ms: 1000 } },
     drops: [

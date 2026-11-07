@@ -3,7 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { CHAR_H, CHAR_W } from "../shared/constants";
 import {
-  EQUIP_NAME, EQUIP_SLOTS, ITEMS, LOCS, POTION_CD_MS, RARITY, SETS, SPECIALS, bookGrade, gearOf, lookOf, pctSpecial, pctText, stackable, working,
+  ENCHANTS, EQUIP_NAME, EQUIP_SLOTS, ITEMS, LOCS, POTION_CD_MS, RARITIES, RARITY, SETS, SPECIALS, bookGrade, gearOf, lookOf, pctSpecial, pctText, stackable, working,
   type EquipSlot, type Item, type ItemPos, type Loc,
 } from "../shared/data/items";
 import { SKILLS } from "../shared/data/skills";
@@ -12,6 +12,7 @@ import type { C2S, You } from "../shared/protocol";
 import { characterSheet, outfitOf } from "./art/character";
 import { iconUrl } from "./art/icons";
 import { itemIcon } from "./art/items";
+import { refundOf } from "./Economy";
 import { t, type StrKey } from "./i18n";
 
 /**
@@ -23,7 +24,7 @@ const pos = (i: Item): ItemPos => [i.loc, i.slot];
 const PCT = new Set(["crit", "critDmg", "lifesteal", "spellVamp", "cdr", "tenacity"]);
 const fmtStat = (k: string, v: number) => (PCT.has(k) ? `${Math.round(v * 1000) / 10}%` : `${Math.round(v * 10) / 10}`);
 /** 양피지 위에서 읽히는 이름 색 */
-const nameColor = (r: Item["rarity"]) => (r === "common" ? "#3a2a1e" : r === "poor" ? "#6f6f6f" : RARITY[r].color);
+export const nameColor = (r: Item["rarity"]) => (r === "common" ? "#3a2a1e" : r === "poor" ? "#6f6f6f" : RARITY[r].color);
 
 /** 템플릿 스탯 × 희귀도 · 강화 (성능이 꺼졌으면 0) */
 function statsOf(it: Item): Record<string, number> {
@@ -31,7 +32,7 @@ function statsOf(it: Item): Record<string, number> {
   return Object.fromEntries(Object.entries(ITEMS[it.tpl].stats ?? {}).map(([k, v]) => [k, v * mul]));
 }
 
-function ItemImg({ it, dim }: { it: Item; dim?: boolean }) {
+export function ItemImg({ it, dim }: { it: Item; dim?: boolean }) {
   const broken = !working(it);
   return (
     <>
@@ -66,7 +67,7 @@ function Tip({ it, items, level, x, y, zoom }: { it: Item; items: Item[]; level:
   return (
     <div className="rpg-panel pointer-events-none fixed z-50 w-[236px] px-2.5 py-2 text-[11px] leading-[1.55]" style={style}>
       <b className={it.rarity === "legendary" ? "rpg-legend" : ""} style={{ color: it.rarity === "legendary" ? undefined : nameColor(it.rarity) }}>
-        {tp.name}{it.enh ? ` +${it.enh}` : ""}
+        {it.name ?? `${tp.name}${it.enh ? ` +${it.enh}` : ""}`}
       </b>
       <div className="text-[#8c6642]">
         {RARITY[it.rarity].name} {t(`inv.kind.${tp.kind}` as StrKey)}{eqName ? ` · ${EQUIP_NAME[eqName]}` : ""}
@@ -86,6 +87,9 @@ function Tip({ it, items, level, x, y, zoom }: { it: Item; items: Item[]; level:
         </ul>
       )}
       {cur && <div className="text-[10px] text-[#8c6642]">{t("inv.compare", { name: ITEMS[cur.tpl].name })}</div>}
+      {[...(it.opt ?? []).map((e) => [t("ec.tab.enhance"), e] as const), ...(it.ench ?? []).map((e) => [t("ec.tab.enchant"), e] as const)].map(([label, e], k) => (
+        <div key={`e${k}`} className="text-[#9B5DE5]">◆ {label}: {ENCHANTS[e.k]?.name}{e.el ? ` (${e.el})` : ""} +{pctText("{v}", e.v, e.v < 1)}{e.v < 1 ? "%" : ""}</div>
+      ))}
       {it.sp.map((s) => (
         <div key={s.id} className="mt-0.5 text-[#3b6fd6]">✦ {SPECIALS[s.id]?.name}: {pctText(SPECIALS[s.id]?.desc ?? "", s.v, pctSpecial(s.id))}</div>
       ))}
@@ -184,7 +188,8 @@ export function ItemsWindow({ mode, items, you, zoom, send, toast, onClose }: {
   const [hover, setHover] = useState<ItemPos | null>(null);
   const hovered = hover && items.find((i) => i.loc === hover[0] && i.slot === hover[1]);
   const [menu, setMenu] = useState<{ it: Item; x: number; y: number } | null>(null);
-  const [confirm, setConfirm] = useState<Item | null>(null);
+  /** 확인 창: 버리기 · 분해 (강화된 고급 이상은 두 번 묻기, §16-3) */
+  const [confirm, setConfirm] = useState<{ it: Item; kind: "drop" | "dis" | "dis2" } | null>(null);
   useEffect(() => {
     const mv = (e: MouseEvent) => setMouse({ x: e.clientX, y: e.clientY });
     const up = () => setDrag(null); // 슬롯 위가 아니면 취소 (React 핸들러가 먼저 돎)
@@ -259,10 +264,20 @@ export function ItemsWindow({ mode, items, you, zoom, send, toast, onClose }: {
 
           {confirm && (
             <div className="absolute inset-0 flex items-center justify-center bg-[rgba(243,228,195,0.85)]">
-              <div className="rpg-panel p-4 text-center">
-                <p>{t("inv.dropConfirm", { name: `「${ITEMS[confirm.tpl].name}」${confirm.qty > 1 ? ` ×${confirm.qty}` : ""}` })}</p>
+              <div className="rpg-panel max-w-[360px] p-4 text-center">
+                {(() => {
+                  const name = `「${ITEMS[confirm.it.tpl].name}」${confirm.it.qty > 1 ? ` ×${confirm.it.qty}` : ""}`;
+                  return confirm.kind === "drop" ? t("inv.dropConfirm", { name }) : confirm.kind === "dis" ? t("ec.disConfirm", { name, r: refundOf(confirm.it) }) : t("ec.disConfirm2");
+                })()}
                 <div className="mt-3 flex justify-center gap-2">
-                  <button className="rpg-btn" onClick={() => { send({ t: "item", op: "drop", a: pos(confirm) }); setConfirm(null); }}>{t("inv.drop")}</button>
+                  <button className="rpg-btn" onClick={() => {
+                    const { it, kind } = confirm;
+                    if (kind === "drop") send({ t: "item", op: "drop", a: pos(it) });
+                    // 강화된 고급 이상 장비는 한 번 더 묻기
+                    else if (kind === "dis" && it.enh > 0 && RARITIES.indexOf(it.rarity) >= RARITIES.indexOf("advanced")) return setConfirm({ it, kind: "dis2" });
+                    else send({ t: "econ", op: "disassemble", a: pos(it), rid: crypto.randomUUID() });
+                    setConfirm(null);
+                  }}>{confirm.kind === "drop" ? t("inv.drop") : t("ec.disassemble")}</button>
                   <button className="rpg-btn" onClick={() => setConfirm(null)}>{t("inv.cancel")}</button>
                 </div>
               </div>
@@ -278,7 +293,8 @@ export function ItemsWindow({ mode, items, you, zoom, send, toast, onClose }: {
               if (tp.heal || tp.skill) rows.push([t("inv.use"), () => use(menu.it)]);
               if (tp.slot) rows.push([menu.it.loc === "equipped" ? t("inv.unequip") : t("inv.equip"), () => use(menu.it)]);
               if (stackable(tp) && menu.it.qty > 1) rows.push([t("inv.split"), () => split(menu.it)]);
-              rows.push([t("inv.drop"), () => setConfirm(menu.it)]);
+              if (menu.it.loc !== "equipped") rows.push([t("ec.disassemble"), () => setConfirm({ it: menu.it, kind: "dis" })]);
+              rows.push([t("inv.drop"), () => setConfirm({ it: menu.it, kind: "drop" })]);
               return rows.map(([label, f]) => (
                 <button key={label} className="rounded px-3 py-1 text-left hover:bg-[#e8d3a9]" onClick={() => { f(); setMenu(null); }}>{label}</button>
               ));

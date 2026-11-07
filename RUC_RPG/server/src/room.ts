@@ -12,6 +12,7 @@ import { MASTERY, type Progress } from "../../../web/rpg/shared/progress.ts";
 import { F_CAST, F_DEAD, F_MOVING, F_ROLL, F_RUNNING, type ChannelInfo, type DropRow, type EntityInfo, type Ev, type EntityRow, type S2C } from "../../../web/rpg/shared/protocol.ts";
 import { addEffect, find, fxRows, has, hit, rand, recalc, regen, removeEffect, shieldOf, tickEffects, type HitSpec, type Unit, type World } from "./combat.ts";
 import { saveProgress, type CharacterRow } from "./db.ts";
+import { dropRuc } from "./economy.ts";
 import { deathWear, onDealt, onKill, onTaken, pickUp } from "./items.ts";
 import { mobTick, RESPAWN_MS, spawnMob, type Mob, type Zone } from "./mobs.ts";
 import { charBase, gainMastery, loadProgress, sendProg, syncSkills } from "./progress.ts";
@@ -48,6 +49,8 @@ export type Player = Unit & {
   skillsDirty: Set<string>;
   /** 차지 스킬을 모으기 시작한 슬롯 · 입력 시계 */
   charge: { slot: Slot; from: number } | null;
+  /** 베타 지갑 RUC (DB 가 원본, 이건 보여 주기용 사본) */
+  ruc: number;
   rtt: number;
   room: Room | null;
   /** 개인 이벤트 (다음 스냅샷에 실림) */
@@ -90,7 +93,7 @@ export function buildPlayer(ws: WebSocket, discordId: string, char: CharacterRow
 /** 플레이어 아이템 · 성장 상태 초기값 */
 export const playerState = (items: Item[], prog: Progress) => ({
   items, procs: [] as Special[], look: [] as string[], potionAt: 0, shieldAt: 0, dealt: 0, taken: 0, basics: 0,
-  prog, progDirty: false, progAt: 0, skillsDirty: new Set<string>(), charge: null, cd: {} as Record<string, number>, slots: {} as Partial<Record<Slot, string>>,
+  prog, progDirty: false, progAt: 0, skillsDirty: new Set<string>(), charge: null, cd: {} as Record<string, number>, slots: {} as Partial<Record<Slot, string>>, ruc: 0,
 });
 
 /**
@@ -246,7 +249,11 @@ export class Room implements World {
         const p = this.players.get(id);
         if (p && v > bv) { bv = v; best = p; }
       }
-      if (best) gainExp(this, best, mobExp(m.def, m.lv, m.grade, best.lv));
+      if (best) {
+        gainExp(this, best, mobExp(m.def, m.lv, m.grade, best.lv));
+        const [lo, hi] = m.def.ruc;
+        dropRuc(best, (lo + Math.floor(rand() * (hi - lo + 1))) * (1 + Object.keys(GRADES).indexOf(m.grade)), m.key);
+      }
       if (by?.kind === "p") onKill(this, by as Player);
       // 숙련도: 막타를 친 스킬 +5
       const s = m.lastShot;

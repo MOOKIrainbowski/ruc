@@ -204,9 +204,9 @@ export class Game {
   onToast: (msg: string) => void = () => {};
   onXp: (amount: number, exp: number, level: number) => void = () => {};
   onItems: (items: Item[]) => void = () => {};
-  /** 성장 상태가 바뀜 (React 스킬창 · HUD) · NPC 와 이야기 (세라 = 전직, 오웬 = 스킬) */
+  /** 성장 상태가 바뀜 (React 스킬창 · HUD) · 시설 · NPC 와 상호작용 (F) → 열 창 */
   onProg: () => void = () => {};
-  onNpc: (npc: string) => void = () => {};
+  onPlace: (place: Place) => void = () => {};
   /** 차지 스킬을 모으는 중 (§10-2) */
   charging: { slot: Slot; at: number } | null = null;
   items: Item[] = [];
@@ -226,7 +226,7 @@ export class Game {
     this.prev = { ...me };
     this.settings = settings;
     this.stats = stats;
-    this.interactables = map.objects.filter((o) => o.type === "portal" || o.type === "npc");
+    this.interactables = map.objects.filter((o) => o.type === "portal" || o.type === "npc" || o.type in PLACE);
     this.setItems(items);
   }
 
@@ -423,6 +423,12 @@ export class Game {
       info, mob, sprite, shadow, plate, label, title, bars, icons, frames, buf: [], x, y, dir: 0, shown: 0, turnMs: 0, action: "idle", animMs: 0,
       flags: 0, hp: 1000, res: 1000, drawn: "", fx: [], fxAt: 0, flash: 0, lunge: null, act: null, deadMs: 0, face: 0,
     };
+  }
+
+  /** 이 오브젝트 · NPC 가 여는 창 */
+  private placeOf(o: TiledObject | null): Place | null {
+    if (!o) return null;
+    return o.type === "npc" ? NPC_PLACE[String(prop(o, "npc"))] ?? null : PLACE[o.type] ?? null;
   }
 
   /** 칭호 자리: 1차 · 2차 직업 이름 (견습은 비움) */
@@ -669,6 +675,12 @@ export class Game {
         if (kind !== "lv") this.toast(text);
         return;
       }
+      case "ruc": {
+        const amount = ev[1] as number;
+        this.you.ruc += amount;
+        this.fx.number(this.meSprite.x + 10, this.meSprite.y - 40, `+${amount} RUC`, "#F2C94C");
+        return;
+      }
       case "du": {
         const [, id, dur] = ev as [string, string, number];
         const it = this.items.find((i) => i.id === id);
@@ -712,8 +724,8 @@ export class Game {
     if (digit) this.sel = Number(digit[1]) - 1;
     else if (code === k.dodge) this.queued.dodge = true;
     else if (code === k.interact) {
-      const npc = this.near?.type === "npc" ? String(prop(this.near, "npc")) : "";
-      if (npc === "sera" || npc === "owen") this.onNpc(npc);
+      const place = this.placeOf(this.near);
+      if (place) this.onPlace(place);
       else if (this.near) this.net.send({ t: "use", oid: this.near.id });
     }
     else {
@@ -1097,7 +1109,7 @@ export class Game {
       cds,
       fx: this.myFx.map((r) => [r[0], Math.max(0, r[1] - age), r[2], r[3], r[4]] as FxRow).filter((r) => r[1] > 0 || r[3] === 0),
       dead: this.deadUntil ? Math.max(0, this.deadUntil - now) : 0,
-      hint: this.near ? (this.near.type === "portal" ? `${josa(this.near.name, "으로/로")} 이동` : `${this.near.name}에게 말 걸기`) : null,
+      hint: !this.near ? null : this.near.type === "portal" ? `${josa(this.near.name, "으로/로")} 이동` : this.near.type === "npc" ? `${this.near.name}에게 말 걸기` : `${this.near.name} 열기`,
       sel: this.sel,
       potion: this.v[12] ?? 0,
       charge: this.charging ? Math.min(1, (now - this.charging.at) / (this.skill(this.charging.slot)?.charge?.ms ?? 1000)) : -1,
@@ -1118,3 +1130,8 @@ function glowCanvas() {
   ctx.fillRect(0, 0, 64, 64);
   return c;
 }
+
+/** F 로 여는 창 (P4 성장 · P5 경제) */
+export type Place = "job" | "skills" | "mail" | "shop" | "market" | "forge" | "alchemy";
+const PLACE: Record<string, Place> = { mailbox: "mail", tent_shop: "shop", tent_market: "market", anvil: "forge", workbench: "alchemy" };
+const NPC_PLACE: Record<string, Place> = { sera: "job", owen: "skills", pip: "mail", volt: "forge", mir: "alchemy" };

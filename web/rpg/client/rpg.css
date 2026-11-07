@@ -229,3 +229,22 @@
   background-clip: text;
   color: transparent;
 }
+
+/* ── 대장간 결과 (§16-1: 성공 빛 · 실패 연기 · 파괴 유리 조각, 밝은 톤의 과장된 연출) ── */
+.rpg-forge-ok { background: radial-gradient(circle, #fff4b0 0%, #ffd27a 45%, #e8d3a9 75%); animation: rpg-forge-ok 0.9s ease-out; }
+.rpg-forge-fail { background: #cfc6b8; animation: rpg-forge-fail 0.9s ease-out; }
+.rpg-forge-boom { background: #f3c4c4; animation: rpg-forge-boom 0.6s steps(2) 2; }
+@keyframes rpg-forge-ok { 0% { box-shadow: 0 0 0 0 #ffd27a; transform: scale(1.06); } 100% { box-shadow: 0 0 24px 12px transparent; transform: scale(1); } }
+@keyframes rpg-forge-fail { 0% { filter: blur(2px) grayscale(1); opacity: 0.6; } 100% { filter: none; opacity: 1; } }
+@keyframes rpg-forge-boom { 0% { transform: translateX(-4px) rotate(-1deg); } 100% { transform: translateX(4px) rotate(1deg); } }
+/* 서버 공지 (+10 강화) — 화면 위 금색 띠 */
+.rpg-notice {
+  background: linear-gradient(90deg, rgba(255, 159, 28, 0.15), rgba(242, 201, 76, 0.95), rgba(255, 159, 28, 0.15));
+  color: #3a2a1e;
+  font-weight: bold;
+  padding: 6px 48px;
+  border-top: 2px solid #fff4b0;
+  border-bottom: 2px solid #b88a1a;
+  animation: rpg-notice 6s ease forwards;
+}
+@keyframes rpg-notice { 0% { opacity: 0; transform: translateY(-12px); } 8%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }

@@ -4,7 +4,7 @@ import {
   type Item, type ItemKind, type ItemPos, type Loc, type Rarity, type Template,
 } from "../../../web/rpg/shared/data/items.ts";
 import { addEffect, applyHeal, dotDamage, hit, rand, recalc, type HitSpec, type Unit, type World } from "./combat.ts";
-import { loadItems, saveDurability, saveItems } from "./db.ts";
+import { inTx, loadItems, saveDurability, saveItems } from "./db.ts";
 import { bookError, readBook, refreshSlots } from "./progress.ts";
 import type { Player } from "./room.ts";
 
@@ -30,11 +30,14 @@ function commit(o: Owner, action: string, origin: string, before: Item[], after:
     saveItems(o.char.id, live, removed, action, origin, before, live);
     return null;
   } catch (e) {
+    if (inTx()) throw e; // 경제 조작 안이면 바깥 트랜잭션째 되돌림 (economy.ts)
     console.error("아이템 저장 실패", e);
     o.items = loadItems(o.char.id);
     return "저장에 실패했습니다. 다시 시도해 주세요";
   }
 }
+
+export { clone, freeSlot, same };
 
 export function newItem(tpl: string, qty: number, rarity: Rarity, loc: Loc, slot: number): Item {
   const t = ITEMS[tpl];

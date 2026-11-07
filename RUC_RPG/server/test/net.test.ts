@@ -197,3 +197,56 @@ test("전직: 교관 근처에서만 → 계열 스킬 · 슬롯 → 필드에�
   await c.until((m) => m.t === "s" && !!m.ev?.some((e) => e[0] === "c" && e[1] === jf.you.id && e[2] === "double_slash"));
   c.ws.close();
 });
+
+test("경제 동시 요청: 둘이 같은 물건을 동시에 사면 한 명만 · 같은 우편을 두 번 받아도 한 번만 · 같은 요청 id 는 한 번만", async () => {
+  const plaza = loadMap(JSON.parse(readFileSync(new URL("../../../web/rpg/shared/data/maps/plaza.json", import.meta.url), "utf8")) as TiledMap);
+  const tent = plaza.objects.find((o) => o.type === "tent_market")!;
+  const box = plaza.objects.find((o) => o.type === "mailbox")!;
+  const join = async (sub: string, nick: string) => {
+    const c = client(sub);
+    await c.open;
+    await c.until((m) => m.t === "needCreate");
+    c.send({ t: "create", nickname: nick, appearance: ap, element: "fire" });
+    await c.until((m) => m.t === "joined");
+    return c;
+  };
+  const [g, h, i] = [await join("G", "판매자"), await join("H", "구매자하"), await join("I", "구매자이")];
+  const at = (c: Awaited<ReturnType<typeof join>>, o: { x: number; y: number }) => c.send({ t: "dev", map: "plaza", x: o.x, y: o.y + 20 });
+  const views = (c: Awaited<ReturnType<typeof join>>, view: string) => c.inbox.filter((m) => m.t === "econ" && m.view === view) as Extract<S2C, { t: "econ" }>[];
+  // 판매자: 칼을 받아 유저 상점에 100 RUC 로 올림
+  g.send({ t: "dev", give: "wood_sword", rarity: "rare" });
+  const inv = await g.until<Extract<S2C, { t: "inv" }>>((m) => m.t === "inv" && m.items.some((x) => x.tpl === "wood_sword"));
+  const sword = inv.items.find((x) => x.tpl === "wood_sword")!;
+  at(g, tent);
+  await g.until((m) => m.t === "joined" && Math.abs(m.me.y - tent.y - 20) < 1);
+  g.send({ t: "econ", op: "sell", a: [sword.loc, sword.slot], prices: [{ ruc: 100 }], rid: "sell-req-00000001" });
+  g.send({ t: "econ", op: "sell", a: [sword.loc, sword.slot], prices: [{ ruc: 100 }], rid: "sell-req-00000001" }); // 같은 요청이 두 번
+  await g.until((m) => m.t === "econ" && m.view === "market" && (m.data as { mine: unknown[] }).mine.length === 1);
+  // 구매자 둘: 환영 우편(1,000 RUC)을 받고 천막 앞으로
+  for (const c of [h, i]) {
+    at(c, box);
+    await c.until((m) => m.t === "joined" && Math.abs(m.me.y - box.y - 20) < 1);
+    c.send({ t: "econ", op: "mail" });
+    const mail = await c.until<Extract<S2C, { t: "econ" }>>((m) => m.t === "econ" && m.view === "mail");
+    const id = (mail.data as { id: number }[])[0].id;
+    c.send({ t: "econ", op: "claim", id });
+    c.send({ t: "econ", op: "claim", id }); // 같은 우편을 바로 또
+    await c.until((m) => m.t === "error" && m.msg.includes("이미 받았거나"));
+    await c.until((m) => m.t === "ruc" && m.ruc === 1000);
+    at(c, tent);
+    await c.until((m) => m.t === "joined" && Math.abs(m.me.y - tent.y - 20) < 1);
+  }
+  h.send({ t: "econ", op: "market" });
+  const lid = ((await h.until<Extract<S2C, { t: "econ" }>>((m) => m.t === "econ" && m.view === "market")).data as { list: { id: number }[] }).list[0].id;
+  // 동시에 삼
+  h.send({ t: "econ", op: "mbuy", id: lid, opt: 0, rid: "buy-h-0000000001" });
+  i.send({ t: "econ", op: "mbuy", id: lid, opt: 0, rid: "buy-i-0000000001" });
+  await new Promise((ok) => setTimeout(ok, 400));
+  const lost = [h, i].filter((c) => c.inbox.some((m) => m.t === "error" && m.msg.includes("이미 팔렸")));
+  const won = [h, i].filter((c) => c.inbox.some((m) => m.t === "ruc" && m.ruc === 900));
+  assert.equal(lost.length, 1, "한 명은 이미 팔렸다는 안내");
+  assert.equal(won.length, 1, "한 명만 100 RUC 를 냄");
+  assert.ok(!lost[0].inbox.some((m) => m.t === "ruc" && m.ruc === 900), "진 쪽 지갑은 그대로");
+  assert.equal(views(g, "market").length >= 1, true);
+  for (const c of [g, h, i]) c.ws.close();
+});

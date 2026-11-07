@@ -2,7 +2,7 @@ import { mkdirSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import type { Appearance } from "../../../web/rpg/shared/data/appearance.ts";
-import type { Item } from "../../../web/rpg/shared/data/items.ts";
+import type { Item, StoredItem } from "../../../web/rpg/shared/data/items.ts";
 import type { Learned } from "../../../web/rpg/shared/progress.ts";
 
 /**
@@ -58,6 +58,64 @@ CREATE TABLE IF NOT EXISTS rpg_skills_learned (
   equipped_slot TEXT,
   PRIMARY KEY (character_id, skill_id)
 );
+-- 베타 지갑 · RUC 원장 (§17-1, D1). 모든 변동은 원장 한 줄 + 멱등 키(같은 요청이 두 번 와도 한 번만)
+CREATE TABLE IF NOT EXISTS rpg_wallet (
+  character_id INTEGER PRIMARY KEY REFERENCES rpg_characters(id),
+  balance      INTEGER NOT NULL DEFAULT 0 CHECK (balance >= 0),
+  updated_at   INTEGER NOT NULL
+);
+CREATE TABLE IF NOT EXISTS rpg_ruc_ledger (
+  id              INTEGER PRIMARY KEY AUTOINCREMENT,
+  character_id    INTEGER NOT NULL,
+  delta           INTEGER NOT NULL,
+  reason          TEXT NOT NULL,
+  ref_id          TEXT,
+  balance_after   INTEGER NOT NULL,
+  idempotency_key TEXT NOT NULL UNIQUE,
+  created_at      INTEGER NOT NULL
+);
+-- 우편 (§15-5): 첨부 아이템은 rpg_items 의 location 'mail', slot = 우편 id × 64 + 순번
+CREATE TABLE IF NOT EXISTS rpg_mail (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  to_id      INTEGER NOT NULL,
+  sender     TEXT NOT NULL,
+  subject    TEXT NOT NULL,
+  body       TEXT NOT NULL DEFAULT '',
+  attach_ruc INTEGER NOT NULL DEFAULT 0,
+  reason     TEXT NOT NULL,
+  claimed_at INTEGER,
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS rpg_mail_to ON rpg_mail (to_id, claimed_at);
+-- 일반 상점 회차별 진열 · 구매 기록 (§17-2)
+CREATE TABLE IF NOT EXISTS rpg_shop_rolls (
+  character_id INTEGER NOT NULL,
+  cycle        INTEGER NOT NULL,
+  items        TEXT NOT NULL,
+  purchased    TEXT NOT NULL DEFAULT '{}',
+  PRIMARY KEY (character_id, cycle)
+);
+-- 유저 상점 (§17-3): 아이템은 location 'escrow', slot = 등록 id
+CREATE TABLE IF NOT EXISTS rpg_market_listings (
+  id            INTEGER PRIMARY KEY AUTOINCREMENT,
+  seller_id     INTEGER NOT NULL,
+  item_id       TEXT NOT NULL,
+  price_options TEXT NOT NULL,
+  status        TEXT NOT NULL,
+  buyer_id      INTEGER,
+  created_at    INTEGER NOT NULL,
+  expires_at    INTEGER NOT NULL,
+  closed_at     INTEGER
+);
+CREATE INDEX IF NOT EXISTS rpg_market_open ON rpg_market_listings (status, expires_at);
+-- 서버 공지 기록 (+10 강화, 최초 클리어)
+CREATE TABLE IF NOT EXISTS rpg_broadcasts (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  kind       TEXT NOT NULL,
+  text       TEXT NOT NULL,
+  created_at INTEGER NOT NULL
+);
 -- 감사 로그 (§26-2): 아이템 · RUC · 강화 · 관리자 행위 전부
 CREATE TABLE IF NOT EXISTS rpg_audit_log (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,6 +127,25 @@ CREATE TABLE IF NOT EXISTS rpg_audit_log (
   created_at INTEGER NOT NULL
 );
 `);
+
+let depth = 0;
+/** 트랜잭션. 안에서 또 부르면 바깥 트랜잭션에 합쳐짐 — 경제 조작(RUC + 아이템 + 우편)을 한 덩어리로 (§14-3) */
+export function tx<T>(fn: () => T): T {
+  if (depth) return fn();
+  db.exec("BEGIN IMMEDIATE");
+  depth++;
+  try {
+    const r = fn();
+    db.exec("COMMIT");
+    return r;
+  } catch (e) {
+    db.exec("ROLLBACK");
+    throw e;
+  } finally {
+    depth--;
+  }
+}
+export const inTx = () => depth > 0;
 
 // 단계마다 늘어난 캐릭터 칸 — 이미 있는 DB 에도 붙임 (P4: 전직 · 잠재력)
 const charCols = new Set((db.prepare("PRAGMA table_info(rpg_characters)").all() as { name: string }[]).map((c) => c.name));
@@ -108,6 +185,8 @@ const qProgress = db.prepare("UPDATE rpg_characters SET level = ?, exp = ? WHERE
 export function findCharacter(discordId: string) {
   return parse(qFind.get(discordId) as Raw | undefined);
 }
+const qFindId = db.prepare("SELECT * FROM rpg_characters WHERE id = ?");
+export const findCharacterById = (id: number) => parse(qFindId.get(id) as Raw | undefined);
 
 /** 닉네임이 이미 있으면 null */
 export function createCharacter(discordId: string, nickname: string, element: string, appearance: Appearance) {
@@ -126,40 +205,56 @@ export const saveSettings = (id: number, s: unknown) => qSettings.run(JSON.strin
 
 // ── 아이템 ───────────────────────────────────────────────────────
 
-type ItemRaw = { id: string; template_id: string; location: Item["loc"]; slot: number; qty: number; rarity: Item["rarity"]; enhance: number; specials: string; durability: number; durability_max: number };
+type ItemRaw = {
+  id: string; template_id: string; location: StoredItem["loc"]; slot: number; qty: number; rarity: Item["rarity"]; enhance: number; specials: string;
+  durability: number; durability_max: number; enhance_opts: string | null; enchants: string | null; custom_name: string | null;
+};
 const qItems = db.prepare("SELECT * FROM rpg_items WHERE owner_id = ? AND location IN ('inventory', 'hotbar', 'equipped', 'storage')");
+const qItemsAt = db.prepare("SELECT * FROM rpg_items WHERE owner_id = ? AND location = ? AND slot BETWEEN ? AND ? ORDER BY slot");
+const qItem = db.prepare("SELECT * FROM rpg_items WHERE id = ?");
+const qTransfer = db.prepare("UPDATE rpg_items SET owner_id = ?, location = ?, slot = ? WHERE id = ? AND owner_id = ?");
 const qDelItem = db.prepare("DELETE FROM rpg_items WHERE id = ? AND owner_id = ?");
 const qPark = db.prepare("UPDATE rpg_items SET slot = ? WHERE id = ? AND owner_id = ?");
 const qUpsert = db.prepare(`INSERT INTO rpg_items (id, owner_id, template_id, location, slot, qty, rarity, enhance, specials, durability, durability_max, origin, created_at)
   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  ON CONFLICT(id) DO UPDATE SET location = excluded.location, slot = excluded.slot, qty = excluded.qty, durability = excluded.durability
+  ON CONFLICT(id) DO UPDATE SET location = excluded.location, slot = excluded.slot, qty = excluded.qty, durability = excluded.durability,
+    durability_max = excluded.durability_max, enhance = excluded.enhance
   WHERE owner_id = excluded.owner_id`);
+const qItemExtra = db.prepare("UPDATE rpg_items SET enhance_opts = ?, enchants = ?, custom_name = ? WHERE id = ? AND owner_id = ?");
 const qDur = db.prepare("UPDATE rpg_items SET durability = ? WHERE id = ? AND owner_id = ?");
 const qAudit = db.prepare("INSERT INTO rpg_audit_log (actor, action, target, before, after, created_at) VALUES (?, ?, ?, ?, ?, ?)");
 
-export function loadItems(owner: number): Item[] {
-  return (qItems.all(owner) as ItemRaw[]).map((r) => ({
-    id: r.id, tpl: r.template_id, loc: r.location, slot: r.slot, qty: r.qty, rarity: r.rarity, enh: r.enhance, sp: JSON.parse(r.specials), dur: r.durability, durMax: r.durability_max,
-  }));
+const itemOf = (r: ItemRaw): StoredItem => ({
+  id: r.id, tpl: r.template_id, loc: r.location, slot: r.slot, qty: r.qty, rarity: r.rarity, enh: r.enhance, sp: JSON.parse(r.specials), dur: r.durability, durMax: r.durability_max,
+  ...(r.enhance_opts ? { opt: JSON.parse(r.enhance_opts) } : {}), ...(r.enchants ? { ench: JSON.parse(r.enchants) } : {}), ...(r.custom_name ? { name: r.custom_name } : {}),
+});
+export const loadItems = (owner: number): Item[] => (qItems.all(owner) as ItemRaw[]).map(itemOf) as Item[];
+/** 우편 · 에스크로처럼 플레이어 목록 밖에 있는 아이템 */
+export const loadItemsAt = (owner: number, loc: string, from: number, to: number): StoredItem[] => (qItemsAt.all(owner, loc, from, to) as ItemRaw[]).map(itemOf);
+export const loadItem = (id: string): (StoredItem & { owner: number }) | null => {
+  const r = qItem.get(id) as (ItemRaw & { owner_id: number }) | undefined;
+  return r ? { ...itemOf(r), owner: r.owner_id } : null;
+};
+/** 주인 · 위치를 옮김 (우편 · 거래). 지금 주인이 맞을 때만 — 아니면 예외 */
+export function transferItem(id: string, from: number, to: number, loc: string, slot: number) {
+  if (qTransfer.run(to, loc, slot, id, from).changes !== 1) throw new Error(`아이템 이동 실패 ${id}`);
 }
 
 /**
  * 아이템 변경 저장 — 트랜잭션 하나 + 감사 로그 (§14-3). 실패하면 아무것도 안 바뀜.
  * 칸을 맞바꿀 때 UNIQUE(위치, 칸)에 걸리지 않게 바뀌는 행을 먼저 음수 칸으로 비켜 둡니다.
  */
-export function saveItems(owner: number, changed: Item[], removed: string[], action: string, origin: string, before: unknown, after: unknown) {
-  db.exec("BEGIN");
-  try {
+export function saveItems(owner: number, changed: StoredItem[], removed: string[], action: string, origin: string, before: unknown, after: unknown) {
+  tx(() => {
     for (const id of removed) qDelItem.run(id, owner);
     changed.forEach((it, i) => qPark.run(-1 - i, it.id, owner));
     const now = Date.now();
-    for (const it of changed) qUpsert.run(it.id, owner, it.tpl, it.loc, it.slot, it.qty, it.rarity, it.enh, JSON.stringify(it.sp), it.dur, it.durMax, origin, now);
+    for (const it of changed) {
+      qUpsert.run(it.id, owner, it.tpl, it.loc, it.slot, it.qty, it.rarity, it.enh, JSON.stringify(it.sp), it.dur, it.durMax, origin, now);
+      qItemExtra.run(it.opt ? JSON.stringify(it.opt) : null, it.ench ? JSON.stringify(it.ench) : null, it.name ?? null, it.id, owner);
+    }
     qAudit.run(owner, action, changed[0]?.id ?? removed[0] ?? null, JSON.stringify(before), JSON.stringify(after), now);
-    db.exec("COMMIT");
-  } catch (e) {
-    db.exec("ROLLBACK");
-    throw e;
-  }
+  });
 }
 
 export const saveDurability = (owner: number, id: string, dur: number) => qDur.run(dur, id, owner);
@@ -176,3 +271,96 @@ export const loadSkills = (owner: number): Learned[] =>
   (qSkills.all(owner) as SkillRaw[]).map((r) => ({ id: r.skill_id, grade: r.grade, lv: r.level, mastery: r.mastery, slot: r.equipped_slot }));
 export const saveSkill = (owner: number, l: Learned) => qSkill.run(owner, l.id, l.grade, l.lv, l.mastery, l.slot);
 export const saveJob = (owner: number, line: string | null, job: string | null, sub: string | null, pot: [number, number]) => qJob.run(line, job, sub, pot[0], pot[1], owner);
+
+// ── 경제 (P5) ────────────────────────────────────────────────────
+
+/** 잔액이 모자라 RUC 변동이 거절됨 */
+export class Shortfall extends Error {}
+
+const qWalletNew = db.prepare("INSERT OR IGNORE INTO rpg_wallet (character_id, balance, updated_at) VALUES (?, 0, ?)");
+const qWallet = db.prepare("SELECT balance FROM rpg_wallet WHERE character_id = ?");
+const qWalletAdd = db.prepare("UPDATE rpg_wallet SET balance = balance + ?, updated_at = ? WHERE character_id = ? AND balance + ? >= 0");
+const qLedgerKey = db.prepare("SELECT balance_after FROM rpg_ruc_ledger WHERE idempotency_key = ?");
+const qLedger = db.prepare("INSERT INTO rpg_ruc_ledger (character_id, delta, reason, ref_id, balance_after, idempotency_key, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
+
+/** 지갑 잔액 (없으면 0 으로 만듦). 새로 만들었으면 created */
+export function wallet(owner: number): { balance: number; created: boolean } {
+  const created = qWalletNew.run(owner, Date.now()).changes === 1;
+  return { balance: (qWallet.get(owner) as { balance: number }).balance, created };
+}
+
+/**
+ * RUC 변동 (§17-1): 원장 한 줄 + 잔액. key 가 이미 있으면 다시 적용하지 않고 그때 잔액을 돌려줌 (멱등).
+ * 잔액이 음수가 되면 Shortfall — 부르는 쪽 트랜잭션 전체가 되돌아감.
+ */
+export function ruc(owner: number, delta: number, reason: string, ref: string | null, key: string): { balance: number; dup: boolean } {
+  if (!Number.isInteger(delta)) throw new Error("RUC 는 정수만: " + delta);
+  return tx(() => {
+    const seen = qLedgerKey.get(key) as { balance_after: number } | undefined;
+    if (seen) return { balance: seen.balance_after, dup: true };
+    wallet(owner);
+    if (qWalletAdd.run(delta, Date.now(), owner, delta).changes !== 1) throw new Shortfall("RUC 가 부족합니다");
+    const balance = (qWallet.get(owner) as { balance: number }).balance;
+    qLedger.run(owner, delta, reason, ref, balance, key, Date.now());
+    return { balance, dup: false };
+  });
+}
+
+export type MailRow = { id: number; to_id: number; sender: string; subject: string; body: string; attach_ruc: number; reason: string; claimed_at: number | null; created_at: number; expires_at: number };
+const qMailNew = db.prepare("INSERT INTO rpg_mail (to_id, sender, subject, body, attach_ruc, reason, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+const qMails = db.prepare("SELECT * FROM rpg_mail WHERE to_id = ? AND claimed_at IS NULL AND expires_at > ? ORDER BY id");
+const qMailOne = db.prepare("SELECT * FROM rpg_mail WHERE id = ?");
+const qMailClaim = db.prepare("UPDATE rpg_mail SET claimed_at = ? WHERE id = ? AND to_id = ? AND claimed_at IS NULL AND expires_at > ?");
+const qMailCount = db.prepare("SELECT COUNT(*) AS n FROM rpg_mail WHERE to_id = ? AND claimed_at IS NULL AND expires_at > ?");
+const qMailExpired = db.prepare("SELECT id, to_id FROM rpg_mail WHERE claimed_at IS NULL AND expires_at <= ?");
+const qMailDelete = db.prepare("DELETE FROM rpg_mail WHERE id = ?");
+const qItemsDeleteAt = db.prepare("DELETE FROM rpg_items WHERE owner_id = ? AND location = ? AND slot BETWEEN ? AND ?");
+
+export const insertMail = (to: number, sender: string, subject: string, body: string, attachRuc: number, reason: string, now: number, expires: number) =>
+  Number(qMailNew.run(to, sender, subject, body, attachRuc, reason, now, expires).lastInsertRowid);
+export const listMail = (to: number, now: number) => qMails.all(to, now) as MailRow[];
+export const mailRow = (id: number) => (qMailOne.get(id) as MailRow | undefined) ?? null;
+/** 받기 표시 — 안 받았고 기간 안일 때만 (이중 수령 방지, 마크 우편함과 같은 조건부 UPDATE) */
+export const markClaimed = (id: number, to: number, now: number) => qMailClaim.run(now, id, to, now).changes === 1;
+export const mailCount = (to: number, now: number) => (qMailCount.get(to, now) as { n: number }).n;
+/** 30일 지난 우편 정리 (첨부 아이템도) — 감사 로그 */
+export function purgeMail(now: number, perMail: number): number {
+  const rows = qMailExpired.all(now) as { id: number; to_id: number }[];
+  for (const m of rows)
+    tx(() => {
+      qItemsDeleteAt.run(m.to_id, "mail", m.id * perMail, m.id * perMail + perMail - 1);
+      qMailDelete.run(m.id);
+      audit(null, "mail_expire", String(m.id), { to: m.to_id }, null);
+    });
+  return rows.length;
+}
+
+const qRoll = db.prepare("SELECT items, purchased FROM rpg_shop_rolls WHERE character_id = ? AND cycle = ?");
+const qRollSave = db.prepare(`INSERT INTO rpg_shop_rolls (character_id, cycle, items, purchased) VALUES (?, ?, ?, ?)
+  ON CONFLICT(character_id, cycle) DO UPDATE SET purchased = excluded.purchased`);
+export const shopRoll = (owner: number, cycle: number) => {
+  const r = qRoll.get(owner, cycle) as { items: string; purchased: string } | undefined;
+  return r ? { items: JSON.parse(r.items), purchased: JSON.parse(r.purchased) as Record<number, number> } : null;
+};
+export const saveShopRoll = (owner: number, cycle: number, items: unknown, purchased: Record<number, number>) => qRollSave.run(owner, cycle, JSON.stringify(items), JSON.stringify(purchased));
+
+export type ListingRow = { id: number; seller_id: number; item_id: string; price_options: string; status: string; buyer_id: number | null; created_at: number; expires_at: number; closed_at: number | null };
+const qListNew = db.prepare("INSERT INTO rpg_market_listings (seller_id, item_id, price_options, status, created_at, expires_at) VALUES (?, ?, ?, 'open', ?, ?)");
+const qListOpen = db.prepare("SELECT * FROM rpg_market_listings WHERE status = 'open' AND expires_at > ? ORDER BY id DESC LIMIT 500");
+const qListMine = db.prepare("SELECT * FROM rpg_market_listings WHERE seller_id = ? AND status = 'open' ORDER BY id DESC");
+const qListOne = db.prepare("SELECT * FROM rpg_market_listings WHERE id = ?");
+const qListClose = db.prepare("UPDATE rpg_market_listings SET status = ?, buyer_id = ?, closed_at = ? WHERE id = ? AND status = 'open'");
+const qListExpired = db.prepare("SELECT * FROM rpg_market_listings WHERE status = 'open' AND expires_at <= ?");
+export const insertListing = (seller: number, itemId: string, prices: unknown, now: number, expires: number) =>
+  Number(qListNew.run(seller, itemId, JSON.stringify(prices), now, expires).lastInsertRowid);
+export const openListings = (now: number) => qListOpen.all(now) as ListingRow[];
+export const myListings = (seller: number) => qListMine.all(seller) as ListingRow[];
+export const listing = (id: number) => (qListOne.get(id) as ListingRow | undefined) ?? null;
+/** 판매 · 취소 · 만료로 닫음 — 아직 열려 있을 때만 (두 번 팔리지 않게) */
+export const closeListing = (id: number, status: "sold" | "cancelled" | "expired", buyer: number | null, now: number) => qListClose.run(status, buyer, now, id).changes === 1;
+export const expiredListings = (now: number) => qListExpired.all(now) as ListingRow[];
+
+const qBroadcast = db.prepare("INSERT INTO rpg_broadcasts (kind, text, created_at) VALUES (?, ?, ?)");
+export const saveBroadcast = (kind: string, text: string) => qBroadcast.run(kind, text, Date.now());
+export const audit = (actor: number | null, action: string, target: string | null, before: unknown, after: unknown) =>
+  qAudit.run(actor, action, target, JSON.stringify(before), JSON.stringify(after), Date.now());

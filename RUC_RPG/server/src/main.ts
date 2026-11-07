@@ -13,7 +13,9 @@ import type { C2S, S2C } from "../../../web/rpg/shared/protocol.ts";
 import { DEV_TICKET_SECRET, verifyTicket, type Ticket } from "../../../web/rpg/shared/ticket.ts";
 import { fxRows, recalc } from "./combat.ts";
 import { createCharacter, findCharacter, savePosition, saveProgress, saveSettings, type CharacterRow } from "./db.ts";
+import { econOp, online as econOnline, sweep, welcome } from "./economy.ts";
 import { give, itemOp, sendInv } from "./items.ts";
+import { mailCount } from "./db.ts";
 import { changeJob, charBase, equip, saveDirtySkills, sendProg, syncSkills } from "./progress.ts";
 import { Channels, buildPlayer, info, send, type Player } from "./room.ts";
 
@@ -31,6 +33,8 @@ const maps: Record<RoomKind, GameMap> = { plaza: mapFile("plaza"), field: mapFil
 const worlds: Record<RoomKind, Channels> = { plaza: new Channels("plaza", maps.plaza), field: new Channels("field", maps.field) };
 
 const online = new Map<string, Player>(); // 디스코드 ID → 접속 중인 플레이어
+econOnline.byChar = (id) => [...online.values()].find((p) => p.char.id === id);
+econOnline.all = () => [...online.values()];
 
 /** 저장된 맵 · 위치 · HP 로 플레이어를 만듦. kind = 들어갈 맵 */
 function makePlayer(ws: WebSocket, t: Ticket, char: CharacterRow): { p: Player; kind: RoomKind } {
@@ -68,7 +72,7 @@ function join(p: Player, kind: RoomKind, ch?: number) {
     t: "joined",
     you: {
       id: p.id, nickname: p.char.nickname, level: p.char.level, exp: p.char.exp, element: p.char.element, appearance: p.char.appearance,
-      ruc: 0, kda: [0, 0, 0], settings: p.char.settings, slots: p.slots, prog: p.prog,
+      ruc: p.ruc, kda: [0, 0, 0], settings: p.char.settings, slots: p.slots, prog: p.prog,
     },
     room: { kind: room.kind, ch: room.ch },
     me: p.mover,
@@ -189,7 +193,11 @@ wss.on("connection", (ws, req) => {
       const made = makePlayer(ws, ticket, char);
       player = made.p;
       online.set(ticket.sub, player);
-      return join(player, made.kind);
+      welcome(player);
+      join(player, made.kind);
+      const n = mailCount(player.char.id, Date.now());
+      if (n) send(player, { t: "notify", kind: "mail", n });
+      return;
     }
     if (!ticket) return;
 
@@ -200,7 +208,9 @@ wss.on("connection", (ws, req) => {
       if (!char) return reply({ t: "createError", msg: "이미 쓰는 닉네임입니다" });
       player = makePlayer(ws, ticket, char).p;
       online.set(ticket.sub, player);
-      return join(player, "plaza");
+      welcome(player);
+      join(player, "plaza");
+      return send(player, { t: "notify", kind: "mail", n: mailCount(player.char.id, Date.now()) });
     }
     if (!player) return;
 
@@ -240,6 +250,11 @@ wss.on("connection", (ws, req) => {
       }
       case "equip": {
         const err = equip(player, m.skill, m.slot);
+        if (err) reply({ t: "error", msg: err });
+        return;
+      }
+      case "econ": {
+        const err = econOp(player, m);
         if (err) reply({ t: "error", msg: err });
         return;
       }
@@ -300,6 +315,7 @@ function loop() {
     for (const p of online.values()) if (p.room) send(p, { t: "channels", list: lists[p.room.kind] });
   }
   if (tickCount % 600 === 0) for (const p of online.values()) save(p);
+  if (tickCount % 1200 === 1) sweep(now); // 1분마다: 유저 상점 만료 반환 · 30일 지난 우편 정리
   next += TICK_MS;
   setTimeout(loop, Math.max(0, next - performance.now()));
 }

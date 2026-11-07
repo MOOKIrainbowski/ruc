@@ -6,6 +6,7 @@ import { SIM_MS, TILE } from "./constants.ts";
 import { baseStats } from "./character.ts";
 import { castMs, computeDamage, elementMul, finalStats, mitigation, type Hit } from "./combat.ts";
 import { EQUIP_SLOTS, ITEMS, basicOf, durMaxOf, fits, gearOf, itemMods, rollDrops, rollRarity, rollSpecials, type Item } from "./data/items.ts";
+import { ENHANCE, cycleEnd, disassembleRuc, enhanceCost, itemValue, rollEnhance, rollShop, shopCycle } from "./data/economy.ts";
 import { JOBS, LINES, jobStats } from "./data/jobs.ts";
 import { MOBS } from "./data/mobs.ts";
 import { addMastery, needMastery, skillNums, startLevel, type Learned } from "./progress.ts";
@@ -263,4 +264,29 @@ test("성장 공식: 필요 숙련도 · 연속 레벨업 · 레벨 상한 · �
   assert.equal(jobStats(10, null, [42, 10]).potentialPhys, 42);
   for (const [id, j] of Object.entries(JOBS)) assert.ok(LINES[j.line], id);
   assert.equal(Object.values(JOBS).filter((j) => j.star).length, 6);
+});
+
+test("경제 공식: 가치 · 분해 환불 · 강화 확률 (축복 · 보호) · 비용 · 상점 회차 · 시드 진열", () => {
+  assert.equal(itemValue({ tpl: "wood_sword", rarity: "common", enh: 0 }), 20 * 3);
+  assert.equal(itemValue({ tpl: "wood_sword", rarity: "legendary", enh: 2 }), Math.round(20 * 1000 * 1.3));
+  assert.equal(disassembleRuc({ tpl: "wood_sword", rarity: "common", enh: 0 }), 1, "최소 1");
+  assert.equal(disassembleRuc({ tpl: "wood_sword", rarity: "legendary", enh: 0 }), 400);
+  assert.equal(rollEnhance(0.94, 0, false, false), "ok");
+  assert.equal(rollEnhance(0.96, 0, false, false), "fail");
+  assert.equal(rollEnhance(0.155, 9, false, false), "boom", "+10: 성공 15% 다음 15% 는 파괴");
+  assert.equal(rollEnhance(0.155, 9, false, true), "fail", "보호 주문서");
+  assert.equal(rollEnhance(0.2, 9, true, false), "ok", "축복 +10%p");
+  assert.equal(rollEnhance(0.35, 9, true, false), "boom", "축복이어도 파괴율은 그대로");
+  assert.equal(enhanceCost({ rarity: "rare", enh: 9 }), 30 * 3 * 20);
+  assert.equal(ENHANCE.length, 10);
+  // KST 00 · 06 · 12 · 18 시 경계
+  const kst = (h: number) => Date.UTC(2026, 10, 7, h) - 9 * 3600_000;
+  assert.equal(shopCycle(kst(5) + 3599_999), shopCycle(kst(0)));
+  assert.equal(shopCycle(kst(6)), shopCycle(kst(0)) + 1);
+  assert.equal(cycleEnd(shopCycle(kst(7))), kst(12));
+  const a = rollShop(7, 100, 5);
+  assert.deepEqual(rollShop(7, 100, 5), a, "같은 플레이어 · 회차 = 같은 진열");
+  assert.notDeepEqual(rollShop(7, 101, 5), a);
+  assert.notDeepEqual(rollShop(8, 100, 5), a);
+  assert.ok(a.every((x) => ["poor", "common", "rare", "advanced", "mythic"].includes(x.rarity) && x.price > 0));
 });
