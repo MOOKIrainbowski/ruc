@@ -22,7 +22,8 @@ import { effectIcon } from "./art/icons";
 import { itemIcon } from "./art/items";
 import { mobFrames } from "./art/mobs";
 import { Px } from "./art/px";
-import { TILE_COLOR, VARIANTS, objectFrames, tileAtlas } from "./art/world";
+import { hash } from "./art/px";
+import { DECAL_VARIANTS, TILE_COLOR, VARIANTS, contactShadow, decalSheet, objectFrames, tileAtlas } from "./art/world";
 import { Fx, elColor } from "./fx";
 import { Realism, type Light } from "./realistic";
 import type { Net } from "./net";
@@ -330,9 +331,9 @@ export class Game {
       }
       return new Sprite(Texture.from(c));
     };
-    this.world.addChild(bake(layers.ground));
-    const waterLayer = new Container();
     const animGids = new Set(ANIMATED.map(gid));
+    this.world.addChild(this.bakeGround(atlas, animGids));
+    const waterLayer = new Container();
     for (let i = 0; i < w * h; i++) {
       const g = layers.water[i];
       if (!animGids.has(g)) continue;
@@ -347,6 +348,7 @@ export class Game {
     this.screenLayer.addChild(this.fx.screen);
 
     const glowTex = Texture.from(glowCanvas());
+    const contactTex = Texture.from(contactShadow());
     for (const o of this.map.objects) {
       if (o.type === "spawn" || o.type === "spawn_zone") continue;
       if (o.type === "npc") {
@@ -371,7 +373,22 @@ export class Game {
       s.zIndex = o.type === "portal" ? o.y - o.height : o.y;
       this.entityLayer.addChild(s);
       if (frames.length > 1) this.animated.push({ s, frames });
-      if (["tree", "lamp", "building", "tent_shop", "tent_market", "statue", "bench", "board", "mailbox", "workbench", "anvil", "rock", "stump", "bush", "sign"].includes(o.type)) this.staticSprites.push(s);
+      const CONTACT: Record<string, [number, number]> = {
+        tree: [0.95, 9], building: [1.0, 8], tent_shop: [1.0, 7], tent_market: [1.0, 7], bench: [1.0, 5], lamp: [0.8, 5], statue: [1.0, 7], well: [1.0, 6],
+        barrel: [1.0, 5], crate: [1.0, 5], crate_stack: [1.0, 6], flowerpot: [0.9, 4], haystack: [1.0, 6], sack: [0.9, 4], log: [1.0, 5], fence: [1.0, 4],
+        rock: [1.0, 5], stump: [1.0, 5], bush: [1.1, 5], board: [1.0, 5], workbench: [1.0, 5], anvil: [1.0, 5], mailbox: [0.9, 4], mushroom: [0.8, 4],
+      };
+      const cs = CONTACT[o.type];
+      if (cs) {
+        const sh = new Sprite(contactTex);
+        sh.anchor.set(0.5);
+        sh.position.set(o.x, o.y - 1);
+        sh.width = Math.max(10, o.width * cs[0]);
+        sh.height = cs[1] * 2;
+        sh.zIndex = -1e6;
+        this.entityLayer.addChild(sh);
+      }
+      if (["tree", "barrel", "crate", "crate_stack", "flowerpot", "banner", "well", "haystack", "sack", "log", "fence", "mushroom", "lamp", "building", "tent_shop", "tent_market", "statue", "bench", "board", "mailbox", "workbench", "anvil", "rock", "stump", "bush", "sign"].includes(o.type)) this.staticSprites.push(s);
       if (o.type === "lamp") this.lightSrc.push({ x: o.x, y: o.y - 26, r: 70, color: 0xffd27a, flicker: 0.02 });
       if (o.type === "campfire") this.lightSrc.push({ x: o.x, y: o.y - 6, r: 80, color: 0xff9a4a, flicker: 0.07 });
       if (o.type === "portal") this.lightSrc.push({ x: o.x, y: o.y - o.height / 2, r: 56, color: o.properties?.find((x) => x.name === "target")?.value === "dungeon" ? 0xb07aff : o.properties?.find((x) => x.name === "target")?.value === "arena" ? 0xff6a6a : 0x6aff8a, flicker: 0.04 });
@@ -388,6 +405,118 @@ export class Game {
         this.label(o.name, o.x, o.y - o.height - 2, o.type === "portal" ? "#d6b3ff" : "#ffffff");
       }
     }
+  }
+
+  /**
+   * 바닥 굽기 (사실감): ① 타일 변형 ② 넓은 얼룩 노이즈(풀밭이 균일하지 않게) ③ 풀 · 자갈 · 낙엽 · 버섯 · 금 · 이끼 데칼
+   * ④ 길 · 돌바닥과 잔디의 경계(돌 쪽 어두운 그늘 + 잔디가 돌 위로 삐져나옴, 흙길 가장자리는 들쑥날쑥)
+   * ⑤ 물가(젖은 띠 + 거품). 한 번만 계산해 캔버스 한 장으로 굽습니다.
+   */
+  private bakeGround(atlas: HTMLCanvasElement, animGids: Set<number>) {
+    const { w, h, layers } = this.map;
+    const c = Object.assign(document.createElement("canvas"), { width: w * TILE, height: h * TILE });
+    const ctx = c.getContext("2d")!;
+    const decals = decalSheet();
+    const nameAt = (x: number, y: number): string | null => (x < 0 || y < 0 || x >= w || y >= h ? null : TILE_NAMES[layers.ground[y * w + x] - 1] ?? null);
+    const waterAt = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && animGids.has(layers.water[y * w + x]);
+    const SOFT = new Set(["grass", "grass_dark", "flowers", "dirt"]);
+    const HARD = new Set(["sand", "cobble", "stone_edge", "bridge", "fountain_rim"]);
+    // 오브젝트가 차지한 칸에는 데칼을 뿌리지 않음
+    const taken = new Uint8Array(w * h);
+    for (const o of this.map.objects) {
+      if (o.type === "spawn" || o.type === "spawn_zone") continue;
+      for (let y = Math.floor((o.y - o.height) / TILE) - 1; y <= Math.floor(o.y / TILE); y++) for (let x = Math.floor((o.x - o.width / 2) / TILE) - 1; x <= Math.floor((o.x + o.width / 2) / TILE); x++) if (x >= 0 && y >= 0 && x < w && y < h) taken[y * w + x] = 1;
+    }
+    const vn = (x: number, y: number) => {
+      const xi = Math.floor(x), yi = Math.floor(y), fx = x - xi, fy = y - yi;
+      const sm = (t: number) => t * t * (3 - 2 * t);
+      const a = hash(xi, yi, 5), b = hash(xi + 1, yi, 5), c2 = hash(xi, yi + 1, 5), d = hash(xi + 1, yi + 1, 5);
+      return (a + (b - a) * sm(fx)) * (1 - sm(fy)) + (c2 + (d - c2) * sm(fx)) * sm(fy);
+    };
+    const DIRS4: [number, number][] = [[0, -1], [0, 1], [-1, 0], [1, 0]];
+    // 경계 띠 영역 (타일 안, 해당 방향 가장자리에서 depth px)
+    const strip = (d: number, ox: number, oy: number, depth: number): [number, number, number, number] =>
+      d === 0 ? [ox, oy, TILE, depth] : d === 1 ? [ox, oy + TILE - depth, TILE, depth] : d === 2 ? [ox, oy, depth, TILE] : [ox + TILE - depth, oy, depth, TILE];
+    const shade = (d: number, ox: number, oy: number, depth: number, rgb: string, a: number) => {
+      const [x, y, sw, sh] = strip(d, ox, oy, depth);
+      const g = d === 0 ? ctx.createLinearGradient(0, y, 0, y + sh) : d === 1 ? ctx.createLinearGradient(0, y + sh, 0, y) : d === 2 ? ctx.createLinearGradient(x, 0, x + sw, 0) : ctx.createLinearGradient(x + sw, 0, x, 0);
+      g.addColorStop(0, `rgba(${rgb},${a})`);
+      g.addColorStop(1, `rgba(${rgb},0)`);
+      ctx.fillStyle = g;
+      ctx.fillRect(x, y, sw, sh);
+    };
+    /** 경계선 위 픽셀을 확률적으로 찍음 (안쪽으로 1~depth px) */
+    const speckle = (d: number, ox: number, oy: number, x: number, y: number, depth: number, colors: string[], p: number) => {
+      for (let k = 0; k < TILE; k++) {
+        const r = hash(x * 16 + k, y * 4 + d, 31);
+        if (r > p) continue;
+        const dep = 1 + Math.floor(hash(x * 16 + k, y, 32 + d) * depth);
+        for (let q = 0; q < dep; q++) {
+          const px = d === 2 ? ox + q : d === 3 ? ox + TILE - 1 - q : ox + k;
+          const py = d === 0 ? oy + q : d === 1 ? oy + TILE - 1 - q : oy + k;
+          ctx.fillStyle = colors[(k + q) % colors.length];
+          ctx.fillRect(px, py, 1, 1);
+        }
+      }
+    };
+
+    for (let y = 0; y < h; y++) {
+      for (let x = 0; x < w; x++) {
+        const g = layers.ground[y * w + x];
+        if (!g || TILE_NAMES[g - 1] === "solid") continue;
+        const name = TILE_NAMES[g - 1];
+        const ox = x * TILE, oy = y * TILE;
+        // ① 타일 변형 (이웃과 겹치지 않게 해시)
+        ctx.drawImage(atlas, (g - 1) * TILE, Math.floor(hash(x, y, 3) * VARIANTS) * TILE, TILE, TILE, ox, oy, TILE, TILE);
+        // ② 넓은 얼룩: 2px 단위로 부드럽게 (타일 경계가 네모로 보이지 않게)
+        const soft = SOFT.has(name);
+        if (soft || HARD.has(name)) {
+          for (let sy = 0; sy < TILE; sy += 2) {
+            for (let sx = 0; sx < TILE; sx += 2) {
+              const wx = x + sx / TILE;
+              const wy = y + sy / TILE;
+              const n = (vn(wx / 7, wy / 7) * 0.62 + vn(wx / 2.6, wy / 2.6) * 0.28 + vn(wx * 1.7, wy * 1.7) * 0.1 - 0.5) * 2;
+              ctx.fillStyle = soft ? (n > 0 ? `rgba(238,240,120,${n * 0.17})` : `rgba(14,66,30,${-n * 0.22})`) : `rgba(110,84,48,${Math.abs(n) * 0.08})`;
+              ctx.fillRect(ox + sx, oy + sy, 2, 2);
+            }
+          }
+        }
+        // ③ 데칼
+        if (!taken[y * w + x] && !layers.collision[y * w + x] && !layers.decor_below[y * w + x]) {
+          const r = hash(x, y, 77);
+          const sub = hash(y, x, 78);
+          let kind = -1;
+          if ((name === "grass" || name === "grass_dark") && r < 0.1) kind = sub < 0.42 ? 0 : sub < 0.58 ? 4 : sub < 0.76 ? 1 : sub < 0.9 ? 2 : 3;
+          else if (name === "dirt" && r < 0.09) kind = sub < 0.6 ? 1 : 2;
+          else if ((name === "cobble" || name === "sand") && r < 0.07) kind = sub < 0.5 ? 5 : sub < 0.8 ? 6 : 1;
+          if (kind >= 0) ctx.drawImage(decals, Math.floor(hash(x, y, 79) * DECAL_VARIANTS) * TILE, kind * TILE, TILE, TILE, ox, oy, TILE, TILE);
+        }
+        // ④ ⑤ 경계
+        DIRS4.forEach(([dx, dy], d) => {
+          const nn = nameAt(x + dx, y + dy);
+          const nWater = waterAt(x + dx, y + dy);
+          if (waterAt(x, y)) return;
+          if (nWater) {
+            shade(d, ox, oy, 4, "30,64,84", 0.34); // 젖은 땅
+            shade(d, ox, oy, 2, "255,255,255", 0.22);
+            speckle(d, ox, oy, x, y, 1, ["#ffffffcc", "#d8f4ffaa"], 0.5); // 거품
+            return;
+          }
+          if (!nn) return;
+          if (HARD.has(name) && SOFT.has(nn)) {
+            shade(d, ox, oy, 4, "34,26,12", 0.3); // 돌 가장자리 그늘
+            speckle(d, ox, oy, x, y, 2, ["#76b02f", "#98d048", "#5c9a33"], 0.42); // 삐져나온 잔디
+          } else if ((name === "grass" && nn === "grass_dark") || (name === "grass_dark" && nn === "grass")) {
+            // 짙은 풀밭과 연한 풀밭의 경계도 들쑥날쑥하게 섞음 (네모 얼룩이 보이지 않게)
+            speckle(d, ox, oy, x, y, 3, name === "grass" ? ["#76b02f", "#639b27", "#86c03a"] : ["#8CC63F", "#98d048", "#7ab535"], 0.6);
+          } else if (name === "dirt" && (nn === "grass" || nn === "grass_dark" || nn === "flowers")) {
+            speckle(d, ox, oy, x, y, 3, ["#8CC63F", "#76b02f", "#98d048"], 0.55); // 들쑥날쑥한 길 가장자리
+            shade(d, ox, oy, 2, "70,48,24", 0.22);
+          }
+        });
+      }
+    }
+    return new Sprite(Texture.from(c));
   }
 
   private labels: { t: Text; x: number; y: number }[] = [];

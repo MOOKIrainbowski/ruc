@@ -11,6 +11,9 @@ const { SKILLS } = await import("../../../web/rpg/shared/data/skills.ts");
 const { loadMap } = await import("../../../web/rpg/shared/map.ts");
 const { needMastery } = await import("../../../web/rpg/shared/progress.ts");
 const { addEffect, find, has, hit, recalc, setRandom } = await import("../src/combat.ts");
+// 몹을 맵에 놓는 위치는 항상 진짜 난수로 (고정 난수 0.99 에서는 한 구역의 몹이 전부 같은 점에 겹쳐 나와, 거기에 장식 오브젝트가 있으면 못 나옴)
+let fixed: () => number = Math.random;
+const setFixed = (f: () => number) => { fixed = f; setRandom(f); };
 const { createCharacter, db, loadSkills, saveProgress } = await import("../src/db.ts");
 const { give, itemOp } = await import("../src/items.ts");
 const { changeJob, charBase, equip, gainMastery, refreshSlots, syncSkills } = await import("../src/progress.ts");
@@ -35,7 +38,9 @@ const tough = (m: Mob) => {
 /** 필드 방 + 레벨 · 직업을 정한 플레이어 */
 function setup(level: number, line?: string, job?: string, el = "fire", sub?: string) {
   let now = 5_000_000 + n * 1_000_000;
+  setRandom(Math.random);
   const room = new Room("field", 1, map, now);
+  setRandom(fixed);
   const sent: string[] = [];
   const char = createCharacter(`s${++n}`, `시험${n}`, el, ap)!;
   char.level = level;
@@ -161,7 +166,7 @@ test("슬롯 장착: 비전투에서만 · 자기 슬롯에만 · 스킬북으�
 /** 직업마다 모든 스킬을 써 보고 무슨 일이 일어났는지 확인 */
 for (const [job, j] of Object.entries(JOBS).filter(([, x]) => x.star)) {
   test(`★ ${j.name}: 계열 + 전용 스킬 전부 시전 (Q3 · W2 · E3 · R2)`, () => {
-    setRandom(() => 0.5);
+    setFixed(() => 0.5);
     const { p, room, use, dummy, tick } = setup(40, j.line, job, "fire", job === "elementalist" ? "water" : undefined);
     const mine = Object.values(SKILLS).filter((s) => !s.hidden && s.slot !== "A" && (s.job.includes(j.line) || s.job.includes(job)));
     const count = (slot: string) => mine.filter((s) => s.slot === slot).length;
@@ -191,12 +196,12 @@ for (const [job, j] of Object.entries(JOBS).filter(([, x]) => x.star)) {
       room.walls = [];
       p.cd = {};
     }
-    setRandom(Math.random);
+    setFixed(Math.random);
   });
 }
 
 test("패시브: 수호의 맹세 · 기사도 · 그림자 걸음 · 바람 읽기 · 치유의 손길", () => {
-  setRandom(() => 0.99);
+  setFixed(() => 0.99);
   // 수호기사가 옆 아군 피해 15% 를 대신 받음 (×0.8)
   const g = setup(30, "tank", "guardian");
   const ally = buildPlayer({ readyState: 1, send() {} } as never, "ally", createCharacter("ally", "아군", "fire", ap)!, g.p.x + 20, g.p.y);
@@ -243,11 +248,11 @@ test("패시브: 수호의 맹세 · 기사도 · 그림자 걸음 · 바람 읽
   pr.p.cd = {};
   pr.use("heal_light", pr.p.x, pr.p.y);
   assert.ok(Math.abs(low - (pr.p.hp - h1) * 1.3) <= 1, `${low} vs ${pr.p.hp - h1}`);
-  setRandom(Math.random);
+  setFixed(Math.random);
 });
 
 test("원소 반응: 과전류 연쇄 · 결빙 · 융해 · 독무 폭발, 원소술사 +25%", () => {
-  setRandom(() => 0.99);
+  setFixed(() => 0.99);
   const { room, p, dummy } = setup(30, "mage");
   const a = dummy(60);
   const b = [...room.mobs.values()].find((m) => m !== a && !m.dead)!;
@@ -278,11 +283,11 @@ test("원소 반응: 과전류 연쇄 · 결빙 · 융해 · 독무 폭발, 원�
   addEffect(el.room, t, { id: "burn", ms: 3000, dot: 1 });
   t.fx = t.fx.filter((e) => e.id === "burn");
   assert.equal(hit(el.room, el.p, t, spec("ice")), Math.round(base * (1 + 0.5 * 1.25)));
-  setRandom(Math.random);
+  setFixed(Math.random);
 });
 
 test("메커니즘: 반격 태세 · 은신 · 부활 · 성역의 방패 · 차지 · 튕김 · 처형 · 순보", () => {
-  setRandom(() => 0.99);
+  setFixed(() => 0.99);
   // 반격 태세: 근접 공격을 막고 되돌려 줌 + 기절
   const t = setup(30, "tank", "guardian");
   const m = t.dummy(20);
@@ -366,5 +371,5 @@ test("메커니즘: 반격 태세 · 은신 · 부활 · 성역의 방패 · 차
   pr.tick(Math.ceil(1500 / TICK_MS) + 2);
   assert.ok(!dead.dead && dead.respawnAt === 0 && dead.hp > dead.st.hp * 0.3);
   assert.ok(pr.room.ev.length >= 0 && find(dead, "stun") === undefined);
-  setRandom(Math.random);
+  setFixed(Math.random);
 });

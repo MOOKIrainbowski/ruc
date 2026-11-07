@@ -397,6 +397,103 @@ export function objectFrames(o: TiledObject): HTMLCanvasElement[] {
       p.set(18, 9, "#5EC8F0");
       p.rect(15, 11, 2, 1, STONE[2]);
       break;
+    case "barrel": {
+      ball(p, 8, 9, 6, 6, ["#c98d58", "#8a5a33", "#5e3d22"]);
+      p.rect(2, 5, 12, 1, "#3d3a40");
+      p.rect(2, 10, 12, 1, "#3d3a40");
+      p.rect(3, 2, 10, 2, "#e0b07a");
+      p.ellipse(8, 3, 5, 1, "#b88a58");
+      p.rect(5, 7, 1, 5, "#e0b07a");
+      break;
+    }
+    case "crate": {
+      p.part(1, 3, 14, 12, ["#d8a46c", "#b07a44", "#7d5230"]);
+      p.rect(1, 3, 14, 2, "#e8bd88");
+      p.rect(2, 4, 1, 10, "#7d5230");
+      p.rect(13, 4, 1, 10, "#7d5230");
+      for (let i = 0; i < 12; i++) p.set(2 + i, 4 + Math.floor(i * 0.8), "#8a5a33");
+      p.set(3, 5, "#3d3a40");
+      p.set(12, 13, "#3d3a40");
+      break;
+    }
+    case "crate_stack": {
+      p.part(0, 6, 15, 10, ["#d8a46c", "#b07a44", "#7d5230"]);
+      p.part(16, 4, 15, 12, ["#c99a60", "#a06c3c", "#74482a"]);
+      p.part(5, 0, 12, 8, ["#e0b078", "#b88650", "#84582f"]);
+      p.rect(1, 7, 13, 1, "#7d5230");
+      p.rect(17, 5, 13, 1, "#7d5230");
+      p.rect(7, 2, 8, 1, "#7d5230");
+      break;
+    }
+    case "flowerpot": {
+      p.part(4, 9, 8, 7, ["#e8906a", "#C8643B", "#9c4a2a"]);
+      p.rect(3, 8, 10, 2, "#b0502e");
+      p.rect(7, 4, 2, 5, "#4f8a2b");
+      ball(p, 5, 5, 2, 2, ["#6dae3e", "#4a8527", "#356b1d"]);
+      ball(p, 11, 6, 2, 2, ["#6dae3e", "#4a8527", "#356b1d"]);
+      for (const [x, y, c] of [[8, 2, "#ff6b6b"], [5, 4, "#ffd166"], [11, 4, "#ff9ec0"]] as const) { p.rect(x - 1, y, 3, 1, c); p.set(x, y - 1, c); p.set(x, y, "#fff4b0"); }
+      break;
+    }
+    case "banner": {
+      p.rect(0, 0, w, 2, IRON[1]);
+      p.rect(w / 2 - 1, 0, 2, h - 6, WOOD[2]);
+      p.part(2, 2, w - 4, h - 8, ["#e87a6a", "#C8433B", "#8e2a28"]);
+      for (let y = 0; y < 4; y++) p.rect(2 + y, h - 6 + y, w - 4 - y * 2, 1, "#8e2a28");
+      p.rect(w / 2 - 3, 8, 6, 1, "#F2C94C");
+      p.rect(w / 2 - 1, 6, 2, 8, "#F2C94C");
+      p.rect(w / 2 - 3, 12, 6, 1, "#F2C94C");
+      break;
+    }
+    case "well": {
+      p.part(2, h - 18, w - 4, 18, ["#e6dcc8", "#bfb19b", "#8f8470"]);
+      for (let y = h - 16; y < h - 2; y += 4) p.rect(3, y, w - 6, 1, "#8f8470");
+      p.ellipse(w / 2, h - 18, w / 2 - 4, 3, "#5EC8F0");
+      p.ellipse(w / 2, h - 18, w / 2 - 7, 2, "#3b9bd0");
+      p.part(3, 4, 3, h - 18, WOOD);
+      p.part(w - 6, 4, 3, h - 18, WOOD);
+      p.part(1, 0, w - 2, 6, TERRACOTTA);
+      p.rect(w / 2, 6, 1, 8, "#5a4a3a");
+      p.part(w / 2 - 2, 14, 5, 4, WOOD);
+      break;
+    }
+    case "haystack": {
+      ball(p, 8, 10, 7, 6, ["#f2d27a", "#d9b356", "#a8842a"]);
+      ball(p, 22, 11, 8, 5, ["#f0cc70", "#d0a94c", "#9c7a26"]);
+      for (let i = 0; i < 18; i++) p.set(2 + (i * 7) % 26, 6 + (i * 5) % 9, i % 2 ? "#a8842a" : "#fbe9a8");
+      p.rect(12, 8, 1, 8, "#7d5230");
+      break;
+    }
+    case "sack": {
+      ball(p, 8, 10, 5, 5, ["#e8dcc0", "#c9b88f", "#9c8c66"]);
+      p.rect(6, 4, 4, 2, "#c9b88f");
+      p.rect(5, 5, 6, 1, "#6d513b");
+      p.set(7, 9, "#9c8c66");
+      p.set(9, 11, "#9c8c66");
+      break;
+    }
+    case "log": {
+      p.part(1, 5, w - 2, 9, ["#b07a44", "#85582c", "#5e3d22"]);
+      for (let x = 4; x < w - 4; x += 5) p.rect(x, 7, 1, 5, "#5e3d22");
+      ball(p, 3, 9, 3, 4, ["#f0c892", "#d8a870", "#a87c4c"]);
+      p.ellipse(3, 9, 1, 2, "#a87c4c");
+      p.set(w - 8, 4, "#6dae3e");
+      p.set(w - 7, 3, "#8fcd5a");
+      break;
+    }
+    case "fence": {
+      for (let x = 1; x < w - 1; x += 5) { p.part(x, 3, 3, 13, WOOD); p.set(x + 1, 2, WOOD[0]); }
+      p.part(0, 6, w, 2, ["#c98d58", "#a36a3c", "#7d4f2b"]);
+      p.part(0, 11, w, 2, ["#c98d58", "#a36a3c", "#7d4f2b"]);
+      break;
+    }
+    case "mushroom": {
+      p.rect(7, 8, 2, 5, "#f2ead8");
+      ball(p, 8, 7, 4, 3, ["#ff8a7a", "#E5484D", "#a02a30"]);
+      p.set(6, 6, "#ffffff"); p.set(9, 7, "#ffffff"); p.set(8, 5, "#ffffff");
+      ball(p, 13, 12, 2, 2, ["#ffd8a0", "#e0a060", "#a8703a"]);
+      p.rect(13, 13, 1, 2, "#f2ead8");
+      break;
+    }
     case "rock":
       ball(p, 8, 10, 7, 5, ["#e0d6c6", "#bdb2a1", "#8f857a"]);
       p.rect(4, 7, 3, 1, STONE[0]);
@@ -461,4 +558,97 @@ export function objectFrames(o: TiledObject): HTMLCanvasElement[] {
   padded.draw(p, PAD_X, PAD_TOP);
   padded.outline();
   return [padded.toCanvas()];
+}
+
+// ── 바닥 데칼: 잔디 위 풀 뭉치 · 자갈 · 낙엽 · 버섯 · 잡초, 돌 위 금 · 이끼 (맵을 구울 때 타일 위에 흩뿌림) ──
+export const DECAL_KINDS = ["tuft", "pebbles", "leaves", "mushroom", "weeds", "cracks", "moss", "puddle"] as const;
+export type DecalKind = (typeof DECAL_KINDS)[number];
+export const DECAL_VARIANTS = 4;
+
+function decal(kind: DecalKind, v: number): Px {
+  const p = new Px(TILE, TILE);
+  const H = (i: number, sd: number) => hash(i + v * 7, v, sd + kind.length);
+  switch (kind) {
+    case "tuft":
+      for (let i = 0; i < 5; i++) {
+        const x = 3 + Math.floor(H(i, 1) * 10);
+        const y = 6 + Math.floor(H(i, 2) * 7);
+        p.rect(x, y, 1, 4, "#5c9a33");
+        p.rect(x + 1, y + 1, 1, 3, "#76b02f");
+        p.set(x, y - 1, "#9fd457");
+        p.set(x - 1, y + 1, "#4f8a2b");
+      }
+      break;
+    case "pebbles":
+      for (let i = 0; i < 3 + (v % 2); i++) {
+        const x = 2 + Math.floor(H(i, 3) * 11);
+        const y = 3 + Math.floor(H(i, 4) * 10);
+        p.rect(x, y, 2, 2, "#b9ab95");
+        p.set(x, y, "#e0d6c6");
+        p.rect(x, y + 2, 2, 1, "#5e554a66");
+      }
+      break;
+    case "leaves":
+      for (let i = 0; i < 4; i++) {
+        const x = 2 + Math.floor(H(i, 5) * 11);
+        const y = 3 + Math.floor(H(i, 6) * 10);
+        const c = ["#c8a23a", "#d98a2a", "#a86a2a", "#8aa83a"][(i + v) % 4];
+        p.rect(x, y, 3, 2, c);
+        p.set(x + 1, y - 1, c);
+        p.set(x + 3, y + 1, "#00000022");
+      }
+      break;
+    case "mushroom":
+      p.rect(7, 9, 2, 4, "#f2ead8");
+      p.rect(5, 6, 6, 3, v % 2 ? "#E5484D" : "#d9a066");
+      p.rect(6, 5, 4, 1, v % 2 ? "#E5484D" : "#d9a066");
+      p.set(6, 7, "#ffffff"); p.set(9, 6, "#ffffff");
+      p.rect(6, 13, 4, 1, "#00000022");
+      break;
+    case "weeds":
+      for (let i = 0; i < 4; i++) {
+        const x = 2 + Math.floor(H(i, 7) * 11);
+        const y = 4 + Math.floor(H(i, 8) * 8);
+        p.rect(x, y, 1, 5, "#4f8a2b");
+        p.rect(x + 1, y + 1, 1, 3, "#6aa42e");
+        p.rect(x - 1, y + 2, 1, 2, "#6aa42e");
+        p.set(x, y - 1, "#d8e07a");
+      }
+      break;
+    case "cracks":
+      p.rect(3 + v, 4, 1, 3, "#6e6455"); p.rect(4 + v, 7, 2, 1, "#6e6455"); p.rect(6 + v, 8, 1, 4, "#6e6455"); p.rect(5 + v, 12, 2, 1, "#6e6455");
+      p.rect(4 + v, 4, 1, 3, "#ffffff22");
+      break;
+    case "moss":
+      for (let i = 0; i < 9; i++) p.rect(1 + Math.floor(H(i, 9) * 13), 8 + Math.floor(H(i, 10) * 7), 2, 1, i % 2 ? "#7f9a52" : "#9ab466");
+      break;
+    case "puddle":
+      p.ellipse(8, 10, 5, 2, "#7fb4d066");
+      p.ellipse(7, 9, 3, 1, "#cfe8f588");
+      break;
+  }
+  return p;
+}
+
+/** 데칼 시트: 가로 = 변형, 세로 = 종류 */
+export function decalSheet(): HTMLCanvasElement {
+  const a = new Px(TILE * DECAL_VARIANTS, TILE * DECAL_KINDS.length);
+  DECAL_KINDS.forEach((k, ki) => { for (let v = 0; v < DECAL_VARIANTS; v++) a.draw(decal(k, v), v * TILE, ki * TILE); });
+  return a.toCanvas();
+}
+
+/** 물체 밑 부드러운 접촉 그림자 (타원, 가운데 진하고 가장자리 투명) */
+export function contactShadow(): HTMLCanvasElement {
+  const c = Object.assign(document.createElement("canvas"), { width: 64, height: 24 });
+  const g = c.getContext("2d")!;
+  const gr = g.createRadialGradient(32, 12, 1, 32, 12, 32);
+  gr.addColorStop(0, "rgba(20,14,8,0.55)");
+  gr.addColorStop(0.6, "rgba(20,14,8,0.28)");
+  gr.addColorStop(1, "rgba(20,14,8,0)");
+  g.save();
+  g.scale(1, 0.375);
+  g.fillStyle = gr;
+  g.fillRect(0, 0, 64, 64);
+  g.restore();
+  return c;
 }

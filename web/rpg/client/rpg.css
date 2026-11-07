@@ -507,3 +507,98 @@
 }
 @keyframes rpg-bounce { 0% { transform: scale(0.3) translateY(30px); } 100% { transform: none; } }
 .rpg-levelup-sub { position: relative; margin-top: 2px; font-size: 18px; color: #fff; text-shadow: 0 2px 0 #28487e, 2px 0 0 #28487e, -2px 0 0 #28487e; }
+
+/* ═══ 2026-11 라운드 4: 고급스러운 UI — 버튼은 라운드 2 디자인(나무 갈색 입체 버튼)으로 되돌림 ═══ */
+
+/* 버튼: 전과 동일 (갈색 나무 입체 버튼 · 선택 = 초록) */
+.rpg-btn {
+  background: linear-gradient(#bf8450, #a36a3c 55%, #94603a);
+  color: #fff4dc;
+  border: 2px solid #4d3022;
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: normal;
+  text-shadow: 0 1px 0 rgba(58, 42, 30, 0.7);
+  box-shadow: inset 0 2px 0 rgba(255, 220, 170, 0.55), inset 0 -3px 0 rgba(90, 52, 28, 0.85), 0 2px 0 #3a2a1e;
+  transition: transform 0.06s, filter 0.1s;
+}
+.rpg-btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+.rpg-btn:active:not(:disabled) { transform: translateY(1px); box-shadow: inset 0 2px 0 rgba(90, 52, 28, 0.6), 0 0 0 #3a2a1e; }
+.rpg-btn[data-on="true"] { background: linear-gradient(#78c02c, #5d9e1f 55%, #4f8a1a); text-shadow: 0 1px 0 rgba(30, 60, 10, 0.7); box-shadow: inset 0 2px 0 rgba(200, 255, 140, 0.6), inset 0 -3px 0 #3b6a12, 0 2px 0 #2c4a12; }
+.rpg-btn:disabled { filter: none; opacity: 0.5; }
+
+/* 창: 상아빛 양피지 + 금 그라데이션 테두리 + 안쪽 가는 선 + 모서리 장식 */
+.rpg-panel:not(.absolute):not(.fixed) { position: relative; }
+.rpg-panel {
+  background:
+    radial-gradient(ellipse at 22% -10%, rgba(255, 255, 255, 0.7), transparent 55%),
+    repeating-linear-gradient(0deg, rgba(120, 90, 50, 0.04) 0 1px, transparent 1px 3px),
+    repeating-linear-gradient(90deg, rgba(120, 90, 50, 0.025) 0 1px, transparent 1px 5px),
+    linear-gradient(#f8efd6, #ecdcb4) padding-box,
+    linear-gradient(135deg, #f1d98a, #a8832f 35%, #6d4f1c 55%, #d9b95a 80%, #8a6a2a) border-box;
+  border: 4px solid transparent;
+  border-radius: 8px;
+  box-shadow:
+    inset 0 0 0 1px #8a6a2a, inset 0 0 0 3px #f4e6bf, inset 0 0 0 4px rgba(138, 106, 42, 0.55), inset 0 12px 22px rgba(255, 255, 255, 0.35),
+    0 6px 0 #2a1f12, 0 14px 30px rgba(8, 5, 2, 0.6);
+}
+.rpg-panel::before, .rpg-panel::after {
+  content: "";
+  position: absolute;
+  top: 5px;
+  width: 9px;
+  height: 9px;
+  background: linear-gradient(135deg, #fff2b8, #c9a24a 55%, #7a5a1c);
+  transform: rotate(45deg);
+  box-shadow: 0 0 0 1px #5a4214;
+  pointer-events: none;
+  z-index: 2;
+}
+.rpg-panel::before { left: 5px; }
+.rpg-panel::after { right: 5px; }
+.rpg-modal-bg > .rpg-panel, .rpg-modal-bg > div > .rpg-panel { animation: rpg-pop 0.26s cubic-bezier(0.2, 1.25, 0.4, 1); }
+.rpg-modal-bg { background: radial-gradient(ellipse at center, rgba(14, 10, 6, 0.4), rgba(4, 3, 2, 0.82)); backdrop-filter: blur(2px); }
+
+/* 창 제목: 금박 명판 */
+.rpg-panel > h2 {
+  display: inline-block;
+  margin: -6px 0 10px;
+  padding: 3px 22px 4px;
+  font-size: 14px;
+  letter-spacing: 1px;
+  color: #ffe9a8;
+  text-shadow: 0 1px 0 #2a1d08, 0 0 8px rgba(255, 210, 100, 0.35);
+  background: linear-gradient(#4a3a28, #2c2118 60%, #1c150f);
+  border: 2px solid #c9a24a;
+  border-radius: 4px;
+  box-shadow: inset 0 1px 0 rgba(255, 235, 170, 0.35), inset 0 0 0 1px #1c150f, 0 2px 0 #5a4214, 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+.rpg-x { width: 22px; height: 22px; background: linear-gradient(#5a4632, #2c2118); color: #ffe9a8; border: 2px solid #c9a24a; border-radius: 4px; box-shadow: 0 2px 0 #1c150f; font-size: 11px; line-height: 16px; z-index: 3; }
+.rpg-x:hover { background: linear-gradient(#7a2a2a, #4a1414); color: #fff; transform: none; }
+
+/* 칩 · 입력 · 툴팁 · 알림: 어두운 유리 + 금 머리카락선 */
+.rpg-chip {
+  background: linear-gradient(rgba(40, 31, 24, 0.9), rgba(20, 14, 10, 0.9));
+  border: 1px solid #c9a24a;
+  border-radius: 4px;
+  padding: 3px 9px;
+  color: #f6ecd2;
+  box-shadow: inset 0 1px 0 rgba(255, 235, 170, 0.22), 0 2px 0 rgba(0, 0, 0, 0.5);
+}
+.rpg-input { border: 2px solid #8a6a2a; border-radius: 4px; background: #fffaf0; box-shadow: inset 0 2px 3px rgba(90, 60, 20, 0.22); }
+.rpg-input:focus { border-color: #c9a24a; box-shadow: 0 0 0 2px rgba(201, 162, 74, 0.35), inset 0 2px 3px rgba(90, 60, 20, 0.22); }
+.rpg-range { accent-color: #a8832f; }
+.rpg-questpop { background: linear-gradient(#3a2d20, #1c150f); border: 2px solid #c9a24a; border-radius: 6px; box-shadow: 0 0 0 1px #5a4214, 0 0 24px rgba(201, 162, 74, 0.35), 0 8px 18px rgba(0, 0, 0, 0.55); }
+.rpg-questpop > div:first-child { color: #ffd45a; letter-spacing: 2px; }
+.rpg-notice { border-radius: 0; box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4); }
+.rpg-tip { background: linear-gradient(#2a2018, #17110c); color: #f6ecd2; border: 2px solid #c9a24a; box-shadow: 0 8px 20px rgba(0, 0, 0, 0.6); }
+
+.rpg-root *::-webkit-scrollbar-thumb { background: linear-gradient(90deg, #d9b95a, #a8832f); border: 1px solid #5a4214; }
+.rpg-root * { scrollbar-color: #a8832f #ecdcb4; }
+.rpg-root *::-webkit-scrollbar-track { background: #ecdcb4; }
+
+/* 구슬 테두리에 작은 보석 · HUD 배경판 위쪽 금 장식선 강화 */
+.rpg-orb2-wrap::after { content: ""; position: absolute; left: 50%; top: -12px; width: 10px; height: 10px; margin-left: -5px; background: radial-gradient(circle at 35% 30%, #fff, #ff8a7a 40%, #8a1a20); border: 1px solid #5a4214; border-radius: 50%; }
+.rpg-exp-fill { background: linear-gradient(#fff6b8, #ffd23a 50%, #d98f00); }
+.rpg-levelup-text { text-shadow: 0 4px 0 #6d4a0e, 3px 0 0 #6d4a0e, -3px 0 0 #6d4a0e, 0 -3px 0 #6d4a0e, 0 0 26px #ffd23a; }
