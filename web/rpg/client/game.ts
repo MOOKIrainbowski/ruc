@@ -1,16 +1,18 @@
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture, TextureSource } from "pixi.js";
-import { castMs, cooldownMs, type FullStats } from "../shared/combat";
+import { castMs, type FullStats } from "../shared/combat";
 import { CHAR_H, CHAR_W, INTERP_DELAY_MS, SIM_MS, TILE, type RoomKind } from "../shared/constants";
 import type { Appearance } from "../shared/data/appearance";
 import { effectDef } from "../shared/data/effects";
 import { ITEMS, LOCS, RARITY, basicOf, lookOf, type Item, type Rarity } from "../shared/data/items";
+import { JOBS, LINES, type LineId } from "../shared/data/jobs";
 import { GRADES } from "../shared/data/mobs";
 import { SKILLS, SLOTS, type SkillDef, type Slot } from "../shared/data/skills";
 import { ROLL } from "../shared/data/stats";
 import { USE_RANGE, distToObj, prop, type GameMap, type TiledObject } from "../shared/map";
 import { castMove, step, tryRoll, type MoveInput, type Mover } from "../shared/movement";
+import { skillNums } from "../shared/progress";
 import {
-  F_CAST, F_DEAD, F_MOVING, F_ROLL, F_RUNNING, H_CRIT, H_DOT, H_HEAL, H_IMMUNE, H_MISS, H_RESIST,
+  F_CAST, F_DEAD, F_MOVING, F_ROLL, F_RUNNING, H_COUNTER, H_CRIT, H_DOT, H_HEAL, H_IMMUNE, H_MISS, H_RESIST,
   type DropRow, type EntityInfo, type Ev, type FxRow, type S2C, type You,
 } from "../shared/protocol";
 import { josa } from "../shared/josa";
@@ -53,6 +55,8 @@ type Ent = {
   shadow: Sprite;
   plate: Container;
   label: Text;
+  /** 플레이어 칭호 자리: 직업 이름 (§23-2) */
+  title: Text | null;
   bars: Graphics;
   icons: Container;
   frames: Texture[][];
@@ -98,6 +102,8 @@ export type HudState = {
   /** 고른 핫바 칸 · 포션 공유 쿨 남은 ms */
   sel: number;
   potion: number;
+  /** 차지 스킬 모으는 정도 0~1 (없으면 −1) */
+  charge: number;
 };
 
 /** 바닥 아이템: 아이콘 + (희귀 이상) 빛 · 주우면 주운 사람 쪽으로 날아감 */
@@ -186,18 +192,23 @@ export class Game {
   // 전투 상태 (서버 값 + 예측)
   v: number[] = [0, 1, 0, 1, 0, 1, 0, 0, 0, 0, 0, 0];
   ackSeq = -1;
-  castLog: { seq: number; k: Slot; mana: number; energy: number; cd: number }[] = [];
+  castLog: { seq: number; k: Slot; mana: number; energy: number; cd: number; to?: { x: number; y: number } }[] = [];
   myFx: FxRow[] = [];
   myFxAt = 0;
   deadUntil = 0;
   mouse = { sx: 0, sy: 0, held: false };
-  queued: { dodge: boolean; k: Slot | null; fromKey: boolean } = { dodge: false, k: null, fromKey: false };
+  queued: { dodge: boolean; k: Slot | null; fromKey: boolean; cs: Slot | null } = { dodge: false, k: null, fromKey: false, cs: null };
   aiming: Slot | null = null;
   near: TiledObject | null = null;
   interactables: TiledObject[];
   onToast: (msg: string) => void = () => {};
   onXp: (amount: number, exp: number, level: number) => void = () => {};
   onItems: (items: Item[]) => void = () => {};
+  /** 성장 상태가 바뀜 (React 스킬창 · HUD) · NPC 와 이야기 (세라 = 전직, 오웬 = 스킬) */
+  onProg: () => void = () => {};
+  onNpc: (npc: string) => void = () => {};
+  /** 차지 스킬을 모으는 중 (§10-2) */
+  charging: { slot: Slot; at: number } | null = null;
   items: Item[] = [];
   /** 고른 핫바 칸 (§15-2) */
   sel = 0;
@@ -234,7 +245,7 @@ export class Game {
 
     this.buildMap();
     this.app.stage.addChild(this.world, this.screenLayer);
-    this.meSprite = this.makeEnt({ id: this.you.id, name: this.you.nickname, ap: this.you.appearance, look: lookOf(this.items), el: this.you.element, lv: this.you.level }, true);
+    this.meSprite = this.makeEnt({ id: this.you.id, name: this.you.nickname, ap: this.you.appearance, look: lookOf(this.items), el: this.you.element, lv: this.you.level, jb: this.you.prog.job ?? this.you.prog.line ?? "" }, true);
     for (const e of ents) this.addEnt(e);
     for (const [id, rows] of fx) this.setFx(id, rows);
     for (const d of drops) this.addDrop(d);
@@ -247,9 +258,15 @@ export class Game {
     };
     const up = (e: KeyboardEvent) => {
       this.keys.delete(e.code);
-      if (this.aiming && this.slotOfKey(e.code) === this.aiming) { this.queue(this.aiming); this.aiming = null; }
+      const slot = this.slotOfKey(e.code);
+      if (this.aiming && slot === this.aiming) { this.queue(this.aiming); this.aiming = null; }
+      // 차지 스킬: 떼면 쏨
+      if (this.charging && slot === this.charging.slot) { this.queue(slot); this.charging = null; }
     };
-    const blur = () => { this.keys.clear(); this.mouse.held = false; this.aiming = null; };
+    const blur = () => {
+      this.keys.clear(); this.mouse.held = false; this.aiming = null;
+      if (this.charging) { this.queue(this.charging.slot); this.charging = null; }
+    };
     const move = (e: MouseEvent) => {
       const r = this.app.canvas.getBoundingClientRect();
       this.mouse.sx = e.clientX - r.left;
@@ -391,8 +408,9 @@ export class Game {
     const bars = new Graphics();
     const icons = new Container();
     plate.addChild(bars, label, icons);
-    if (mob && info.grade && info.grade !== "normal") {
-      const title = new Text({ text: GRADES[info.grade].name, style: { ...LABEL_STYLE, fontSize: 10, fill: color } });
+    let title: Text | null = null;
+    if ((mob && info.grade && info.grade !== "normal") || !mob) {
+      title = new Text({ text: mob ? GRADES[info.grade!].name : this.jobTitle(info.jb), style: { ...LABEL_STYLE, fontSize: 10, fill: mob ? color : "#FFE14D" } });
       title.anchor.set(0.5, 1);
       title.y = -19;
       plate.addChild(title);
@@ -402,9 +420,14 @@ export class Game {
     const x = isMe ? this.me.x : 0;
     const y = isMe ? this.me.y : 0;
     return {
-      info, mob, sprite, shadow, plate, label, bars, icons, frames, buf: [], x, y, dir: 0, shown: 0, turnMs: 0, action: "idle", animMs: 0,
+      info, mob, sprite, shadow, plate, label, title, bars, icons, frames, buf: [], x, y, dir: 0, shown: 0, turnMs: 0, action: "idle", animMs: 0,
       flags: 0, hp: 1000, res: 1000, drawn: "", fx: [], fxAt: 0, flash: 0, lunge: null, act: null, deadMs: 0, face: 0,
     };
+  }
+
+  /** 칭호 자리: 1차 · 2차 직업 이름 (견습은 비움) */
+  private jobTitle(jb?: string) {
+    return !jb ? "" : jb in LINES ? LINES[jb as LineId].name : (JOBS[jb]?.name ?? "");
   }
 
   addEnt(info: EntityInfo) {
@@ -467,6 +490,11 @@ export class Game {
     else if (m.t === "despawn") this.removeEnt(m.id);
     else if (m.t === "stats") this.stats = m.s;
     else if (m.t === "inv") this.setItems(m.items);
+    else if (m.t === "prog") {
+      this.you.prog = m.prog;
+      this.you.slots = { ...m.slots, A: basicOf(this.items) };
+      this.onProg();
+    }
     else if (m.t === "s") {
       const now = performance.now();
       const sample = m.st - now;
@@ -499,7 +527,7 @@ export class Game {
         const e = this.ent(tgt);
         if (!e) return;
         const mine = tgt === this.you.id;
-        const label = flags & H_IMMUNE ? (e === this.meSprite && this.me.ifr > 0 ? "회피" : "무적") : flags & H_MISS ? "빗나감" : flags & H_RESIST ? "저항" : null;
+        const label = flags & H_COUNTER ? "반격!" : flags & H_IMMUNE ? (e === this.meSprite && this.me.ifr > 0 ? "회피" : "무적") : flags & H_MISS ? "빗나감" : flags & H_RESIST ? "저항" : null;
         const top = e.y - (e.mob ? (PLATE_H[e.info.mob!] ?? 24) : 40);
         if (this.settings.damageNumbers || mine) {
           if (label) this.fx.number(e.x, top, label, "#cfd6de");
@@ -537,8 +565,38 @@ export class Game {
       case "px":
         return this.fx.endProjectile(ev[1] as number);
       case "w": {
-        const [, shape, x, y, ang, size, width, ms] = ev as [string, string, number, number, number, number, number, number];
-        return this.fx.telegraph(shape, x, y, ang, size, width, ms);
+        const [, shape, x, y, ang, size, width, ms, team] = ev as [string, string, number, number, number, number, number, number, string?];
+        return this.fx.telegraph(shape, x, y, ang, size, width, ms, team);
+      }
+      case "gx": {
+        const [, x, y, r, kind] = ev as [string, number, number, number, string];
+        return this.fx.ring(x, y, r, kind);
+      }
+      case "wl": {
+        const [, x1, y1, x2, y2, ms] = ev as number[] as [never, number, number, number, number, number];
+        return this.fx.wall(x1, y1, x2, y2, ms);
+      }
+      case "rx": {
+        const e = this.ent(ev[1] as number);
+        if (e) this.fx.number(e.x, e.y - (e.mob ? (PLATE_H[e.info.mob!] ?? 24) + 12 : 52), `${ev[2]}!`, "#FFD27A", true);
+        return;
+      }
+      case "rv": {
+        const e = this.ent(ev[1] as number);
+        if (!e) return;
+        e.deadMs = 0;
+        if (e === this.meSprite) this.deadUntil = 0;
+        this.fx.pillar(e.x, e.y);
+        return;
+      }
+      case "job": {
+        const [, id, line, job] = ev as [string, number, string, string];
+        const e = this.ent(id);
+        if (!e || e.mob) return;
+        e.info.jb = job || line;
+        if (e.title) e.title.text = this.jobTitle(e.info.jb);
+        this.fx.pillar(e.x, e.y);
+        return;
       }
       case "f":
         return this.setFx(ev[1] as number, ev[2] as FxRow[]);
@@ -571,7 +629,7 @@ export class Game {
         if (e.mob) e.label.text = `Lv${lv} ${e.info.name}`;
         if (id === this.you.id) this.you.level = lv;
         this.fx.number(e.x, e.y - 56, "LEVEL UP!", "#FFD27A", true);
-        this.fx.burst(e.x, e.y - 20, "light", 40);
+        this.fx.pillar(e.x, e.y);
         return;
       }
     }
@@ -599,6 +657,16 @@ export class Game {
         const [, tpl, qty, rarity] = ev as [string, string, number, Rarity];
         const t = ITEMS[tpl];
         if (t) this.fx.number(this.meSprite.x, this.meSprite.y - 50, `+${t.name}${qty > 1 ? ` ×${qty}` : ""}`, rarity === "common" ? "#fff4dc" : RARITY[rarity].color);
+        return;
+      }
+      case "sk": {
+        // 스킬 레벨업 · 새로 배움 (§10-3)
+        const [, id, lv, kind] = ev as [string, string, number, string];
+        const sk = SKILLS[id];
+        if (!sk) return;
+        const text = kind === "learn" ? `새 스킬 「${sk.name}」 (K)` : kind === "grade" ? `「${sk.name}」 등급이 올랐습니다` : `「${sk.name}」 Lv${lv}`;
+        this.fx.number(this.meSprite.x, this.meSprite.y - 62, text, "#9be564");
+        if (kind !== "lv") this.toast(text);
         return;
       }
       case "du": {
@@ -643,10 +711,20 @@ export class Game {
     const digit = /^Digit([1-5])$/.exec(code);
     if (digit) this.sel = Number(digit[1]) - 1;
     else if (code === k.dodge) this.queued.dodge = true;
-    else if (code === k.interact) { if (this.near) this.net.send({ t: "use", oid: this.near.id }); }
+    else if (code === k.interact) {
+      const npc = this.near?.type === "npc" ? String(prop(this.near, "npc")) : "";
+      if (npc === "sera" || npc === "owen") this.onNpc(npc);
+      else if (this.near) this.net.send({ t: "use", oid: this.near.id });
+    }
     else {
       const slot = this.slotOfKey(code);
       if (!slot) return;
+      // 차지 스킬: 누르는 동안 모음 (서버에는 모으기 시작을 입력에 실어 알림)
+      if (this.skill(slot)?.charge && this.canCast(slot) === null) {
+        this.charging = { slot, at: performance.now() };
+        this.queued.cs = slot;
+        return;
+      }
       if (this.settings.castMode === "indicator" && this.you.slots[slot]) this.aiming = slot;
       else this.queue(slot);
     }
@@ -661,19 +739,48 @@ export class Game {
     return SKILLS[this.you.slots[k] ?? ""];
   }
 
+  /** 등급 · 레벨을 반영한 수치 (서버와 같은 공식) */
+  nums(k: Slot) {
+    const sk = this.skill(k)!;
+    return skillNums(sk, this.you.prog.skills.find((l) => l.id === sk.id), k === "A" ? 0 : this.stats.cdr);
+  }
+
+  /** 커서 근처(24px) · 사거리 안의 적 (서버 skills.ts enemyNear 와 같게) */
+  private enemyNear(ax: number, ay: number, range: number) {
+    let best: Ent | undefined;
+    let bd = 24;
+    for (const e of this.ents.values()) {
+      if (!e.mob || e.deadMs > 0 || !e.sprite.visible) continue;
+      const d = Math.sqrt((e.x - ax) ** 2 + (e.y - ay) ** 2);
+      if (d <= bd + 10 && Math.sqrt((e.x - this.me.x) ** 2 + (e.y - this.me.y) ** 2) <= range + 18) { bd = d; best = e; }
+    }
+    return best;
+  }
+
+  /** 커서 근처 아군 (없으면 나) — 아군 돌진 예측 */
+  private allyNear(ax: number, ay: number): { x: number; y: number } {
+    for (const e of this.ents.values()) if (!e.mob && e.sprite.visible && Math.sqrt((e.x - ax) ** 2 + (e.y - ay) ** 2) <= 30) return e;
+    return this.me;
+  }
+
   /** 서버 cast() 검증을 똑같이 (§2-2 낙관적 재생) */
   private canCast(k: Slot): string | null {
     const sk = this.skill(k);
-    if (!sk) return k === "R" ? "궁극기는 1차 전직(Lv10) 후 열립니다" : "아직 배우지 않은 슬롯입니다";
+    if (!sk) return k === "R" ? "궁극기는 1차 전직(Lv10) 후 열립니다" : "스킬이 없는 슬롯입니다 (K 스킬창)";
     if (this.kind === "plaza") return "광장은 안전지대라 공격 · 스킬을 쓸 수 없습니다";
     if (this.deadUntil) return QUIET;
     const b = this.blocks();
     if (k === "A" ? b.atk : b.skill) return "지금은 쓸 수 없습니다";
     if (this.me.mv > 0 || this.me.lock > 0) return QUIET;
     if (this.cdLeft(k) > 0) return QUIET;
+    const n = this.nums(k);
     const [mp, en] = this.resources();
-    if (mp < (sk.cost.mana ?? 0)) return "마나가 부족합니다";
-    if (en < (sk.cost.energy ?? 0)) return "기력이 부족합니다";
+    if (mp < n.cost.mana) return "마나가 부족합니다";
+    if (en < n.cost.energy) return "기력이 부족합니다";
+    if (sk.targeting === "target") {
+      const [ax, ay] = this.aimPoint();
+      if (!this.enemyNear(ax, ay, n.range)) return "대상이 없습니다 — 적에게 마우스를 올리세요";
+    }
     return null;
   }
 
@@ -697,7 +804,7 @@ export class Game {
   private cdTotal(k: Slot) {
     const sk = this.skill(k);
     if (!sk) return 0;
-    return k === "A" ? castMs(sk.cooldownMs, this.stats.atkSpeed) : cooldownMs(sk.cooldownMs, this.stats);
+    return k === "A" ? castMs(sk.cooldownMs, this.stats.atkSpeed) : this.nums(k).cooldownMs;
   }
 
   /** 남은 쿨(ms): 서버 값(ack 시점)과 아직 처리 안 된 내 시전 중 큰 것 */
@@ -716,20 +823,24 @@ export class Game {
   /** 재생: 서버 room.input 과 같은 순서 (구르기 → 시전 → 이동) */
   private replay(m: Mover, i: MoveInput) {
     if (i.dg) tryRoll(m, i);
-    if (i.k) castMove(m, this.skill(i.k)!, i.ax!, i.ay!);
+    if (i.k) {
+      const sk = this.skill(i.k);
+      if (sk) castMove(m, sk, i.ax!, i.ay!, this.map.collider, this.nums(i.k).range, this.castLog.find((c) => c.seq === i.seq)?.to);
+    }
     step(m, i, this.map.collider);
   }
 
   private playCast(e: Ent, sk: SkillDef | undefined, ax: number, ay: number, now: number) {
     if (!sk) return;
-    const kind: Action = sk.targeting === "melee" || sk.targeting === "dash" ? "attack" : "cast";
+    const kind: Action = sk.targeting === "melee" || sk.targeting === "dash" || (sk.targeting === "self" && sk.category === "physical") ? "attack" : "cast";
     e.act = { kind, until: now + Math.max(280, castMs(sk.castMs || 300, this.stats.atkSpeed)) };
     e.animMs = 0;
     const ang = Math.atan2(ay - e.y, ax - e.x);
     const el = sk.elementInherit ? e.info.el : "none";
     if (sk.targeting === "melee") this.fx.swing(e.x, e.y, ang, sk.range, "#ffffff");
     if (sk.targeting === "dash") this.fx.burst(e.x, e.y - 12, el, 10);
-    if (sk.targeting === "ally" || sk.targeting === "skillshot") this.fx.burst(e.x, e.y - 30, sk.targeting === "ally" ? "heal" : el, 6);
+    if (sk.targeting === "ally" || sk.targeting === "skillshot" || sk.targeting === "target") this.fx.burst(e.x, e.y - 30, sk.targeting === "ally" ? "heal" : el, 6);
+    if (sk.targeting === "blink") this.fx.burst(e.x, e.y - 12, el === "none" ? "dark" : el, 14);
   }
 
   // ── 프레임 ──────────────────────────────────────────────────────
@@ -758,6 +869,7 @@ export class Game {
         this.queued.dodge = false;
         tryRoll(this.me, input);
       }
+      if (this.queued.cs) { input.cs = this.queued.cs; this.queued.cs = null; }
       const slot = this.queued.k ?? (this.mouse.held && !this.inputBlocked ? "A" : null);
       const fromKey = this.queued.fromKey;
       this.queued.k = null;
@@ -768,19 +880,21 @@ export class Game {
           const [ax, ay] = this.aimPoint();
           Object.assign(input, { k: slot, ax, ay });
           const sk = this.skill(slot)!;
+          const n = this.nums(slot);
           const sx = this.me.x;
           const sy = this.me.y;
-          castMove(this.me, sk, ax, ay);
-          this.castLog.push({ seq: input.seq, k: slot, mana: sk.cost.mana ?? 0, energy: sk.cost.energy ?? 0, cd: this.cdTotal(slot) });
+          const to = sk.targeting === "ally" && sk.dashSteps ? { ...this.allyNear(ax, ay) } : undefined;
+          castMove(this.me, sk, ax, ay, this.map.collider, n.range, to);
+          this.castLog.push({ seq: input.seq, k: slot, mana: n.cost.mana, energy: n.cost.energy, cd: this.cdTotal(slot), to });
           this.meSprite.x = sx;
           this.meSprite.y = sy;
           this.playCast(this.meSprite, sk, ax, ay, now);
-          if (sk.targeting === "skillshot") {
+          if (sk.targeting === "skillshot" && !sk.count) {
             const dx = ax - sx;
             const dy = ay - sy;
             const len = Math.sqrt(dx * dx + dy * dy) || 1;
             const speed = sk.speed! * (1 + this.stats.projSpeed);
-            this.fx.projectile(-(input.seq + 1), sx, sy, (dx / len) * speed, (dy / len) * speed, sk.range, sk.elementInherit ? this.you.element : "none");
+            this.fx.projectile(-(input.seq + 1), sx, sy, (dx / len) * speed, (dy / len) * speed, n.range, sk.elementInherit ? this.you.element : sk.sub ? this.you.prog.sub ?? "none" : sk.el ?? "none");
           }
         } else if (fromKey) this.toast(why);
       }
@@ -873,15 +987,22 @@ export class Game {
     for (const o of this.interactables) if (distToObj(o, this.me.x, this.me.y) <= USE_RANGE) near = o;
     this.near = near;
     this.indicator.clear();
-    const aimSk = this.aiming && this.skill(this.aiming);
-    if (aimSk) {
+    const aimSlot = this.aiming ?? this.charging?.slot;
+    const aimSk = aimSlot && this.skill(aimSlot);
+    if (aimSk && aimSk.range > 0) {
+      const n = this.nums(aimSlot!);
       const [ax, ay] = this.aimPoint();
       const dx = ax - me.x;
       const dy = ay - me.y;
       const len = Math.sqrt(dx * dx + dy * dy) || 1;
-      const r = Math.min(len, aimSk.range);
-      this.indicator.circle(me.x, me.y, aimSk.range).stroke({ color: 0xffffff, width: 1, alpha: 0.35 });
-      this.indicator.moveTo(me.x, me.y - 6).lineTo(me.x + (dx / len) * r, me.y - 6 + (dy / len) * r).stroke({ color: 0xffe14d, width: 2, alpha: 0.8 });
+      const r = Math.min(len, n.range);
+      this.indicator.circle(me.x, me.y, n.range).stroke({ color: 0xffffff, width: 1, alpha: 0.35 });
+      if (aimSk.targeting === "ground") this.indicator.circle(me.x + (dx / len) * r, me.y + (dy / len) * r, n.radius).stroke({ color: 0xffe14d, width: 1, alpha: 0.8 });
+      else this.indicator.moveTo(me.x, me.y - 6).lineTo(me.x + (dx / len) * r, me.y - 6 + (dy / len) * r).stroke({ color: 0xffe14d, width: 2, alpha: 0.8 });
+    }
+    if (this.charging) {
+      const k = Math.min(1, (performance.now() - this.charging.at) / (this.skill(this.charging.slot)?.charge?.ms ?? 1000));
+      this.indicator.circle(me.x, me.y - 14, 10 + 10 * k).stroke({ color: k >= 1 ? 0xffd27a : 0xffffff, width: 2, alpha: 0.5 + 0.5 * k });
     }
   }
 
@@ -945,7 +1066,7 @@ export class Game {
     e.sprite.rotation = dead ? -Math.PI / 2 : rolling ? (Math.floor(e.animMs / 75) % 4) * (Math.PI / 2) * (e.dir >= 5 ? -1 : 1) : 0;
     e.sprite.anchor.set(0.5, rolling ? 0.6 : dead ? 0.75 : 60 / CHAR_H);
     e.sprite.position.set(e.x, e.y - (rolling ? 12 : dead ? 4 : 0));
-    e.sprite.alpha = dead ? 0.75 : 1;
+    e.sprite.alpha = dead ? 0.75 : e.fx.some((r) => r[0] === "stealth") ? 0.4 : 1;
     e.sprite.tint = e.flash > 0 ? 0xff9090 : dead ? 0xb0a8c0 : 0xffffff;
     e.sprite.zIndex = e.y;
     e.shadow.position.set(e.x, e.y - 1);
@@ -958,7 +1079,8 @@ export class Game {
     for (const k of SLOTS) {
       const sk = this.skill(k);
       if (!sk) continue;
-      cds[k] = [this.cdLeft(k), this.cdTotal(k), mp >= (sk.cost.mana ?? 0) && en >= (sk.cost.energy ?? 0)];
+      const c = this.nums(k).cost;
+      cds[k] = [this.cdLeft(k), this.cdTotal(k), mp >= c.mana && en >= c.energy];
     }
     const age = now - this.myFxAt;
     return {
@@ -973,11 +1095,12 @@ export class Game {
       others: [...this.ents.values()].filter((e) => e.sprite.visible && !(e.flags & F_DEAD)).map((e) => ({ x: e.x, y: e.y, mob: e.mob })),
       v: [this.v[0], this.v[1], mp, this.v[3], en, this.v[5], this.v[6]],
       cds,
-      fx: this.myFx.map((r) => [r[0], Math.max(0, r[1] - age), r[2], r[3], r[4]] as FxRow).filter((r) => r[1] > 0),
+      fx: this.myFx.map((r) => [r[0], Math.max(0, r[1] - age), r[2], r[3], r[4]] as FxRow).filter((r) => r[1] > 0 || r[3] === 0),
       dead: this.deadUntil ? Math.max(0, this.deadUntil - now) : 0,
       hint: this.near ? (this.near.type === "portal" ? `${josa(this.near.name, "으로/로")} 이동` : `${this.near.name}에게 말 걸기`) : null,
       sel: this.sel,
       potion: this.v[12] ?? 0,
+      charge: this.charging ? Math.min(1, (now - this.charging.at) / (this.skill(this.charging.slot)?.charge?.ms ?? 1000)) : -1,
     };
   }
 }

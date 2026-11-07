@@ -3,9 +3,11 @@
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { CHAR_H, CHAR_W } from "../shared/constants";
 import {
-  EQUIP_NAME, EQUIP_SLOTS, ITEMS, LOCS, POTION_CD_MS, RARITY, SETS, SPECIALS, gearOf, lookOf, pctSpecial, pctText, stackable, working,
+  EQUIP_NAME, EQUIP_SLOTS, ITEMS, LOCS, POTION_CD_MS, RARITY, SETS, SPECIALS, bookGrade, gearOf, lookOf, pctSpecial, pctText, stackable, working,
   type EquipSlot, type Item, type ItemPos, type Loc,
 } from "../shared/data/items";
+import { SKILLS } from "../shared/data/skills";
+import { GRADE } from "../shared/progress";
 import type { C2S, You } from "../shared/protocol";
 import { characterSheet, outfitOf } from "./art/character";
 import { iconUrl } from "./art/icons";
@@ -91,6 +93,12 @@ function Tip({ it, items, level, x, y, zoom }: { it: Item; items: Item[]; level:
         <div className="mt-1">
           {(["hp", "mp", "en"] as const).filter((k) => tp.heal![k]).map((k) => <div key={k}>{t(`inv.heal.${k}`, { v: tp.heal![k]! })}</div>)}
           <div className="text-[#8c6642]">{t("inv.potion")}</div>
+        </div>
+      )}
+      {tp.skill && (
+        <div className="mt-1 text-[#3b6fd6]">
+          {SKILLS[tp.skill].name} · {GRADE[bookGrade(it.rarity)].name}
+          <p className="text-[#3a2a1e]">{SKILLS[tp.skill].desc}</p>
         </div>
       )}
       {tp.set && (
@@ -267,7 +275,7 @@ export function ItemsWindow({ mode, items, you, zoom, send, toast, onClose }: {
             {(() => {
               const tp = ITEMS[menu.it.tpl];
               const rows: [string, () => void][] = [];
-              if (tp.heal) rows.push([t("inv.use"), () => use(menu.it)]);
+              if (tp.heal || tp.skill) rows.push([t("inv.use"), () => use(menu.it)]);
               if (tp.slot) rows.push([menu.it.loc === "equipped" ? t("inv.unequip") : t("inv.equip"), () => use(menu.it)]);
               if (stackable(tp) && menu.it.qty > 1) rows.push([t("inv.split"), () => split(menu.it)]);
               rows.push([t("inv.drop"), () => setConfirm(menu.it)]);

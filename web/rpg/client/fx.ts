@@ -119,7 +119,9 @@ export class Fx {
   }
 
   /** 바닥 경고 장판 (§10-2): 테두리 + 안쪽이 시간에 따라 차오름 */
-  telegraph(shape: string, x: number, y: number, ang: number, size: number, width: number, ms: number) {
+  /** 바닥 경고 (§10-2). team "p" = 내 편 스킬 (금색) */
+  telegraph(shape: string, x: number, y: number, ang: number, size: number, width: number, ms: number, team = "") {
+    const [fill, line] = team === "p" ? [0xffd27a, 0xfff4b0] : [0xe5484d, 0xff6b6b];
     const g = new Graphics();
     g.position.set(x, y);
     g.rotation = shape === "line" ? ang : 0;
@@ -127,15 +129,51 @@ export class Fx {
     const draw = (k: number) => {
       g.clear();
       if (shape === "circle") {
-        g.circle(0, 0, size).fill({ color: 0xe5484d, alpha: 0.18 }).stroke({ color: 0xff6b6b, width: 1, alpha: 0.9 });
-        g.circle(0, 0, size * k).fill({ color: 0xe5484d, alpha: 0.3 });
+        g.circle(0, 0, size).fill({ color: fill, alpha: 0.18 }).stroke({ color: line, width: 1, alpha: 0.9 });
+        g.circle(0, 0, size * k).fill({ color: fill, alpha: 0.3 });
       } else {
-        g.rect(0, -width / 2, size, width).fill({ color: 0xe5484d, alpha: 0.18 }).stroke({ color: 0xff6b6b, width: 1, alpha: 0.9 });
-        g.rect(0, -width / 2, size * k, width).fill({ color: 0xe5484d, alpha: 0.3 });
+        g.rect(0, -width / 2, size, width).fill({ color: fill, alpha: 0.18 }).stroke({ color: line, width: 1, alpha: 0.9 });
+        g.rect(0, -width / 2, size * k, width).fill({ color: fill, alpha: 0.3 });
       }
     };
     draw(0);
     this.warns.push({ g, age: 0, ms, draw });
+  }
+
+  /** 범위 스킬이 터짐: 퍼지는 고리 + 파티클 */
+  ring(x: number, y: number, r: number, kind: string) {
+    const color = kind === "heal" ? "#4CC764" : kind ? elColor(kind) : "#fff4dc";
+    const g = new Graphics();
+    g.position.set(x, y);
+    this.ground.addChild(g);
+    this.warns.push({ g, age: 0, ms: 320, draw: (k) => g.clear().circle(0, 0, Math.max(2, r * (0.4 + 0.6 * k))).stroke({ color, width: 2, alpha: 1 - k }).fill({ color, alpha: 0.15 * (1 - k) }) });
+    this.burst(x, y - 4, kind || "hit", Math.min(24, 6 + Math.round(r / 4)));
+  }
+
+  /** 성역의 방패: 적 투사체를 막는 벽 */
+  wall(x1: number, y1: number, x2: number, y2: number, ms: number) {
+    const g = new Graphics();
+    this.world.addChild(g);
+    this.warns.push({
+      g, age: 0, ms,
+      draw: (k) => g.clear().moveTo(x1, y1).lineTo(x2, y2).stroke({ color: 0xfff4b0, width: 4, alpha: k > 0.8 ? (1 - k) * 4 : 0.85 }).moveTo(x1, y1 - 10).lineTo(x2, y2 - 10).stroke({ color: 0xffd27a, width: 2, alpha: 0.4 }),
+    });
+  }
+
+  /** 레벨업 빛기둥 (§7): 금색 기둥이 솟았다가 사라짐 */
+  pillar(x: number, y: number) {
+    const g = new Graphics();
+    g.blendMode = "add";
+    this.world.addChild(g);
+    this.warns.push({
+      g, age: 0, ms: 1400,
+      draw: (k) => {
+        const h = 160 * Math.min(1, k * 4);
+        const a = k < 0.7 ? 0.55 : 0.55 * (1 - (k - 0.7) / 0.3);
+        g.clear().rect(x - 9, y - h, 18, h).fill({ color: 0xffd27a, alpha: a * 0.6 }).rect(x - 4, y - h, 8, h).fill({ color: 0xfff4b0, alpha: a });
+      },
+    });
+    for (let i = 0; i < 4; i++) this.burst(x, y - 20 - i * 30, "light", 8);
   }
 
   /** 근접 휘두르기 호 (월드) */

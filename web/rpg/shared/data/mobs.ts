@@ -81,7 +81,7 @@ export const MOBS: Record<string, MobDef> = {
     drops: [
       { item: "goblin_coin", chance: 0.8, qty: [1, 3] }, { item: "hp_potion_m", chance: 0.1 }, { item: "en_potion_s", chance: 0.08 },
       { item: "leather_vest", chance: 0.05 }, { item: "leather_pants", chance: 0.05 }, { item: "goblin_axe", chance: 0.04 },
-      { item: "wood_sword", chance: 0.03 }, { item: "enhance_stone", chance: 0.03 },
+      { item: "wood_sword", chance: 0.03 }, { item: "enhance_stone", chance: 0.03 }, { item: "book_random", chance: 0.006 },
     ],
   },
   wolf: {
@@ -92,6 +92,7 @@ export const MOBS: Record<string, MobDef> = {
       { item: "wolf_pelt", chance: 0.75, qty: [1, 2] }, { item: "hp_potion_m", chance: 0.1 }, { item: "mp_potion_m", chance: 0.06 }, { item: "hp_potion_l", chance: 0.02 },
       { item: "sprout_helm", chance: 0.03 }, { item: "sprout_mail", chance: 0.03 }, { item: "sprout_greaves", chance: 0.03 }, { item: "sprout_boots", chance: 0.03 }, { item: "sprout_gloves", chance: 0.03 },
       { item: "fang_sword", chance: 0.02 }, { item: "vine_wand", chance: 0.02 }, { item: "fang_earring", chance: 0.015 }, { item: "enhance_stone", chance: 0.04 },
+      { item: "book_random", chance: 0.012 },
     ],
   },
 };

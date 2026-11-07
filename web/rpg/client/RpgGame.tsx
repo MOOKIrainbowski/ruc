@@ -10,6 +10,7 @@ import type { ChannelInfo, S2C, You } from "../shared/protocol";
 import { CombatHud, DeathOverlay } from "./CombatHud";
 import CreateCharacter from "./CreateCharacter";
 import type { Game, HudState } from "./game";
+import { JobDialog, SkillWindow } from "./Growth";
 import { ChannelPicker, Compass, Minimap, TopRight, WorldMap } from "./Hud";
 import { t, type StrKey } from "./i18n";
 import { ItemsWindow } from "./Inventory";
@@ -18,9 +19,9 @@ import SettingsModal from "./SettingsModal";
 import { loadLocal, mergeSettings, saveLocal, type Settings } from "./settings";
 
 type Phase = "loading" | "create" | "play" | "closed";
-type Popup = "settings" | "map" | "inventory" | "storage";
+type Popup = "settings" | "map" | "inventory" | "storage" | "skills" | "job";
 /** 열려 있으면 게임 입력을 막는 팝업 */
-const BLOCKING: Popup[] = ["settings", "inventory", "storage"];
+const BLOCKING: Popup[] = ["settings", "inventory", "storage", "skills", "job"];
 
 /** 맵은 들어갈 때 불러옴 (§29 초기 로딩) */
 const MAP_JSON: Record<RoomKind, () => Promise<{ default: unknown }>> = {
@@ -95,6 +96,8 @@ export default function RpgGame({ dev }: { dev?: string }) {
           g.onToast = toast;
           g.onXp = (_, exp, level) => setYou((y) => y && { ...y, exp, level });
           g.onItems = setItems;
+          g.onProg = () => setYou({ ...g.you });
+          g.onNpc = (npc) => setPopups((s) => [...s.filter((x) => x !== "job" && x !== "skills"), npc === "sera" ? "job" : "skills"]);
           try {
             await g.start(host.current, m.ents, m.fx, m.drops);
           } catch {
@@ -165,6 +168,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
       } else if (popups.includes("settings")) return;
       else if (e.code === settings.keys.map) toggle("map");
       else if (e.code === settings.keys.inventory) toggle("inventory");
+      else if (e.code === settings.keys.skills) toggle("skills");
       else if (e.code === settings.keys.storage) {
         if (room.kind === "plaza" || popups.includes("storage")) toggle("storage");
         else toast(t("inv.storageOnly"));
@@ -172,7 +176,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
     };
     window.addEventListener("keydown", down);
     return () => window.removeEventListener("keydown", down);
-  }, [phase, capturing, settings.keys.map, settings.keys.inventory, settings.keys.storage, popups, toggle, room.kind, toast]);
+  }, [phase, capturing, settings.keys.map, settings.keys.inventory, settings.keys.storage, settings.keys.skills, popups, toggle, room.kind, toast]);
 
   const top = popups[popups.length - 1];
 
@@ -228,6 +232,15 @@ export default function RpgGame({ dev }: { dev?: string }) {
       {phase === "play" && you && (top === "inventory" || top === "storage") && (
         <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
           <ItemsWindow mode={top} items={items} you={you} zoom={settings.uiScale / 100} send={(m) => net.current?.send(m)} toast={toast} onClose={() => toggle(top)} />
+        </div>
+      )}
+      {phase === "play" && you && (top === "skills" || top === "job") && (
+        <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
+          {top === "skills" ? (
+            <SkillWindow you={you} send={(m) => net.current?.send(m)} onClose={() => toggle("skills")} />
+          ) : (
+            <JobDialog you={you} send={(m) => net.current?.send(m)} onClose={() => toggle("job")} />
+          )}
         </div>
       )}
       {phase === "play" && top === "settings" && (

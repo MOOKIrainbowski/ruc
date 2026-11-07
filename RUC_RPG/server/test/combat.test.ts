@@ -11,7 +11,7 @@ const { SIM_MS, TICK_MS } = await import("../../../web/rpg/shared/constants.ts")
 const { loadMap } = await import("../../../web/rpg/shared/map.ts");
 const { newMover } = await import("../../../web/rpg/shared/movement.ts");
 const { addEffect, find, hit, makeUnit, setRandom, shieldOf, tickEffects } = await import("../src/combat.ts");
-const { Room, itemState, newId, playerSlots } = await import("../src/room.ts");
+const { Room, buildPlayer, newId } = await import("../src/room.ts");
 const { createCharacter, db } = await import("../src/db.ts");
 test.after(() => {
   db.close();
@@ -21,7 +21,7 @@ type Unit = import("../src/combat.ts").Unit;
 type World = import("../src/combat.ts").World;
 type Player = import("../src/room.ts").Player;
 
-const world = (): World => ({ now: 0, ev: [], unit: () => undefined, damaged() {}, struck() {}, killed() {}, push() {} });
+const world = (): World => ({ now: 0, ev: [], unit: () => undefined, damaged() {}, struck() {}, killed() {}, push() {}, around: () => [] });
 const unit = (kind: "p" | "m" = "p", spirit = 10): Unit => {
   const base = { ...baseStats(1), spirit };
   return makeUnit({ id: newId(), kind, name: "u", el: "none", lv: 1, x: 0, y: 0, r: 7, base, mover: kind === "p" ? newMover(0, 0, base) : undefined });
@@ -120,14 +120,7 @@ test("필드: 마력 화살로 슬라임 사냥 → 경험치, 슬라임 반격,
   const target = slimes[0];
   const sent: string[] = [];
   const char = createCharacter("t1", "사냥꾼", "fire", { hair: 0, hairColor: 0, skin: 0, eyes: 0 })!;
-  const base = baseStats(1);
-  const x = target.x - 60;
-  const y = target.y;
-  const u = makeUnit({ id: newId(), kind: "p", name: char.nickname, el: "fire", lv: 1, x, y, r: 7, base, mover: newMover(x, y, base) });
-  const p = Object.assign(u, {
-    kind: "p" as const, mover: u.mover!, ws: { readyState: 1, send: (s: string) => sent.push(s) } as never, discordId: "t1", char, inputs: [], credits: 0,
-    lastSeq: -1, steps: 0, cd: {}, slots: playerSlots(), rtt: 0, room: null, out: [], respawnAt: 0, statsSent: "", ...itemState([]),
-  }) as Player;
+  const p: Player = buildPlayer({ readyState: 1, send: (s: string) => sent.push(s) } as never, "t1", char, target.x - 60, target.y);
   room.add(p);
   let seq = 0;
   const run = (ticks: number, act?: () => Partial<import("../../../web/rpg/shared/movement.ts").MoveInput>) => {

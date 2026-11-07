@@ -10,8 +10,8 @@ import { MOVE, ROLL, STAMINA } from "./data/stats.ts";
  * 결정성 때문에 sqrt 만 쓰고 hypot · cos 는 쓰지 않습니다 (sqrt 는 어디서나 같은 값).
  */
 
-/** dg = 구르기, k = 스킬 슬롯(A = 평타), ax · ay = 조준 지점(월드 px, 정수) */
-export type MoveInput = { seq: number; mx: number; my: number; run: boolean; dg?: 1; k?: Slot; ax?: number; ay?: number };
+/** dg = 구르기, k = 스킬 슬롯(A = 평타), ax · ay = 조준 지점(월드 px, 정수), cs = 차지 스킬 모으기 시작한 슬롯 */
+export type MoveInput = { seq: number; mx: number; my: number; run: boolean; dg?: 1; k?: Slot; ax?: number; ay?: number; cs?: Slot };
 
 export type Mover = {
   x: number; // 발밑 중심 (px)
@@ -113,20 +113,47 @@ export function tryRoll(m: Mover, input: MoveInput) {
 /** 시전 0.5초 뒤까지 마우스 쪽을 봄 (§5) */
 const AIM_HOLD = Math.round(500 / SIM_MS);
 
-/** 스킬이 받아들여졌을 때 움직임 쪽 효과 — 서버는 검증 뒤, 클라이언트는 예측 때 똑같이 부릅니다 */
-export function castMove(m: Mover, sk: SkillDef, ax: number, ay: number) {
+/** 순간이동 도착점: 조준 쪽 range 안, 막힌 곳이면 4px 씩 당겨 옴 (벽은 넘을 수 있음) */
+export function blinkDest(c: Collider, x: number, y: number, ax: number, ay: number, range: number): { x: number; y: number } {
+  const dx = ax - x;
+  const dy = ay - y;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (!len) return { x, y };
+  for (let t = Math.min(len, range); t > 0; t -= 4) {
+    const nx = x + (dx / len) * t;
+    const ny = y + (dy / len) * t;
+    if (!blocked(c, nx, ny)) return { x: nx, y: ny };
+  }
+  return { x, y };
+}
+
+/**
+ * 스킬이 받아들여졌을 때 움직임 쪽 효과 — 서버는 검증 뒤, 클라이언트는 예측 때 똑같이 부릅니다.
+ * range = 등급 반영 사거리, to = 돌진 목표(아군 돌진은 서버가 아군 위치로 — 클라는 커서로 예측하고 보정받음)
+ */
+export function castMove(m: Mover, sk: SkillDef, ax: number, ay: number, c: Collider, range = sk.range, to?: { x: number; y: number }) {
   spend(m, sk.cost.stamina ?? 0);
   const dx = ax - m.x;
   const dy = ay - m.y;
   if (dx || dy) m.dir = dir8(dx, dy);
-  m.lock = sk.castMs ? Math.round(castMs(sk.castMs, m.aspd) / SIM_MS) : 0;
+  m.lock = Math.max(sk.castMs ? Math.round(castMs(sk.castMs, m.aspd) / SIM_MS) : 0, sk.lockMs ? Math.round(sk.lockMs / SIM_MS) : 0);
   m.aim = m.lock + AIM_HOLD;
-  if (sk.targeting === "dash" && sk.dashSteps) {
-    const len = Math.sqrt(dx * dx + dy * dy);
-    const [ux, uy] = len ? [dx / len, dy / len] : DIR_VEC[m.dir];
+  if (sk.dashSteps && (sk.targeting === "dash" || sk.targeting === "ally")) {
+    const tx = (to?.x ?? ax) - m.x;
+    const ty = (to?.y ?? ay) - m.y;
+    const len = Math.sqrt(tx * tx + ty * ty);
+    let [ux, uy] = len ? [tx / len, ty / len] : DIR_VEC[m.dir];
+    if (sk.back) [ux, uy] = [-ux, -uy];
+    // 아군 돌진은 아군 앞(12px)까지만
+    const dist = sk.targeting === "ally" ? Math.max(0, Math.min(range, len - 12)) : range;
     m.mv = sk.dashSteps;
-    m.mvx = (ux * sk.range) / sk.dashSteps;
-    m.mvy = (uy * sk.range) / sk.dashSteps;
+    m.mvx = (ux * dist) / sk.dashSteps;
+    m.mvy = (uy * dist) / sk.dashSteps;
+  }
+  if (sk.targeting === "blink") {
+    const d = blinkDest(c, m.x, m.y, ax, ay, range);
+    m.x = d.x;
+    m.y = d.y;
   }
 }
 

@@ -6,10 +6,12 @@ import type { FullStats } from "../shared/combat";
 import { effectDef, effectDesc } from "../shared/data/effects";
 import { ELEMENTS, type ElementId } from "../shared/data/elements";
 import type { Item } from "../shared/data/items";
+import { LINES, jobName } from "../shared/data/jobs";
 import { SKILLS, type Slot } from "../shared/data/skills";
 import type { FxRow, You } from "../shared/protocol";
 import { effectIcon, iconUrl, skillIcon, statIcon } from "./art/icons";
 import type { HudState } from "./game";
+import { SkillInfo, skillBg } from "./Growth";
 import { t, type StrKey } from "./i18n";
 import { Hotbar } from "./Inventory";
 import { keyLabel, type Settings } from "./settings";
@@ -18,9 +20,10 @@ import { keyLabel, type Settings } from "./settings";
 
 const secs = (ms: number) => (ms >= 10_000 ? Math.ceil(ms / 1000) : (ms / 1000).toFixed(1));
 
-function Orb({ cur, max, color, label }: { cur: number; max: number; color: string; label: string }) {
+function Orb({ cur, max, color, label, unused }: { cur: number; max: number; color: string; label: string; unused?: boolean }) {
+  // 직업이 쓰지 않는 자원 구슬은 회색 반투명 (§23-2)
   return (
-    <div className="rpg-orb pointer-events-auto" title={label}>
+    <div className="rpg-orb pointer-events-auto" title={unused ? `${label} — ${t("hud.unusedRes")}` : label} style={unused ? { opacity: 0.45, filter: "grayscale(1)" } : undefined}>
       <div className="rpg-orb-fill" style={{ height: `${Math.max(0, Math.min(1, cur / Math.max(1, max))) * 100}%`, background: color }} />
       <span className="rpg-orb-text">{Math.floor(cur)}/{Math.round(max)}</span>
     </div>
@@ -40,9 +43,10 @@ function Bar({ cur, max, color, shield = 0, label, warn }: { cur: number; max: n
   );
 }
 
-function SkillSlot({ slot, keyName, id, cd, element }: { slot: Slot; keyName: string; id?: string; cd?: [number, number, boolean]; element: ElementId }) {
+function SkillSlot({ slot, keyName, id, cd, you }: { slot: Slot; keyName: string; id?: string; cd?: [number, number, boolean]; you: You }) {
   const sk = id ? SKILLS[id] : undefined;
-  const bg = sk ? (sk.elementInherit ? ELEMENTS[element].color : sk.category === "magical" ? "#9B5DE5" : sk.heal ? "#4CC764" : "#9AA3AD") : "#6f7680";
+  const l = sk && you.prog.skills.find((x) => x.id === sk.id);
+  const bg = sk ? skillBg(sk, you) : "#6f7680";
   const [left, total, ok] = cd ?? [0, 1, true];
   const done = 1 - left / Math.max(1, total);
   return (
@@ -52,17 +56,14 @@ function SkillSlot({ slot, keyName, id, cd, element }: { slot: Slot; keyName: st
         {left > 0 && <div className="rpg-slot-cover" style={{ background: `conic-gradient(transparent ${done * 360}deg, rgba(10,6,16,0.72) 0)` }} />}
         {!ok && sk && <div className="rpg-slot-cover" style={{ background: "rgba(229,72,77,0.4)" }} />}
         {left > 0 && <span className="rpg-num inset-0 flex items-center justify-center text-[13px]">{secs(left)}</span>}
+        {l && <span className="rpg-num bottom-0 left-0.5 text-[9px]">{l.lv}</span>}
       </div>
       <div className="mt-0.5 text-center text-[10px] text-white/90 [text-shadow:0_1px_0_#1b1420]">{slot === "W" ? `W(${keyName})` : keyName}</div>
       <div className="rpg-tip rpg-panel">
         {sk ? (
           <>
-            <b>{sk.name}</b> <span className="text-[#8c6642]">{slot === "W" ? "W" : slot}</span>
-            <p className="mt-1">{sk.desc}</p>
-            <p className="mt-1 text-[#8c6642]">
-              {t("hud.cost")} {[sk.cost.mana && `${t("hud.mana")} ${sk.cost.mana}`, sk.cost.energy && `${t("hud.energy")} ${sk.cost.energy}`, sk.cost.stamina && `${t("hud.stamina")} ${sk.cost.stamina}`].filter(Boolean).join(" · ")}
-              {" · "}{t("hud.cooldown", { s: sk.cooldownMs / 1000 })}{sk.castMs ? ` · ${t("hud.castTime", { s: sk.castMs / 1000 })}` : ""}
-            </p>
+            <b>{sk.name}</b> <span className="text-[#8c6642]">{slot === "W" ? "W" : slot}{l ? ` · Lv${l.lv}` : ""}</span>
+            <SkillInfo sk={sk} l={l} />
           </>
         ) : (
           t("hud.locked")
@@ -149,7 +150,7 @@ function StatWindow({ stats, you }: { stats: FullStats; you: You }) {
   return (
     <div className="rpg-panel pointer-events-auto absolute bottom-0 right-full mr-2 w-[176px] !rounded-xl px-2.5 py-2 text-[11px]">
       <div className="flex items-baseline justify-between">
-        <b>Lv {you.level} · {t("hud.job")}</b>
+        <b>Lv {you.level} · {jobName(you.prog.line, you.prog.job)}</b>
       </div>
       <div className="mt-1 h-1.5 overflow-hidden rounded bg-[#3a2a1e]" title={`${t("hud.exp")} ${you.exp} / ${need}`}>
         <div className="h-full bg-[#F2C94C]" style={{ width: `${Math.min(100, (you.exp / need) * 100)}%` }} />
@@ -181,6 +182,7 @@ export function CombatHud({ hud, stats, you, settings, items, onSelect }: { hud:
   const buffs = fx.filter((r) => effectDef(r[0])?.buff);
   const debuffs = fx.filter((r) => !effectDef(r[0])?.buff);
   const k = settings.keys;
+  const res = you.prog.line ? LINES[you.prog.line].res : null; // 견습은 둘 다
   const keyOf: Record<Slot, string> = { A: "", Q: keyLabel(k.skillQ), W: keyLabel(k.skillW), E: keyLabel(k.skillE), R: `${keyLabel(k.skillR)}/${keyLabel(k.skillR2)}` };
   return (
     <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5">
@@ -189,18 +191,23 @@ export function CombatHud({ hud, stats, you, settings, items, onSelect }: { hud:
         <div className="flex flex-wrap gap-1">{buffs.map((r) => <FxIcon key={r[0] + r[3]} r={r} />)}</div>
         <div className="flex flex-row-reverse flex-wrap gap-1">{debuffs.map((r) => <FxIcon key={r[0] + r[3]} r={r} />)}</div>
       </div>
+      {hud.charge >= 0 && (
+        <div className="rpg-bar w-[120px]" title="차지">
+          <div className="rpg-bar-fill" style={{ width: `${hud.charge * 100}%`, background: hud.charge >= 1 ? "#FFD27A" : "#fff4dc" }} />
+        </div>
+      )}
       <Hotbar items={items} sel={hud.sel} potion={hud.potion} onSelect={onSelect} />
       <div className="relative flex items-end gap-2.5">
         <StatWindow stats={stats} you={you} />
-        <Orb cur={mp} max={mpMax} color="#2F7BFF" label={t("hud.mana")} />
+        <Orb cur={mp} max={mpMax} color="#2F7BFF" label={t("hud.mana")} unused={res === "energy"} />
         <div className="flex flex-col items-center gap-1">
           <div className="flex gap-1.5">
-            {(["Q", "W", "E", "R"] as Slot[]).map((s) => <SkillSlot key={s} slot={s} keyName={keyOf[s]} id={you.slots[s]} cd={hud.cds[s]} element={you.element as ElementId} />)}
+            {(["Q", "W", "E", "R"] as Slot[]).map((s) => <SkillSlot key={s} slot={s} keyName={keyOf[s]} id={you.slots[s]} cd={hud.cds[s]} you={you} />)}
           </div>
           <Bar cur={hp} max={hpMax} color="#4CC764" shield={shield} label={t("hud.hp")} />
           <Bar cur={hud.stamina} max={hud.staminaMax} color={hud.exhausted ? "#E5484D" : "#C9A27A"} label={t("hud.stamina")} warn={hud.exhausted} />
         </div>
-        <Orb cur={en} max={enMax} color="#FF8A1F" label={t("hud.energy")} />
+        <Orb cur={en} max={enMax} color="#FF8A1F" label={t("hud.energy")} unused={res === "mana"} />
       </div>
     </div>
   );

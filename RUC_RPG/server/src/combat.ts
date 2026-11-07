@@ -1,11 +1,11 @@
 import { randomInt } from "node:crypto";
 import type { Stats } from "../../../web/rpg/shared/character.ts";
 import { computeDamage, finalStats, healAmount, hpRegen, mentalResist, resRegen, type FullStats, type Hit, type Mod } from "../../../web/rpg/shared/combat.ts";
-import { effectDef } from "../../../web/rpg/shared/data/effects.ts";
-import { ELEMENTS, ELEMENT_PROC, type ElementId } from "../../../web/rpg/shared/data/elements.ts";
+import { FOREVER_MS, effectDef } from "../../../web/rpg/shared/data/effects.ts";
+import { ELEMENTS, ELEMENT_PROC, REACTIONS, type ElementId } from "../../../web/rpg/shared/data/elements.ts";
 import { COMBAT } from "../../../web/rpg/shared/data/stats.ts";
 import type { Mover } from "../../../web/rpg/shared/movement.ts";
-import { H_CRIT, H_DOT, H_HEAL, H_IMMUNE, H_MISS, H_RESIST, type Ev, type FxRow } from "../../../web/rpg/shared/protocol.ts";
+import { H_COUNTER, H_CRIT, H_DOT, H_HEAL, H_IMMUNE, H_MISS, H_RESIST, type Ev, type FxRow } from "../../../web/rpg/shared/protocol.ts";
 
 /**
  * 전투 유닛(플레이어 · 몹) 공통 — 상태효과 엔진(§11-3) · 피해 적용(§13-1) · 회복(§6-3).
@@ -49,6 +49,10 @@ export type Unit = {
   statsDirty: boolean;
   /** 장비 스탯 보정 (플레이어) */
   gear: Mod[];
+  /** 세부 직업 (패시브 판정) · 기사도 연속 타격 · 내부 쿨 (일식 등) */
+  job: string | null;
+  chiv: { tgt: number; n: number } | null;
+  icd: Map<string, number>;
   /** 플레이어만 */
   mover?: Mover;
 };
@@ -58,19 +62,21 @@ export interface World {
   now: number;
   ev: Ev[];
   unit(id: number): Unit | undefined;
-  /** 피해 기록 (몹 위협 수치 · 처치 기여) — HP 를 깎기 전에 불러서 막타도 기여로 셈 */
-  damaged(src: Unit, tgt: Unit, amount: number, threat: number): void;
+  /** 피해 기록 (몹 위협 수치 · 처치 기여 · 막타 스킬) — HP 를 깎기 전에 불러서 막타도 기여로 셈 */
+  damaged(src: Unit, tgt: Unit, amount: number, threat: number, h?: HitSpec): void;
   /** 직접 타격 뒤 (장비 내구도 · 발동 효과). 도트 · 반사는 안 부름 */
   struck(src: Unit, tgt: Unit, amount: number, h: HitSpec): void;
   killed(u: Unit, by: Unit | undefined): void;
   /** 넉백 등 강제 이동 (벽 충돌 포함) */
   push(u: Unit, dx: number, dy: number): void;
+  /** (x, y) 반경 r 안의 살아 있는 플레이어(p) · 몹(m) */
+  around(x: number, y: number, r: number, kind: "p" | "m"): Unit[];
 }
 
 export function makeUnit(o: { id: number; kind: "p" | "m"; name: string; el: ElementId; lv: number; x: number; y: number; r: number; base: Stats; mover?: Mover }): Unit {
   const u: Unit = {
     ...o, hp: 0, mp: 0, en: 0, st: finalStats(o.base, []), fx: [], dr: new Map(), ccImmune: 0, combat: -1e9,
-    dead: false, evade: false, block: { move: false, atk: false, skill: false }, fxDirty: false, statsDirty: true, gear: [],
+    dead: false, evade: false, block: { move: false, atk: false, skill: false }, fxDirty: false, statsDirty: true, gear: [], job: null, chiv: null, icd: new Map(),
   };
   recalc(u);
   u.hp = u.st.hp;
@@ -221,6 +227,7 @@ function absorb(w: World, u: Unit, dmg: number): number {
 export const shieldOf = (u: Unit) => u.fx.reduce((a, e) => (e.id === "shield" ? a + e.v : a), 0);
 
 function loseHp(w: World, src: Unit | undefined, tgt: Unit, dmg: number) {
+  if (dmg > 0 && has(tgt, "stealth")) removeEffect(w, tgt, "stealth"); // 맞아도 풀림
   tgt.hp -= absorb(w, tgt, dmg);
   tgt.combat = w.now;
   if (src) src.combat = w.now;
@@ -239,7 +246,11 @@ export function die(w: World, u: Unit, by: Unit | undefined) {
   w.killed(u, by);
 }
 
-export type HitSpec = Hit & { threat: number; proc?: boolean; fx?: FxSpec[]; basic?: boolean };
+/**
+ * 타격 한 번. cast = 스킬 시전(숙련도), crit = 치명타 확률 +, execute = 대상 HP 이 비율 이하면 ×2,
+ * mul = 차지 배율, ranged = 플레이어 물리 투사체 (이동 중 사격 −20%, 궁수 바람 읽기 제외)
+ */
+export type HitSpec = Hit & { threat: number; proc?: boolean; fx?: FxSpec[]; basic?: boolean; cast?: unknown; crit?: number; execute?: number; mul?: number; ranged?: boolean };
 
 /** 피해 한 번 (§13-1). 반환: 실제로 깎은 양 (보호막 포함) */
 export function hit(w: World, src: Unit, tgt: Unit, h: HitSpec): number {
@@ -252,7 +263,8 @@ export function hit(w: World, src: Unit, tgt: Unit, h: HitSpec): number {
     w.ev.push(["h", src.id, tgt.id, 0, H_MISS, ""]);
     return 0;
   }
-  const crit = rand() < src.st.crit;
+  if (src !== tgt && has(src, "stealth")) removeEffect(w, src, "stealth"); // 공격하면 은신이 풀림 (§11-1)
+  const crit = rand() < src.st.crit + (h.crit ?? 0);
   const proc = h.proc && h.el ? ELEMENT_PROC[h.el] : undefined;
   let dmg = computeDamage(src.st, tgt.st, { ...h, power: (h.power ?? 0) + (proc?.power ?? 0) }, tgt.el, crit);
   if (h.cat !== "magical" && has(tgt, "freeze")) {
@@ -260,8 +272,20 @@ export function hit(w: World, src: Unit, tgt: Unit, h: HitSpec): number {
     removeEffect(w, tgt, "freeze");
   }
   if (h.el === "electric" && has(tgt, "wet")) dmg = Math.round(dmg * 1.3);
+  dmg = Math.max(1, Math.round(dmg * (h.mul ?? 1) * passiveMul(src, tgt, h)));
+  // 반격 태세: 근접 공격을 막고 그대로 되돌려 주며 1초 기절
+  if (h.melee && has(tgt, "counter") && src !== tgt) {
+    w.ev.push(["h", src.id, tgt.id, 0, H_COUNTER, ""]);
+    w.ev.push(["h", tgt.id, src.id, dmg, 0, ""]);
+    w.damaged(tgt, src, dmg, 2);
+    loseHp(w, tgt, src, dmg);
+    addEffect(w, src, { id: "stun", ms: 1000 }, tgt);
+    return 0;
+  }
+  if (src.kind === "p" && h.el) dmg = react(w, src, tgt, h.el, dmg);
+  dmg = guardianShare(w, src, tgt, dmg);
   w.ev.push(["h", src.id, tgt.id, dmg, crit ? H_CRIT : 0, h.el ?? ""]);
-  w.damaged(src, tgt, dmg, h.threat);
+  w.damaged(src, tgt, dmg, h.threat, h);
   loseHp(w, src, tgt, dmg);
   const vamp = h.cat === "magical" ? src.st.spellVamp : src.st.lifesteal;
   if (vamp > 0) applyHeal(w, src, src, dmg * vamp, false);
@@ -296,7 +320,9 @@ export function dotDamage(w: World, src: Unit | undefined, tgt: Unit, raw: numbe
 /** 치유. computed = 이미 healAmount 를 거친 값(지속 회복 틱) */
 export function applyHeal(w: World, src: Unit, tgt: Unit, amount: number, computed: boolean) {
   if (tgt.dead || amount <= 0) return;
-  const v = Math.round(computed ? amount : amount * (1 + tgt.st.healTaken));
+  // 힐러 패시브 「치유의 손길」: 체력 30% 이하 아군에게 +30%
+  const touch = src.job === "priest" && tgt.hp < tgt.st.hp * 0.3 ? 1.3 : 1;
+  const v = Math.round((computed ? amount : amount * (1 + tgt.st.healTaken)) * touch);
   if (v <= 0) return;
   tgt.hp = Math.min(tgt.st.hp, tgt.hp + v);
   w.ev.push(["h", src.id, tgt.id, v, H_HEAL, ""]);
@@ -316,4 +342,81 @@ export function regen(w: World, u: Unit, dt: number) {
 
 /** 네트워크로 보낼 효과 목록 */
 export const fxRows = (w: World, u: Unit): FxRow[] =>
-  u.fx.map((e) => [e.id, Math.max(0, Math.round(e.until - w.now)), e.stacks, Math.round(e.dur), Math.round(e.v * 100) / 100]);
+  u.fx.map((e) => (e.dur >= FOREVER_MS ? [e.id, 0, e.stacks, 0, e.v] : [e.id, Math.max(0, Math.round(e.until - w.now)), e.stacks, Math.round(e.dur), Math.round(e.v * 100) / 100]));
+
+// ── 직업 패시브 (§9-3 ★) ──────────────────────────────────────────
+
+/** 피해 배율: 기사도(같은 대상 3연타 뒤 +30%) · 이동 중 물리 사격 −20% (궁수 바람 읽기는 제외) */
+function passiveMul(src: Unit, tgt: Unit, h: HitSpec): number {
+  let m = h.execute && tgt.hp <= tgt.st.hp * h.execute ? 2 : 1;
+  if (h.ranged && src.mover?.moving && src.job !== "archer") m *= 0.8;
+  if (src.job === "battle_knight") {
+    const c = src.chiv;
+    if (c && c.tgt === tgt.id) {
+      if (c.n >= 3) { m *= 1.3; c.n = 0; } else c.n++;
+    } else src.chiv = { tgt: tgt.id, n: 1 };
+  }
+  return m;
+}
+
+/** 수호의 맹세: 근처(96px) 수호기사가 아군 피해의 15%를 대신 받고, 대신 받은 피해는 20% 줄임 */
+function guardianShare(w: World, src: Unit, tgt: Unit, dmg: number): number {
+  if (tgt.kind !== "p" || dmg < 2) return dmg;
+  const g = w.around(tgt.x, tgt.y, 96, "p").find((u) => u !== tgt && u.job === "guardian");
+  if (!g) return dmg;
+  const part = Math.round(dmg * 0.15);
+  const taken = Math.max(1, Math.round(part * 0.8));
+  w.ev.push(["h", src.id, g.id, taken, H_DOT, ""]);
+  loseHp(w, src, g, taken);
+  return dmg - part;
+}
+
+/** 원소 반응 (§12-3). 대상의 상태 + 들어온 속성 → 효과. 원소술사 「원소 조화」는 반응 피해 +25%. 반환: 이번 타격 피해 */
+function react(w: World, src: Unit, tgt: Unit, el: ElementId, dmg: number): number {
+  const r = REACTIONS.find((x) => x.b === el && has(tgt, x.a));
+  if (!r) return dmg;
+  const rm = src.job === "elementalist" ? 1.25 : 1;
+  const others = () => w.around(tgt.x, tgt.y, 48, tgt.kind).filter((u) => u !== tgt);
+  switch (r.a + "+" + r.b) {
+    case "wet+electric":
+      removeEffect(w, tgt, "wet");
+      addEffect(w, tgt, { id: "shock", ms: 300 }, src);
+      for (const u of others()) {
+        const d = Math.max(1, Math.round(dmg * 0.5 * rm));
+        w.ev.push(["h", src.id, u.id, d, 0, "electric"]);
+        w.damaged(src, u, d, 1);
+        loseHp(w, src, u, d);
+        addEffect(w, u, { id: "shock", ms: 300 }, src);
+      }
+      break;
+    case "wet+ice":
+      removeEffect(w, tgt, "wet");
+      addEffect(w, tgt, { id: "freeze", ms: 1500 }, src);
+      break;
+    case "burn+wind": {
+      const dot = (find(tgt, "burn")?.dot ?? dmg * 0.15) * rm;
+      for (const u of others()) addEffect(w, u, { id: "burn", ms: 3000, dot }, src);
+      break;
+    }
+    case "burn+ice":
+      removeEffect(w, tgt, "burn");
+      dmg = Math.round(dmg * (1 + 0.5 * rm));
+      break;
+    case "root+fire":
+      for (const u of [tgt, ...others()]) addEffect(w, u, { id: "burn", ms: 3000, dot: Math.max(1, dmg * 0.15 * rm) }, src);
+      break;
+    case "poison+fire": {
+      const e = find(tgt, "poison")!;
+      dmg += Math.round(e.stacks * 0.2 * dmg * rm);
+      removeEffect(w, tgt, "poison");
+      break;
+    }
+    case "curse+light":
+      if (w.now < (tgt.icd.get("eclipse") ?? 0)) return dmg;
+      tgt.icd.set("eclipse", w.now + 5000);
+      addEffect(w, tgt, { id: "stun", ms: 500 }, src);
+      break;
+  }
+  w.ev.push(["rx", tgt.id, r.name]);
+  return dmg;
+}

@@ -43,13 +43,16 @@ export const ELEMENT_PROC: Record<ElementId, ElementProc> = {
   iron: { fx: [{ id: "bleed", ms: 3000, dot: 0.12 }] },
 };
 
-/** §12-3 원소 반응 — 데이터만 (구현은 2단계 이후) */
+/**
+ * §12-3 원소 반응 — 대상에 a 상태가 있을 때 b 속성으로 맞으면 발동 (플레이어 공격만, 서버 combat.ts).
+ * 원소술사(★)가 반응 특화라서 P4 에서 앞당겨 구현 (DECISIONS D31). 일식은 어둠의 저주가 걸린 대상을 빛으로 때릴 때.
+ */
 export const REACTIONS = [
-  { a: "wet", b: "electric", name: "과전류", desc: "주변 3m 연쇄 피해 + 감전" },
+  { a: "wet", b: "electric", name: "과전류", desc: "주변 3칸 적에게 피해 50% 연쇄 + 감전" },
   { a: "wet", b: "ice", name: "결빙", desc: "즉시 빙결 1.5초" },
-  { a: "burn", b: "wind", name: "화염 폭풍", desc: "화상이 주변으로 퍼짐" },
-  { a: "burn", b: "ice", name: "융해", desc: "해당 피해 ×1.5" },
-  { a: "root", b: "fire", name: "연소", desc: "범위 화상 장판" },
-  { a: "poison", b: "fire", name: "독무 폭발", desc: "독 스택 수 × 추가 피해" },
-  { a: "light", b: "dark", name: "일식", desc: "양쪽 모두 0.5초 기절 (시전자 쿨 공유)" },
+  { a: "burn", b: "wind", name: "화염 폭풍", desc: "화상이 주변 3칸 적에게 퍼짐" },
+  { a: "burn", b: "ice", name: "융해", desc: "그 피해 ×1.5" },
+  { a: "root", b: "fire", name: "연소", desc: "주변 3칸 적에게 화상" },
+  { a: "poison", b: "fire", name: "독무 폭발", desc: "독 스택 × 피해 20% 추가 피해" },
+  { a: "curse", b: "light", name: "일식", desc: "0.5초 기절 (같은 대상 5초에 한 번)" },
 ] as const;

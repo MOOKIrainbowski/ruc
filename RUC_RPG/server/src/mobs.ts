@@ -1,8 +1,9 @@
 import { MOBS, mobStats, type Grade, type MobDef } from "../../../web/rpg/shared/data/mobs.ts";
 import { MOVE } from "../../../web/rpg/shared/data/stats.ts";
 import { blocked, dir8, slide } from "../../../web/rpg/shared/movement.ts";
-import { find, hit, makeUnit, rand, type HitSpec, type Unit } from "./combat.ts";
+import { find, has, hit, makeUnit, rand, type HitSpec, type Unit } from "./combat.ts";
 import type { Room } from "./room.ts";
+import type { Shot } from "./skills.ts";
 
 /**
  * 몹 AI (§20-4): 대기 → 순찰 → 추적 → 공격(선딜 · 바닥 경고) → 귀환(리쉬).
@@ -34,6 +35,8 @@ export type Mob = Unit & {
   /** 지연 보상용 최근 위치 [시각, x, y] */
   hist: [number, number, number][];
   removeAt: number;
+  /** 마지막으로 맞힌 스킬 (막타 숙련도) */
+  lastShot: Shot | null;
 };
 
 export const RESPAWN_MS = 15_000;
@@ -51,7 +54,7 @@ export function spawnMob(room: Room, id: number, z: Zone): Mob | null {
     z.alive++;
     return Object.assign(u, {
       key: z.mob, def, grade: z.grade, zone: z, home: { x, y }, dir: 0, moving: false, state: "idle" as const, wait: room.now + rand() * 3000,
-      tx: x, ty: y, threat: new Map(), dmgBy: new Map(), atkReady: 0, spReady: 0, swings: 0, wind: null, hist: [], removeAt: 0,
+      tx: x, ty: y, threat: new Map(), dmgBy: new Map(), atkReady: 0, spReady: 0, swings: 0, wind: null, hist: [], removeAt: 0, lastShot: null,
     });
   }
   return null;
@@ -81,6 +84,7 @@ function topThreat(room: Room, m: Mob): Unit | undefined {
   for (const [id, v] of m.threat) {
     const p = room.players.get(id);
     if (!p || p.dead) { m.threat.delete(id); continue; }
+    if (has(p, "stealth")) continue; // 은신한 상대는 놓침 (위협 수치는 남음)
     if (v > bv) { bv = v; best = p; }
   }
   return best;
@@ -115,7 +119,7 @@ export function mobTick(room: Room, m: Mob, dt: number) {
     let bd = m.def.aggro;
     for (const p of room.players.values()) {
       const d = dist(m, p);
-      if (!p.dead && d < bd) { bd = d; tgt = p; }
+      if (!p.dead && !has(p, "stealth") && d < bd) { bd = d; tgt = p; }
     }
     if (tgt) m.threat.set(tgt.id, 1);
   }

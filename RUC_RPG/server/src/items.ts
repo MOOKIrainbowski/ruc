@@ -1,10 +1,11 @@
 import { randomUUID } from "node:crypto";
 import {
-  EQUIP_SLOTS, ITEMS, LOCS, POTION_CD_MS, RARITIES, STACK, basicOf, durMaxOf, fits, gearOf, lookOf, rollSpecials, stackable,
+  EQUIP_SLOTS, ITEMS, LOCS, POTION_CD_MS, RARITIES, STACK, bookGrade, durMaxOf, fits, gearOf, lookOf, rollSpecials, stackable,
   type Item, type ItemKind, type ItemPos, type Loc, type Rarity, type Template,
 } from "../../../web/rpg/shared/data/items.ts";
 import { addEffect, applyHeal, dotDamage, hit, rand, recalc, type HitSpec, type Unit, type World } from "./combat.ts";
 import { loadItems, saveDurability, saveItems } from "./db.ts";
+import { bookError, readBook, refreshSlots } from "./progress.ts";
 import type { Player } from "./room.ts";
 
 /**
@@ -154,7 +155,7 @@ export function discard(o: Owner, a: unknown, ctx: Ctx): string | null {
   return commit(o, "discard", "", before, [it]);
 }
 
-const KIND_ORDER: ItemKind[] = ["weapon", "armor", "accessory", "potion", "material"];
+const KIND_ORDER: ItemKind[] = ["weapon", "armor", "accessory", "potion", "book", "material"];
 /** 정렬: 종류 → 이름 → 높은 희귀도 순, 같은 묶음은 합침 */
 export function sort(o: Owner, loc: unknown, ctx: Ctx): string | null {
   if (loc !== "inventory" && loc !== "storage") return "잘못된 칸입니다";
@@ -183,6 +184,15 @@ export function use(p: Player, a: unknown): string | null {
   if (!it) return "아이템이 없습니다";
   const t = ITEMS[it.tpl];
   if (t.slot) return a[0] === "equipped" ? move(p, a, ["inventory", -1], undefined, ctx) && move(p, a, ["hotbar", -1], undefined, ctx) : move(p, a, ["equipped", -1], undefined, ctx);
+  if (t.skill) {
+    // 스킬북: 배울 수 있는지 먼저 보고, 한 권 쓴 뒤 배움 (§10-3 · §10-4)
+    const grade = bookGrade(it.rarity);
+    const e = bookError(p, t.skill, grade);
+    if (e) return e;
+    const before = [clone(it)];
+    it.qty--;
+    return commit(p, "read", "", before, [it]) ?? readBook(p, t.skill, grade);
+  }
   if (!t.heal) return "사용할 수 없는 아이템입니다";
   if (a[0] === "storage") return "창고에서 꺼낸 뒤 쓰세요";
   if (p.dead) return "쓰러진 상태입니다";
@@ -206,7 +216,7 @@ export function refreshGear(p: Player) {
   const g = gearOf(p.items);
   p.gear = g.mods;
   p.procs = g.procs;
-  p.slots.A = basicOf(p.items);
+  refreshSlots(p);
   recalc(p);
   const look = lookOf(p.items);
   if (look.join() !== p.look.join()) {

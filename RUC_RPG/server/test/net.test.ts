@@ -163,3 +163,37 @@ test("아이템: 지급 → 장착(평타 · 스탯 · 옷 색) → 창고 보�
   assert.equal(j2.stats.pdef, pdef, "장비 스탯이 접속 때 바로 반영");
   c2.ws.close();
 });
+
+test("전직: 교관 근처에서만 → 계열 스킬 · 슬롯 → 필드에서 새 스킬 시전 · 장착 바꾸기", async () => {
+  const c = client("F");
+  await c.open;
+  await c.until((m) => m.t === "needCreate");
+  c.send({ t: "create", nickname: "폭스", appearance: ap, element: "wind" });
+  const j = await c.until<Extract<S2C, { t: "joined" }>>((m) => m.t === "joined");
+  assert.deepEqual(j.you.slots, { A: "punch", Q: "magic_arrow", W: "dash_slash", E: "first_aid" });
+  assert.equal(j.you.prog.skills.length, 3);
+  c.send({ t: "job", line: "warrior" });
+  await c.until((m) => m.t === "error" && m.msg.includes("세라"));
+  const plaza = loadMap(JSON.parse(readFileSync(new URL("../../../web/rpg/shared/data/maps/plaza.json", import.meta.url), "utf8")) as TiledMap);
+  const sera = plaza.objects.find((o) => o.type === "npc" && prop(o, "npc") === "sera")!;
+  c.send({ t: "dev", map: "plaza", x: sera.x, y: sera.y + 20 });
+  await c.until((m) => m.t === "joined" && m !== j);
+  c.send({ t: "job", line: "warrior" });
+  await c.until((m) => m.t === "error" && m.msg.includes("Lv10"));
+  c.send({ t: "dev", lv: 12 });
+  c.send({ t: "job", line: "warrior" });
+  const p = await c.until<Extract<S2C, { t: "prog" }>>((m) => m.t === "prog" && m.prog.line === "warrior");
+  assert.deepEqual([p.slots.Q, p.slots.W, p.slots.E, p.slots.R], ["double_slash", "battle_cry", "whirlwind", "sword_storm"]);
+  assert.equal(p.prog.pot[0], 10 + 1 + 30 + 1 + 1 + 1 + 3);
+  // 장착 바꾸기 (비전투)
+  c.send({ t: "equip", skill: "magic_arrow", slot: "Q" });
+  await c.until((m) => m.t === "prog" && m.slots.Q === "magic_arrow");
+  c.send({ t: "equip", skill: "double_slash", slot: "Q" });
+  await c.until((m) => m.t === "prog" && m.slots.Q === "double_slash");
+  c.send({ t: "dev", map: "field", x: 736, y: 400 });
+  const jf = await c.until<Extract<S2C, { t: "joined" }>>((m) => m.t === "joined" && m.room.kind === "field");
+  assert.equal(jf.you.slots.Q, "double_slash");
+  c.send({ t: "in", seq: 5000, mx: 0, my: 0, run: false, k: "Q", ax: Math.round(jf.me.x) + 20, ay: Math.round(jf.me.y) });
+  await c.until((m) => m.t === "s" && !!m.ev?.some((e) => e[0] === "c" && e[1] === jf.you.id && e[2] === "double_slash"));
+  c.ws.close();
+});

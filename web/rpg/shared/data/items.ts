@@ -1,4 +1,6 @@
 import type { Mod, StatKey } from "../combat.ts";
+import type { SkillGrade } from "../progress.ts";
+import { SKILLS } from "./skills.ts";
 
 /**
  * 아이템 (§14 · §15). 템플릿 · 희귀도 · 특수효과 · 세트 데이터와, 인스턴스에서 스탯을 계산하는 순수 함수.
@@ -44,7 +46,7 @@ export type Special = { id: string; v: number };
 /** 아이템 인스턴스 (§14-3). 장비는 1개짜리 고유 UUID, 소모품 · 재료는 한 칸에 64개까지 */
 export type Item = { id: string; tpl: string; loc: Loc; slot: number; qty: number; rarity: Rarity; enh: number; sp: Special[]; dur: number; durMax: number };
 
-export type ItemKind = "weapon" | "armor" | "accessory" | "potion" | "material";
+export type ItemKind = "weapon" | "armor" | "accessory" | "potion" | "material" | "book";
 export type Template = {
   name: string;
   kind: ItemKind;
@@ -65,6 +67,8 @@ export type Template = {
   rarity?: Rarity;
   /** 입었을 때 캐릭터 옷 색 (흉갑 · 바지 = [밝은 면, 기본, 그늘], 신발 = 한 색) */
   look?: [string, string, string] | string;
+  /** 스킬북: 이 스킬을 배우거나 등급을 올림 */
+  skill?: string;
 };
 
 const potion = (name: string, icon: string, heal: Template["heal"], desc: string): Template => ({ name, kind: "potion", icon, lv: 1, heal, rarity: "common", desc });
@@ -113,7 +117,15 @@ export const ITEMS: Record<string, Template> = {
   enhance_stone: mat("강화석", "stone", "rare", "광장 대장간의 강화대에서 쓴다 (강화는 다음 업데이트)."),
 };
 
-export const stackable = (t: Template) => t.kind === "potion" || t.kind === "material";
+// 스킬북 (§10-3 습득 경로 · §10-4 등급): 스킬마다 한 종류, 희귀도가 등급을 정함
+for (const sk of Object.values(SKILLS))
+  if (!sk.hidden && sk.slot !== "A")
+    ITEMS[`book_${sk.id}`] = { name: `스킬북: ${sk.name}`, kind: "book", icon: "book", lv: 1, skill: sk.id, desc: "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급." };
+export const BOOK_IDS = Object.keys(ITEMS).filter((id) => ITEMS[id].kind === "book");
+/** 스킬북 희귀도 → 스킬 등급: 하급 · 일반 = 하급, 희귀 · 고급 = 중급, 신화 = 상급, 전설 = 초월급 */
+export const bookGrade = (r: Rarity): SkillGrade => (r === "legendary" ? "trans" : r === "mythic" ? "high" : r === "rare" || r === "advanced" ? "mid" : "low");
+
+export const stackable = (t: Template) => t.kind === "potion" || t.kind === "material" || t.kind === "book";
 export const isGear = (t: Template) => !!t.slot;
 
 /**
@@ -228,11 +240,14 @@ export function rollDrops(table: DropRoll[], gradeIdx: number, luck: number, ran
   const extra = luck / 200;
   for (const d of table) {
     if (rand() >= Math.min(1, d.chance * (1 + 0.5 * gradeIdx))) continue;
-    const t = ITEMS[d.item];
+    // book_random = 아무 스킬북 하나
+    const id = d.item === "book_random" ? BOOK_IDS[Math.floor(rand() * BOOK_IDS.length)] : d.item;
+    const t = ITEMS[id];
     const [a, b] = d.qty ?? [1, 1];
     const qty = a + Math.floor(rand() * (b - a + 1)) + Math.floor(extra) + (rand() < extra % 1 ? 1 : 0);
-    if (stackable(t)) out.push({ tpl: d.item, qty, rarity: t.rarity ?? "common" });
-    else for (let i = 0; i < qty; i++) out.push({ tpl: d.item, qty: 1, rarity: t.rarity ?? rollRarity(rand, luck * 0.0005 + gradeIdx * 0.04) });
+    const r = t.rarity ?? rollRarity(rand, luck * 0.0005 + gradeIdx * 0.04);
+    if (stackable(t)) out.push({ tpl: id, qty, rarity: r });
+    else for (let i = 0; i < qty; i++) out.push({ tpl: id, qty: 1, rarity: i ? rollRarity(rand, luck * 0.0005 + gradeIdx * 0.04) : r });
   }
   return out;
 }

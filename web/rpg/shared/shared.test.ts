@@ -6,7 +6,9 @@ import { SIM_MS, TILE } from "./constants.ts";
 import { baseStats } from "./character.ts";
 import { castMs, computeDamage, elementMul, finalStats, mitigation, type Hit } from "./combat.ts";
 import { EQUIP_SLOTS, ITEMS, basicOf, durMaxOf, fits, gearOf, itemMods, rollDrops, rollRarity, rollSpecials, type Item } from "./data/items.ts";
+import { JOBS, LINES, jobStats } from "./data/jobs.ts";
 import { MOBS } from "./data/mobs.ts";
+import { addMastery, needMastery, skillNums, startLevel, type Learned } from "./progress.ts";
 import { SKILLS } from "./data/skills.ts";
 import { ROLL, STAMINA } from "./data/stats.ts";
 import { josa, fmt } from "./josa.ts";
@@ -143,11 +145,11 @@ test("구르기: 0.3초에 56px, 앞 0.2초 무적, 스태미나 20 × 100/110",
 
 test("대시 베기: 마우스 쪽으로 80px · 응급 처치: 시전 중 고정", () => {
   const m = mover();
-  castMove(m, SKILLS.dash_slash, 160 + 30, 160 + 40); // 3:4 방향
+  castMove(m, SKILLS.dash_slash, 160 + 30, 160 + 40, open); // 3:4 방향
   for (let i = 0; i < 20; i++) step(m, { seq: i, mx: 0, my: 0, run: false }, open);
   assert.ok(Math.abs(m.x - 160 - 48) < 1e-9 && Math.abs(m.y - 160 - 64) < 1e-9, `${m.x},${m.y}`);
   const h = mover();
-  castMove(h, SKILLS.first_aid, 0, 160);
+  castMove(h, SKILLS.first_aid, 0, 160, open);
   assert.equal(h.dir, 6); // 서쪽을 봄
   for (let i = 0; i < 24; i++) step(h, { seq: i, mx: 1, my: 0, run: false }, open); // 400ms = 24스텝
   assert.equal(h.x, 160);
@@ -192,7 +194,11 @@ test("드롭 테이블: 확률 · 개수 · 운(+운/200 기대값) · 장비는
   assert.equal(rollDrops([table[0]], 0, 300, seq(0, 0, 0.4))[0].qty, 3);
   // 등급 보너스: 확률 × 1.5 (하급)
   assert.equal(rollDrops([{ item: "slime_jelly", chance: 0.5 }], 1, 0, seq(0.7, 0, 0.9)).length, 1);
-  for (const m of Object.values(MOBS)) for (const d of m.drops) assert.ok(ITEMS[d.item], d.item);
+  for (const m of Object.values(MOBS)) for (const d of m.drops) assert.ok(ITEMS[d.item] || d.item === "book_random", d.item);
+  // book_random = 아무 스킬북 하나 (희귀도 롤 → 스킬 등급)
+  const book = rollDrops([{ item: "book_random", chance: 1 }], 0, 0, seq(0, 0, 0.5, 0.9))[0];
+  assert.equal(ITEMS[book.tpl].kind, "book");
+  assert.equal(book.rarity, "poor");
 });
 
 test("장비 스탯: 희귀도 배율 · 내구도 0 이면 꺼짐 · 세트 단계 · 평타 · 착용 조건", () => {
@@ -228,4 +234,33 @@ test("장비 스탯: 희귀도 배율 · 내구도 0 이면 꺼짐 · 세트 단
   assert.ok(fits(ITEMS.copper_ring, EQUIP_SLOTS.indexOf("weapon"), 1));
   assert.ok(fits(ITEMS.fang_sword, EQUIP_SLOTS.indexOf("weapon"), 9), "Lv10 부터");
   assert.ok(fits(ITEMS.hp_potion_s, 0, 40));
+});
+
+test("성장 공식: 필요 숙련도 · 연속 레벨업 · 레벨 상한 · 시작 레벨 · 등급 · 직업 배율", () => {
+  assert.equal(needMastery(1), 30);
+  assert.equal(needMastery(4), 240);
+  const l: Learned = { id: "magic_arrow", grade: "low", lv: 1, mastery: 0, slot: null };
+  assert.equal(addMastery(l, 30 + 84 + 155, 10), 3, "한 번에 여러 레벨 (30 · 84 · 155)");
+  assert.equal(l.lv, 4);
+  addMastery(l, 1e6, 5);
+  assert.deepEqual([l.lv, l.mastery], [5, needMastery(5)], "플레이어 레벨에서 멈추고 1레벨분만 보관");
+  assert.equal(addMastery(l, 0, 6), 1, "플레이어가 오르면 쌓아 둔 것으로 바로");
+  assert.equal(startLevel(10, 30), 1);
+  assert.equal(startLevel(85, 30), 3);
+  assert.equal(startLevel(400, 4), 4, "플레이어 레벨 이하");
+  const sk = SKILLS.meteor;
+  const lo = skillNums(sk, { grade: "low", lv: 1 }, 0);
+  const hi = skillNums(sk, { grade: "high", lv: 10 }, 0.1);
+  assert.equal(hi.power, 1.45 * (1 + 0.04 * 9));
+  assert.equal(hi.cost.mana, Math.round(60 * 0.8));
+  assert.equal(hi.radius, 64 * 1.15);
+  assert.equal(hi.cooldownMs, lo.cooldownMs * (1 - 0.03 * 2) * 0.9, "5레벨마다 −3% 뒤 쿨감");
+  // 직업 배율 (§6-2): 기본값과 성장량에 곱함
+  const t = jobStats(10, "tank", [10, 10]);
+  const b = baseStats(10);
+  assert.equal(t.hp, b.hp * 1.5);
+  assert.equal(t.ap, b.ap * 0.7);
+  assert.equal(jobStats(10, null, [42, 10]).potentialPhys, 42);
+  for (const [id, j] of Object.entries(JOBS)) assert.ok(LINES[j.line], id);
+  assert.equal(Object.values(JOBS).filter((j) => j.star).length, 6);
 });

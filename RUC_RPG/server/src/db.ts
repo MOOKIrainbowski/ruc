@@ -3,6 +3,7 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import type { Appearance } from "../../../web/rpg/shared/data/appearance.ts";
 import type { Item } from "../../../web/rpg/shared/data/items.ts";
+import type { Learned } from "../../../web/rpg/shared/progress.ts";
 
 /**
  * 게임 DB — node:sqlite 파일 하나 (DECISIONS D5). 테이블은 단계마다 필요한 것만 추가합니다.
@@ -47,6 +48,16 @@ CREATE TABLE IF NOT EXISTS rpg_items (
   created_at     INTEGER NOT NULL,
   UNIQUE (owner_id, location, slot)
 );
+-- 배운 스킬 (§26-2): 등급 · 레벨 · 숙련도 · 장착 슬롯
+CREATE TABLE IF NOT EXISTS rpg_skills_learned (
+  character_id  INTEGER NOT NULL REFERENCES rpg_characters(id),
+  skill_id      TEXT NOT NULL,
+  grade         TEXT NOT NULL,
+  level         INTEGER NOT NULL,
+  mastery       REAL NOT NULL DEFAULT 0,
+  equipped_slot TEXT,
+  PRIMARY KEY (character_id, skill_id)
+);
 -- 감사 로그 (§26-2): 아이템 · RUC · 강화 · 관리자 행위 전부
 CREATE TABLE IF NOT EXISTS rpg_audit_log (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -59,6 +70,11 @@ CREATE TABLE IF NOT EXISTS rpg_audit_log (
 );
 `);
 
+// 단계마다 늘어난 캐릭터 칸 — 이미 있는 DB 에도 붙임 (P4: 전직 · 잠재력)
+const charCols = new Set((db.prepare("PRAGMA table_info(rpg_characters)").all() as { name: string }[]).map((c) => c.name));
+for (const [col, def] of [["job_tier1", "TEXT"], ["job_tier2", "TEXT"], ["job_sub", "TEXT"], ["potential_phys", "REAL NOT NULL DEFAULT 10"], ["potential_mag", "REAL NOT NULL DEFAULT 10"]])
+  if (!charCols.has(col)) db.exec(`ALTER TABLE rpg_characters ADD COLUMN ${col} ${def}`);
+
 export type CharacterRow = {
   id: number;
   discord_id: string;
@@ -70,6 +86,12 @@ export type CharacterRow = {
   /** 마지막 위치 + HP · 마나 · 기력 (§26-2 실시간 상태) */
   position: { map: string; x: number; y: number; hp?: number; mp?: number; en?: number } | null;
   settings: Record<string, unknown> | null;
+  /** 1차 전직 계열 · 2차 세부 직업 · 원소술사 보조 속성 · 잠재력 */
+  job_tier1: string | null;
+  job_tier2: string | null;
+  job_sub: string | null;
+  potential_phys: number;
+  potential_mag: number;
 };
 
 type Raw = Omit<CharacterRow, "appearance" | "position" | "settings"> & { appearance: string; position: string | null; settings: string | null };
@@ -141,3 +163,16 @@ export function saveItems(owner: number, changed: Item[], removed: string[], act
 }
 
 export const saveDurability = (owner: number, id: string, dur: number) => qDur.run(dur, id, owner);
+
+// ── 성장 (전직 · 스킬) ──────────────────────────────────────────
+
+type SkillRaw = { skill_id: string; grade: Learned["grade"]; level: number; mastery: number; equipped_slot: Learned["slot"] };
+const qSkills = db.prepare("SELECT * FROM rpg_skills_learned WHERE character_id = ?");
+const qSkill = db.prepare(`INSERT INTO rpg_skills_learned (character_id, skill_id, grade, level, mastery, equipped_slot) VALUES (?, ?, ?, ?, ?, ?)
+  ON CONFLICT(character_id, skill_id) DO UPDATE SET grade = excluded.grade, level = excluded.level, mastery = excluded.mastery, equipped_slot = excluded.equipped_slot`);
+const qJob = db.prepare("UPDATE rpg_characters SET job_tier1 = ?, job_tier2 = ?, job_sub = ?, potential_phys = ?, potential_mag = ? WHERE id = ?");
+
+export const loadSkills = (owner: number): Learned[] =>
+  (qSkills.all(owner) as SkillRaw[]).map((r) => ({ id: r.skill_id, grade: r.grade, lv: r.level, mastery: r.mastery, slot: r.equipped_slot }));
+export const saveSkill = (owner: number, l: Learned) => qSkill.run(owner, l.id, l.grade, l.lv, l.mastery, l.slot);
+export const saveJob = (owner: number, line: string | null, job: string | null, sub: string | null, pot: [number, number]) => qJob.run(line, job, sub, pot[0], pot[1], owner);

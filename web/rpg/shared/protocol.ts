@@ -2,14 +2,17 @@ import type { FullStats } from "./combat.ts";
 import type { RoomKind } from "./constants.ts";
 import type { Appearance } from "./data/appearance.ts";
 import type { Item, ItemPos, Rarity } from "./data/items.ts";
+import type { ElementId } from "./data/elements.ts";
+import type { LineId } from "./data/jobs.ts";
 import type { Grade } from "./data/mobs.ts";
 import type { Slot } from "./data/skills.ts";
+import type { Progress } from "./progress.ts";
 import type { MoveInput, Mover } from "./movement.ts";
 
 /** 네트워크 메시지 (§27). 베타는 JSON (DECISIONS D4). 필드 이름은 짧게. */
 
 /** 플레이어는 ap(외형) · look(옷 색을 바꾸는 장비 템플릿 id), 몹은 mob(종류) · grade */
-export type EntityInfo = { id: number; name: string; el: string; lv: number; ap?: Appearance; look?: string[]; mob?: string; grade?: Grade };
+export type EntityInfo = { id: number; name: string; el: string; lv: number; ap?: Appearance; look?: string[]; jb?: string; mob?: string; grade?: Grade };
 /** 스냅샷 한 줄: [id, x, y, dir, flags, HP 천분율, 마나 또는 기력 천분율] */
 export type EntityRow = [number, number, number, number, number, number, number];
 export const F_MOVING = 1;
@@ -30,6 +33,7 @@ export const H_MISS = 4;
 export const H_IMMUNE = 8;
 export const H_DOT = 16;
 export const H_RESIST = 32;
+export const H_COUNTER = 64;
 
 /**
  * 방 이벤트 (모두에게):
@@ -37,7 +41,12 @@ export const H_RESIST = 32;
  *  ["c", id, 스킬 id, 조준 x, y]                   시전 · 몹 공격 모션
  *  ["p", 투사체 id, 주인 id, 종류, 속성, x, y, 초당 vx, vy, 사거리, 입력 seq]
  *  ["px", 투사체 id]                               투사체 소멸
- *  ["w", "circle"|"line", x, y, 각도(rad), 크기, 폭, ms]   바닥 경고 (§10-2)
+ *  ["w", "circle"|"line", x, y, 각도(rad), 크기, 폭, ms, 편("p" = 플레이어 스킬)]   바닥 경고 (§10-2)
+ *  ["wl", x1, y1, x2, y2, ms]                      적 투사체를 막는 벽 (성역의 방패)
+ *  ["rx", 대상 id, 반응 이름]                      원소 반응 (§12-3)
+ *  ["rv", id]                                      부활
+ *  ["gx", x, y, 반경, 속성 | "heal"]                 범위 스킬 터짐 (그림용)
+ *  ["job", id, 계열, 세부 직업]                      전직
  *  ["f", id, FxRow[]]                              효과 목록 바뀜
  *  ["d", id]                                       쓰러짐
  *  ["lv", id, 레벨]
@@ -50,6 +59,7 @@ export const H_RESIST = 32;
  *  ["dead", 부활까지 ms]
  *  ["get", 템플릿, 개수, 희귀도]                    주움
  *  ["du", 아이템 id, 내구도]                         내구도 바뀜
+ *  ["sk", 스킬 id, 레벨, "learn" | "lv" | "grade"]  새로 배움 · 스킬 레벨업 · 등급 오름
  */
 export type Ev = (string | number | FxRow[] | string[])[];
 export type DropRow = ["dr", number, string, Rarity, number, number, number];
@@ -65,6 +75,7 @@ export type You = {
   kda: [number, number, number];
   settings: Record<string, unknown> | null;
   slots: Partial<Record<Slot, string>>;
+  prog: Progress;
 };
 
 export type ChannelInfo = { ch: number; n: number; cap: number };
@@ -78,10 +89,14 @@ export type C2S =
   | { t: "channel"; ch: number }
   /** 상호작용(F): 포털 등 맵 오브젝트 id */
   | { t: "use"; oid: number }
+  /** 전직 (§9-1): 1차 = 계열, 2차 = 세부 직업 (원소술사는 보조 속성) — 직업 교관 근처에서 */
+  | { t: "job"; line?: LineId; job?: string; sub?: ElementId }
+  /** 스킬 슬롯 장착 · 해제 (비전투 상태, §10-1) */
+  | { t: "equip"; skill: string; slot: Slot | null }
   /** 아이템 (§15): 옮기기(n = 나눌 개수) · 사용/장착 · 버리기 · 정렬 */
   | { t: "item"; op: "move" | "use" | "drop" | "sort"; a?: ItemPos; b?: ItemPos; n?: number; loc?: "inventory" | "storage" }
   /** 개발 모드 전용: 순간이동 · 아이템 받기 */
-  | { t: "dev"; map?: RoomKind; x?: number; y?: number; give?: string; rarity?: Rarity; n?: number };
+  | { t: "dev"; map?: RoomKind; x?: number; y?: number; give?: string; rarity?: Rarity; n?: number; lv?: number };
 
 export type S2C =
   | { t: "needCreate"; defaultName: string }
@@ -95,6 +110,8 @@ export type S2C =
   | { t: "s"; st: number; ack: { seq: number; m: Mover }; v: Vitals; e: EntityRow[]; ev?: Ev[]; pe?: Ev[] }
   | { t: "stats"; s: FullStats }
   | { t: "inv"; items: Item[] }
+  /** 성장 상태 (전직 · 스킬 · 숙련도) 바뀜 */
+  | { t: "prog"; prog: Progress; slots: Partial<Record<Slot, string>> }
   | { t: "pong"; c: number }
   | { t: "channels"; list: ChannelInfo[] }
   | { t: "kicked"; reason: "dup" | "rate" | "auth" | "server" }

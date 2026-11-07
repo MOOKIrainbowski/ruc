@@ -52,6 +52,10 @@ export const EFFECTS = {
   focus: { name: "집중", buff: true, cat: "special", icon: "sparkle", color: "#9B5DE5", desc: "다음 스킬 시전 시간 0" },
   bless: { name: "축복", buff: true, cat: "stat", mods: (v) => [{ k: "luck", add: v }], icon: "clover", color: "#2ECC71", desc: "경험치 +{v}%, 운 +{v}" },
   imbue: { name: "속성 부여", buff: true, cat: "special", icon: "sparkle", color: "#FFE14D", desc: "평타에 속성 추가 피해" },
+  // P4 직업 스킬 · 패시브
+  counter: { name: "반격 태세", buff: true, cat: "special", icon: "thorn", color: "#9AA3AD", desc: "근접 공격을 막고 되돌려 주며 공격자를 기절시킵니다" },
+  venom: { name: "독 바르기", buff: true, cat: "special", icon: "drop", color: "#9BE564", desc: "평타가 독을 겁니다" },
+  shadow_step: { name: "그림자 걸음", buff: true, cat: "stat", mods: () => [{ k: "moveSpeed", mul: 0.25 }], icon: "ghost", color: "#6B3FA0", desc: "전투 밖에서 이동 속도 +25%" },
 
   // ── 디버프 (§11-2) ──
   slow: { name: "둔화", buff: false, cat: "softCC", mods: (v) => [{ k: "moveSpeed", mul: -v }], icon: "arrowDown", color: "#3FC8E8", desc: "이동 속도 −{v}%" },
@@ -86,6 +90,9 @@ export type EffectId = keyof typeof EFFECTS;
 export const effectDef = (id: string): EffectDef | undefined => (EFFECTS as Record<string, EffectDef>)[id];
 
 /** 툴팁 문구: {v} 자리에 값 (0~1 비율은 % 로) */
+/** 패시브처럼 시간이 없는 효과 (남은 시간 표시 없음) */
+export const FOREVER_MS = 1e9;
+
 export function effectDesc(id: string, v: number): string {
   const d = effectDef(id);
   if (!d) return "";

@@ -5,21 +5,18 @@ import { readFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 process.env.RPG_DB_FILE = `test-items-${process.pid}.sqlite`;
-const { baseStats } = await import("../../../web/rpg/shared/character.ts");
 const { TICK_MS } = await import("../../../web/rpg/shared/constants.ts");
 const { EQUIP_SLOTS, ITEMS, LOCS, POTION_CD_MS, STACK, fits } = await import("../../../web/rpg/shared/data/items.ts");
 const { loadMap } = await import("../../../web/rpg/shared/map.ts");
-const { newMover } = await import("../../../web/rpg/shared/movement.ts");
-const { hit, makeUnit, setRandom } = await import("../src/combat.ts");
+const { hit, setRandom } = await import("../src/combat.ts");
 const { createCharacter, db, loadItems } = await import("../src/db.ts");
-const { discard, give, itemOp, move, refreshGear, sort } = await import("../src/items.ts");
-const { Room, itemState, newId, playerSlots } = await import("../src/room.ts");
+const { discard, give, itemOp, move, sort } = await import("../src/items.ts");
+const { Room, buildPlayer } = await import("../src/room.ts");
 test.after(() => {
   db.close();
   for (const ext of ["", "-wal", "-shm"]) rmSync(fileURLToPath(new URL(`../data/${process.env.RPG_DB_FILE}${ext}`, import.meta.url)), { force: true });
 });
 type Item = import("../../../web/rpg/shared/data/items.ts").Item;
-type Player = import("../src/room.ts").Player;
 
 const ap = { hair: 0, hairColor: 0, skin: 0, eyes: 0 };
 const byId = (a: Item, b: Item) => a.id.localeCompare(b.id);
@@ -129,14 +126,8 @@ test("필드: 슬라임 처치 → 기여자에게만 드롭 → 자동 줍기 �
   const room = new Room("field", 1, map, now);
   const mk = (name: string, x: number, y: number) => {
     const char = createCharacter(name, name, "fire", ap)!;
-    const base = baseStats(1);
-    const u = makeUnit({ id: newId(), kind: "p", name, el: "fire", lv: 1, x, y, r: 7, base, mover: newMover(x, y, base) });
     const sent: string[] = [];
-    const p = Object.assign(u, {
-      kind: "p" as const, mover: u.mover!, ws: { readyState: 1, send: (s: string) => sent.push(s) } as never, discordId: name, char, inputs: [], credits: 0,
-      lastSeq: -1, steps: 0, cd: {}, slots: playerSlots(), rtt: 0, room: null, out: [], respawnAt: 0, statsSent: "", ...itemState(loadItems(char.id)),
-    }) as Player;
-    refreshGear(p);
+    const p = buildPlayer({ readyState: 1, send: (s: string) => sent.push(s) } as never, name, char, x, y);
     room.add(p);
     return { p, sent };
   };

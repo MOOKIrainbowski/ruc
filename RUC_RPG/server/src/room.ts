@@ -1,18 +1,27 @@
 import type { WebSocket } from "ws";
-import { baseStats, expToNext } from "../../../web/rpg/shared/character.ts";
-import { castMs, cooldownMs } from "../../../web/rpg/shared/combat.ts";
+import { expToNext } from "../../../web/rpg/shared/character.ts";
 import { CHANNEL_CAP, INPUT_CREDITS_MAX, INPUT_CREDITS_PER_TICK, SIM_MS, TICK_MS, type RoomKind } from "../../../web/rpg/shared/constants.ts";
+import { FOREVER_MS } from "../../../web/rpg/shared/data/effects.ts";
 import { rollDrops, type Item, type Rarity, type Special } from "../../../web/rpg/shared/data/items.ts";
 import { GRADES, mobExp } from "../../../web/rpg/shared/data/mobs.ts";
-import { APPRENTICE_SLOTS, SKILLS, SLOTS, type Slot } from "../../../web/rpg/shared/data/skills.ts";
+import { SKILLS, SLOTS, type Slot } from "../../../web/rpg/shared/data/skills.ts";
 import { COMBAT } from "../../../web/rpg/shared/data/stats.ts";
 import { prop, type GameMap } from "../../../web/rpg/shared/map.ts";
-import { blocked, castMove, slide, step, tryRoll, type MoveInput, type Mover } from "../../../web/rpg/shared/movement.ts";
+import { blinkDest, blocked, slide, step, tryRoll, type MoveInput, type Mover } from "../../../web/rpg/shared/movement.ts";
+import { MASTERY, type Progress } from "../../../web/rpg/shared/progress.ts";
 import { F_CAST, F_DEAD, F_MOVING, F_ROLL, F_RUNNING, type ChannelInfo, type DropRow, type EntityInfo, type Ev, type EntityRow, type S2C } from "../../../web/rpg/shared/protocol.ts";
-import { addEffect, find, fxRows, healPerTick, hit, rand, recalc, regen, shieldOf, tickEffects, type HitSpec, type Unit, type World } from "./combat.ts";
+import { addEffect, find, fxRows, has, hit, rand, recalc, regen, removeEffect, shieldOf, tickEffects, type HitSpec, type Unit, type World } from "./combat.ts";
 import { saveProgress, type CharacterRow } from "./db.ts";
 import { deathWear, onDealt, onKill, onTaken, pickUp } from "./items.ts";
 import { mobTick, RESPAWN_MS, spawnMob, type Mob, type Zone } from "./mobs.ts";
+import { charBase, gainMastery, loadProgress, sendProg, syncSkills } from "./progress.ts";
+import { jobStats } from "../../../web/rpg/shared/data/jobs.ts";
+import { newMover } from "../../../web/rpg/shared/movement.ts";
+import type { ElementId } from "../../../web/rpg/shared/data/elements.ts";
+import { loadItems } from "./db.ts";
+import { makeUnit } from "./combat.ts";
+import { refreshGear } from "./items.ts";
+import { cast, fire, type Cast, type Shot } from "./skills.ts";
 
 let idSeq = 1;
 /** 플레이어 · 몹 · 투사체가 같이 쓰는 id */
@@ -29,8 +38,16 @@ export type Player = Unit & {
   lastSeq: number;
   /** 처리한 입력 수 — 쿨타임 시계 (DECISIONS D12) */
   steps: number;
-  cd: Partial<Record<Slot, number>>;
+  /** 스킬 id → 쿨이 끝나는 입력 시계 (ms) */
+  cd: Record<string, number>;
   slots: Partial<Record<Slot, string>>;
+  // 성장 (§9 · §10)
+  prog: Progress;
+  progDirty: boolean;
+  progAt: number;
+  skillsDirty: Set<string>;
+  /** 차지 스킬을 모으기 시작한 슬롯 · 입력 시계 */
+  charge: { slot: Slot; from: number } | null;
   rtt: number;
   room: Room | null;
   /** 개인 이벤트 (다음 스냅샷에 실림) */
@@ -52,8 +69,29 @@ export type Player = Unit & {
   basics: number;
 };
 
-/** 플레이어 아이템 상태 초기값 */
-export const itemState = (items: Item[]) => ({ items, procs: [] as Special[], look: [] as string[], potionAt: 0, shieldAt: 0, dealt: 0, taken: 0, basics: 0 });
+/** 저장된 캐릭터로 플레이어를 만듦 (아이템 · 성장 · 장비 스탯 반영, HP 가득) — main · 테스트 공용 */
+export function buildPlayer(ws: WebSocket, discordId: string, char: CharacterRow, x: number, y: number): Player {
+  const prog = loadProgress(char);
+  const s = jobStats(char.level, prog.line, prog.pot);
+  const u = makeUnit({ id: newId(), kind: "p", name: char.nickname, el: char.element as ElementId, lv: char.level, x, y, r: 7, base: s, mover: newMover(x, y, s) });
+  const p: Player = Object.assign(u, {
+    kind: "p" as const, mover: u.mover!, ws, discordId, char, inputs: [], credits: 0, lastSeq: -1, steps: 0, rtt: 0,
+    room: null, out: [], respawnAt: 0, statsSent: "", ...playerState(loadItems(char.id), prog),
+  });
+  syncSkills(p); // 견습 스킬 · 레벨 도달 스킬 (예전 캐릭터도) — 접속 때 안내는 안 띄움
+  p.out = [];
+  refreshGear(p);
+  p.hp = p.st.hp;
+  p.mp = p.st.mana;
+  p.en = p.st.energy;
+  return p;
+}
+
+/** 플레이어 아이템 · 성장 상태 초기값 */
+export const playerState = (items: Item[], prog: Progress) => ({
+  items, procs: [] as Special[], look: [] as string[], potionAt: 0, shieldAt: 0, dealt: 0, taken: 0, basics: 0,
+  prog, progDirty: false, progAt: 0, skillsDirty: new Set<string>(), charge: null, cd: {} as Record<string, number>, slots: {} as Partial<Record<Slot, string>>,
+});
 
 /**
  * 바닥 아이템 (§20-2): 처치 기여자에게만 보이다가 30초 뒤 모두에게, 2분 뒤 사라짐 (D24).
@@ -62,12 +100,19 @@ export const itemState = (items: Item[]) => ({ items, procs: [] as Special[], lo
 type Drop = { id: number; tpl: string; qty: number; rarity: Rarity; x: number; y: number; owners: Set<number> | null; pickAt: number; publicAt: number; until: number; told: Set<number> };
 export const DROP = { pickMs: 400, ownMs: 30_000, lifeMs: 120_000, pickR: 18 };
 
-type Proj = { id: number; owner: Unit; team: "p" | "m"; x: number; y: number; vx: number; vy: number; left: number; r: number; spec: HitSpec; lag: number };
-type Cast = { at: number; p: Player; sk: string; ax: number; ay: number; tid: number };
+type Proj = { id: number; owner: Unit; team: "p" | "m"; x: number; y: number; vx: number; vy: number; left: number; r: number; spec: HitSpec; lag: number; pierce: number; bounce: number; hits: Set<number> };
+/** 적 투사체를 막는 벽 (성역의 방패) */
+type Wall = { x1: number; y1: number; x2: number; y2: number; until: number };
+const segDist = (w: Wall, x: number, y: number) => {
+  const dx = w.x2 - w.x1;
+  const dy = w.y2 - w.y1;
+  const t = Math.max(0, Math.min(1, ((x - w.x1) * dx + (y - w.y1) * dy) / (dx * dx + dy * dy)));
+  return Math.sqrt((w.x1 + dx * t - x) ** 2 + (w.y1 + dy * t - y) ** 2);
+};
 
 export const send = (p: Player, m: S2C) => p.ws.readyState === 1 && p.ws.send(JSON.stringify(m));
 export const info = (u: Unit): EntityInfo =>
-  u.kind === "p" ? { id: u.id, name: u.name, ap: (u as Player).char.appearance, look: (u as Player).look, el: u.el, lv: u.lv } : { id: u.id, name: u.name, el: u.el, lv: u.lv, mob: (u as Mob).key, grade: (u as Mob).grade };
+  u.kind === "p" ? { id: u.id, name: u.name, ap: (u as Player).char.appearance, look: (u as Player).look, el: u.el, lv: u.lv, jb: (u as Player).prog.job ?? (u as Player).prog.line ?? "" } : { id: u.id, name: u.name, el: u.el, lv: u.lv, mob: (u as Mob).key, grade: (u as Mob).grade };
 
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
 
@@ -79,6 +124,7 @@ export class Room implements World {
   casts: Cast[] = [];
   zones: Zone[] = [];
   drops = new Map<number, Drop>();
+  walls: Wall[] = [];
   ev: Ev[] = [];
   now = 0;
   kind: RoomKind;
@@ -120,7 +166,8 @@ export class Room implements World {
   remove(p: Player) {
     this.players.delete(p.id);
     p.room = null;
-    this.casts = this.casts.filter((c) => c.p !== p);
+    this.casts = this.casts.filter((c) => c.s.p !== p);
+    p.charge = null;
     this.broadcast({ t: "despawn", id: p.id });
   }
 
@@ -132,16 +179,59 @@ export class Room implements World {
   }
 
   // ── World ──────────────────────────────────────────────────────
-  damaged(src: Unit, tgt: Unit, amount: number, threat: number) {
+  damaged(src: Unit, tgt: Unit, amount: number, threat: number, h?: HitSpec) {
     if (tgt.kind !== "m" || src.kind !== "p") return;
     const m = tgt as Mob;
+    m.lastShot = (h?.cast as Shot | undefined) ?? null;
     m.threat.set(src.id, (m.threat.get(src.id) ?? 0) + amount * threat);
     m.dmgBy.set(src.id, (m.dmgBy.get(src.id) ?? 0) + amount);
   }
 
   struck(src: Unit, tgt: Unit, amount: number, h: HitSpec) {
-    if (src.kind === "p") onDealt(this, src as Player, tgt, amount, h);
+    if (src.kind === "p") {
+      onDealt(this, src as Player, tgt, amount, h);
+      // 숙련도: 적중한 적마다 (시전 한 번에 대상당 한 번)
+      const s = h.cast as Shot | undefined;
+      if (s && s.sk.slot !== "A" && !s.hit.has(tgt.id) && tgt.kind === "m") {
+        s.hit.add(tgt.id);
+        gainMastery(s.p, s.mid, MASTERY.hit, (tgt as Mob).grade);
+      }
+      // 독 바르기: 평타가 독을 검
+      if (h.basic && has(src, "venom") && !tgt.dead) addEffect(this, tgt, { id: "poison", ms: 4000, dot: Math.max(1, amount * 0.15) }, src);
+    }
     if (tgt.kind === "p") onTaken(this, tgt as Player, src, amount, h);
+  }
+
+  around(x: number, y: number, r: number, kind: "p" | "m"): Unit[] {
+    const list: Unit[] = kind === "p" ? [...this.players.values()] : [...this.mobs.values()];
+    return list.filter((u) => !u.dead && dist(u, { x, y }) <= r + u.r);
+  }
+
+  /** 부활 (§11-1 · 부활의 기적): 쓰러진 자리에서 HP 비율로 */
+  revive(p: Player, pct: number) {
+    if (!p.dead) return;
+    p.dead = false;
+    p.respawnAt = 0;
+    recalc(p);
+    p.hp = Math.max(1, Math.round(p.st.hp * pct));
+    this.ev.push(["rv", p.id]);
+  }
+
+  /** 대상 뒤 (시전자 반대편) 16px — 막혀 있으면 대상 옆 */
+  behind(p: Player, t: Unit) {
+    const dx = t.x - p.x;
+    const dy = t.y - p.y;
+    const len = Math.sqrt(dx * dx + dy * dy) || 1;
+    return blinkDest(this.map.collider, t.x, t.y, t.x + (dx / len) * (t.r + 12), t.y + (dy / len) * (t.r + 12), t.r + 12);
+  }
+
+  /** 성역의 방패: 바라보는 쪽 28px 앞에 길이 56px 벽 5초 */
+  wall(p: Player, ux: number, uy: number) {
+    const cx = p.x + ux * 28;
+    const cy = p.y - 6 + uy * 28;
+    const w: Wall = { x1: cx - uy * 28, y1: cy + ux * 28, x2: cx + uy * 28, y2: cy - ux * 28, until: this.now + 5000 };
+    this.walls.push(w);
+    this.ev.push(["wl", Math.round(w.x1), Math.round(w.y1), Math.round(w.x2), Math.round(w.y2), 5000]);
   }
 
   killed(u: Unit, by: Unit | undefined) {
@@ -158,6 +248,9 @@ export class Room implements World {
       }
       if (best) gainExp(this, best, mobExp(m.def, m.lv, m.grade, best.lv));
       if (by?.kind === "p") onKill(this, by as Player);
+      // 숙련도: 막타를 친 스킬 +5
+      const s = m.lastShot;
+      if (s && s.sk.slot !== "A") gainMastery(s.p, s.mid, MASTERY.kill, m.grade);
       this.loot(m, best);
       return;
     }
@@ -169,7 +262,8 @@ export class Room implements World {
     p.out.push(["xp", -loss, p.char.exp, p.char.level]);
     deathWear(p);
     p.respawnAt = this.now + COMBAT.respawnMs;
-    this.casts = this.casts.filter((c) => c.p !== p);
+    this.casts = this.casts.filter((c) => c.s.p !== p);
+    p.charge = null;
     p.out.push(["dead", COMBAT.respawnMs]);
   }
 
@@ -233,16 +327,16 @@ export class Room implements World {
     }
   }
 
-  /** 투사체 발사. lag = 지연 보상 되감기(ms) */
-  shoot(owner: Unit, kind: string, el: string | null, dx: number, dy: number, speed: number, range: number, r: number, spec: HitSpec, seq: number, lag: number) {
+  /** 투사체 발사. lag = 지연 보상 되감기(ms), pierce = 꿰뚫는 수, bounce = 다른 적에게 튕기는 수 */
+  shoot(owner: Unit, kind: string, el: string | null, dx: number, dy: number, speed: number, range: number, r: number, spec: HitSpec, seq: number, lag: number, pierce = 0, bounce = 0) {
     const len = Math.sqrt(dx * dx + dy * dy) || 1;
-    const p: Proj = { id: newId(), owner, team: owner.kind, x: owner.x, y: owner.y, vx: (dx / len) * speed, vy: (dy / len) * speed, left: range, r, spec, lag };
+    const p: Proj = { id: newId(), owner, team: owner.kind, x: owner.x, y: owner.y, vx: (dx / len) * speed, vy: (dy / len) * speed, left: range, r, spec, lag, pierce, bounce, hits: new Set() };
     this.projs.push(p);
     this.ev.push(["p", p.id, owner.id, kind, el ?? "", Math.round(p.x), Math.round(p.y), Math.round(p.vx * 100) / 100, Math.round(p.vy * 100) / 100, range, seq]);
   }
 
   /** 지연 보상: 공격자 화면에 보였던 lag ms 전 위치 */
-  private posAt(m: Mob, lag: number) {
+  posAt(m: Mob, lag: number) {
     if (lag <= 0) return m;
     const t = this.now - lag;
     let best: { x: number; y: number } = m;
@@ -250,7 +344,7 @@ export class Room implements World {
     return best;
   }
 
-  private lagOf(p: Player) {
+  lagOf(p: Player) {
     return Math.min(COMBAT.lagCompMaxMs, p.rtt / 2 + 100);
   }
 
@@ -271,8 +365,9 @@ export class Room implements World {
     } else if (find(p, "confuse")) mv = { ...inp, mx: -inp.mx, my: -inp.my };
     if (!p.dead) {
       if (mv.dg) tryRoll(m, mv);
+      if (mv.cs && SKILLS[p.slots[mv.cs] ?? ""]?.charge) p.charge = { slot: mv.cs, from: p.steps };
       if (mv.k) {
-        const err = this.cast(p, mv);
+        const err = cast(this, p, mv);
         if (err) p.out.push(["cf", inp.seq, err]);
       }
     }
@@ -281,112 +376,51 @@ export class Room implements World {
     p.y = m.y;
   }
 
-  /** 스킬 검증 (§27: 쿨 · 자원 · 상태) → 받아들이면 움직임 효과 + 발동. 거부 이유를 돌려줌 */
-  private cast(p: Player, inp: MoveInput): string | null {
-    const sk = SKILLS[p.slots[inp.k!] ?? ""];
-    if (!sk) return "아직 배우지 않은 슬롯입니다";
-    if (this.kind === "plaza") return "광장은 안전지대라 공격 · 스킬을 쓸 수 없습니다";
-    if (sk.slot === "A" ? p.block.atk : p.block.skill) return "지금은 쓸 수 없습니다";
-    const m = p.mover;
-    if (m.mv > 0 || m.lock > 0) return "다른 동작 중입니다";
-    const ax = Number(inp.ax);
-    const ay = Number(inp.ay);
-    if (!Number.isFinite(ax) || !Number.isFinite(ay)) return "조준 오류";
-    const sim = p.steps * SIM_MS;
-    if (sim < (p.cd[sk.slot] ?? 0) - 1) return "재사용 대기 중입니다";
-    if (p.mp < (sk.cost.mana ?? 0)) return "마나가 부족합니다";
-    if (p.en < (sk.cost.energy ?? 0)) return "기력이 부족합니다";
-    p.mp -= sk.cost.mana ?? 0;
-    p.en -= sk.cost.energy ?? 0;
-    p.cd[sk.slot] = sim + (sk.slot === "A" ? castMs(sk.cooldownMs, p.st.atkSpeed) : cooldownMs(sk.cooldownMs, p.st));
-    const sx = m.x;
-    const sy = m.y;
-    castMove(m, sk, ax, ay);
-    this.ev.push(["c", p.id, sk.id, Math.round(ax), Math.round(ay)]);
-    if (sk.castMs) this.casts.push({ at: this.now + castMs(sk.castMs, p.st.atkSpeed), p, sk: sk.id, ax, ay, tid: 0 });
-    else this.fire(p, sk.id, sx, sy, ax, ay, inp.seq);
-    return null;
-  }
-
-  private fire(p: Player, skId: string, sx: number, sy: number, ax: number, ay: number, seq: number) {
-    const sk = SKILLS[skId];
-    const dx = ax - sx;
-    const dy = ay - sy;
-    const len = Math.sqrt(dx * dx + dy * dy) || 1;
-    const ux = dx / len;
-    const uy = dy / len;
-    const spec: HitSpec = {
-      ...(sk.damage ?? { base: 0, atkRatio: 0, apRatio: 0 }), cat: sk.category, el: sk.elementInherit ? p.el : null, skill: sk.slot !== "A",
-      melee: sk.targeting === "melee" || sk.targeting === "dash", threat: sk.threat, proc: sk.elementInherit, fx: sk.effects, basic: sk.slot === "A",
-    };
-    const lag = this.lagOf(p);
-    const live = [...this.mobs.values()].filter((m) => !m.dead);
-    switch (sk.targeting) {
-      case "skillshot":
-        this.shoot(p, sk.id, spec.el, dx, dy, sk.speed! * (1 + p.st.projSpeed), sk.range, sk.width! / 2, spec, seq, lag);
-        return;
-      case "melee": {
-        const cosHalf = Math.cos(((sk.arc ?? 90) / 2) * (Math.PI / 180));
-        for (const m of live) {
-          const q = this.posAt(m, lag);
-          const d = dist(p, q);
-          if (d > sk.range + m.r) continue;
-          if (d > m.r && ((q.x - p.x) * ux + (q.y - p.y) * uy) / d < cosHalf) continue;
-          hit(this, p, m, spec);
-        }
-        return;
-      }
-      case "dash":
-        for (const m of live) {
-          const q = this.posAt(m, lag);
-          const t = Math.max(0, Math.min(sk.range, (q.x - sx) * ux + (q.y - sy) * uy));
-          if (Math.sqrt((sx + ux * t - q.x) ** 2 + (sy + uy * t - q.y) ** 2) <= (sk.width ?? 16) / 2 + m.r) hit(this, p, m, spec);
-        }
-        return;
-      case "ally": {
-        let tgt: Unit = p;
-        let bd = 24;
-        for (const o of this.players.values()) {
-          const d = dist(o, { x: ax, y: ay });
-          if (!o.dead && d <= bd + o.r && dist(o, p) <= sk.range) { bd = d; tgt = o; }
-        }
-        const h = sk.heal!;
-        const total = h.base + p.st.ap * h.apRatio + tgt.st.hp * h.hpPct;
-        const ticks = h.ms / 500;
-        addEffect(this, tgt, { id: "regen_hp", ms: h.ms, dot: healPerTick(total / ticks, p, tgt) }, p);
-        this.healed(p, tgt, total * sk.threat);
-        return;
-      }
-    }
-  }
-
   /** 힐 위협: 그 아군과 싸우는 몹들이 치유한 쪽을 노림 (§13-2 힐량 × 0.5 — 스킬 threat 로 반영) */
-  private healed(src: Player, tgt: Unit, amount: number) {
+  healed(src: Player, tgt: Unit, amount: number) {
     for (const m of this.mobs.values()) if (m.threat.has(tgt.id)) m.threat.set(src.id, (m.threat.get(src.id) ?? 0) + amount);
   }
 
+  /** 투사체: 4px 씩 나아가며 판정. 적 투사체는 벽에 막힘, 관통은 다음 적으로, 튕김은 근처(80px) 다른 적 쪽으로 새 투사체 */
   private moveProjectiles(dt: number) {
     for (const pr of [...this.projs]) {
       const speed = Math.sqrt(pr.vx * pr.vx + pr.vy * pr.vy);
       const total = Math.min(pr.left, speed * dt);
       const n = Math.max(1, Math.ceil(total / 4));
-      let done = false;
-      for (let i = 0; i < n && !done; i++) {
+      let end = false;
+      let turned = false;
+      for (let i = 0; i < n && !end && !turned; i++) {
         pr.x += (pr.vx / speed) * (total / n);
         pr.y += (pr.vy / speed) * (total / n);
+        pr.left -= total / n;
+        if (pr.team === "m" && this.walls.some((w) => segDist(w, pr.x, pr.y) <= pr.r + 3)) { end = true; break; }
         const targets: Unit[] = pr.team === "p" ? [...this.mobs.values()] : [...this.players.values()];
         for (const t of targets) {
-          if (t.dead) continue;
+          if (t.dead || pr.hits.has(t.id)) continue;
           const q = t.kind === "m" ? this.posAt(t as Mob, pr.lag) : t;
-          if (dist(pr, q) <= pr.r + t.r) {
-            hit(this, pr.owner, t, pr.spec);
-            done = true;
+          if (dist(pr, q) > pr.r + t.r) continue;
+          hit(this, pr.owner, t, pr.spec);
+          pr.hits.add(t.id);
+          const next = pr.bounce > 0 ? targets.filter((o) => !o.dead && !pr.hits.has(o.id) && dist(o, t) <= 80).sort((a, b) => dist(a, t) - dist(b, t))[0] : undefined;
+          if (next) {
+            pr.bounce--;
+            const len = dist(next, t) || 1;
+            pr.vx = ((next.x - t.x) / len) * speed;
+            pr.vy = ((next.y - t.y) / len) * speed;
+            pr.left = len + 16;
+            // 클라는 방향이 바뀐 투사체를 새것으로 그림
+            this.ev.push(["px", pr.id, Math.round(pr.x), Math.round(pr.y)]);
+            pr.id = newId();
+            this.ev.push(["p", pr.id, pr.owner.id, "bounce", pr.spec.el ?? "", Math.round(pr.x), Math.round(pr.y), Math.round(pr.vx * 100) / 100, Math.round(pr.vy * 100) / 100, Math.round(pr.left), -1]);
+            turned = true;
             break;
           }
+          if (pr.pierce > 0) { pr.pierce--; continue; }
+          end = true;
+          break;
         }
       }
-      pr.left -= total;
-      if (done || pr.left <= 0.01) {
+      if (end || pr.left <= 0.01) {
         this.projs.splice(this.projs.indexOf(pr), 1);
         this.ev.push(["px", pr.id, Math.round(pr.x), Math.round(pr.y)]);
       }
@@ -407,8 +441,11 @@ export class Room implements World {
     for (const c of [...this.casts]) {
       if (now < c.at) continue;
       this.casts.splice(this.casts.indexOf(c), 1);
-      if (!c.p.dead && !c.p.block.skill && c.p.room === this) this.fire(c.p, c.sk, c.p.x, c.p.y, c.ax, c.ay, -1);
+      const p = c.s.p;
+      // 시전 · 채널링 중 기절 등으로 막히면 취소
+      if (!p.dead && !(c.s.sk.slot === "A" ? p.block.atk : p.block.skill) && p.room === this) fire(this, c.s, c.sx, c.sy, c.ax, c.ay);
     }
+    this.walls = this.walls.filter((w) => now < w.until);
     this.moveProjectiles(dt);
     this.tickDrops();
     for (const m of this.mobs.values()) {
@@ -419,6 +456,13 @@ export class Room implements World {
     for (const u of [...this.players.values(), ...this.mobs.values()]) {
       tickEffects(this, u);
       regen(this, u, dt);
+    }
+    // 닌자 「그림자 걸음」: 3초 동안 전투하지 않으면 이속 +25%
+    for (const p of this.players.values()) {
+      if (p.job !== "ninja" || p.dead) continue;
+      const idle = now - p.combat >= 3000;
+      if (idle && !has(p, "shadow_step")) addEffect(this, p, { id: "shadow_step", ms: FOREVER_MS }, p);
+      else if (!idle && has(p, "shadow_step")) removeEffect(this, p, "shadow_step");
     }
     for (const m of [...this.mobs.values()]) {
       if (m.dead && now >= m.removeAt) {
@@ -463,8 +507,9 @@ export class Room implements World {
       }
       const sim = p.steps * SIM_MS;
       const v = [p.hp, p.st.hp, p.mp, p.st.mana, p.en, p.st.energy, shieldOf(p)].map(Math.round);
-      for (const k of SLOTS) v.push(Math.max(0, Math.round((p.cd[k] ?? 0) - sim)));
+      for (const k of SLOTS) v.push(Math.max(0, Math.round((p.cd[p.slots[k] ?? ""] ?? 0) - sim)));
       v.push(Math.max(0, Math.round(p.potionAt - now)));
+      if (p.progDirty && now - p.progAt >= 1000) { p.progAt = now; sendProg(p); }
       const pe = p.out.length ? `,"pe":${JSON.stringify(p.out)}` : "";
       p.out = [];
       p.ws.send(`{"t":"s","st":${now},"ack":${JSON.stringify({ seq: p.lastSeq, m: p.mover })},"v":${JSON.stringify(v)},"e":${e}${ev}${pe}}`);
@@ -489,7 +534,8 @@ export function gainExp(room: Room, p: Player, amount: number) {
   saveProgress(c.id, c.level, c.exp);
   if (!up) return;
   p.lv = c.level;
-  p.base = baseStats(c.level);
+  p.base = charBase(p);
+  syncSkills(p);
   recalc(p);
   p.hp = p.st.hp;
   p.mp = p.st.mana;
@@ -498,7 +544,6 @@ export function gainExp(room: Room, p: Player, amount: number) {
   room.ev.push(["lv", p.id, c.level]);
 }
 
-export const playerSlots = () => ({ ...APPRENTICE_SLOTS });
 
 /** 종류별 채널 목록 */
 export class Channels {

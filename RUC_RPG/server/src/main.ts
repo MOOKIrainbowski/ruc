@@ -1,20 +1,21 @@
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
-import { baseStats, validNickname } from "../../../web/rpg/shared/character.ts";
+import { expToNext, validNickname } from "../../../web/rpg/shared/character.ts";
 import { INPUT_QUEUE_MAX, TICK_MS, WS_PORT, type RoomKind } from "../../../web/rpg/shared/constants.ts";
 import { validAppearance } from "../../../web/rpg/shared/data/appearance.ts";
-import { ELEMENTS, type ElementId } from "../../../web/rpg/shared/data/elements.ts";
+import { ELEMENTS } from "../../../web/rpg/shared/data/elements.ts";
 import { ITEMS, RARITIES, type Rarity } from "../../../web/rpg/shared/data/items.ts";
 import { SLOTS, type Slot } from "../../../web/rpg/shared/data/skills.ts";
 import { USE_RANGE, distToObj, loadMap, prop, type GameMap, type TiledMap } from "../../../web/rpg/shared/map.ts";
-import { blocked, newMover } from "../../../web/rpg/shared/movement.ts";
+import { blocked } from "../../../web/rpg/shared/movement.ts";
 import type { C2S, S2C } from "../../../web/rpg/shared/protocol.ts";
 import { DEV_TICKET_SECRET, verifyTicket, type Ticket } from "../../../web/rpg/shared/ticket.ts";
-import { fxRows, makeUnit, recalc } from "./combat.ts";
-import { createCharacter, findCharacter, loadItems, savePosition, saveSettings, type CharacterRow } from "./db.ts";
-import { give, itemOp, refreshGear, sendInv } from "./items.ts";
-import { Channels, info, itemState, newId, playerSlots, send, type Player } from "./room.ts";
+import { fxRows, recalc } from "./combat.ts";
+import { createCharacter, findCharacter, savePosition, saveProgress, saveSettings, type CharacterRow } from "./db.ts";
+import { give, itemOp, sendInv } from "./items.ts";
+import { changeJob, charBase, equip, saveDirtySkills, sendProg, syncSkills } from "./progress.ts";
+import { Channels, buildPlayer, info, send, type Player } from "./room.ts";
 
 const DEV = process.argv.includes("--dev");
 const SECRET = process.env.RPG_TICKET_SECRET?.trim() || (DEV ? DEV_TICKET_SECRET : "");
@@ -33,16 +34,11 @@ const online = new Map<string, Player>(); // 디스코드 ID → 접속 중인 �
 
 /** 저장된 맵 · 위치 · HP 로 플레이어를 만듦. kind = 들어갈 맵 */
 function makePlayer(ws: WebSocket, t: Ticket, char: CharacterRow): { p: Player; kind: RoomKind } {
-  const s = baseStats(char.level);
   const saved = char.position;
   const kind: RoomKind = saved && saved.map in maps && !blocked(maps[saved.map as RoomKind].collider, saved.x, saved.y) ? (saved.map as RoomKind) : "plaza";
   const pos = kind === saved?.map ? saved : maps.plaza.spawn;
-  const u = makeUnit({ id: newId(), kind: "p", name: char.nickname, el: char.element as ElementId, lv: char.level, x: pos.x, y: pos.y, r: 7, base: s, mover: newMover(pos.x, pos.y, s) });
-  const p: Player = Object.assign(u, {
-    kind: "p" as const, mover: u.mover!, ws, discordId: t.sub, char, inputs: [], credits: 0, lastSeq: -1, steps: 0, cd: {}, slots: playerSlots(), rtt: 0,
-    room: null, out: [], respawnAt: 0, statsSent: "", ...itemState(loadItems(char.id)),
-  });
-  refreshGear(p); // 장비 스탯을 얹은 뒤 저장된 HP 를 채움
+  const p = buildPlayer(ws, t.sub, char, pos.x, pos.y);
+  // 저장된 HP · 마나 · 기력 (장비 스탯을 얹은 뒤)
   const full = !saved?.hp || saved.hp <= 0;
   p.hp = full ? p.st.hp : Math.min(saved.hp!, p.st.hp);
   p.mp = full ? p.st.mana : Math.min(saved.mp ?? p.st.mana, p.st.mana);
@@ -72,7 +68,7 @@ function join(p: Player, kind: RoomKind, ch?: number) {
     t: "joined",
     you: {
       id: p.id, nickname: p.char.nickname, level: p.char.level, exp: p.char.exp, element: p.char.element, appearance: p.char.appearance,
-      ruc: 0, kda: [0, 0, 0], settings: p.char.settings, slots: p.slots,
+      ruc: 0, kda: [0, 0, 0], settings: p.char.settings, slots: p.slots, prog: p.prog,
     },
     room: { kind: room.kind, ch: room.ch },
     me: p.mover,
@@ -95,6 +91,7 @@ function travel(p: Player, kind: RoomKind, x: number, y: number) {
 }
 
 function save(p: Player) {
+  saveDirtySkills(p);
   if (!p.room) return;
   if (p.dead) savePosition(p.char.id, { map: "plaza", ...maps.plaza.spawn });
   else savePosition(p.char.id, { map: p.room.kind, x: p.x, y: p.y, hp: Math.round(p.hp), mp: Math.round(p.mp), en: Math.round(p.en) });
@@ -144,6 +141,12 @@ function use(p: Player, oid: number) {
     return travel(p, target as RoomKind, a.x, a.y);
   }
   if (o.type === "npc") return send(p, { t: "error", msg: `${o.name}: "조금만 기다려 줘요! 곧 이야기 나눌 수 있어요."` });
+}
+
+/** 직업 교관(세라) 근처인가 — 전직은 광장에서 교관과 이야기해야 함 (§9-1) */
+function nearInstructor(p: Player) {
+  const o = p.room?.map.objects.find((x) => x.type === "npc" && prop(x, "npc") === "sera");
+  return !!o && distToObj(o, p.x, p.y) <= USE_RANGE + 16;
 }
 
 const http = createServer((req, res) => {
@@ -211,6 +214,7 @@ wss.on("connection", (ws, req) => {
         player.inputs.push({
           seq, mx: Math.sign(Number(m.mx)) || 0, my: Math.sign(Number(m.my)) || 0, run: m.run === true,
           dg: m.dg === 1 ? 1 : undefined, k, ax: k ? Math.round(Number(m.ax)) : undefined, ay: k ? Math.round(Number(m.ay)) : undefined,
+          cs: SLOTS.includes(m.cs as Slot) ? (m.cs as Slot) : undefined,
         });
         return;
       }
@@ -228,6 +232,17 @@ wss.on("connection", (ws, req) => {
         return;
       case "use":
         return use(player, Number(m.oid));
+      case "job": {
+        if (!nearInstructor(player)) return reply({ t: "error", msg: "광장의 직업 교관 세라에게 가서 전직하세요" });
+        const err = changeJob(player, m);
+        if (err) reply({ t: "error", msg: err });
+        return;
+      }
+      case "equip": {
+        const err = equip(player, m.skill, m.slot);
+        if (err) reply({ t: "error", msg: err });
+        return;
+      }
       case "item": {
         const err = itemOp(player, m);
         if (err) reply({ t: "error", msg: err });
@@ -235,6 +250,23 @@ wss.on("connection", (ws, req) => {
       }
       case "dev": {
         if (!DEV) return;
+        if (m.lv) {
+          // 개발용 레벨 지정 (GM 도구 /gm level 은 P8)
+          const c = player.char;
+          c.level = Math.max(1, Math.min(40, Math.round(Number(m.lv)) || 1));
+          c.exp = Math.min(c.exp, expToNext(c.level) - 1);
+          saveProgress(c.id, c.level, c.exp);
+          player.lv = c.level;
+          player.base = charBase(player);
+          syncSkills(player);
+          recalc(player);
+          player.hp = player.st.hp;
+          player.mp = player.st.mana;
+          player.en = player.st.energy;
+          player.room?.ev.push(["lv", player.id, c.level]);
+          player.out.push(["xp", 0, c.exp, c.level]);
+          return sendProg(player);
+        }
         if (m.give && Object.hasOwn(ITEMS, m.give)) {
           const r: Rarity = RARITIES.includes(m.rarity as Rarity) ? (m.rarity as Rarity) : ITEMS[m.give].rarity ?? "common";
           const err = give(player, m.give, Math.max(1, Math.min(64, Number(m.n) || 1)), r, "dev");
