@@ -3,6 +3,7 @@ import { castMs, cooldownMs, type FullStats } from "../shared/combat";
 import { CHAR_H, CHAR_W, INTERP_DELAY_MS, SIM_MS, TILE, type RoomKind } from "../shared/constants";
 import type { Appearance } from "../shared/data/appearance";
 import { effectDef } from "../shared/data/effects";
+import { ITEMS, LOCS, RARITY, basicOf, lookOf, type Item, type Rarity } from "../shared/data/items";
 import { GRADES } from "../shared/data/mobs";
 import { SKILLS, SLOTS, type SkillDef, type Slot } from "../shared/data/skills";
 import { ROLL } from "../shared/data/stats";
@@ -10,12 +11,13 @@ import { USE_RANGE, distToObj, prop, type GameMap, type TiledObject } from "../s
 import { castMove, step, tryRoll, type MoveInput, type Mover } from "../shared/movement";
 import {
   F_CAST, F_DEAD, F_MOVING, F_ROLL, F_RUNNING, H_CRIT, H_DOT, H_HEAL, H_IMMUNE, H_MISS, H_RESIST,
-  type EntityInfo, type Ev, type FxRow, type S2C, type You,
+  type DropRow, type EntityInfo, type Ev, type FxRow, type S2C, type You,
 } from "../shared/protocol";
 import { josa } from "../shared/josa";
 import { ANIMATED, TILE_NAMES, gid } from "../shared/tiles";
-import { ACTIONS, ACTION_FPS, APPRENTICE, FRAMES, characterSheet, shadowCanvas, type Action, type Outfit } from "./art/character";
+import { ACTIONS, ACTION_FPS, APPRENTICE, FRAMES, characterSheet, outfitOf, shadowCanvas, type Action, type Outfit } from "./art/character";
 import { effectIcon } from "./art/icons";
+import { itemIcon } from "./art/items";
 import { mobFrames } from "./art/mobs";
 import { Px } from "./art/px";
 import { TILE_COLOR, VARIANTS, objectFrames, tileAtlas } from "./art/world";
@@ -93,7 +95,13 @@ export type HudState = {
   fx: FxRow[];
   dead: number;
   hint: string | null;
+  /** 고른 핫바 칸 · 포션 공유 쿨 남은 ms */
+  sel: number;
+  potion: number;
 };
+
+/** 바닥 아이템: 아이콘 + (희귀 이상) 빛 · 주우면 주운 사람 쪽으로 날아감 */
+type GroundItem = { c: Container; x: number; y: number; t: number; fly: { to: number; ms: number } | null };
 
 const sheetCache = new Map<string, Texture[][]>();
 function sheetFrames(ap: Appearance, outfit: Outfit = APPRENTICE): Texture[][] {
@@ -117,6 +125,12 @@ function mobTextures(key: string): Texture[][] {
   }
   return t;
 }
+const itemTex = new Map<string, Texture>();
+const itemTexture = (tpl: string, r: Rarity) => {
+  let t = itemTex.get(tpl + r);
+  if (!t) { t = Texture.from(itemIcon(tpl, r)); itemTex.set(tpl + r, t); }
+  return t;
+};
 const iconTex = new Map<string, Texture>();
 const fxTexture = (id: string) => {
   let t = iconTex.get(id);
@@ -183,11 +197,16 @@ export class Game {
   interactables: TiledObject[];
   onToast: (msg: string) => void = () => {};
   onXp: (amount: number, exp: number, level: number) => void = () => {};
+  onItems: (items: Item[]) => void = () => {};
+  items: Item[] = [];
+  /** 고른 핫바 칸 (§15-2) */
+  sel = 0;
+  drops = new Map<number, GroundItem>();
   private toasted = new Map<string, number>();
   private fpsAcc = { n: 0, t: 0 };
   private disposers: (() => void)[] = [];
 
-  constructor(map: GameMap, kind: RoomKind, net: Net, you: You, me: Mover, settings: Settings, stats: FullStats) {
+  constructor(map: GameMap, kind: RoomKind, net: Net, you: You, me: Mover, settings: Settings, stats: FullStats, items: Item[]) {
     this.map = map;
     this.kind = kind;
     this.net = net;
@@ -197,9 +216,17 @@ export class Game {
     this.settings = settings;
     this.stats = stats;
     this.interactables = map.objects.filter((o) => o.type === "portal" || o.type === "npc");
+    this.setItems(items);
   }
 
-  async start(el: HTMLElement, ents: EntityInfo[], fx: [number, FxRow[]][]) {
+  /** 인벤토리가 바뀜: 평타는 무기 칸 무기를 따라감 (D20) */
+  setItems(items: Item[]) {
+    this.items = items;
+    this.you.slots = { ...this.you.slots, A: basicOf(items) };
+    this.onItems(items);
+  }
+
+  async start(el: HTMLElement, ents: EntityInfo[], fx: [number, FxRow[]][], drops: DropRow[]) {
     await this.app.init({ resizeTo: el, background: "#0a1207", antialias: false, preference: "webgl", roundPixels: true });
     this.app.canvas.style.imageRendering = "pixelated";
     el.appendChild(this.app.canvas);
@@ -207,9 +234,10 @@ export class Game {
 
     this.buildMap();
     this.app.stage.addChild(this.world, this.screenLayer);
-    this.meSprite = this.makeEnt({ id: this.you.id, name: this.you.nickname, ap: this.you.appearance, el: this.you.element, lv: this.you.level }, true);
+    this.meSprite = this.makeEnt({ id: this.you.id, name: this.you.nickname, ap: this.you.appearance, look: lookOf(this.items), el: this.you.element, lv: this.you.level }, true);
     for (const e of ents) this.addEnt(e);
     for (const [id, rows] of fx) this.setFx(id, rows);
+    for (const d of drops) this.addDrop(d);
 
     const down = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.closest?.("input, textarea, select")) return;
@@ -227,7 +255,14 @@ export class Game {
       this.mouse.sx = e.clientX - r.left;
       this.mouse.sy = e.clientY - r.top;
     };
-    const mdown = (e: MouseEvent) => { if (e.button === 0 && !this.inputBlocked) { move(e); this.mouse.held = true; } };
+    const mdown = (e: MouseEvent) => {
+      if (this.inputBlocked) return;
+      move(e);
+      if (e.button === 0) this.mouse.held = true;
+      if (e.button === 2) this.useHotbar();
+    };
+    // 휠 = 핫바 칸 (미니맵 위 휠은 미니맵 확대 — 캔버스에서만 받음)
+    const wheel = (e: WheelEvent) => { if (!this.inputBlocked && e.deltaY) this.sel = (this.sel + (e.deltaY > 0 ? 1 : LOCS.hotbar - 1)) % LOCS.hotbar; };
     const mup = (e: MouseEvent) => { if (e.button === 0) this.mouse.held = false; };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
@@ -235,6 +270,7 @@ export class Game {
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", mup);
     this.app.canvas.addEventListener("mousedown", mdown);
+    this.app.canvas.addEventListener("wheel", wheel, { passive: true });
     this.disposers.push(() => {
       window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", blur);
       window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", mup);
@@ -341,7 +377,7 @@ export class Game {
   // ── 엔티티 ───────────────────────────────────────────────────────
   private makeEnt(info: EntityInfo, isMe = false): Ent {
     const mob = !!info.mob;
-    const frames = mob ? mobTextures(info.mob!) : sheetFrames(info.ap!);
+    const frames = mob ? mobTextures(info.mob!) : sheetFrames(info.ap!, outfitOf(info.look));
     const sprite = new Sprite(frames[0][0]);
     sprite.anchor.set(0.5, mob ? 29 / 32 : 60 / CHAR_H);
     const shadow = new Sprite(shadowTex());
@@ -378,6 +414,24 @@ export class Game {
     this.ents.set(info.id, e);
   }
 
+  private addDrop([, id, tpl, rarity, , x, y]: DropRow) {
+    if (this.drops.has(id) || !ITEMS[tpl]) return;
+    const c = new Container();
+    if (rarity !== "poor" && rarity !== "common") {
+      const glow = new Graphics().ellipse(0, -1, 8, 3).fill({ color: RARITY[rarity].color, alpha: 0.55 });
+      glow.blendMode = "add";
+      c.addChild(glow);
+    }
+    const s = new Sprite(itemTexture(tpl, rarity));
+    s.anchor.set(0.5, 1);
+    s.scale.set(0.75);
+    c.addChild(s);
+    c.position.set(x, y);
+    c.zIndex = y - 1;
+    this.entityLayer.addChild(c);
+    this.drops.set(id, { c, x, y, t: Math.random() * 1000, fly: null });
+  }
+
   removeEnt(id: number) {
     const e = this.ents.get(id);
     if (!e) return;
@@ -412,6 +466,7 @@ export class Game {
     if (m.t === "spawn") this.addEnt(m.e);
     else if (m.t === "despawn") this.removeEnt(m.id);
     else if (m.t === "stats") this.stats = m.s;
+    else if (m.t === "inv") this.setItems(m.items);
     else if (m.t === "s") {
       const now = performance.now();
       const sample = m.st - now;
@@ -492,6 +547,22 @@ export class Game {
         if (e) { e.deadMs = 1; this.fx.burst(e.x, e.y - 10, e.mob ? "hit" : "dark", 16); }
         return;
       }
+      case "dr":
+        return this.addDrop(ev as DropRow);
+      case "dx": {
+        const d = this.drops.get(ev[1] as number);
+        if (!d) return;
+        if (ev[2]) d.fly = { to: ev[2] as number, ms: 0 };
+        else { d.c.destroy({ children: true }); this.drops.delete(ev[1] as number); }
+        return;
+      }
+      case "eq": {
+        const e = this.ent(ev[1] as number);
+        if (!e || e.mob) return;
+        e.info.look = ev[2] as string[];
+        e.frames = sheetFrames(e.info.ap!, outfitOf(e.info.look));
+        return;
+      }
       case "lv": {
         const [, id, lv] = ev as [string, number, number];
         const e = this.ent(id);
@@ -522,6 +593,22 @@ export class Game {
         this.onXp(amount, exp, level);
         return;
       }
+      case "dr":
+        return this.addDrop(ev as DropRow);
+      case "get": {
+        const [, tpl, qty, rarity] = ev as [string, string, number, Rarity];
+        const t = ITEMS[tpl];
+        if (t) this.fx.number(this.meSprite.x, this.meSprite.y - 50, `+${t.name}${qty > 1 ? ` ×${qty}` : ""}`, rarity === "common" ? "#fff4dc" : RARITY[rarity].color);
+        return;
+      }
+      case "du": {
+        const [, id, dur] = ev as [string, string, number];
+        const it = this.items.find((i) => i.id === id);
+        if (!it) return;
+        this.setItems(this.items.map((i) => (i === it ? { ...i, dur } : i)));
+        if (dur === 0) this.toast(`「${ITEMS[it.tpl].name}」의 내구도가 다 닳아 성능이 꺼졌습니다`);
+        return;
+      }
       case "dead":
         this.deadUntil = performance.now() + (ev[1] as number);
         this.meSprite.deadMs = 1;
@@ -543,9 +630,19 @@ export class Game {
     return code === k.skillQ ? "Q" : code === k.skillW ? "W" : code === k.skillE ? "E" : code === k.skillR || code === k.skillR2 ? "R" : null;
   }
 
+  /** 핫바 고른 칸 우클릭 = 사용 (포션 · 장비는 장착) (§15-2 · D20) */
+  private useHotbar() {
+    const it = this.items.find((i) => i.loc === "hotbar" && i.slot === this.sel);
+    if (!it) return;
+    if (ITEMS[it.tpl]?.heal && (this.v[12] ?? 0) > 0) return this.toast("포션 재사용 대기 중입니다");
+    this.net.send({ t: "item", op: "use", a: ["hotbar", this.sel] });
+  }
+
   private press(code: string) {
     const k = this.settings.keys;
-    if (code === k.dodge) this.queued.dodge = true;
+    const digit = /^Digit([1-5])$/.exec(code);
+    if (digit) this.sel = Number(digit[1]) - 1;
+    else if (code === k.dodge) this.queued.dodge = true;
     else if (code === k.interact) { if (this.near) this.net.send({ t: "use", oid: this.near.id }); }
     else {
       const slot = this.slotOfKey(code);
@@ -726,6 +823,19 @@ export class Game {
       this.animate(e, cur.flags & F_RUNNING ? "run" : cur.flags & F_MOVING ? "walk" : "idle", dt, now);
     }
 
+    // 바닥 아이템: 둥실 · 주우면 주운 사람에게 날아감
+    for (const [id, d] of this.drops) {
+      d.t += dt;
+      if (d.fly) {
+        d.fly.ms += dt;
+        const to = this.ent(d.fly.to);
+        const k = Math.min(1, d.fly.ms / 180);
+        if (to) d.c.position.set(d.x + (to.x - d.x) * k, d.y + (to.y - 16 - d.y) * k);
+        d.c.alpha = 1 - k * 0.6;
+        if (k >= 1 || !to) { d.c.destroy({ children: true }); this.drops.delete(id); }
+      } else d.c.position.set(d.x, Math.round(d.y - 2 - Math.sin(d.t / 300) * 1.5));
+    }
+
     // 물 · 포털 · NPC 애니메이션 (4프레임)
     this.waterMs += dt;
     if (this.waterMs >= 250) {
@@ -866,6 +976,8 @@ export class Game {
       fx: this.myFx.map((r) => [r[0], Math.max(0, r[1] - age), r[2], r[3], r[4]] as FxRow).filter((r) => r[1] > 0),
       dead: this.deadUntil ? Math.max(0, this.deadUntil - now) : 0,
       hint: this.near ? (this.near.type === "portal" ? `${josa(this.near.name, "으로/로")} 이동` : `${this.near.name}에게 말 걸기`) : null,
+      sel: this.sel,
+      potion: this.v[12] ?? 0,
     };
   }
 }

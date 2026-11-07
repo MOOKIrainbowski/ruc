@@ -1,3 +1,4 @@
+import { randomInt } from "node:crypto";
 import type { Stats } from "../../../web/rpg/shared/character.ts";
 import { computeDamage, finalStats, healAmount, hpRegen, mentalResist, resRegen, type FullStats, type Hit, type Mod } from "../../../web/rpg/shared/combat.ts";
 import { effectDef } from "../../../web/rpg/shared/data/effects.ts";
@@ -11,7 +12,8 @@ import { H_CRIT, H_DOT, H_HEAL, H_IMMUNE, H_MISS, H_RESIST, type Ev, type FxRow 
  * 시간은 전부 방의 틱 시각(w.now, ms)을 씁니다 — 테스트가 시간을 직접 넘길 수 있게.
  */
 
-let rng = Math.random;
+/** 확률은 서버 CSPRNG (§28) */
+let rng = () => randomInt(0, 2 ** 47) / 2 ** 47;
 /** 테스트용 난수 교체 */
 export const setRandom = (f: () => number) => void (rng = f);
 export const rand = () => rng();
@@ -45,6 +47,8 @@ export type Unit = {
   block: { move: boolean; atk: boolean; skill: boolean };
   fxDirty: boolean;
   statsDirty: boolean;
+  /** 장비 스탯 보정 (플레이어) */
+  gear: Mod[];
   /** 플레이어만 */
   mover?: Mover;
 };
@@ -54,8 +58,10 @@ export interface World {
   now: number;
   ev: Ev[];
   unit(id: number): Unit | undefined;
-  /** 피해 뒤 처리 (몹 위협 수치) */
+  /** 피해 기록 (몹 위협 수치 · 처치 기여) — HP 를 깎기 전에 불러서 막타도 기여로 셈 */
   damaged(src: Unit, tgt: Unit, amount: number, threat: number): void;
+  /** 직접 타격 뒤 (장비 내구도 · 발동 효과). 도트 · 반사는 안 부름 */
+  struck(src: Unit, tgt: Unit, amount: number, h: HitSpec): void;
   killed(u: Unit, by: Unit | undefined): void;
   /** 넉백 등 강제 이동 (벽 충돌 포함) */
   push(u: Unit, dx: number, dy: number): void;
@@ -64,7 +70,7 @@ export interface World {
 export function makeUnit(o: { id: number; kind: "p" | "m"; name: string; el: ElementId; lv: number; x: number; y: number; r: number; base: Stats; mover?: Mover }): Unit {
   const u: Unit = {
     ...o, hp: 0, mp: 0, en: 0, st: finalStats(o.base, []), fx: [], dr: new Map(), ccImmune: 0, combat: -1e9,
-    dead: false, evade: false, block: { move: false, atk: false, skill: false }, fxDirty: false, statsDirty: true,
+    dead: false, evade: false, block: { move: false, atk: false, skill: false }, fxDirty: false, statsDirty: true, gear: [],
   };
   recalc(u);
   u.hp = u.st.hp;
@@ -73,9 +79,9 @@ export function makeUnit(o: { id: number; kind: "p" | "m"; name: string; el: Ele
   return u;
 }
 
-/** 기본 스탯 · 속성 패시브 · 효과를 합쳐 최종 스탯과 행동 제한을 다시 계산 */
+/** 기본 스탯 · 속성 패시브 · 장비 · 효과를 합쳐 최종 스탯과 행동 제한을 다시 계산 */
 export function recalc(u: Unit) {
-  const mods: Mod[] = u.kind === "p" ? [...ELEMENTS[u.el].mods] : [];
+  const mods: Mod[] = u.kind === "p" ? [...ELEMENTS[u.el].mods, ...u.gear] : [];
   const block = { move: false, atk: false, skill: false };
   for (const e of u.fx) {
     const d = effectDef(e.id);
@@ -255,10 +261,11 @@ export function hit(w: World, src: Unit, tgt: Unit, h: HitSpec): number {
   }
   if (h.el === "electric" && has(tgt, "wet")) dmg = Math.round(dmg * 1.3);
   w.ev.push(["h", src.id, tgt.id, dmg, crit ? H_CRIT : 0, h.el ?? ""]);
+  w.damaged(src, tgt, dmg, h.threat);
   loseHp(w, src, tgt, dmg);
   const vamp = h.cat === "magical" ? src.st.spellVamp : src.st.lifesteal;
   if (vamp > 0) applyHeal(w, src, src, dmg * vamp, false);
-  w.damaged(src, tgt, dmg, h.threat);
+  w.struck(src, tgt, dmg, h);
   if (tgt.dead) return dmg;
 
   // 스킬 효과 · 속성 부가 효과 (§12-1)
@@ -282,8 +289,8 @@ export function dotDamage(w: World, src: Unit | undefined, tgt: Unit, raw: numbe
   if (tgt.dead || tgt.evade || has(tgt, "invuln")) return;
   const dmg = Math.max(1, Math.round(raw * (1 + (src?.st.dotDmg ?? 0))));
   w.ev.push(["h", src?.id ?? 0, tgt.id, dmg, H_DOT, ""]);
+  if (src) w.damaged(src, tgt, dmg, 1);
   loseHp(w, src, tgt, dmg);
-  if (src && !tgt.dead) w.damaged(src, tgt, dmg, 1);
 }
 
 /** 치유. computed = 이미 healAmount 를 거친 값(지속 회복 틱) */

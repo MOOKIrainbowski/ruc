@@ -4,6 +4,7 @@ import "./rpg.css";
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { FullStats } from "../shared/combat";
 import type { RoomKind } from "../shared/constants";
+import type { Item } from "../shared/data/items";
 import { loadMap, type GameMap, type TiledMap } from "../shared/map";
 import type { ChannelInfo, S2C, You } from "../shared/protocol";
 import { CombatHud, DeathOverlay } from "./CombatHud";
@@ -11,11 +12,15 @@ import CreateCharacter from "./CreateCharacter";
 import type { Game, HudState } from "./game";
 import { ChannelPicker, Compass, Minimap, TopRight, WorldMap } from "./Hud";
 import { t, type StrKey } from "./i18n";
+import { ItemsWindow } from "./Inventory";
 import { Net } from "./net";
 import SettingsModal from "./SettingsModal";
 import { loadLocal, mergeSettings, saveLocal, type Settings } from "./settings";
 
 type Phase = "loading" | "create" | "play" | "closed";
+type Popup = "settings" | "map" | "inventory" | "storage";
+/** 열려 있으면 게임 입력을 막는 팝업 */
+const BLOCKING: Popup[] = ["settings", "inventory", "storage"];
 
 /** 맵은 들어갈 때 불러옴 (§29 초기 로딩) */
 const MAP_JSON: Record<RoomKind, () => Promise<{ default: unknown }>> = {
@@ -41,19 +46,20 @@ export default function RpgGame({ dev }: { dev?: string }) {
   const [settings, setSettings] = useState<Settings>(() => mergeSettings());
   const [world, setWorld] = useState<{ map: GameMap; overview: HTMLCanvasElement } | null>(null);
   const [stats, setStats] = useState<FullStats | null>(null);
+  const [items, setItems] = useState<Item[]>([]);
   const toastTimer = useRef(0);
-  const [popups, setPopups] = useState<("settings" | "map")[]>([]);
+  const [popups, setPopups] = useState<Popup[]>([]);
+  const toast = useCallback((text: string) => {
+    setMsg(text);
+    clearTimeout(toastTimer.current);
+    toastTimer.current = window.setTimeout(() => setMsg(""), 2500);
+  }, []);
   const [capturing, setCapturing] = useState(false);
 
   // ── 접속 ──
   useEffect(() => {
     let alive = true;
     const n = new Net();
-    const toast = (text: string) => {
-      setMsg(text);
-      clearTimeout(toastTimer.current);
-      toastTimer.current = window.setTimeout(() => alive && setMsg(""), 2500);
-    };
     net.current = n;
     n.onMessage = async (m: S2C) => {
       if (!alive) return;
@@ -69,6 +75,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
           setRoom(m.room);
           setChannels(m.channels);
           setStats(m.stats);
+          setItems(m.items);
           const s = mergeSettings(loadLocal(), m.you.settings as Partial<Settings>);
           setSettings(s);
           if (game.current) {
@@ -84,11 +91,12 @@ export default function RpgGame({ dev }: { dev?: string }) {
           }
           if (!alive || !host.current) return;
           setWorld(w);
-          const g = new Game(w.map, m.room.kind, n, m.you, m.me, s, m.stats);
+          const g = new Game(w.map, m.room.kind, n, m.you, m.me, s, m.stats, m.items);
           g.onToast = toast;
           g.onXp = (_, exp, level) => setYou((y) => y && { ...y, exp, level });
+          g.onItems = setItems;
           try {
-            await g.start(host.current, m.ents, m.fx);
+            await g.start(host.current, m.ents, m.fx, m.drops);
           } catch {
             setMsg(t("noWebgl"));
             setPhase("closed");
@@ -111,7 +119,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
       game.current?.destroy();
       game.current = null;
     };
-  }, [dev]);
+  }, [dev, toast]);
 
   // HUD 갱신 (10Hz — FPS · 미니맵 · 나침반)
   useEffect(() => {
@@ -133,11 +141,20 @@ export default function RpgGame({ dev }: { dev?: string }) {
   }, [settings, phase]);
 
   useEffect(() => {
-    if (game.current) game.current.inputBlocked = popups.includes("settings");
+    if (game.current) game.current.inputBlocked = popups.some((p) => BLOCKING.includes(p));
   }, [popups]);
 
-  // Esc: 가장 위 팝업부터 닫고, 없으면 설정 열기 (§5 · §24). M: 전체 지도
-  const toggle = useCallback((p: "settings" | "map") => setPopups((s) => (s.includes(p) ? s.filter((x) => x !== p) : [...s, p])), []);
+  // 창고는 광장에서만 (§15-3) — 광장을 떠나면 닫음
+  useEffect(() => {
+    if (room.kind !== "plaza") setPopups((s) => s.filter((p) => p !== "storage"));
+  }, [room.kind]);
+
+  // Esc: 가장 위 팝업부터 닫고, 없으면 설정 열기 (§5 · §24). M: 전체 지도 · V: 인벤토리 · B: 창고(광장만)
+  const toggle = useCallback((p: Popup) => setPopups((s) => {
+    if (s.includes(p)) return s.filter((x) => x !== p);
+    const bag = (x: Popup) => x === "inventory" || x === "storage"; // 인벤토리 · 창고는 하나만 (창고 창에 인벤토리가 들어 있음)
+    return [...s.filter((x) => !(bag(p) && bag(x))), p];
+  }), []);
   useEffect(() => {
     if (phase !== "play") return;
     const down = (e: KeyboardEvent) => {
@@ -145,11 +162,17 @@ export default function RpgGame({ dev }: { dev?: string }) {
       if (e.code === "Escape") {
         e.preventDefault();
         setPopups((s) => (s.length ? s.slice(0, -1) : ["settings"]));
-      } else if (e.code === settings.keys.map && !popups.includes("settings")) toggle("map");
+      } else if (popups.includes("settings")) return;
+      else if (e.code === settings.keys.map) toggle("map");
+      else if (e.code === settings.keys.inventory) toggle("inventory");
+      else if (e.code === settings.keys.storage) {
+        if (room.kind === "plaza" || popups.includes("storage")) toggle("storage");
+        else toast(t("inv.storageOnly"));
+      }
     };
     window.addEventListener("keydown", down);
     return () => window.removeEventListener("keydown", down);
-  }, [phase, capturing, settings.keys.map, popups, toggle]);
+  }, [phase, capturing, settings.keys.map, settings.keys.inventory, settings.keys.storage, popups, toggle, room.kind, toast]);
 
   const top = popups[popups.length - 1];
 
@@ -190,7 +213,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
             <TopRight fps={hud.fps} ping={ping} you={you} onSettings={() => toggle("settings")} />
           </div>
           <div style={{ zoom: settings.hudScale / 100 }} className="absolute inset-0">
-            <CombatHud hud={hud} stats={stats} you={you} settings={settings} />
+            <CombatHud hud={hud} stats={stats} you={you} settings={settings} items={items} onSelect={(i) => { if (game.current) game.current.sel = i; }} />
           </div>
           {msg && <div className="rpg-chip absolute bottom-[200px] left-1/2 -translate-x-1/2 whitespace-nowrap">{msg}</div>}
           {hud.dead > 0 && <DeathOverlay ms={hud.dead} />}
@@ -200,6 +223,11 @@ export default function RpgGame({ dev }: { dev?: string }) {
       {phase === "play" && hud && world && popups.includes("map") && (
         <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
           <WorldMap map={world.map} overview={world.overview} hud={hud} title={MAP_NAME[hud.kind]} onClose={() => toggle("map")} />
+        </div>
+      )}
+      {phase === "play" && you && (top === "inventory" || top === "storage") && (
+        <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
+          <ItemsWindow mode={top} items={items} you={you} zoom={settings.uiScale / 100} send={(m) => net.current?.send(m)} toast={toast} onClose={() => toggle(top)} />
         </div>
       )}
       {phase === "play" && top === "settings" && (

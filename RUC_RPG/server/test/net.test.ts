@@ -8,6 +8,9 @@ import { WebSocket } from "ws";
 import { DEV_TICKET_SECRET, signTicket } from "../../../web/rpg/shared/ticket.ts";
 import type { S2C } from "../../../web/rpg/shared/protocol.ts";
 import { loadMap, prop, type TiledMap } from "../../../web/rpg/shared/map.ts";
+import { baseStats } from "../../../web/rpg/shared/character.ts";
+import { finalStats } from "../../../web/rpg/shared/combat.ts";
+import { ELEMENTS } from "../../../web/rpg/shared/data/elements.ts";
 
 const PORT = 25000 + Math.floor(Math.random() * 1000);
 const DB = `test-${PORT}.sqlite`;
@@ -120,4 +123,43 @@ test("광장은 안전지대 → 포털로 필드 이동 → 마력 화살 발�
   const n = c.inbox.length;
   await c.until((m) => c.inbox.indexOf(m) >= n && m.t === "s" && m.e.some((r) => mobIds.has(r[0])));
   c.ws.close();
+});
+
+test("아이템: 지급 → 장착(평타 · 스탯 · 옷 색) → 창고 보관(광장만) → 다시 접속해도 그대로", async () => {
+  const c = client("E");
+  await c.open;
+  await c.until((m) => m.t === "needCreate");
+  c.send({ t: "create", nickname: "에코", appearance: ap, element: "earth" });
+  const j = await c.until<Extract<S2C, { t: "joined" }>>((m) => m.t === "joined");
+  assert.deepEqual(j.items, []);
+  const inv = (pred: (items: Extract<S2C, { t: "inv" }>["items"]) => boolean) => c.until<Extract<S2C, { t: "inv" }>>((m) => m.t === "inv" && pred(m.items));
+  c.send({ t: "dev", give: "leather_vest", rarity: "rare" });
+  const got = await inv((it) => it.some((i) => i.tpl === "leather_vest"));
+  const vest = got.items.find((i) => i.tpl === "leather_vest")!;
+  assert.equal(vest.loc, "hotbar");
+  c.send({ t: "item", op: "use", a: [vest.loc, vest.slot] });
+  await inv((it) => it.some((i) => i.tpl === "leather_vest" && i.loc === "equipped"));
+  const st = await c.until<Extract<S2C, { t: "stats" }>>((m) => m.t === "stats" && m.s.pdef > j.stats.pdef);
+  const pdef = finalStats(baseStats(1), [...ELEMENTS.earth.mods, { k: "pdef", add: 5 * 1.25 }]).pdef; // 희귀 = 스탯 ×1.25, 흙 패시브 배율까지
+  assert.equal(st.s.pdef, pdef);
+  await c.until((m) => m.t === "s" && !!m.ev?.some((e) => e[0] === "eq" && e[1] === j.you.id && (e[2] as string[])[0] === "leather_vest"));
+  c.send({ t: "dev", give: "hp_potion_s", n: 5 });
+  const p = (await inv((it) => it.some((i) => i.tpl === "hp_potion_s"))).items.find((i) => i.tpl === "hp_potion_s")!;
+  c.send({ t: "item", op: "move", a: [p.loc, p.slot], b: ["storage", -1], n: 2 });
+  await inv((it) => it.some((i) => i.loc === "storage" && i.qty === 2) && it.some((i) => i.tpl === "hp_potion_s" && i.qty === 3));
+  // 필드에서는 창고 안 됨
+  c.send({ t: "dev", map: "field", x: 736, y: 400 });
+  await c.until((m) => m.t === "joined" && m.room.kind === "field");
+  c.send({ t: "item", op: "move", a: ["storage", 0], b: ["inventory", -1] });
+  await c.until((m) => m.t === "error" && m.msg.includes("광장"));
+  c.ws.close();
+  // 다시 접속: DB 에서 그대로
+  await new Promise((ok) => setTimeout(ok, 100));
+  const c2 = client("E");
+  await c2.open;
+  const j2 = await c2.until<Extract<S2C, { t: "joined" }>>((m) => m.t === "joined");
+  assert.ok(j2.items.some((i) => i.tpl === "leather_vest" && i.loc === "equipped"));
+  assert.ok(j2.items.some((i) => i.loc === "storage" && i.qty === 2));
+  assert.equal(j2.stats.pdef, pdef, "장비 스탯이 접속 때 바로 반영");
+  c2.ws.close();
 });

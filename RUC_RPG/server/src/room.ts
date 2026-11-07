@@ -2,14 +2,16 @@ import type { WebSocket } from "ws";
 import { baseStats, expToNext } from "../../../web/rpg/shared/character.ts";
 import { castMs, cooldownMs } from "../../../web/rpg/shared/combat.ts";
 import { CHANNEL_CAP, INPUT_CREDITS_MAX, INPUT_CREDITS_PER_TICK, SIM_MS, TICK_MS, type RoomKind } from "../../../web/rpg/shared/constants.ts";
-import { mobExp } from "../../../web/rpg/shared/data/mobs.ts";
+import { rollDrops, type Item, type Rarity, type Special } from "../../../web/rpg/shared/data/items.ts";
+import { GRADES, mobExp } from "../../../web/rpg/shared/data/mobs.ts";
 import { APPRENTICE_SLOTS, SKILLS, SLOTS, type Slot } from "../../../web/rpg/shared/data/skills.ts";
 import { COMBAT } from "../../../web/rpg/shared/data/stats.ts";
 import { prop, type GameMap } from "../../../web/rpg/shared/map.ts";
-import { castMove, slide, step, tryRoll, type MoveInput, type Mover } from "../../../web/rpg/shared/movement.ts";
-import { F_CAST, F_DEAD, F_MOVING, F_ROLL, F_RUNNING, type ChannelInfo, type EntityInfo, type Ev, type EntityRow, type S2C } from "../../../web/rpg/shared/protocol.ts";
-import { addEffect, find, fxRows, healPerTick, hit, recalc, regen, shieldOf, tickEffects, type HitSpec, type Unit, type World } from "./combat.ts";
+import { blocked, castMove, slide, step, tryRoll, type MoveInput, type Mover } from "../../../web/rpg/shared/movement.ts";
+import { F_CAST, F_DEAD, F_MOVING, F_ROLL, F_RUNNING, type ChannelInfo, type DropRow, type EntityInfo, type Ev, type EntityRow, type S2C } from "../../../web/rpg/shared/protocol.ts";
+import { addEffect, find, fxRows, healPerTick, hit, rand, recalc, regen, shieldOf, tickEffects, type HitSpec, type Unit, type World } from "./combat.ts";
 import { saveProgress, type CharacterRow } from "./db.ts";
+import { deathWear, onDealt, onKill, onTaken, pickUp } from "./items.ts";
 import { mobTick, RESPAWN_MS, spawnMob, type Mob, type Zone } from "./mobs.ts";
 
 let idSeq = 1;
@@ -35,14 +37,37 @@ export type Player = Unit & {
   out: Ev[];
   respawnAt: number;
   statsSent: string;
+  // 아이템 (§14 · §15)
+  items: Item[];
+  /** 장비 발동 효과 (특수효과 · 세트) */
+  procs: Special[];
+  /** 옷 색이 바뀌는 장비 템플릿 */
+  look: string[];
+  /** 포션 공유 쿨이 끝나는 시각 · 최후의 보루 쿨 */
+  potionAt: number;
+  shieldAt: number;
+  /** 적중 · 피격 · 평타 횟수 (내구도 · 5번째 평타) */
+  dealt: number;
+  taken: number;
+  basics: number;
 };
+
+/** 플레이어 아이템 상태 초기값 */
+export const itemState = (items: Item[]) => ({ items, procs: [] as Special[], look: [] as string[], potionAt: 0, shieldAt: 0, dealt: 0, taken: 0, basics: 0 });
+
+/**
+ * 바닥 아이템 (§20-2): 처치 기여자에게만 보이다가 30초 뒤 모두에게, 2분 뒤 사라짐 (D24).
+ * 떨어지고 0.4초 뒤부터 주울 수 있음 — 같은 스냅샷에 생김 · 주움이 같이 실려 클라에 유령 아이템이 남지 않게 (마크도 줍기 지연이 있음)
+ */
+type Drop = { id: number; tpl: string; qty: number; rarity: Rarity; x: number; y: number; owners: Set<number> | null; pickAt: number; publicAt: number; until: number; told: Set<number> };
+export const DROP = { pickMs: 400, ownMs: 30_000, lifeMs: 120_000, pickR: 18 };
 
 type Proj = { id: number; owner: Unit; team: "p" | "m"; x: number; y: number; vx: number; vy: number; left: number; r: number; spec: HitSpec; lag: number };
 type Cast = { at: number; p: Player; sk: string; ax: number; ay: number; tid: number };
 
 export const send = (p: Player, m: S2C) => p.ws.readyState === 1 && p.ws.send(JSON.stringify(m));
 export const info = (u: Unit): EntityInfo =>
-  u.kind === "p" ? { id: u.id, name: u.name, ap: (u as Player).char.appearance, el: u.el, lv: u.lv } : { id: u.id, name: u.name, el: u.el, lv: u.lv, mob: (u as Mob).key, grade: (u as Mob).grade };
+  u.kind === "p" ? { id: u.id, name: u.name, ap: (u as Player).char.appearance, look: (u as Player).look, el: u.el, lv: u.lv } : { id: u.id, name: u.name, el: u.el, lv: u.lv, mob: (u as Mob).key, grade: (u as Mob).grade };
 
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
 
@@ -53,6 +78,7 @@ export class Room implements World {
   projs: Proj[] = [];
   casts: Cast[] = [];
   zones: Zone[] = [];
+  drops = new Map<number, Drop>();
   ev: Ev[] = [];
   now = 0;
   kind: RoomKind;
@@ -113,7 +139,12 @@ export class Room implements World {
     m.dmgBy.set(src.id, (m.dmgBy.get(src.id) ?? 0) + amount);
   }
 
-  killed(u: Unit) {
+  struck(src: Unit, tgt: Unit, amount: number, h: HitSpec) {
+    if (src.kind === "p") onDealt(this, src as Player, tgt, amount, h);
+    if (tgt.kind === "p") onTaken(this, tgt as Player, src, amount, h);
+  }
+
+  killed(u: Unit, by: Unit | undefined) {
     if (u.kind === "m") {
       const m = u as Mob;
       m.removeAt = this.now + 1000;
@@ -126,6 +157,8 @@ export class Room implements World {
         if (p && v > bv) { bv = v; best = p; }
       }
       if (best) gainExp(this, best, mobExp(m.def, m.lv, m.grade, best.lv));
+      if (by?.kind === "p") onKill(this, by as Player);
+      this.loot(m, best);
       return;
     }
     // 플레이어: 5초 뒤 광장 부활, 현재 레벨 필요 경험치의 3% 손실 (레벨은 안 내려감, §13-4)
@@ -134,6 +167,7 @@ export class Room implements World {
     p.char.exp -= loss;
     saveProgress(p.char.id, p.char.level, p.char.exp);
     p.out.push(["xp", -loss, p.char.exp, p.char.level]);
+    deathWear(p);
     p.respawnAt = this.now + COMBAT.respawnMs;
     this.casts = this.casts.filter((c) => c.p !== p);
     p.out.push(["dead", COMBAT.respawnMs]);
@@ -144,6 +178,59 @@ export class Room implements World {
     slide(m, this.map.collider, dx, dy);
     u.x = m.x;
     u.y = m.y;
+  }
+
+  /** 드롭 굴려서 몹 주변에 흩뿌림. 운은 처치 경험치를 받는 플레이어 것 */
+  private loot(m: Mob, killer: Player | undefined) {
+    const owners = new Set([...m.dmgBy.keys()].filter((id) => this.players.has(id)));
+    const gi = Object.keys(GRADES).indexOf(m.grade);
+    for (const r of rollDrops(m.def.drops, gi, killer?.st.luck ?? 0, rand)) {
+      let x = m.x;
+      let y = m.y;
+      for (let i = 0; i < 6; i++) {
+        const a = rand() * Math.PI * 2;
+        const d = 6 + rand() * 12;
+        const tx = Math.round(m.x + Math.cos(a) * d);
+        const ty = Math.round(m.y + Math.sin(a) * d);
+        if (!blocked(this.map.collider, tx, ty)) { x = tx; y = ty; break; }
+      }
+      const d: Drop = { id: newId(), ...r, x, y, owners: owners.size ? owners : null, pickAt: this.now + DROP.pickMs, publicAt: this.now + DROP.ownMs, until: this.now + DROP.lifeMs, told: new Set() };
+      this.drops.set(d.id, d);
+      if (d.owners) for (const id of d.owners) this.players.get(id)!.out.push(dropRow(d));
+      else this.ev.push(dropRow(d));
+    }
+  }
+
+  /** 이 플레이어에게 보이는 바닥 아이템 */
+  visibleDrops(p: Player): DropRow[] {
+    return [...this.drops.values()].filter((d) => !d.owners || d.owners.has(p.id)).map(dropRow);
+  }
+
+  /** 소유권 해제 · 사라짐 · 자동 줍기 (마크처럼 가까이 가면) */
+  private tickDrops() {
+    for (const d of [...this.drops.values()]) {
+      if (this.now >= d.until) {
+        this.drops.delete(d.id);
+        this.ev.push(["dx", d.id, 0]);
+        continue;
+      }
+      if (d.owners && this.now >= d.publicAt) {
+        d.owners = null;
+        this.ev.push(dropRow(d));
+      }
+      if (this.now < d.pickAt) continue;
+      for (const p of this.players.values()) {
+        if (p.dead || (d.owners && !d.owners.has(p.id)) || dist(p, d) > DROP.pickR) continue;
+        const err = pickUp(p, d.tpl, d.qty, d.rarity, `drop:${this.kind}`);
+        if (err) {
+          if (!d.told.has(p.id)) { d.told.add(p.id); send(p, { t: "error", msg: err }); }
+          continue;
+        }
+        this.drops.delete(d.id);
+        this.ev.push(["dx", d.id, p.id]);
+        break;
+      }
+    }
   }
 
   /** 투사체 발사. lag = 지연 보상 되감기(ms) */
@@ -323,6 +410,7 @@ export class Room implements World {
       if (!c.p.dead && !c.p.block.skill && c.p.room === this) this.fire(c.p, c.sk, c.p.x, c.p.y, c.ax, c.ay, -1);
     }
     this.moveProjectiles(dt);
+    this.tickDrops();
     for (const m of this.mobs.values()) {
       mobTick(this, m, dt);
       m.hist.push([now, m.x, m.y]);
@@ -376,12 +464,15 @@ export class Room implements World {
       const sim = p.steps * SIM_MS;
       const v = [p.hp, p.st.hp, p.mp, p.st.mana, p.en, p.st.energy, shieldOf(p)].map(Math.round);
       for (const k of SLOTS) v.push(Math.max(0, Math.round((p.cd[k] ?? 0) - sim)));
+      v.push(Math.max(0, Math.round(p.potionAt - now)));
       const pe = p.out.length ? `,"pe":${JSON.stringify(p.out)}` : "";
       p.out = [];
       p.ws.send(`{"t":"s","st":${now},"ack":${JSON.stringify({ seq: p.lastSeq, m: p.mover })},"v":${JSON.stringify(v)},"e":${e}${ev}${pe}}`);
     }
   }
 }
+
+const dropRow = (d: Drop): DropRow => ["dr", d.id, d.tpl, d.rarity, d.qty, d.x, d.y];
 
 /** 경험치 · 연속 레벨업 (§7). 레벨업하면 스탯 다시 계산 + 완전 회복. 연출은 P4 */
 export function gainExp(room: Room, p: Player, amount: number) {

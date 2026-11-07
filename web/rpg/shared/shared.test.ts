@@ -5,6 +5,8 @@ import { readFileSync } from "node:fs";
 import { SIM_MS, TILE } from "./constants.ts";
 import { baseStats } from "./character.ts";
 import { castMs, computeDamage, elementMul, finalStats, mitigation, type Hit } from "./combat.ts";
+import { EQUIP_SLOTS, ITEMS, basicOf, durMaxOf, fits, gearOf, itemMods, rollDrops, rollRarity, rollSpecials, type Item } from "./data/items.ts";
+import { MOBS } from "./data/mobs.ts";
 import { SKILLS } from "./data/skills.ts";
 import { ROLL, STAMINA } from "./data/stats.ts";
 import { josa, fmt } from "./josa.ts";
@@ -153,4 +155,77 @@ test("대시 베기: 마우스 쪽으로 80px · 응급 처치: 시전 중 고�
   step(h, { seq: 0, mx: 1, my: 0, run: false }, open);
   assert.ok(h.x > 160);
   assert.equal(h.dir, 6, "시전 직후 0.5초는 조준 방향 유지");
+});
+
+/** 정해진 값을 차례로 돌려주는 난수 (다 쓰면 0.5) */
+const seq = (...v: number[]) => () => v.shift() ?? 0.5;
+const gearItem = (tpl: string, rarity: Item["rarity"], slot: string, extra: Partial<Item> = {}): Item => {
+  const durMax = durMaxOf(ITEMS[tpl], rarity);
+  return { id: tpl, tpl, loc: "equipped", slot: EQUIP_SLOTS.indexOf(slot as never), qty: 1, rarity, enh: 0, sp: [], dur: durMax, durMax, ...extra };
+};
+
+test("희귀도 롤: 단계마다 상향 확률, 운 · 등급 보너스는 확률을 더함", () => {
+  assert.equal(rollRarity(seq(0.9), 0), "poor");
+  assert.equal(rollRarity(seq(0.44, 0.24, 0.9), 0), "rare");
+  assert.equal(rollRarity(seq(0.46), 0), "poor");
+  assert.equal(rollRarity(seq(0.46, 0.9), 0.02), "common", "보너스 2%p 면 0.46 도 통과");
+  assert.equal(rollRarity(() => 0, 0), "legendary");
+  // 운이 높으면 평균 희귀도가 올라감 (같은 난수열)
+  const avg = (bonus: number) => {
+    let x = 0.123;
+    const r = () => (x = (x * 9301 + 0.49297) % 1);
+    let sum = 0;
+    for (let i = 0; i < 5000; i++) sum += ["poor", "common", "rare", "advanced", "mythic", "legendary"].indexOf(rollRarity(r, bonus));
+    return sum / 5000;
+  };
+  assert.ok(avg(200 * 0.0005) > avg(0));
+});
+
+test("드롭 테이블: 확률 · 개수 · 운(+운/200 기대값) · 장비는 1개씩 희귀도 롤", () => {
+  const table = [{ item: "slime_jelly", chance: 0.5, qty: [1, 2] as [number, number] }, { item: "old_dagger", chance: 0.5 }];
+  assert.deepEqual(rollDrops(table, 0, 0, seq(0.6, 0.6)), []);
+  // 젤리: 통과 · 개수 2 · 운 보너스 판정 실패 / 단검: 통과 · 개수 1 · 운 실패 · 희귀도 하급
+  assert.deepEqual(rollDrops(table, 0, 0, seq(0.1, 0.9, 0.9, 0.1, 0, 0.9, 0.9)), [
+    { tpl: "slime_jelly", qty: 2, rarity: "poor" }, { tpl: "old_dagger", qty: 1, rarity: "poor" },
+  ]);
+  // 운 300 → 개수 +1 확정 + 50% 로 하나 더
+  assert.equal(rollDrops([table[0]], 0, 300, seq(0, 0, 0.4))[0].qty, 3);
+  // 등급 보너스: 확률 × 1.5 (하급)
+  assert.equal(rollDrops([{ item: "slime_jelly", chance: 0.5 }], 1, 0, seq(0.7, 0, 0.9)).length, 1);
+  for (const m of Object.values(MOBS)) for (const d of m.drops) assert.ok(ITEMS[d.item], d.item);
+});
+
+test("장비 스탯: 희귀도 배율 · 내구도 0 이면 꺼짐 · 세트 단계 · 평타 · 착용 조건", () => {
+  assert.equal(durMaxOf(ITEMS.wood_sword, "poor"), 100);
+  assert.equal(durMaxOf(ITEMS.leather_vest, "legendary", 2), Math.round(120 * 3.5 * 1.2));
+  assert.equal(durMaxOf(ITEMS.copper_ring, "rare"), 0);
+  const sword = gearItem("wood_sword", "rare", "weapon");
+  assert.deepEqual(itemMods(sword), [{ k: "atk", add: 7 * 1.25 }]);
+  const s0 = finalStats(baseStats(1), []);
+  assert.equal(finalStats(baseStats(1), itemMods(sword)).atk, s0.atk + 8.75);
+  assert.deepEqual(itemMods({ ...sword, dur: 0 }), []);
+  assert.equal(basicOf([sword]), "slash");
+  assert.equal(basicOf([{ ...sword, dur: 0 }]), "punch");
+  assert.equal(basicOf([{ ...sword, loc: "inventory" }]), "punch");
+  // 새싹 수호자: 2개 재생력 +10, 3개 풀 방어 +20, 5개 덩굴 보호막
+  const set = ["sprout_helm:helmet", "sprout_mail:chest", "sprout_greaves:legs", "sprout_boots:boots", "sprout_gloves:gloves"].map((x) => gearItem(x.split(":")[0], "common", x.split(":")[1]));
+  const st = (n: number) => finalStats(baseStats(1), gearOf(set.slice(0, n)).mods);
+  assert.equal(st(1).regen, s0.regen);
+  assert.equal(st(2).regen, s0.regen + 10);
+  assert.equal(st(3).elDef.grass, 20);
+  assert.equal(gearOf(set.slice(0, 4)).procs.length, 0);
+  assert.deepEqual(gearOf(set).procs, [{ id: "vine_shield", v: 0.08 }]);
+  // 특수효과: 고급 1개 · 전설 2개(서로 다름) · 일반 0개, 스탯형은 바로 스탯
+  assert.equal(rollSpecials(ITEMS.wood_sword, "common", Math.random).length, 0);
+  const leg = rollSpecials(ITEMS.wood_sword, "legendary", Math.random);
+  assert.equal(new Set(leg.map((s) => s.id)).size, 2);
+  // 전설 배율로 1 을 넘는 비율형(낙뢰 60~100% × 2.2)도 정수로 뭉개지지 않음
+  const bolt = rollSpecials(ITEMS.wood_sword, "legendary", seq(0, 0.9, 0, 0)).find((x) => x.id === "fifth_bolt");
+  assert.ok(bolt && bolt.v > 1 && !Number.isInteger(bolt.v), JSON.stringify(bolt));
+  const ring = { ...gearItem("copper_ring", "advanced", "ring1"), sp: [{ id: "fortune", v: 3 }] };
+  assert.equal(finalStats(baseStats(1), itemMods(ring)).luck, baseStats(1).luck + 3);
+  assert.equal(fits(ITEMS.copper_ring, EQUIP_SLOTS.indexOf("ring2"), 1), null);
+  assert.ok(fits(ITEMS.copper_ring, EQUIP_SLOTS.indexOf("weapon"), 1));
+  assert.ok(fits(ITEMS.fang_sword, EQUIP_SLOTS.indexOf("weapon"), 9), "Lv10 부터");
+  assert.ok(fits(ITEMS.hp_potion_s, 0, 40));
 });

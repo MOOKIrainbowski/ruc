@@ -54,6 +54,25 @@ export const SKILLS: Record<string, SkillDef> = {
     damage: { base: 25, atkRatio: 1.2, apRatio: 0 }, elementInherit: true, threat: 1.2,
     icon: "dash_slash", desc: "마우스 쪽으로 5칸 돌진하며 지나가는 적을 벱니다. 위험할 때 빠져나가는 데도 씁니다.", difficulty: "low",
   },
+  // 무기 평타 (D20) — 무기 칸의 무기에 따라 좌클릭이 바뀜
+  slash: {
+    id: "slash", name: "무기 베기", slot: "A", category: "physical", targeting: "melee",
+    range: 30, arc: 120, castMs: 0, cooldownMs: 600, cost: { stamina: 3 },
+    damage: { base: 0, atkRatio: 1.1, apRatio: 0 }, elementInherit: false, threat: 1,
+    icon: "dash_slash", desc: "검 · 도끼 · 단검으로 앞쪽을 넓게 벱니다.", difficulty: "low",
+  },
+  shot: {
+    id: "shot", name: "활쏘기", slot: "A", category: "physical", targeting: "skillshot",
+    range: 200, width: 4, speed: 320, castMs: 0, cooldownMs: 700, cost: { stamina: 3 },
+    damage: { base: 0, atkRatio: 1, apRatio: 0 }, elementInherit: false, threat: 1,
+    icon: "magic_arrow", desc: "마우스 쪽으로 화살을 쏩니다.", difficulty: "low",
+  },
+  bolt: {
+    id: "bolt", name: "마력탄", slot: "A", category: "magical", targeting: "skillshot",
+    range: 160, width: 6, speed: 220, castMs: 0, cooldownMs: 800, cost: { stamina: 2 },
+    damage: { base: 0, atkRatio: 0, apRatio: 1 }, elementInherit: false, threat: 1,
+    icon: "magic_arrow", desc: "지팡이 · 완드로 작은 마력 덩어리를 날립니다.", difficulty: "low",
+  },
   first_aid: {
     id: "first_aid", name: "응급 처치", slot: "E", category: "magical", targeting: "ally",
     range: 160, castMs: 400, cooldownMs: 8000, cost: { mana: 15, stamina: 4 },

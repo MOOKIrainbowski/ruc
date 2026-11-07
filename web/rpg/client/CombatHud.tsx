@@ -5,14 +5,16 @@ import { expToNext } from "../shared/character";
 import type { FullStats } from "../shared/combat";
 import { effectDef, effectDesc } from "../shared/data/effects";
 import { ELEMENTS, type ElementId } from "../shared/data/elements";
+import type { Item } from "../shared/data/items";
 import { SKILLS, type Slot } from "../shared/data/skills";
 import type { FxRow, You } from "../shared/protocol";
 import { effectIcon, iconUrl, skillIcon, statIcon } from "./art/icons";
 import type { HudState } from "./game";
 import { t, type StrKey } from "./i18n";
+import { Hotbar } from "./Inventory";
 import { keyLabel, type Settings } from "./settings";
 
-/** 하단 전투 HUD (§23-1 · §23-2): 버프 줄 → 스킬 아이콘 → 체력 · 스태미나 바, 양옆 마나 · 기력 구슬, 마나 구슬 왼쪽 스탯창 */
+/** 하단 전투 HUD (§23-1 · §23-2): 버프 줄 → 핫바 → 스킬 아이콘 → 체력 · 스태미나 바, 양옆 마나 · 기력 구슬, 마나 구슬 왼쪽 스탯창 */
 
 const secs = (ms: number) => (ms >= 10_000 ? Math.ceil(ms / 1000) : (ms / 1000).toFixed(1));
 
@@ -173,7 +175,7 @@ function StatWindow({ stats, you }: { stats: FullStats; you: You }) {
   );
 }
 
-export function CombatHud({ hud, stats, you, settings }: { hud: HudState; stats: FullStats; you: You; settings: Settings }) {
+export function CombatHud({ hud, stats, you, settings, items, onSelect }: { hud: HudState; stats: FullStats; you: You; settings: Settings; items: Item[]; onSelect: (i: number) => void }) {
   const [hp, hpMax, mp, mpMax, en, enMax, shield] = hud.v;
   const fx = hud.exhausted ? [...hud.fx, ["exhaust", 0, 1, 0, 0] as FxRow] : hud.fx;
   const buffs = fx.filter((r) => effectDef(r[0])?.buff);
@@ -187,6 +189,7 @@ export function CombatHud({ hud, stats, you, settings }: { hud: HudState; stats:
         <div className="flex flex-wrap gap-1">{buffs.map((r) => <FxIcon key={r[0] + r[3]} r={r} />)}</div>
         <div className="flex flex-row-reverse flex-wrap gap-1">{debuffs.map((r) => <FxIcon key={r[0] + r[3]} r={r} />)}</div>
       </div>
+      <Hotbar items={items} sel={hud.sel} potion={hud.potion} onSelect={onSelect} />
       <div className="relative flex items-end gap-2.5">
         <StatWindow stats={stats} you={you} />
         <Orb cur={mp} max={mpMax} color="#2F7BFF" label={t("hud.mana")} />

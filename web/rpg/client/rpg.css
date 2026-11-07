@@ -189,3 +189,43 @@
   pointer-events: none;
 }
 .group:hover > .rpg-tip { display: block; }
+
+/* ── 아이템 (§15) — 마크 인벤토리 같은 회색 베벨 칸 ── */
+.rpg-islot {
+  position: relative;
+  width: 36px;
+  height: 36px;
+  background: #8b8b8b;
+  border: 2px solid;
+  border-color: #373737 #ffffff #ffffff #373737;
+  cursor: pointer;
+}
+.rpg-islot:hover { background: #a5a5a5; }
+.rpg-islot-label {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  font-size: 9px;
+  line-height: 1;
+  color: #5e5e5e;
+}
+.rpg-hot {
+  position: relative;
+  width: 40px;
+  height: 40px;
+  background: rgba(70, 70, 70, 0.78);
+  border: 2px solid;
+  border-color: #373737 #a8a8a8 #a8a8a8 #373737;
+  cursor: pointer;
+}
+.rpg-hot > img { left: 2px !important; top: 2px !important; }
+.rpg-hot[data-on="true"] { outline: 3px solid #ffffff; outline-offset: -1px; z-index: 1; }
+.rpg-legend {
+  background: linear-gradient(90deg, #ff9f1c, #f2c94c, #ff9f1c);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}

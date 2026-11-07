@@ -2,14 +2,14 @@
 
 export const ACTIONS_KEYS = {
   up: "위로 이동", down: "아래로 이동", left: "왼쪽 이동", right: "오른쪽 이동",
-  run: "달리기", dodge: "구르기", interact: "상호작용", map: "전체 지도",
+  run: "달리기", dodge: "구르기", interact: "상호작용", map: "전체 지도", inventory: "인벤토리", storage: "창고",
   skillQ: "Q 슬롯", skillW: "W 슬롯", skillE: "E 슬롯", skillR: "궁극기", skillR2: "궁극기 (보조)",
 } as const;
 export type KeyAction = keyof typeof ACTIONS_KEYS;
 
 export const DEFAULT_KEYS: Record<KeyAction, string> = {
   up: "KeyW", down: "KeyS", left: "KeyA", right: "KeyD",
-  run: "ShiftLeft", dodge: "Space", interact: "KeyF", map: "KeyM",
+  run: "ShiftLeft", dodge: "Space", interact: "KeyF", map: "KeyM", inventory: "KeyV", storage: "KeyB",
   skillQ: "KeyQ", skillW: "KeyC", skillE: "KeyE", skillR: "KeyR", skillR2: "KeyX",
 };
 

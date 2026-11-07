@@ -1,12 +1,13 @@
 import { CHAR_H, CHAR_W } from "../../shared/constants";
 import { EYES, HAIR_COLORS, SKINS, type Appearance } from "../../shared/data/appearance";
+import { ITEMS } from "../../shared/data/items";
 import { OUTLINE, Px, type C3 } from "./px";
 
 /**
  * 캐릭터 48×64 · 8방향 · 동작당 4프레임 (§8-2).
  * S · SE · E · NE · N 다섯 방향만 그리고 W 쪽 셋은 좌우 반전 (§25-2 — 대칭이라 가능).
  * 시트: 행 = 방향(S, SE, E, NE, N, NW, W, SW), 열 = 동작 × 4프레임 (§25-4).
- * 레이어(§8-3)는 P3 장비에서 나눕니다 — 지금은 견습 옷을 한 번에 그립니다.
+ * 장비는 흉갑 · 바지 · 신발의 옷 색만 바꿉니다 (outfitOf). 투구 · 무기 · 망토 레이어(§8-3)는 아트 패스에서 (DECISIONS D25).
  */
 
 export type Outfit = { shirt: C3; pants: C3; shoe: string };
@@ -15,6 +16,19 @@ export const APPRENTICE: Outfit = {
   pants: ["#94735a", "#6d513b", "#523b2a"],
   shoe: "#4a3428",
 };
+
+/** 입은 장비 템플릿(lookOf) → 옷 색 */
+export function outfitOf(look: string[] = []): Outfit {
+  const o = { ...APPRENTICE };
+  for (const id of look) {
+    const t = ITEMS[id];
+    if (!t?.look) continue;
+    if (t.slot === "chest" && Array.isArray(t.look)) o.shirt = t.look;
+    if (t.slot === "legs" && Array.isArray(t.look)) o.pants = t.look;
+    if (t.slot === "boots" && typeof t.look === "string") o.shoe = t.look;
+  }
+  return o;
+}
 
 /** 구르기 · 사망 · 피격은 시트 없이 스프라이트 회전 · 색으로 (game.ts) */
 export const ACTIONS = ["idle", "walk", "run", "attack", "cast"] as const;
