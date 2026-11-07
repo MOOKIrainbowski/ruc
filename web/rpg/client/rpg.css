@@ -313,3 +313,197 @@
 
 /* 32×32 아이콘을 24px · 20px 로 줄여 보일 때는 부드럽게 (픽셀 깨짐 방지) */
 .rpg-smooth { image-rendering: auto; }
+
+/* ═══ 2026-11 라운드 3: 메이플풍 UI (밝은 파랑 · 주황 · 흰 테두리 · 통통한 둥근 모서리 · 튀는 애니메이션) + 디아블로풍 구슬 · HUD 배경 ═══ */
+
+/* 창: 흰 이중 테두리 + 파란 바깥선, 열릴 때 통통 튀며 등장 */
+.rpg-panel {
+  background:
+    radial-gradient(ellipse at 18% 0%, rgba(255, 255, 255, 0.6), transparent 60%),
+    linear-gradient(#fff8e2, #f6e6bd);
+  border: 3px solid #4b78c8;
+  border-radius: 12px;
+  box-shadow:
+    inset 0 0 0 2px #ffffff, inset 0 0 0 4px #c9dcf7, inset 0 10px 16px rgba(255, 255, 255, 0.5),
+    0 5px 0 #28487e, 0 12px 24px rgba(8, 14, 30, 0.5);
+}
+.rpg-modal-bg > .rpg-panel, .rpg-modal-bg > div > .rpg-panel { animation: rpg-pop 0.28s cubic-bezier(0.2, 1.4, 0.4, 1); }
+@keyframes rpg-pop { 0% { opacity: 0; transform: scale(0.82) translateY(14px); } 100% { opacity: 1; transform: none; } }
+.rpg-modal-bg { animation: rpg-fade 0.18s ease; }
+@keyframes rpg-fade { from { opacity: 0; } }
+/* 창 제목: 주황 리본 */
+.rpg-panel > h2 {
+  display: inline-block;
+  margin: -4px 0 8px;
+  padding: 2px 16px 3px;
+  color: #fff;
+  font-size: 14px;
+  text-shadow: 0 2px 0 #b8560a, 1px 0 0 #b8560a, -1px 0 0 #b8560a;
+  background: linear-gradient(#ffc45a, #ff9420 60%, #f27d0a);
+  border: 2px solid #ffffff;
+  border-radius: 14px;
+  box-shadow: 0 2px 0 #9a4a08, 0 4px 6px rgba(80, 40, 0, 0.35);
+}
+.rpg-x { top: 8px; right: 10px; width: 24px; height: 24px; background: linear-gradient(#ff8a7a, #e5484d); color: #fff; border: 2px solid #fff; box-shadow: 0 2px 0 #8a2024; font-size: 12px; line-height: 18px; }
+.rpg-x:hover { background: linear-gradient(#ffa99c, #f0605f); transform: scale(1.12) rotate(90deg); transition: transform 0.18s; }
+
+/* 버튼: 광택 나는 주황 알약 · 눌리면 쏙 · 올리면 통통 */
+.rpg-btn {
+  background: linear-gradient(#ffcc66, #ff9d2a 55%, #f58a12);
+  color: #fff;
+  border: 2px solid #ffffff;
+  border-radius: 999px;
+  padding: 5px 14px;
+  font-weight: bold;
+  text-shadow: 0 1px 0 #b8560a, 1px 0 0 #b8560a, -1px 0 0 #b8560a;
+  box-shadow: 0 0 0 1px #c9680c, 0 3px 0 #a0500a, inset 0 2px 0 rgba(255, 255, 255, 0.55);
+}
+.rpg-btn:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-2px) scale(1.04); }
+.rpg-btn:active:not(:disabled) { transform: translateY(2px) scale(0.98); box-shadow: 0 0 0 1px #c9680c, 0 0 0 #a0500a; }
+.rpg-btn[data-on="true"] { background: linear-gradient(#7fd4ff, #3b9bf0 55%, #2a80d8); text-shadow: 0 1px 0 #1a4f96, 1px 0 0 #1a4f96, -1px 0 0 #1a4f96; box-shadow: 0 0 0 1px #1f5fae, 0 3px 0 #17497f, inset 0 2px 0 rgba(255, 255, 255, 0.6); }
+.rpg-btn:disabled { filter: grayscale(0.7); }
+.rpg-input { border: 2px solid #4b78c8; border-radius: 8px; background: #fff; box-shadow: inset 0 2px 3px rgba(40, 72, 126, 0.2); }
+.rpg-input:focus { border-color: #ff9d2a; box-shadow: 0 0 0 3px rgba(255, 157, 42, 0.3); }
+.rpg-range { accent-color: #ff9d2a; }
+
+/* 칩(상단 정보 · 토스트): 둥근 남색 유리 */
+.rpg-chip {
+  background: linear-gradient(rgba(52, 78, 140, 0.88), rgba(28, 44, 92, 0.88));
+  border: 2px solid rgba(255, 255, 255, 0.85);
+  border-radius: 999px;
+  padding: 2px 10px;
+  box-shadow: 0 2px 0 rgba(10, 20, 50, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.35);
+}
+.rpg-toast { animation: rpg-toast2 4s cubic-bezier(0.2, 1.3, 0.4, 1) forwards; }
+@keyframes rpg-toast2 { 0% { opacity: 0; transform: translateX(40px) scale(0.8); } 8% { opacity: 1; transform: translateX(-4px) scale(1.04); } 12%, 88% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateX(20px); } }
+.rpg-questpop { border: 3px solid #ffffff; border-radius: 14px; background: linear-gradient(#4b78c8, #2a4f96); box-shadow: 0 0 0 3px #ff9d2a, 0 6px 14px rgba(0, 0, 0, 0.45); animation: rpg-questpop2 4.5s cubic-bezier(0.2, 1.4, 0.4, 1) forwards; }
+@keyframes rpg-questpop2 { 0% { opacity: 0; transform: translate(-50%, -30px) scale(0.7); } 8% { opacity: 1; transform: translate(-50%, 4px) scale(1.06); } 12%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+
+/* 스킬 슬롯 · 핫바 · 막대: 둥근 금테 */
+.rpg-slot { width: 50px; height: 50px; border: 2px solid #c9a24a; border-radius: 9px; background: linear-gradient(#3a3050, #17101f); box-shadow: inset 0 0 0 1px #0a0610, inset 0 3px 5px rgba(255, 255, 255, 0.14), 0 3px 0 #0a0610; overflow: hidden; }
+.rpg-slot img { image-rendering: auto; }
+.rpg-hot { width: 42px; height: 42px; border: 2px solid #c9a24a; border-radius: 8px; background: linear-gradient(#3a3050cc, #17101fcc); box-shadow: inset 0 0 0 1px #0a0610, 0 2px 0 #0a0610; }
+.rpg-hot[data-on="true"] { outline: 3px solid #ffd45a; outline-offset: -1px; box-shadow: 0 0 10px #ffd45a, inset 0 0 0 1px #0a0610; animation: rpg-pulse 1.2s ease-in-out infinite; }
+@keyframes rpg-pulse { 50% { box-shadow: 0 0 16px #ffe88a, inset 0 0 0 1px #0a0610; } }
+.rpg-bar { height: 16px; border: 2px solid #c9a24a; border-radius: 9px; background: linear-gradient(#0f0a16, #241a2e); box-shadow: 0 2px 0 #0a0610, inset 0 2px 3px rgba(0, 0, 0, 0.7); }
+.rpg-bar::after { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 45%; background: linear-gradient(rgba(255, 255, 255, 0.4), rgba(255, 255, 255, 0)); pointer-events: none; border-radius: 7px 7px 0 0; }
+.rpg-bar-fill { background-image: linear-gradient(rgba(255, 255, 255, 0.25), rgba(0, 0, 0, 0.18)); }
+
+/* HUD 배경판: 어두운 가죽 + 금 테두리 + 리벳 (스킬 · 체력 · 스태미나 · 핫바 · 구슬 아래) */
+.rpg-hudbase {
+  position: absolute;
+  inset: 0 -26px -4px;
+  z-index: -1;
+  border-radius: 26px 26px 12px 12px;
+  background:
+    radial-gradient(circle at 12px 12px, #ffe9a8 0 2px, #8a6a2a 3px 4px, transparent 5px),
+    radial-gradient(circle at calc(100% - 12px) 12px, #ffe9a8 0 2px, #8a6a2a 3px 4px, transparent 5px),
+    radial-gradient(circle at 12px calc(100% - 10px), #ffe9a8 0 2px, #8a6a2a 3px 4px, transparent 5px),
+    radial-gradient(circle at calc(100% - 12px) calc(100% - 10px), #ffe9a8 0 2px, #8a6a2a 3px 4px, transparent 5px),
+    repeating-linear-gradient(45deg, rgba(255, 255, 255, 0.025) 0 2px, transparent 2px 6px),
+    linear-gradient(#4a3d58, #2a2034 55%, #170f1f);
+  border: 3px solid #c9a24a;
+  box-shadow: inset 0 2px 0 rgba(255, 235, 170, 0.5), inset 0 0 0 2px #1a1222, 0 5px 0 #0a0610, 0 10px 26px rgba(0, 0, 0, 0.6);
+}
+.rpg-hudbase::before { content: ""; position: absolute; left: 22px; right: 22px; top: 5px; height: 2px; background: linear-gradient(90deg, transparent, #ffe9a8, transparent); opacity: 0.8; }
+
+/* 구슬: 유리 구 안 액체 + 거품 + 반사광 + 금속 테두리 (디아블로풍) */
+.rpg-orb2-wrap { position: relative; width: 92px; height: 92px; flex-shrink: 0; }
+.rpg-orb2-wrap[data-kind="mana"] { --o1: #b4dcff; --o2: #2f7bff; --o3: #0a2478; --glow: rgba(70, 140, 255, 0.55); }
+.rpg-orb2-wrap[data-kind="energy"] { --o1: #ffdca0; --o2: #ff8a1f; --o3: #7a2e02; --glow: rgba(255, 150, 50, 0.55); }
+.rpg-orb2 {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 38%, #1a1224 0%, #07040b 75%);
+  box-shadow: inset 0 0 14px #000, 0 0 16px var(--glow);
+}
+.rpg-orb2-liquid {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: radial-gradient(circle at 36% 30%, var(--o1) 0%, var(--o2) 40%, var(--o3) 100%);
+  background-size: 100% 92px;
+  background-position: center bottom;
+  background-repeat: no-repeat;
+  transition: height 0.35s cubic-bezier(0.3, 1.3, 0.5, 1);
+}
+.rpg-orb2-wave {
+  position: absolute;
+  left: 0;
+  top: -5px;
+  width: 200%;
+  height: 10px;
+  background:
+    radial-gradient(ellipse at 50% 100%, var(--o2) 0 52%, transparent 54%) 0 0 / 22px 10px repeat-x,
+    radial-gradient(ellipse at 50% 100%, rgba(255, 255, 255, 0.6) 0 36%, transparent 40%) 0 0 / 22px 10px repeat-x;
+  animation: rpg-wave2 2.2s linear infinite;
+}
+@keyframes rpg-wave2 { to { transform: translateX(-22px); } }
+.rpg-orb2-bubbles {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle, rgba(255, 255, 255, 0.7) 0 1.6px, transparent 2.6px) 14px 0 / 30px 38px,
+    radial-gradient(circle, rgba(255, 255, 255, 0.5) 0 1.2px, transparent 2.2px) 38px 12px / 24px 30px,
+    radial-gradient(circle, rgba(255, 255, 255, 0.4) 0 1px, transparent 2px) 60px 4px / 36px 44px;
+  animation: rpg-bubbles 5s linear infinite;
+}
+@keyframes rpg-bubbles { to { background-position: 14px -38px, 38px -18px, 60px -40px; } }
+.rpg-orb2-shine {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 36% 22% at 33% 20%, rgba(255, 255, 255, 0.85), rgba(255, 255, 255, 0) 72%),
+    radial-gradient(ellipse 42% 12% at 62% 91%, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0) 80%),
+    radial-gradient(circle at 50% 50%, rgba(0, 0, 0, 0) 56%, rgba(0, 0, 0, 0.55) 100%);
+}
+.rpg-orb2-ring {
+  position: absolute;
+  inset: -8px;
+  border-radius: 50%;
+  pointer-events: none;
+  background: conic-gradient(from 200deg, #5b4f3c, #e6d6a8, #8c7a58, #fff0c4, #5b4f3c, #cdb98a, #6e5f45, #e6d6a8, #5b4f3c);
+  -webkit-mask: radial-gradient(circle farthest-side, transparent calc(100% - 11px), #000 calc(100% - 10px));
+  mask: radial-gradient(circle farthest-side, transparent calc(100% - 11px), #000 calc(100% - 10px));
+  filter: drop-shadow(0 3px 2px rgba(0, 0, 0, 0.7));
+}
+.rpg-orb-text { font-size: 11px; }
+
+/* 경험치 바: 화면 맨 아래 가로 전체 */
+.rpg-exp { position: absolute; left: 0; right: 0; bottom: 0; height: 12px; background: linear-gradient(#150f1e, #2a2034); border-top: 2px solid #c9a24a; z-index: 2; pointer-events: none; }
+.rpg-exp-fill { height: 100%; background: linear-gradient(#fff3a0, #ffd23a 50%, #f5a700); box-shadow: 0 0 8px #ffd23a; transition: width 0.4s; }
+.rpg-exp-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; color: #fff; text-shadow: 0 1px 0 #1b1420, 1px 0 0 #1b1420, -1px 0 0 #1b1420; }
+
+/* 레벨업 (메이플풍): 금빛 광선이 돌고 글자가 통통 튀며 등장 */
+.rpg-levelup { z-index: 50; width: 360px; text-align: center; animation: rpg-levelup 2.6s ease forwards; }
+@keyframes rpg-levelup { 0% { opacity: 0; } 8%, 80% { opacity: 1; } 100% { opacity: 0; } }
+.rpg-levelup-rays {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 360px;
+  height: 360px;
+  margin: -180px 0 0 -180px;
+  border-radius: 50%;
+  background: repeating-conic-gradient(rgba(255, 236, 140, 0.55) 0 8deg, transparent 8deg 22deg);
+  -webkit-mask: radial-gradient(circle, #000 12%, transparent 68%);
+  mask: radial-gradient(circle, #000 12%, transparent 68%);
+  animation: rpg-spin 3s linear infinite;
+}
+@keyframes rpg-spin { to { transform: rotate(360deg); } }
+.rpg-levelup-text {
+  position: relative;
+  font-size: 40px;
+  font-weight: bold;
+  color: #fff6c0;
+  letter-spacing: 2px;
+  text-shadow: 0 4px 0 #c0640a, 3px 0 0 #c0640a, -3px 0 0 #c0640a, 0 -3px 0 #c0640a, 0 0 22px #ffd23a;
+  animation: rpg-bounce 0.6s cubic-bezier(0.2, 1.8, 0.4, 1);
+}
+@keyframes rpg-bounce { 0% { transform: scale(0.3) translateY(30px); } 100% { transform: none; } }
+.rpg-levelup-sub { position: relative; margin-top: 2px; font-size: 18px; color: #fff; text-shadow: 0 2px 0 #28487e, 2px 0 0 #28487e, -2px 0 0 #28487e; }

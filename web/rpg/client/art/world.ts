@@ -10,6 +10,9 @@ import { Px, hash, type C3 } from "./px";
  */
 
 export const VARIANTS = 8;
+/** 오브젝트 그림 여백 (나무 잎이 가장자리에서 잘리던 문제) */
+const PAD_X = 6;
+const PAD_TOP = 8;
 
 function lerpHex(a: string, b: string, k: number) {
   const pa = parseInt(a.slice(1), 16);
@@ -453,6 +456,9 @@ export function objectFrames(o: TiledObject): HTMLCanvasElement[] {
       return frames;
     }
   }
-  p.outline();
-  return [p.toCanvas()];
+  // 외곽선이 그림 가장자리에서 잘리지 않게 좌우 6 · 위 8 여백을 둠 (발밑 기준 · anchor 는 그대로 가운데 아래)
+  const padded = new Px(w + PAD_X * 2, h + PAD_TOP);
+  padded.draw(p, PAD_X, PAD_TOP);
+  padded.outline();
+  return [padded.toCanvas()];
 }

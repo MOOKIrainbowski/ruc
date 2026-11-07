@@ -66,6 +66,7 @@ function paint(view: number, action: Action, f: number, ap: Appearance, o: Outfi
   const front = view <= 1;
   const side = view === 2;
   const back = view >= 3;
+  const three = view === 1 || view === 3; // 남동 · 북동(그리고 반전된 남서 · 북서)
   const ph = (f / FRAMES) * Math.PI * 2;
   const walking = action === "walk" || action === "run";
   const amp = action === "run" ? 3 : 2;
@@ -85,15 +86,19 @@ function paint(view: number, action: Action, f: number, ap: Appearance, o: Outfi
   if (side) {
     leg(CX - 3 - sw + lean, hop(sw), [o.pants[1], o.pants[2], o.pants[2]], 4, 6, 0);
     leg(CX - 1 + sw + lean, hop(-sw), o.pants, 4, 6, 0);
+  } else if (three) {
+    // 3/4: 안쪽(먼) 다리는 어둡고 살짝 가려지고, 앞다리는 겹쳐서 발끝이 진행 방향으로 나옴
+    leg(CX - 3, hop(-sw), [o.pants[1], o.pants[2], o.pants[2]], 4, 5, 0);
+    leg(CX - 1, hop(sw), o.pants, 4, 6, 1);
   } else {
-    const x0 = view === 1 ? CX - 4 : CX - 4;
-    leg(x0, hop(sw) + (action === "run" ? 0 : 0), o.pants);
+    const x0 = CX - 4;
+    leg(x0, hop(sw), o.pants);
     leg(x0 + 4, hop(-sw), o.pants);
   }
 
   // ── 뒷머리 (긴 머리 · 양갈래는 몸 뒤) ──
   const hy = 10 + b;
-  const hx = CX + lean;
+  const hx = CX + lean + (three ? 1 : 0);
   const behind = () => {
     if (ap.hair === 2) ball(p, hx, hy + 6, side ? 4 : 6, 6, hair);
     if (ap.hair === 5) { ball(p, hx - 7, hy + 4, 2, 5, hair); if (!side) ball(p, hx + 7, hy + 4, 2, 5, hair); }
@@ -103,8 +108,8 @@ function paint(view: number, action: Action, f: number, ap: Appearance, o: Outfi
 
   // ── 몸통 · 팔 ──
   const sh = o.shirt;
-  const tw = side ? 6 : view === 1 ? 7 : 8;
-  const tx = side ? CX - 3 + lean : CX - tw / 2;
+  const tw = side ? 6 : three ? 7 : 8;
+  const tx = side ? CX - 3 + lean : three ? CX - 3 : CX - tw / 2;
   const armPose = (side2: -1 | 1) => {
     // 걷기 · 달리기: 반대쪽 다리와 반대로 흔듦 / 공격 · 시전: 아래에서 오버라이드
     const swing = walking ? Math.round(Math.sin(ph + (side2 === 1 ? 0 : Math.PI)) * (action === "run" ? 3 : 2)) : 0;
@@ -120,15 +125,26 @@ function paint(view: number, action: Action, f: number, ap: Appearance, o: Outfi
     p.part(tx, torsoTop, tw, 10 - b, sh);
     p.rect(tx, 23, tw, 1, o.pants[2]); // 허리띠
     p.set(tx + tw - 2, 23, "#f2c94c");
-    if (front) p.rect(CX - 1, torsoTop, 2, 1, skin[1]); // 목깃
+    if (front) p.rect(CX - (three ? 0 : 1), torsoTop, 2, 1, skin[1]); // 목깃
+    if (three) {
+      // 돌아선 몸의 옆면: 오른쪽 2px 은 한 단계 어둡게, 앞면 쪽 가슴 주름
+      p.rect(tx + tw - 2, torsoTop + 1, 2, 9 - b, sh[2]);
+      p.rect(tx + tw - 2, 23, 2, 1, o.pants[2]);
+      if (front) { p.rect(tx + 1, torsoTop + 3, 3, 1, sh[0]); p.rect(tx + 2, torsoTop + 5, 2, 1, sh[2]); }
+      else p.rect(tx + 2, torsoTop + 2, 1, 6, sh[0]); // 등 솔기
+    }
   };
   if (side) arm(CX - 1 - armPose(-1) + lean, torsoTop + 1, 6, [sh[1], sh[2], sh[2]]); // 뒤팔
+  if (three) arm(tx + tw - 1, torsoTop + 2 + Math.max(0, armPose(1)), 5, [sh[1], sh[2], sh[2]]); // 먼 팔: 몸통에 반쯤 가림
   drawTorso();
 
   const pose = armsFor(action, f, side);
   if (side) {
     const y = torsoTop + 1 + pose.dy;
     arm(CX + 1 + armPose(1) + pose.dx + lean, y, pose.len, sh);
+  } else if (three) {
+    const sL = armPose(-1);
+    arm(tx - 2, torsoTop + 1 + (action === "cast" || action === "attack" ? pose.dyL : 0), action === "cast" ? Math.max(3, 6 - pose.raise) : 6 - Math.max(0, sL), sh);
   } else {
     const sL = armPose(-1);
     const sR = armPose(1);
@@ -139,18 +155,24 @@ function paint(view: number, action: Action, f: number, ap: Appearance, o: Outfi
   // ── 머리 ──
   ball(p, hx, hy, 5, 4, skin);
   if (!back) {
-    const ex = side ? [CX + 2 + lean] : view === 1 ? [CX - 3 + 1, CX + 2 + 1] : [CX - 3, CX + 2];
-    const eyeAt = (x: number) => {
-      p.rect(x, hy, 2, 1, OUTLINE);
-      p.rect(x, hy + 1, 2, 2, eye);
+    // 남동(3/4): 가까운 눈은 크게, 먼 눈은 가늘게, 입은 진행 방향으로 치우침
+    const ex = side ? [CX + 2 + lean] : view === 1 ? [hx - 3, hx + 2] : [CX - 3, CX + 2];
+    const eyeAt = (x: number, w = 2) => {
+      p.rect(x, hy, w, 1, OUTLINE);
+      p.rect(x, hy + 1, w, 2, eye);
       p.set(x, hy + 1, "#ffffff");
-      p.set(x + 1, hy + 2, "#ffffff55");
+      if (w > 1) p.set(x + 1, hy + 2, "#ffffff55");
     };
-    for (const x of ex) eyeAt(x);
-    if (!side) {
+    ex.forEach((x, i) => eyeAt(x, view === 1 && i === 1 ? 1 : 2));
+    if (view === 1) {
+      p.rect(hx - 4, hy + 3, 2, 1, BLUSH);
+      p.rect(hx + 3, hy + 3, 1, 1, BLUSH);
+      p.rect(hx, hy + 3, 2, 1, MOUTH);
+      p.set(hx + 1, hy + 2, skin[2]); // 코 그림자
+    } else if (!side) {
       p.rect(ex[0] - 1, hy + 3, 2, 1, BLUSH);
       p.rect(ex[1] + 1, hy + 3, 2, 1, BLUSH);
-      p.rect(CX - (view === 1 ? 0 : 1), hy + 3, 2, 1, MOUTH);
+      p.rect(CX - 1, hy + 3, 2, 1, MOUTH);
     } else {
       p.rect(CX + 1 + lean, hy + 3, 1, 1, BLUSH);
       p.rect(CX + 4 + lean, hy + 3, 1, 1, MOUTH);
@@ -164,6 +186,7 @@ function paint(view: number, action: Action, f: number, ap: Appearance, o: Outfi
     if (ap.hair === 4) ball(p, hx, hy, 7, 6, hair);
     if (ap.hair === 2) p.part(hx - 6, hy + 2, 13, 8, hair);
     if (ap.hair === 3) { ball(p, hx, hy + 6, 2, 5, hair); p.rect(hx - 1, hy + 2, 3, 2, "#ff7eb6"); }
+    if (view === 3) { p.rect(hx + 4, hy + 1, 2, 5, skin[2]); p.rect(hx + 4, hy + 1, 1, 2, skin[1]); } // 북동: 오른쪽 뺨 · 귀 쪽 살짝 보임
   } else {
     ball(p, hx, capCy, 6, 3, hair);
     // 앞머리

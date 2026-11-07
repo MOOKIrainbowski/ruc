@@ -65,6 +65,9 @@ export default function RpgGame({ dev }: { dev?: string }) {
   const [npc, setNpc] = useState("");
   const [journalTab, setJournalTab] = useState<"active" | "done" | "board">("active");
   const marks = useRef<string[]>([]);
+  // 레벨업 연출 (메이플풍): 레벨이 오르면 2.6초 동안 금빛 광선 + "LEVEL UP!"
+  const lastLv = useRef(0);
+  const [levelUp, setLevelUp] = useState(0);
   const [popups, setPopups] = useState<Popup[]>([]);
   const toast = useCallback((text: string) => {
     setMsg(text);
@@ -184,6 +187,17 @@ export default function RpgGame({ dev }: { dev?: string }) {
       game.current = null;
     };
   }, [dev, toast]);
+
+  useEffect(() => {
+    if (!you) return;
+    if (lastLv.current && you.level > lastLv.current) {
+      setLevelUp(Date.now());
+      const id = setTimeout(() => setLevelUp(0), 2600);
+      lastLv.current = you.level;
+      return () => clearTimeout(id);
+    }
+    lastLv.current = you.level;
+  }, [you?.level]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // HUD 갱신 (10Hz — FPS · 미니맵 · 나침반)
   useEffect(() => {
@@ -342,6 +356,13 @@ export default function RpgGame({ dev }: { dev?: string }) {
       )}
       {phase === "play" && toasts.length > 0 && <div style={{ zoom: settings.uiScale / 100 }}><Toasts list={toasts} /></div>}
       {phase === "play" && qpop && Date.now() - qpop.at < 4500 && <QuestPop pop={qpop} />}
+      {phase === "play" && levelUp > 0 && (
+        <div key={levelUp} className="rpg-levelup pointer-events-none absolute left-1/2 top-[34%] -translate-x-1/2 -translate-y-1/2">
+          <div className="rpg-levelup-rays" />
+          <div className="rpg-levelup-text">LEVEL UP!</div>
+          <div className="rpg-levelup-sub">Lv.{you?.level}</div>
+        </div>
+      )}
       {notice && Date.now() - notice.at < 6500 && (
         <div key={notice.at} className="rpg-notice pointer-events-none absolute left-1/2 top-16 -translate-x-1/2 whitespace-nowrap text-[13px]">{notice.text}</div>
       )}

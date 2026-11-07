@@ -20,12 +20,32 @@ import { keyLabel, type Settings } from "./settings";
 
 const secs = (ms: number) => (ms >= 10_000 ? Math.ceil(ms / 1000) : (ms / 1000).toFixed(1));
 
-function Orb({ cur, max, color, label, unused }: { cur: number; max: number; color: string; label: string; unused?: boolean }) {
-  // 직업이 쓰지 않는 자원 구슬은 회색 반투명 (§23-2)
+/** 디아블로풍 구슬 (§23-2): 유리 구 안에서 출렁이는 액체 · 거품 · 반사광 · 금속 테두리. 쓰지 않는 자원은 회색 반투명 */
+function Orb({ cur, max, kind, label, unused }: { cur: number; max: number; kind: "mana" | "energy"; label: string; unused?: boolean }) {
+  const pct = Math.max(0, Math.min(1, cur / Math.max(1, max))) * 100;
   return (
-    <div className="rpg-orb pointer-events-auto" title={unused ? `${label} — ${t("hud.unusedRes")}` : label} style={unused ? { opacity: 0.45, filter: "grayscale(1)" } : undefined}>
-      <div className="rpg-orb-fill" style={{ height: `${Math.max(0, Math.min(1, cur / Math.max(1, max))) * 100}%`, background: color }} />
-      <span className="rpg-orb-text">{Math.floor(cur)}/{Math.round(max)}</span>
+    <div className="rpg-orb2-wrap pointer-events-auto" data-kind={kind} title={unused ? `${label} — ${t("hud.unusedRes")}` : label} style={unused ? { opacity: 0.45, filter: "grayscale(1)" } : undefined}>
+      <div className="rpg-orb2">
+        <div className="rpg-orb2-liquid" style={{ height: `${pct}%` }}>
+          <i className="rpg-orb2-wave" />
+          <i className="rpg-orb2-bubbles" />
+        </div>
+        <div className="rpg-orb2-shine" />
+        <span className="rpg-orb-text">{Math.floor(cur)}/{Math.round(max)}</span>
+      </div>
+      <div className="rpg-orb2-ring" />
+    </div>
+  );
+}
+
+/** 화면 맨 아래 경험치 바 (메이플풍) */
+function ExpBar({ you }: { you: You }) {
+  const need = expToNext(you.level);
+  const pct = Math.min(100, (you.exp / Math.max(1, need)) * 100);
+  return (
+    <div className="rpg-exp" title={`${you.exp} / ${need}`}>
+      <div className="rpg-exp-fill" style={{ width: `${pct}%` }} />
+      <span className="rpg-exp-text">Lv.{you.level} · {pct.toFixed(1)}%</span>
     </div>
   );
 }
@@ -185,7 +205,9 @@ export function CombatHud({ hud, stats, you, settings, items, onSelect }: { hud:
   const res = you.prog.line ? LINES[you.prog.line].res : null; // 견습은 둘 다
   const keyOf: Record<Slot, string> = { A: "", Q: keyLabel(k.skillQ), W: keyLabel(k.skillW), E: keyLabel(k.skillE), R: `${keyLabel(k.skillR)}/${keyLabel(k.skillR2)}` };
   return (
-    <div className="absolute bottom-3 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5">
+    <>
+    <ExpBar you={you} />
+    <div className="absolute bottom-4 left-1/2 flex -translate-x-1/2 flex-col items-center gap-1.5">
       {hud.hint && <div className="rpg-chip">[{keyLabel(k.interact)}] {hud.hint}</div>}
       <div className="flex w-[400px] justify-between">
         <div className="flex flex-wrap gap-1">{buffs.map((r) => <FxIcon key={r[0] + r[3]} r={r} />)}</div>
@@ -196,10 +218,12 @@ export function CombatHud({ hud, stats, you, settings, items, onSelect }: { hud:
           <div className="rpg-bar-fill" style={{ width: `${hud.charge * 100}%`, background: hud.charge >= 1 ? "#FFD27A" : "#fff4dc" }} />
         </div>
       )}
+      <div className="rpg-hudframe relative isolate flex flex-col items-center gap-1.5 px-3 pb-2.5 pt-2">
+      <div className="rpg-hudbase" />
       <Hotbar items={items} sel={hud.sel} potion={hud.potion} onSelect={onSelect} />
       <div className="relative flex items-end gap-2.5">
         <StatWindow stats={stats} you={you} />
-        <Orb cur={mp} max={mpMax} color="#2F7BFF" label={t("hud.mana")} unused={res === "energy"} />
+        <Orb cur={mp} max={mpMax} kind="mana" label={t("hud.mana")} unused={res === "energy"} />
         <div className="flex flex-col items-center gap-1">
           <div className="flex gap-1.5">
             {(["Q", "W", "E", "R"] as Slot[]).map((s) => <SkillSlot key={s} slot={s} keyName={keyOf[s]} id={you.slots[s]} cd={hud.cds[s]} you={you} />)}
@@ -207,9 +231,11 @@ export function CombatHud({ hud, stats, you, settings, items, onSelect }: { hud:
           <Bar cur={hp} max={hpMax} color="#4CC764" shield={shield} label={t("hud.hp")} />
           <Bar cur={hud.stamina} max={hud.staminaMax} color={hud.exhausted ? "#E5484D" : "#C9A27A"} label={t("hud.stamina")} warn={hud.exhausted} />
         </div>
-        <Orb cur={en} max={enMax} color="#FF8A1F" label={t("hud.energy")} unused={res === "mana"} />
+        <Orb cur={en} max={enMax} kind="energy" label={t("hud.energy")} unused={res === "mana"} />
+      </div>
       </div>
     </div>
+    </>
   );
 }
 
