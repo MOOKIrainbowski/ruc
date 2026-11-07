@@ -3,6 +3,7 @@ import CopyButton from "@/components/CopyButton";
 import PageShell from "@/components/PageShell";
 import StatusStrip from "@/components/StatusStrip";
 import { DISCORD_INVITE, MC_ADDRESS } from "@/lib/content";
+import { rpgOpen } from "@/lib/rpg";
 
 export const metadata = {
   title: "홈",
@@ -48,8 +49,9 @@ const CARDS: Card[] = [
   },
   {
     href: "/rpg",
-    title: "RPG 시작 (베타)",
-    desc: "브라우저에서 바로 하는 러크 픽셀 RPG. 디스코드 로그인 필요.",
+    // 게임 서버가 열리기 전에는 "준비 중" (lib/rpg.ts)
+    title: rpgOpen() ? "RPG 시작 (베타)" : "러크 RPG (오픈 준비 중)",
+    desc: rpgOpen() ? "브라우저에서 바로 하는 러크 픽셀 RPG. 디스코드 로그인 필요." : "브라우저에서 하는 러크 픽셀 RPG — 게임 서버 오픈을 준비하고 있습니다.",
     glyph: "⚔",
     wide: true,
   },

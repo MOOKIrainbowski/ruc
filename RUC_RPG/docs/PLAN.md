@@ -91,6 +91,7 @@ cd web && npm run dev                              # http://localhost:3000/rpg?d
 1. 게임 서버 기계(VPS 등)에 Node 24 → `RUC_RPG/server` 에서 `npm install` → `.env` (`.env.example` 참고) → `npm start`
 2. 앞에 TLS(wss) — Cloudflare Tunnel 또는 nginx. 브라우저가 https 라 ws:// 는 막힘
 3. Vercel 환경변수: `RPG_TICKET_SECRET`(서버와 같은 값) · `NEXT_PUBLIC_RPG_WS_URL=wss://…`
+4. 두 값이 없으면 운영 사이트의 `/home` 카드와 `/rpg` 는 "오픈 준비 중"으로 보임 (`web/lib/rpg.ts`) — 넣고 다시 배포하면 입장이 열림
 
 ## 단계별 확인 기록
 - **P1** (2026-11-07): 공용 테스트 7 + 서버 E2E 2 통과 · 브라우저에서 봇과 동기화 확인 · 예측 보정 75회 동안 보정 거리 0px ·
