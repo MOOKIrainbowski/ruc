@@ -272,13 +272,15 @@ export default function RpgGame({ dev }: { dev?: string }) {
 
       {phase === "play" && you && hud && world && stats && (
         <div className="pointer-events-none absolute inset-0" style={{ zoom: settings.interfaceScale / 100 }}>
-          <div className="absolute left-3 top-3" style={{ zoom: settings.hudScale / 100 }}>
+          <div className="absolute left-3 top-3">
             <div className="pointer-events-auto">
               <Minimap map={world.map} overview={world.overview} hud={hud} size={settings.minimapSize} onOpenFull={() => toggle("map")} />
             </div>
-            <Compass dir={hud.dir} />
-            <br />
-            <ChannelPicker room={room} channels={channels} onPick={(ch) => net.current?.send({ t: "channel", ch })} />
+            <div style={{ zoom: settings.hudScale / 100 }}>
+              <Compass dir={hud.dir} />
+              <br />
+              <ChannelPicker room={room} channels={channels} onPick={(ch) => net.current?.send({ t: "channel", ch })} />
+            </div>
           </div>
           <div className="absolute right-3 top-3" style={{ zoom: settings.hudScale / 100 }}>
             <TopRight

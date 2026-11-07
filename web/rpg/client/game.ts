@@ -1,6 +1,6 @@
 import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture, TextureSource } from "pixi.js";
 import { castMs, type FullStats } from "../shared/combat";
-import { CHAR_H, CHAR_W, INTERP_DELAY_MS, SIM_MS, TILE, type RoomKind } from "../shared/constants";
+import { CHAR_FEET, CHAR_H, CHAR_W, INTERP_DELAY_MS, SIM_MS, TILE, type RoomKind } from "../shared/constants";
 import type { Appearance } from "../shared/data/appearance";
 import { effectDef } from "../shared/data/effects";
 import { ITEMS, LOCS, RARITY, basicOf, lookOf, type Item, type Rarity } from "../shared/data/items";
@@ -24,6 +24,7 @@ import { mobFrames } from "./art/mobs";
 import { Px } from "./art/px";
 import { TILE_COLOR, VARIANTS, objectFrames, tileAtlas } from "./art/world";
 import { Fx, elColor } from "./fx";
+import { Realism, type Light } from "./realistic";
 import type { Net } from "./net";
 import { NPC_LOOK, NPC_PLACE, type Place } from "./npcs";
 import type { Settings } from "./settings";
@@ -32,7 +33,7 @@ TextureSource.defaultOptions.scaleMode = "nearest";
 
 /** 네임 플레이트 높이 (발밑에서 머리 위까지 px) */
 const PLATE_H: Record<string, number> = { slime: 21, rabbit: 27, goblin: 29, wolf: 23 };
-const PLAYER_PLATE_H = 49;
+const PLAYER_PLATE_H = 37;
 
 /** 시전 불가지만 안내는 안 띄움 (쿨 · 다른 동작 중) */
 const QUIET = "";
@@ -174,8 +175,12 @@ export class Game {
   zoom = 3;
   offset: number | null = null;
   water: { s: Sprite; frames: Texture[] }[] = [];
-  animated: { s: Sprite; frames: Texture[] }[] = [];
+  animated: { s: Sprite; frames: Texture[]; slow?: number }[] = [];
   glows: Sprite[] = [];
+  /** 사실적 모드: 빛을 내는 오브젝트 · 그림자를 드리울 고정 오브젝트 */
+  private lightSrc: Light[] = [];
+  private staticSprites: Sprite[] = [];
+  realism!: Realism;
   waterFrame = 0;
   waterMs = 0;
   fps = 0;
@@ -236,6 +241,8 @@ export class Game {
 
     this.buildMap();
     this.app.stage.addChild(this.world, this.screenLayer);
+    this.realism = new Realism(this.app, this.world, this.app.stage, this.entityLayer, this.screenLayer);
+    for (const s of this.staticSprites) this.realism.addStatic(s);
     this.meSprite = this.makeEnt({ id: this.you.id, name: this.you.nickname, ap: this.you.appearance, look: lookOf(this.items), el: this.you.element, lv: this.you.level, jb: this.you.prog.job ?? this.you.prog.line ?? "" }, true);
     for (const e of ents) this.addEnt(e);
     for (const [id, rows] of fx) this.setFx(id, rows);
@@ -299,6 +306,7 @@ export class Game {
     for (const e of [this.meSprite, ...this.ents.values()]) e.shadow.visible = s.shadows;
     for (const g of this.glows) g.visible = s.quality !== "low";
     this.fx.setQuality(s.quality);
+    this.realism?.setEnabled(s.graphics === "realistic");
   }
 
   // ── 맵 ──────────────────────────────────────────────────────────
@@ -344,13 +352,13 @@ export class Game {
       if (o.type === "npc") {
         const look = NPC_LOOK[String(prop(o, "npc"))];
         const s = new Sprite(sheetFrames(look.ap, look.outfit)[0][0]);
-        s.anchor.set(0.5, 60 / CHAR_H);
+        s.anchor.set(0.5, CHAR_FEET / CHAR_H);
         s.position.set(o.x, o.y - 2);
         s.zIndex = o.y;
         this.entityLayer.addChild(s);
-        this.animated.push({ s, frames: sheetFrames(look.ap, look.outfit)[0].slice(0, FRAMES) });
-        this.label(`${o.name}\n${prop(o, "role")}`, o.x, o.y - 56, "#FFE14D");
-        const mark = this.label("!", o.x, o.y - 82, "#FFD84D");
+        this.animated.push({ s, frames: sheetFrames(look.ap, look.outfit)[0].slice(0, FRAMES), slow: 3 }); // NPC 숨쉬기: 8프레임 약 2.7fps
+        this.label(`${o.name}\n${prop(o, "role")}`, o.x, o.y - 42, "#FFE14D");
+        const mark = this.label("!", o.x, o.y - 66, "#FFD84D");
         mark.style.fontSize = 22;
         mark.visible = false;
         this.marks.set(String(prop(o, "npc")), mark);
@@ -363,6 +371,10 @@ export class Game {
       s.zIndex = o.type === "portal" ? o.y - o.height : o.y;
       this.entityLayer.addChild(s);
       if (frames.length > 1) this.animated.push({ s, frames });
+      if (["tree", "lamp", "building", "tent_shop", "tent_market", "statue", "bench", "board", "mailbox", "workbench", "anvil", "rock", "stump", "bush", "sign"].includes(o.type)) this.staticSprites.push(s);
+      if (o.type === "lamp") this.lightSrc.push({ x: o.x, y: o.y - 26, r: 70, color: 0xffd27a, flicker: 0.02 });
+      if (o.type === "campfire") this.lightSrc.push({ x: o.x, y: o.y - 6, r: 80, color: 0xff9a4a, flicker: 0.07 });
+      if (o.type === "portal") this.lightSrc.push({ x: o.x, y: o.y - o.height / 2, r: 56, color: o.properties?.find((x) => x.name === "target")?.value === "dungeon" ? 0xb07aff : o.properties?.find((x) => x.name === "target")?.value === "arena" ? 0xff6a6a : 0x6aff8a, flicker: 0.04 });
       if (o.type === "lamp" || o.type === "campfire") {
         const g = new Sprite(glowTex);
         g.anchor.set(0.5);
@@ -398,7 +410,7 @@ export class Game {
     const mob = !!info.mob;
     const frames = mob ? mobTextures(info.mob!) : sheetFrames(info.ap!, outfitOf(info.look));
     const sprite = new Sprite(frames[0][0]);
-    sprite.anchor.set(0.5, mob ? 29 / 32 : 60 / CHAR_H);
+    sprite.anchor.set(0.5, mob ? 29 / 32 : CHAR_FEET / CHAR_H);
     const shadow = new Sprite(shadowTex());
     shadow.anchor.set(0.5);
     shadow.zIndex = -1e6;
@@ -455,7 +467,7 @@ export class Game {
     }
     const s = new Sprite(itemTexture(tpl, rarity));
     s.anchor.set(0.5, 1);
-    s.scale.set(0.75);
+    s.scale.set(0.375); // 아이콘이 32×32 가 되어 절반 크기로 (월드 표시 크기는 그대로)
     c.addChild(s);
     c.position.set(x, y);
     c.zIndex = y - 1;
@@ -487,6 +499,7 @@ export class Game {
     const debuffs = rows.filter((r) => !effectDef(r[0])?.buff).slice(0, 5);
     debuffs.forEach((r, i) => {
       const s = new Sprite(fxTexture(r[0]));
+      s.scale.set(0.5); // 32×32 아이콘을 16px 크기로
       s.position.set((i - debuffs.length / 2) * 17, -40);
       e.icons.addChild(s);
     });
@@ -971,17 +984,18 @@ export class Game {
 
     // 물 · 포털 · NPC 애니메이션 (4프레임)
     this.waterMs += dt;
-    if (this.waterMs >= 250) {
+    if (this.waterMs >= 125) { // 물 · 모닥불 · 포털: 8프레임 8fps (예전 4프레임 4fps)
       this.waterMs = 0;
-      this.waterFrame = (this.waterFrame + 1) % 4;
-      for (const w of this.water) w.s.texture = w.frames[this.waterFrame];
-      for (const w of this.animated) w.s.texture = w.frames[this.waterFrame % w.frames.length];
+      this.waterFrame = (this.waterFrame + 1) % 64;
+      for (const w of this.water) w.s.texture = w.frames[this.waterFrame % w.frames.length];
+      for (const w of this.animated) w.s.texture = w.frames[Math.floor(this.waterFrame / (w.slow ?? 1)) % w.frames.length];
     }
 
     // 카메라: 정수 배율, 정수 좌표 (픽셀 떨림 방지)
     const sw = this.app.screen.width;
     const sh = this.app.screen.height;
-    this.zoom = this.settings.zoom || Math.max(2, Math.min(5, Math.round(Math.min(sw / 520, sh / 320))));
+    // 화면 배율 ×N: 숫자가 클수록 더 넓게 보임 (×4 = 가장 많이 보임). 확대 배율 = 6 − N
+    this.zoom = this.settings.zoom ? 6 - this.settings.zoom : Math.max(2, Math.min(5, Math.round(Math.min(sw / 520, sh / 320))));
     const z = this.zoom;
     const mapW = this.map.w * TILE;
     const mapH = this.map.h * TILE;
@@ -993,6 +1007,10 @@ export class Game {
 
     const toScreen = (x: number, y: number): [number, number] => [Math.round(this.world.x + x * z), Math.round(this.world.y + y * z)];
     this.fx.update(dt, toScreen);
+    if (this.realism.enabled) {
+      const sprites = [this.meSprite.sprite, ...[...this.ents.values()].map((e) => e.sprite), ...this.animated.filter((a) => a.slow).map((a) => a.s)];
+      this.realism.update({ zoom: z, wx: this.world.x, wy: this.world.y, sw, sh }, this.lightSrc, sprites, { x: me.x, y: me.y - 8 });
+    }
     for (const l of this.labels) l.t.position.set(...toScreen(l.x, l.y));
     const np = this.settings.nameplates;
     for (const e of [me, ...this.ents.values()]) {
@@ -1045,7 +1063,7 @@ export class Game {
     if (e.mob) {
       if (e.dir >= 1 && e.dir <= 3) e.face = 0;
       else if (e.dir >= 5) e.face = 1;
-      const f = Math.floor((e.animMs / 1000) * (base === "idle" ? 4 : 8)) % 4;
+      const f = Math.floor((e.animMs / 1000) * (base === "idle" ? 6 : 14)) % 8;
       e.sprite.texture = e.frames[e.face][f];
       let ox = 0;
       let oy = 0;
@@ -1083,8 +1101,8 @@ export class Game {
     e.sprite.texture = e.frames[e.shown][ACTIONS.indexOf(rolling || dead ? "idle" : action) * FRAMES + (rolling || dead ? 0 : f)];
     // 구르기: 몸을 한 바퀴 (90° 단위라 픽셀이 깨지지 않음) · 사망: 옆으로 누움
     e.sprite.rotation = dead ? -Math.PI / 2 : rolling ? (Math.floor(e.animMs / 75) % 4) * (Math.PI / 2) * (e.dir >= 5 ? -1 : 1) : 0;
-    e.sprite.anchor.set(0.5, rolling ? 0.6 : dead ? 0.75 : 60 / CHAR_H);
-    e.sprite.position.set(e.x, e.y - (rolling ? 12 : dead ? 4 : 0));
+    e.sprite.anchor.set(0.5, rolling ? 0.6 : dead ? 0.75 : CHAR_FEET / CHAR_H);
+    e.sprite.position.set(e.x, e.y - (rolling ? 9 : dead ? 3 : 0));
     e.sprite.alpha = dead ? 0.75 : e.fx.some((r) => r[0] === "stealth") ? 0.4 : 1;
     e.sprite.tint = e.flash > 0 ? 0xff9090 : dead ? 0xb0a8c0 : 0xffffff;
     e.sprite.zIndex = e.y;

@@ -274,5 +274,9 @@
   "noti.empty": "새 알림이 없어요",
   "noti.readAll": "모두 읽음",
   "qp.start": "새 퀘스트",
-  "qp.done": "퀘스트 완료!"
+  "qp.done": "퀘스트 완료!",
+  "settings.graphics": "그래픽 모드",
+  "settings.graphics.classic": "기본 (도트)",
+  "settings.graphics.realistic": "사실적 (고급)",
+  "settings.graphics.hint": "하루 24분 주기의 낮 · 밤 조명, 해를 따르는 긴 그림자, 가로등 · 모닥불 빛, 가장자리 어둡게(비네트)가 켜져요. 사양이 낮으면 기본을 쓰세요."
 }

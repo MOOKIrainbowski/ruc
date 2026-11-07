@@ -173,7 +173,7 @@ function Preview({ you, items }: { you: You; items: Item[] }) {
   }, [sheet, dir]);
   return (
     <div className="flex w-[104px] flex-col items-center justify-center gap-1 rounded bg-[#e8d3a9]">
-      <canvas ref={ref} width={CHAR_W} height={CHAR_H} className="rpg-pixel h-[128px] w-[96px]" />
+      <canvas ref={ref} width={CHAR_W} height={CHAR_H} className="rpg-pixel h-[160px] w-[128px]" />
       <button className="rpg-btn !px-1.5 !py-0.5 !text-[10px]" onClick={() => setDir((dir + 1) % 8)}>↻ {t("inv.rotate")}</button>
     </div>
   );

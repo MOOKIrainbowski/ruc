@@ -26,7 +26,7 @@ export default function CreateCharacter({ defaultName, error, onSubmit }: { defa
       ctx.drawImage(sheet, (FRAMES + (f++ % FRAMES)) * CHAR_W, dir * CHAR_H, CHAR_W, CHAR_H, 0, 0, CHAR_W * 3, CHAR_H * 3);
     };
     draw();
-    const id = setInterval(draw, 125);
+    const id = setInterval(draw, 90);
     return () => clearInterval(id);
   }, [sheet, dir]);
 

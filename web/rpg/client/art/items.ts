@@ -1,8 +1,8 @@
 import { ITEMS, isGear, type Rarity } from "../../shared/data/items";
-import { OUTLINE, Px } from "./px";
+import { OUTLINE, Px, refine32 } from "./px";
 
 /**
- * 아이템 아이콘 16×16 (§14-7): 12×12 그림을 가운데에. 팔레트 + 문자열 격자 (§25-1).
+ * 아이템 아이콘 32×32 (§14-7, 16×16 그림 → refine32): 12×12 그림을 가운데에. 팔레트 + 문자열 격자 (§25-1).
  * 장비는 + * - (본색 · 밝은 색 · 그늘) 자리에 희귀도 팔레트를 끼워 자동으로 변형 — 하급 녹슨 색 → 전설 금빛 + 반짝임.
  */
 
@@ -70,7 +70,7 @@ export function itemIcon(tpl: string, rarity: Rarity): HTMLCanvasElement {
     const pal: Record<string, string> = { ...FIXED, "+": main, "*": light, "-": shade };
     (ART[t?.icon ?? ""] ?? ART.stone).forEach((row, y) => [...row].forEach((ch, x) => { if (ch !== ".") p.set(2 + x, 2 + y, pal[ch]); }));
     if (gear && rarity === "legendary") { p.set(13, 1, "#ffffff"); p.set(12, 2, "#fff4b0"); p.set(14, 2, "#fff4b0"); p.set(13, 3, "#fff4b0"); }
-    c = p.toCanvas();
+    c = refine32(p).toCanvas(); // 32×32 세밀한 아이콘
     cache.set(key, c);
   }
   return c;

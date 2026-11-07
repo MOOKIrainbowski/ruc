@@ -38,11 +38,11 @@ export function SkillInfo({ sk, l }: { sk: SkillDef; l?: Learned }) {
   );
 }
 
-function SkillRow({ sk, l, you, locked, send }: { sk: SkillDef; l?: Learned; you: You; locked?: string; send: (m: C2S) => void }) {
+function SkillRow({ sk, l, you, locked, send, onHover }: { sk: SkillDef; l?: Learned; you: You; locked?: string; send: (m: C2S) => void; onHover: (h: { sk: SkillDef; l?: Learned; capped: boolean; need: number } | null) => void }) {
   const need = l ? needMastery(l.lv) : 1;
   const capped = !!l && l.lv >= you.level && l.mastery >= need;
   return (
-    <div className="group relative flex items-center gap-2 rounded px-1.5 py-1 hover:bg-[#e8d3a9]" style={{ opacity: locked ? 0.55 : 1 }}>
+    <div className="relative flex items-center gap-2 rounded px-1.5 py-1 hover:bg-[#e8d3a9]" style={{ opacity: locked ? 0.55 : 1 }} onMouseEnter={() => onHover({ sk, l, capped, need })} onMouseLeave={() => onHover(null)}>
       <img src={iconUrl(skillIcon(locked ? "lock" : sk.icon, skillBg(sk, you)))} alt="" className="rpg-pixel h-8 w-8" />
       <div className="min-w-0 flex-1">
         <div className="flex items-baseline gap-1.5">
@@ -61,17 +61,13 @@ function SkillRow({ sk, l, you, locked, send }: { sk: SkillDef; l?: Learned; you
       ) : (
         <button className="rpg-btn !px-2 !py-0.5 !text-[10px]" onClick={() => send({ t: "equip", skill: l.id, slot: sk.slot })}>{t("sk.equip")}</button>
       ))}
-      <div className="rpg-tip rpg-panel !left-auto !right-0 !translate-x-0">
-        <b>{sk.name}</b> <span className="text-[#8c6642]">{sk.slot === "W" ? "W(C)" : sk.slot}</span>
-        <SkillInfo sk={sk} l={l} />
-        {l && <p className="text-[#8c6642]">{capped ? t("sk.maxed") : t("sk.mastery", { m: Math.floor(l.mastery), n: need })}</p>}
-      </div>
     </div>
   );
 }
 
 export function SkillWindow({ you, send, onClose }: { you: You; send: (m: C2S) => void; onClose: () => void }) {
   const { prog } = you;
+  const [hov, setHov] = useState<{ sk: SkillDef; l?: Learned; capped: boolean; need: number } | null>(null);
   const job = prog.job ? JOBS[prog.job] : null;
   // 이 직업이 배울 수 있는데 아직 못 배운 스킬 (레벨 · 2차 전직 조건)
   const future = Object.values(SKILLS).filter((sk) => !sk.hidden && sk.slot !== "A" && !prog.skills.some((l) => l.id === sk.id) &&
@@ -98,11 +94,11 @@ export function SkillWindow({ you, send, onClose }: { you: You; send: (m: C2S) =
             return (
               <section key={slot}>
                 <h3 className="mb-0.5 font-bold text-[#8c6642]">{slot === "W" ? "W (C)" : slot === "R" ? "R / X" : slot}</h3>
-                {learned.map((l) => <SkillRow key={l.id} sk={SKILLS[l.id]} l={l} you={you} send={send} />)}
+                {learned.map((l) => <SkillRow key={l.id} sk={SKILLS[l.id]} l={l} you={you} send={send} onHover={setHov} />)}
                 {later.map((sk) => {
                   const forJob = sk.job.find((j) => JOBS[j]);
                   const lock = forJob && !prog.job ? t("sk.lockedJob", { job: JOBS[forJob].name }) : t("sk.locked", { lv: sk.learnLv ?? JOB_LV.tier1 });
-                  return <SkillRow key={sk.id} sk={sk} you={you} locked={lock} send={send} />;
+                  return <SkillRow key={sk.id} sk={sk} you={you} locked={lock} send={send} onHover={setHov} />;
                 })}
                 {!learned.length && !later.length && <p className="px-1.5 text-[#9e917c]">{t("sk.none")}</p>}
               </section>
@@ -110,6 +106,14 @@ export function SkillWindow({ you, send, onClose }: { you: You; send: (m: C2S) =
           })}
         </div>
         <p className="mt-2 text-[10px] text-[#8c6642]">{t("sk.help")}</p>
+        {hov && (
+          // 스크롤 영역 밖 · 창 오른쪽에 띄워 다른 줄에 가려지지 않게 (가장 위)
+          <div className="rpg-panel pointer-events-none absolute left-[calc(100%+8px)] top-0 z-[60] w-[250px] p-2.5 text-[11px] leading-snug">
+            <b className="text-[13px]">{hov.sk.name}</b> <span className="text-[#8c6642]">{hov.sk.slot === "W" ? "W(C)" : hov.sk.slot}</span>
+            <SkillInfo sk={hov.sk} l={hov.l} />
+            {hov.l && <p className="text-[#8c6642]">{hov.capped ? t("sk.maxed") : t("sk.mastery", { m: Math.floor(hov.l.mastery), n: hov.need })}</p>}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -130,7 +134,7 @@ export function JobDialog({ you, send, onClose }: { you: You; send: (m: C2S) => 
     return (
       <button key={id} className="rpg-panel !rounded-lg p-2 text-left !shadow-none" style={{ outline: valid === id ? `3px solid ${l.color}` : undefined }} onClick={() => setPick(id)}>
         <div className="flex items-center gap-1.5">
-          <img src={iconUrl(skillIcon(l.icon, l.color))} alt="" className="rpg-pixel h-6 w-6" />
+          <img src={iconUrl(skillIcon(l.icon, l.color))} alt="" className="rpg-smooth h-6 w-6" />
           <b>{l.name}</b>
         </div>
         <p className="mt-0.5 text-[11px]">{l.role}</p>

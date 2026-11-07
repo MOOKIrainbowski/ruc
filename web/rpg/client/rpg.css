@@ -263,3 +263,53 @@
 @keyframes rpg-questpop { 0% { opacity: 0; transform: translate(-50%, -14px); } 8%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
 .rpg-toast { animation: rpg-toast 4s ease forwards; }
 @keyframes rpg-toast { 0% { opacity: 0; transform: translateX(24px); } 8%, 88% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+/* ── 2026-11 UI 다듬기: 양피지 결 · 입체 버튼 · 유리 칩 · 반짝이는 구슬 · 테마 스크롤바 ── */
+.rpg-panel {
+  background:
+    radial-gradient(ellipse at 20% 0%, rgba(255, 255, 255, 0.35), transparent 55%),
+    repeating-linear-gradient(0deg, rgba(125, 79, 43, 0.045) 0 1px, transparent 1px 4px),
+    linear-gradient(#f7ebcf, #efdcb2);
+  border-color: #6d4325;
+  box-shadow:
+    inset 0 0 0 2px #d29a60, inset 0 0 0 4px #ecd9ae, inset 0 8px 14px rgba(255, 255, 255, 0.35),
+    0 5px 0 #3a2a1e, 0 10px 22px rgba(10, 6, 2, 0.45);
+  border-radius: 6px;
+}
+.rpg-chip {
+  background: linear-gradient(rgba(44, 33, 52, 0.82), rgba(24, 17, 30, 0.82));
+  border-color: rgba(255, 255, 255, 0.22);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.18), 0 2px 0 rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(2px);
+  border-radius: 5px;
+}
+.rpg-btn {
+  background: linear-gradient(#bf8450, #a36a3c 55%, #94603a);
+  border-color: #4d3022;
+  box-shadow: inset 0 2px 0 rgba(255, 220, 170, 0.55), inset 0 -3px 0 rgba(90, 52, 28, 0.85), 0 2px 0 #3a2a1e;
+  text-shadow: 0 1px 0 rgba(58, 42, 30, 0.7);
+  border-radius: 4px;
+  transition: transform 0.06s, filter 0.1s;
+}
+.rpg-btn:hover:not(:disabled) { filter: brightness(1.1); transform: translateY(-1px); }
+.rpg-btn:active:not(:disabled) { transform: translateY(1px); box-shadow: inset 0 2px 0 rgba(90, 52, 28, 0.6), 0 0 0 #3a2a1e; }
+.rpg-btn[data-on="true"] { background: linear-gradient(#78c02c, #5d9e1f 55%, #4f8a1a); box-shadow: inset 0 2px 0 rgba(200, 255, 140, 0.6), inset 0 -3px 0 #3b6a12, 0 2px 0 #2c4a12; }
+.rpg-input { box-shadow: inset 0 2px 3px rgba(90, 52, 28, 0.25); background: linear-gradient(#fffdf6, #fff6e2); }
+.rpg-modal-bg { background: radial-gradient(ellipse at center, rgba(10, 18, 7, 0.35), rgba(5, 8, 3, 0.75)); backdrop-filter: blur(1.5px); }
+.rpg-x { border-radius: 50%; transition: background 0.1s; }
+.rpg-x:hover { background: rgba(125, 79, 43, 0.18); }
+.rpg-orb {
+  border-color: #6d4325;
+  box-shadow: inset 0 0 0 2px #3a2a1e, inset 0 -10px 18px rgba(0, 0, 0, 0.45), 0 3px 0 #3a2a1e, 0 0 14px rgba(0, 0, 0, 0.5);
+}
+.rpg-orb::after { background: linear-gradient(rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.05)); width: 22px; height: 11px; left: 12px; top: 8px; }
+.rpg-range { height: 4px; }
+.rpg-tip { box-shadow: inset 0 0 0 2px #d29a60, 0 6px 16px rgba(10, 6, 2, 0.55); }
+
+.rpg-root * { scrollbar-width: thin; scrollbar-color: #a36a3c #e8d3a9; }
+.rpg-root *::-webkit-scrollbar { width: 8px; height: 8px; }
+.rpg-root *::-webkit-scrollbar-track { background: #e8d3a9; border-radius: 4px; }
+.rpg-root *::-webkit-scrollbar-thumb { background: linear-gradient(90deg, #c98d58, #a36a3c); border: 1px solid #5a3b2a; border-radius: 4px; }
+
+/* 32×32 아이콘을 24px · 20px 로 줄여 보일 때는 부드럽게 (픽셀 깨짐 방지) */
+.rpg-smooth { image-rendering: auto; }

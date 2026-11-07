@@ -1,8 +1,8 @@
 import { effectDef } from "../../shared/data/effects";
-import { OUTLINE, Px } from "./px";
+import { OUTLINE, Px, refine32 } from "./px";
 
 /**
- * 16×16 아이콘 (§10-5 · §11 · §6-1). 팔레트 + 문자열 격자로 정의 (§25-1).
+ * 아이콘: 16×16 그림을 refine32 로 32×32 세밀하게 (§10-5 · §11 · §6-1). 팔레트 + 문자열 격자로 정의 (§25-1).
  * 효과 · 스탯: 7×7 글리프를 2배로 / 스킬: 12×12 그림 + 1px 외곽선 + 배경색.
  * 글리프 문자: # 본색 · + 밝은 색 · . 빈칸
  */
@@ -80,7 +80,7 @@ const cache = new Map<string, HTMLCanvasElement>();
 const urls = new WeakMap<HTMLCanvasElement, string>();
 const memo = (key: string, make: () => Px) => {
   let c = cache.get(key);
-  if (!c) { c = make().toCanvas(); cache.set(key, c); }
+  if (!c) { c = refine32(make()).toCanvas(); cache.set(key, c); } // 16×16 그림 → 32×32 세밀한 아이콘
   return c;
 };
 /** HUD(img) 용 data URL */

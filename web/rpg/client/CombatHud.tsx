@@ -161,7 +161,7 @@ function StatWindow({ stats, you }: { stats: FullStats; you: You }) {
           const cls = f && now - f[1] < 500 ? f[0] : "";
           return (
             <li key={k} className="flex items-center gap-1.5" title={t(k)}>
-              <img src={iconUrl(statIcon(g, c))} alt="" className="rpg-pixel h-4 w-4" />
+              <img src={iconUrl(statIcon(g, c))} alt="" className="rpg-smooth h-5 w-5 shrink-0" />
               <span className="flex-1 truncate text-[#6d513b]">{t(k)}</span>
               <span key={f?.[1]} className={cls}>{v}</span>
             </li>

@@ -26,7 +26,17 @@ export class Px {
     this.d = new Uint32Array(w * h);
   }
   set(x: number, y: number, c: string) {
-    if (x >= 0 && y >= 0 && x < this.w && y < this.h) this.d[y * this.w + x] = rgba(c);
+    if (x < 0 || y < 0 || x >= this.w || y >= this.h) return;
+    const i = y * this.w + x;
+    const v = rgba(c);
+    const a = v >>> 24;
+    const old = this.d[i];
+    // 반투명 색(#rrggbbaa)은 이미 있는 불투명 픽셀 위에 섞어 칠함 (하이라이트 · 그림자)
+    if (a < 255 && old >>> 24 === 255) {
+      const k = a / 255;
+      const mix = (s: number) => Math.round(((v >> s) & 255) * k + ((old >> s) & 255) * (1 - k));
+      this.d[i] = ((255 << 24) | (mix(16) << 16) | (mix(8) << 8) | mix(0)) >>> 0;
+    } else this.d[i] = v;
   }
   rect(x: number, y: number, w: number, h: number, c: string) {
     for (let yy = y; yy < y + h; yy++) for (let xx = x; xx < x + w; xx++) this.set(xx, yy, c);
@@ -77,4 +87,56 @@ export function hash(x: number, y: number, s = 0) {
   let h = (x * 374761393 + y * 668265263 + s * 2147483647) | 0;
   h = Math.imul(h ^ (h >>> 13), 1274126177);
   return ((h ^ (h >>> 16)) >>> 0) / 4294967296;
+}
+
+/**
+ * 16×16 그림 → 32×32 세밀한 아이콘 (스킬 · 아이템 · 스탯 · 효과 아이콘 공통).
+ * ① Scale2x 로 모서리를 매끈하게 두 배 ② 위쪽은 밝게 · 아래쪽은 어둡게 세로 명암
+ * ③ 왼쪽 위 테두리 반사광 · 오른쪽 아래 그늘 ④ 안쪽 결(디더)로 재질감 ⑤ 바깥 1px 부드러운 그림자
+ */
+export function refine32(src: Px): Px {
+  const w = src.w;
+  const h = src.h;
+  const out = new Px(w * 2, h * 2);
+  const at = (x: number, y: number) => (x < 0 || y < 0 || x >= w || y >= h ? 0 : src.d[y * w + x]);
+  for (let y = 0; y < h; y++)
+    for (let x = 0; x < w; x++) {
+      const P = at(x, y);
+      const A = at(x, y - 1);
+      const B = at(x + 1, y);
+      const C = at(x - 1, y);
+      const D = at(x, y + 1);
+      const e0 = C === A && C !== D && A !== B ? A : P;
+      const e1 = A === B && A !== C && B !== D ? B : P;
+      const e2 = D === C && D !== B && C !== A ? C : P;
+      const e3 = B === D && B !== A && D !== C ? D : P;
+      out.d[y * 2 * out.w + x * 2] = e0;
+      out.d[y * 2 * out.w + x * 2 + 1] = e1;
+      out.d[(y * 2 + 1) * out.w + x * 2] = e2;
+      out.d[(y * 2 + 1) * out.w + x * 2 + 1] = e3;
+    }
+  const ow = out.w;
+  const oh = out.h;
+  const solid = (x: number, y: number) => x >= 0 && y >= 0 && x < ow && y < oh && out.d[y * ow + x] >>> 24 > 0x80;
+  const src2 = out.d.slice();
+  const shift = (v: number, k: number) => {
+    const r = Math.max(0, Math.min(255, (v & 255) + k));
+    const g = Math.max(0, Math.min(255, ((v >> 8) & 255) + k));
+    const b = Math.max(0, Math.min(255, ((v >> 16) & 255) + k));
+    return ((v & 0xff000000) | (b << 16) | (g << 8) | r) >>> 0;
+  };
+  for (let y = 0; y < oh; y++)
+    for (let x = 0; x < ow; x++) {
+      const v = src2[y * ow + x];
+      if (v >>> 24 < 0x80) continue;
+      let k = Math.round(12 - (y / oh) * 28); // 위 +12 → 아래 −16
+      if (!solid(x - 1, y - 1) || !solid(x, y - 1) || !solid(x - 1, y)) k += 14; // 왼쪽 위 테두리 반사광
+      if (!solid(x + 1, y + 1) || !solid(x + 1, y) || !solid(x, y + 1)) k -= 10; // 오른쪽 아래 그늘
+      if ((x + y) % 4 === 0) k += 3; // 결
+      out.d[y * ow + x] = shift(v, k);
+    }
+  // 바깥 부드러운 그림자 (아래 오른쪽으로 1px, 반투명)
+  for (let y = 1; y < oh; y++)
+    for (let x = 1; x < ow; x++) if (!out.d[y * ow + x] && solid(x - 1, y - 1)) out.d[y * ow + x] = 0x44000000;
+  return out;
 }

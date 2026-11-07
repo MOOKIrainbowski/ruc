@@ -16,6 +16,8 @@ export const DEFAULT_KEYS: Record<KeyAction, string> = {
 export type Settings = {
   fpsLimit: number; // 0 = 무제한
   quality: "low" | "medium" | "high";
+  /** 그래픽 모드: classic = 기본 도트, realistic = 조명 · 긴 그림자 · 낮밤 · 비네트 (사실적) */
+  graphics: "classic" | "realistic";
   shadows: boolean;
   zoom: number; // 0 = 자동
   shake: boolean;
@@ -33,7 +35,7 @@ export type Settings = {
 };
 
 export const DEFAULT_SETTINGS: Settings = {
-  fpsLimit: 60, quality: "medium", shadows: true, zoom: 0, shake: true, damageNumbers: true,
+  fpsLimit: 60, quality: "medium", graphics: "classic", shadows: true, zoom: 0, shake: true, damageNumbers: true,
   interfaceScale: 100, uiScale: 100, hudScale: 100, minimapSize: 160, nameplates: "all", castMode: "quick",
   volMaster: 80, volBgm: 60, volSfx: 80, keys: DEFAULT_KEYS,
 };

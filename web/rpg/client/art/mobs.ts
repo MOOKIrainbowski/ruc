@@ -1,7 +1,7 @@
 import { Px, type C3 } from "./px";
 
 /**
- * 몹 32×32 · 4프레임 (§25 몹 규격). 오른쪽을 보는 그림만 그리고 왼쪽은 좌우 반전 (DECISIONS D14).
+ * 몹 32×32 · 8프레임 (§25 몹 규격). 오른쪽을 보는 그림만 그리고 왼쪽은 좌우 반전 (DECISIONS D14).
  * 발밑 중심 = (16, 29).
  */
 
@@ -15,9 +15,10 @@ const WOLF: C3 = ["#b9c9b2", "#8a9f84", "#5f725a"];
 
 function slime(f: number): Px {
   const p = new Px(32, 32);
-  const w = [11, 12, 10, 11][f];
-  const h = [8, 7, 9, 8][f];
-  const lift = [0, 0, 2, 1][f];
+  const ph = (f / 8) * Math.PI * 2;
+  const w = Math.round(11 - Math.sin(ph) * 1.3);
+  const h = Math.round(8 + Math.sin(ph) * 1.3);
+  const lift = Math.max(0, Math.round(Math.sin(ph - 1.2) * 2.4));
   const cy = 29 - h - lift;
   p.ellipse(16, cy, w, h, GRASS[2]);
   p.ellipse(15, cy - 1, w - 1, h - 1, GRASS[1]);
@@ -33,7 +34,7 @@ function slime(f: number): Px {
 
 function rabbit(f: number): Px {
   const p = new Px(32, 32);
-  const hop = [0, -2, -3, -1][f];
+  const hop = -Math.round(Math.sin((f / 8) * Math.PI) * 3);
   const by = 23 + hop;
   p.ellipse(15, by, 7, 5, MINT[2]);
   p.ellipse(14, by - 1, 6, 4, MINT[1]);
@@ -46,7 +47,7 @@ function rabbit(f: number): Px {
   p.rect(23, by - 7, 2, 2, "#3BA7FF");
   p.set(23, by - 7, "#ffffff");
   p.set(25, by - 5, "#ff9ec0");
-  const leg = f % 2 ? 1 : 0;
+  const leg = f % 4 < 2 ? 1 : 0;
   p.rect(11 - leg, by + 4, 3, 2, MINT[2]);
   p.rect(18 + leg, by + 4, 3, 2, MINT[2]);
   p.outline("#4a8f7d");
@@ -55,8 +56,8 @@ function rabbit(f: number): Px {
 
 function goblin(f: number): Px {
   const p = new Px(32, 32);
-  const step = [0, 1, 0, -1][f];
-  const b = f % 2 ? -1 : 0;
+  const step = Math.round(Math.sin((f / 8) * Math.PI * 2));
+  const b = Math.abs(Math.sin((f / 8) * Math.PI * 2)) > 0.7 ? -1 : 0;
   p.part(13 - step, 24, 3, 5, TUNIC); // 다리
   p.part(18 + step, 24, 3, 5, TUNIC);
   p.part(12, 16 + b, 10, 9, TUNIC); // 몸
@@ -75,7 +76,8 @@ function goblin(f: number): Px {
 
 function wolf(f: number): Px {
   const p = new Px(32, 32);
-  const lg = [[0, 2], [1, 1], [2, 0], [1, 1]][f];
+  const sn = Math.sin((f / 8) * Math.PI * 2);
+  const lg = [Math.round(1 + sn), Math.round(1 - sn)];
   for (const [x, i] of [[8, 0], [11, 1], [19, 1], [22, 0]] as const) p.part(x, 22, 2, 6 - lg[i], WOLF);
   p.ellipse(15, 19, 10, 5, WOLF[2]);
   p.ellipse(15, 18, 9, 4, WOLF[1]);
@@ -85,7 +87,7 @@ function wolf(f: number): Px {
   p.set(30, 15, "#2b1d2e");
   p.part(23, 9, 2, 3, WOLF); // 귀
   p.set(26, 14, "#ffe14d");
-  p.part(2, 13 - (f % 2), 5, 3, WOLF); // 꼬리
+  p.part(2, 13 - (sn > 0 ? 1 : 0), 5, 3, WOLF); // 꼬리
   for (const [x, y] of [[9, 14], [13, 13], [17, 14], [21, 13], [6, 12]]) { p.set(x, y, GRASS[1]); p.set(x + 1, y, GRASS[0]); p.set(x, y - 1, GRASS[2]); }
   p.outline();
   return p;
@@ -98,7 +100,7 @@ export function mobFrames(key: string): [HTMLCanvasElement[], HTMLCanvasElement[
   const paint = PAINT[key] ?? slime;
   const r: HTMLCanvasElement[] = [];
   const l: HTMLCanvasElement[] = [];
-  for (let f = 0; f < 4; f++) {
+  for (let f = 0; f < 8; f++) {
     const a = paint(f);
     r.push(a.toCanvas());
     a.flipX();

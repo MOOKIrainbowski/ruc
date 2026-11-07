@@ -68,8 +68,10 @@ export default function SettingsModal({ s, onChange, onClose, onCapture }: { s: 
             <>
               {row("settings.fps", choice("fpsLimit", [[30, "30"], [60, "60"], [120, "120"], [144, "144"], [0, t("settings.unlimited")]]))}
               {row("settings.quality", choice("quality", [["low", t("settings.quality.low")], ["medium", t("settings.quality.medium")], ["high", t("settings.quality.high")]]))}
+              {row("settings.graphics", choice("graphics", [["classic", t("settings.graphics.classic")], ["realistic", t("settings.graphics.realistic")]]))}
+              {s.graphics === "realistic" && <p className="pb-1 text-[11px] text-[#8c6642]">{t("settings.graphics.hint")}</p>}
               {row("settings.shadows", onOff("shadows"))}
-              {row("settings.zoom", choice("zoom", [[0, t("settings.auto")], [2, "×2"], [3, "×3"], [4, "×4"]]))}
+              {row("settings.zoom", choice("zoom", [[0, t("settings.auto")], [2, "×2 (가깝게)"], [3, "×3"], [4, "×4 (넓게)"]]))}
               {row("settings.shake", onOff("shake"))}
               {row("settings.damageNumbers", onOff("damageNumbers"))}
             </>

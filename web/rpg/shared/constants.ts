@@ -10,8 +10,10 @@ export const INPUT_CREDITS_MAX = 9;
 export const INPUT_QUEUE_MAX = 30;
 export const INTERP_DELAY_MS = 100;
 
-export const CHAR_W = 48;
-export const CHAR_H = 64;
+/** 캐릭터 프레임 (3등신, 2026-11 개선): 32×40, 발밑 = 위에서 34px */
+export const CHAR_W = 32;
+export const CHAR_H = 40;
+export const CHAR_FEET = 34;
 
 /** 시트 행 순서 (§25-4). 인덱스가 곧 방향 번호. */
 export const DIRS = ["S", "SE", "E", "NE", "N", "NW", "W", "SW"] as const;
