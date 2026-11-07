@@ -8,6 +8,7 @@ import { MASTERY_MOB, POT_GAIN, addMastery, autoLearn, potOf, slotsOf, startLeve
 import type { S2C } from "../../../web/rpg/shared/protocol.ts";
 import { recalc } from "./combat.ts";
 import { loadSkills, saveJob, saveSkill, type CharacterRow } from "./db.ts";
+import { quest } from "./quests.ts";
 import type { Player } from "./room.ts";
 
 /**
@@ -154,6 +155,7 @@ export function equip(p: Player, skill: unknown, slot: unknown): string | null {
   saveSkill(p.char.id, l);
   refreshSlots(p);
   sendProg(p);
+  quest(p, "equip");
   return null;
 }
 

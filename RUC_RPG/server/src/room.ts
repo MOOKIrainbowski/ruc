@@ -19,7 +19,8 @@ import { charBase, gainMastery, loadProgress, sendProg, syncSkills } from "./pro
 import { jobStats } from "../../../web/rpg/shared/data/jobs.ts";
 import { newMover } from "../../../web/rpg/shared/movement.ts";
 import type { ElementId } from "../../../web/rpg/shared/data/elements.ts";
-import { loadItems } from "./db.ts";
+import { loadItems, type QuestRow } from "./db.ts";
+import { quest, reachTick } from "./quests.ts";
 import { makeUnit } from "./combat.ts";
 import { refreshGear } from "./items.ts";
 import { cast, fire, type Cast, type Shot } from "./skills.ts";
@@ -51,6 +52,10 @@ export type Player = Unit & {
   charge: { slot: Slot; from: number } | null;
   /** 베타 지갑 RUC (DB 가 원본, 이건 보여 주기용 사본) */
   ruc: number;
+  /** 퀘스트 (P6): NPC 퀘스트 진행 · 받은 유저 퀘스트(id → 처치/진행 수) · 분수 둘레 지난 곳 비트 */
+  quests: Map<string, QuestRow>;
+  takes: Map<number, number>;
+  reach: number;
   rtt: number;
   room: Room | null;
   /** 개인 이벤트 (다음 스냅샷에 실림) */
@@ -94,6 +99,7 @@ export function buildPlayer(ws: WebSocket, discordId: string, char: CharacterRow
 export const playerState = (items: Item[], prog: Progress) => ({
   items, procs: [] as Special[], look: [] as string[], potionAt: 0, shieldAt: 0, dealt: 0, taken: 0, basics: 0,
   prog, progDirty: false, progAt: 0, skillsDirty: new Set<string>(), charge: null, cd: {} as Record<string, number>, slots: {} as Partial<Record<Slot, string>>, ruc: 0,
+  quests: new Map<string, QuestRow>(), takes: new Map<number, number>(), reach: 0,
 });
 
 /**
@@ -251,6 +257,7 @@ export class Room implements World {
       }
       if (best) {
         gainExp(this, best, mobExp(m.def, m.lv, m.grade, best.lv));
+        quest(best, "kill", m.key);
         const [lo, hi] = m.def.ruc;
         dropRuc(best, (lo + Math.floor(rand() * (hi - lo + 1))) * (1 + Object.keys(GRADES).indexOf(m.grade)), m.key);
       }
@@ -371,16 +378,22 @@ export class Room implements World {
       }
     } else if (find(p, "confuse")) mv = { ...inp, mx: -inp.mx, my: -inp.my };
     if (!p.dead) {
-      if (mv.dg) tryRoll(m, mv);
+      if (mv.dg) {
+        const rolling = m.mv > 0;
+        tryRoll(m, mv);
+        if (!rolling && m.mv > 0) quest(p, "roll");
+      }
       if (mv.cs && SKILLS[p.slots[mv.cs] ?? ""]?.charge) p.charge = { slot: mv.cs, from: p.steps };
       if (mv.k) {
         const err = cast(this, p, mv);
         if (err) p.out.push(["cf", inp.seq, err]);
+        else quest(p, "cast", mv.k);
       }
     }
     step(m, mv, this.map.collider);
     p.x = m.x;
     p.y = m.y;
+    if (p.steps % 10 === 0) reachTick(p);
   }
 
   /** 힐 위협: 그 아군과 싸우는 몹들이 치유한 쪽을 노림 (§13-2 힐량 × 0.5 — 스킬 threat 로 반영) */
@@ -549,6 +562,7 @@ export function gainExp(room: Room, p: Player, amount: number) {
   p.en = p.st.energy;
   p.mover.stamina = p.mover.staminaMax;
   room.ev.push(["lv", p.id, c.level]);
+  quest(p, "level");
 }
 
 

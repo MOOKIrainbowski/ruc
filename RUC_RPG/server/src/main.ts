@@ -17,6 +17,7 @@ import { econOp, online as econOnline, sweep, welcome } from "./economy.ts";
 import { give, itemOp, sendInv } from "./items.ts";
 import { mailCount } from "./db.ts";
 import { changeJob, charBase, equip, saveDirtySkills, sendProg, syncSkills } from "./progress.ts";
+import { loadQuestState, notify, notiOp, questOp, quest, sendBoard, sendNotis, sendQuests, sweepQuests } from "./quests.ts";
 import { Channels, buildPlayer, info, send, type Player } from "./room.ts";
 
 const DEV = process.argv.includes("--dev");
@@ -133,6 +134,20 @@ function arrival(to: RoomKind, from: RoomKind) {
   return { x: Number(prop(o, "ax") ?? o.x), y: Number(prop(o, "ay") ?? o.y + 24) };
 }
 
+/** 접속 직후: 지갑 · 퀘스트 · 알림을 맞추고 방에 들어감 */
+function enter(p: Player, kind: RoomKind) {
+  welcome(p);
+  loadQuestState(p);
+  join(p, kind);
+  sendQuests(p);
+  const n = mailCount(p.char.id, Date.now());
+  if (n) {
+    send(p, { t: "notify", kind: "mail", n });
+    notify(p.char.id, "mail_unclaimed", `받지 않은 우편이 ${n}통 있어요`, undefined, true);
+  }
+  sendNotis(p);
+}
+
 function use(p: Player, oid: number) {
   const room = p.room;
   const o = room?.map.objects.find((x) => x.id === oid);
@@ -144,7 +159,7 @@ function use(p: Player, oid: number) {
     const a = arrival(target as RoomKind, room.kind);
     return travel(p, target as RoomKind, a.x, a.y);
   }
-  if (o.type === "npc") return send(p, { t: "error", msg: `${o.name}: "조금만 기다려 줘요! 곧 이야기 나눌 수 있어요."` });
+  if (o.type === "npc") return quest(p, "talk", String(prop(o, "npc"))); // 대화창은 클라이언트가 엶 (대사는 공용 데이터)
 }
 
 /** 직업 교관(세라) 근처인가 — 전직은 광장에서 교관과 이야기해야 함 (§9-1) */
@@ -193,10 +208,7 @@ wss.on("connection", (ws, req) => {
       const made = makePlayer(ws, ticket, char);
       player = made.p;
       online.set(ticket.sub, player);
-      welcome(player);
-      join(player, made.kind);
-      const n = mailCount(player.char.id, Date.now());
-      if (n) send(player, { t: "notify", kind: "mail", n });
+      enter(player, made.kind);
       return;
     }
     if (!ticket) return;
@@ -208,9 +220,8 @@ wss.on("connection", (ws, req) => {
       if (!char) return reply({ t: "createError", msg: "이미 쓰는 닉네임입니다" });
       player = makePlayer(ws, ticket, char).p;
       online.set(ticket.sub, player);
-      welcome(player);
-      join(player, "plaza");
-      return send(player, { t: "notify", kind: "mail", n: mailCount(player.char.id, Date.now()) });
+      enter(player, "plaza");
+      return;
     }
     if (!player) return;
 
@@ -253,6 +264,13 @@ wss.on("connection", (ws, req) => {
         if (err) reply({ t: "error", msg: err });
         return;
       }
+      case "quest": {
+        const err = questOp(player, m as never);
+        if (err) reply({ t: "error", msg: err });
+        return;
+      }
+      case "noti":
+        return notiOp(player, m.op, m.id);
       case "econ": {
         const err = econOp(player, m);
         if (err) reply({ t: "error", msg: err });
@@ -315,7 +333,7 @@ function loop() {
     for (const p of online.values()) if (p.room) send(p, { t: "channels", list: lists[p.room.kind] });
   }
   if (tickCount % 600 === 0) for (const p of online.values()) save(p);
-  if (tickCount % 1200 === 1) sweep(now); // 1분마다: 유저 상점 만료 반환 · 30일 지난 우편 정리
+  if (tickCount % 1200 === 1) { sweep(now); sweepQuests(now); } // 1분마다: 유저 상점 만료 반환 · 30일 지난 우편 정리
   next += TICK_MS;
   setTimeout(loop, Math.max(0, next - performance.now()));
 }

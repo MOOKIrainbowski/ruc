@@ -12,6 +12,7 @@ import {
   markClaimed, myListings, openListings, purgeMail, ruc, saveBroadcast, saveItems, saveShopRoll, shopRoll, transferItem, tx, wallet, type ListingRow,
 } from "./db.ts";
 import { give, newItem, refreshGear, sendInv } from "./items.ts";
+import { notify, quest } from "./quests.ts";
 import type { Player } from "./room.ts";
 
 /**
@@ -22,13 +23,13 @@ import type { Player } from "./room.ts";
 
 /** 플레이어에게 보여 줄 거절 이유 */
 export class UserError extends Error {}
-const fail = (msg: string): never => { throw new UserError(msg); };
+export const fail = (msg: string): never => { throw new UserError(msg); };
 
 const send = (p: Player, m: object) => p.ws.readyState === 1 && p.ws.send(JSON.stringify(m));
 /** 온라인 플레이어 찾기 (main.ts 가 채움) — 우편 도착 알림 · 서버 공지 */
 export const online = { byChar: (_id: number): Player | undefined => undefined, all: (): Player[] => [] };
 
-function atomic(p: Player, action: string, fn: () => void): string | null {
+export function atomic(p: Player, action: string, fn: () => void): string | null {
   try {
     tx(fn);
     return null;
@@ -43,24 +44,24 @@ function atomic(p: Player, action: string, fn: () => void): string | null {
 }
 
 /** RUC 변동 + 메모리 잔액. key 가 이미 쓰였으면 같은 요청이 또 온 것 → 전체 취소 */
-function pay(p: Player, delta: number, reason: string, ref: string | null, key: string) {
+export function pay(p: Player, delta: number, reason: string, ref: string | null, key: string) {
   const r = ruc(p.char.id, delta, reason, ref, key);
   if (r.dup) fail("이미 처리된 요청입니다");
   p.ruc = r.balance;
 }
 /** 요청 id → 멱등 키 (없으면 이번만 쓰는 키) */
-const keyOf = (p: Player, op: string, rid: unknown) =>
+export const keyOf = (p: Player, op: string, rid: unknown) =>
   `${op}:${p.char.id}:${typeof rid === "string" && /^[\w-]{8,64}$/.test(rid) ? rid : randomUUID()}`;
 
 export const sendWallet = (p: Player) => send(p, { t: "ruc", ruc: p.ruc });
 
 const validPos = (p: unknown): p is ItemPos =>
   Array.isArray(p) && typeof p[0] === "string" && Object.hasOwn(LOCS, p[0]) && Number.isInteger(p[1]) && p[1] >= 0 && p[1] < LOCS[p[0] as Loc];
-const at = (p: Player, pos: unknown): Item => (validPos(pos) && p.items.find((i) => i.loc === pos[0] && i.slot === pos[1])) || fail("아이템이 없습니다");
+export const at = (p: Player, pos: unknown): Item => (validPos(pos) && p.items.find((i) => i.loc === pos[0] && i.slot === pos[1])) || fail("아이템이 없습니다");
 const bag = (p: Player) => p.items.filter((i) => i.loc === "inventory" || i.loc === "hotbar");
 
 /** 인벤토리 · 핫바에서 조건에 맞는 아이템을 n 개 꺼냄 (묶음은 나눔). 꺼낸 것을 새 인스턴스로 돌려줌 (나눈 묶음은 새 UUID) */
-function take(p: Player, n: number, match: (i: Item) => boolean, action: string): Item[] {
+export function take(p: Player, n: number, match: (i: Item) => boolean, action: string): Item[] {
   const src = bag(p).filter(match).sort((a, b) => a.qty - b.qty);
   if (src.reduce((a, i) => a + i.qty, 0) < n) fail("재료가 모자랍니다");
   const before = src.map((i) => structuredClone(i));
@@ -247,7 +248,8 @@ export function marketView(p: Player) {
 
 /** 사기: 구매자가 고른 가격 옵션을 치름. 물건 → 구매자 우편, 대가(RUC − 수수료 5% · 아이템) → 판매자 우편 */
 export function marketBuy(p: Player, id: unknown, opt: unknown, rid: unknown): string | null {
-  return atomic(p, "buy", () => {
+  let sold: [number, string] | null = null;
+  const err = atomic(p, "buy", () => {
     const l = listing(Number(id));
     const now = Date.now();
     if (!l || l.status !== "open" || l.expires_at <= now) fail("이미 팔렸거나 내려간 물건입니다");
@@ -266,7 +268,10 @@ export function marketBuy(p: Player, id: unknown, opt: unknown, rid: unknown): s
       body: fee ? `거래 수수료 ${fee} RUC (5%)` : "", items: paid,
     }, p.char.id);
     audit(p.char.id, "market_buy", String(l!.id), null, { seller: l!.seller_id, price, fee });
+    sold = [l!.seller_id, item.name ?? ITEMS[item.tpl].name];
   });
+  if (!err && sold) notify(sold[0], "market_sold", `「${sold[1]}」이(가) 팔렸어요. 대금은 우편함에서 받으세요`);
+  return err;
 }
 
 function returnListing(l: ListingRow, status: "cancelled" | "expired") {
@@ -286,7 +291,10 @@ export function marketCancel(p: Player, id: unknown): string | null {
 /** 만료 · 오래된 우편 정리 (main 이 주기적으로) */
 export function sweep(now: number) {
   for (const l of expiredListings(now))
-    try { tx(() => returnListing(l, "expired")); } catch (e) { console.error("판매 만료 처리 실패", l.id, e); }
+    try {
+      tx(() => returnListing(l, "expired"));
+      notify(l.seller_id, "market_expired", "유저 상점에 올린 물건의 기한이 끝났어요. 우편함에서 돌려받으세요");
+    } catch (e) { console.error("판매 만료 처리 실패", l.id, e); }
   purgeMail(now, MAIL.perMail);
 }
 
@@ -328,7 +336,10 @@ export function enhance(p: Player, pos: unknown, blessed: unknown, protect: unkn
     audit(p.char.id, "enhance", it.id, { enh: before.enh, blessed: blessed === true, protect: protect === true }, { result, enh: it.enh });
     if (result === "ok" && it.enh === ENHANCE_MAX) broadcast(p, it);
   });
-  if (!err) send(p, { t: "econ", view: "enhanced", data: { result } });
+  if (!err) {
+    send(p, { t: "econ", view: "enhanced", data: { result } });
+    if (result === "ok") quest(p, "enhance");
+  }
   return err;
 }
 
@@ -336,7 +347,10 @@ export function enhance(p: Player, pos: unknown, blessed: unknown, protect: unkn
 function broadcast(p: Player, it: Item) {
   const text = fmt("{who}이/가 {item} 아이템 10강에 성공했습니다", { who: p.char.nickname, item: it.name ?? ITEMS[it.tpl].name });
   saveBroadcast("enhance10", text);
-  for (const o of online.all()) send(o, { t: "notice", text });
+  for (const o of online.all()) {
+    send(o, { t: "notice", text });
+    notify(o.char.id, "enhance_broadcast", text);
+  }
 }
 
 /** 마법부여 (§16-2): 부가석 하나 + RUC. 슬롯이 가득 차면 덮어쓸 칸을 고름 */
@@ -441,14 +455,15 @@ export function econOp(p: Player, m: EconMsg): string | null {
   let err: string | null = null;
   switch (op) {
     case "mail": break;
-    case "claim": err = claimMail(p, m.id); break;
+    case "claim": err = claimMail(p, m.id); if (!err) quest(p, "claim"); break;
     case "claimAll": {
       const [got, left] = claimAll(p);
+      if (got) quest(p, "claim");
       err = left ? `우편 ${got}통을 받았습니다. 아직 ${left}통이 남아 있습니다 — 인벤토리를 비우고 다시 받으세요` : null;
       break;
     }
     case "shop": break;
-    case "buy": err = shopBuy(p, m.cycle, m.id, m.n, m.rid); break;
+    case "buy": err = shopBuy(p, m.cycle, m.id, m.n, m.rid); if (!err) quest(p, "buy"); break;
     case "market": break;
     case "sell": err = marketSell(p, m.a, m.prices, m.rid); break;
     case "mbuy": err = marketBuy(p, m.id, m.opt, m.rid); break;

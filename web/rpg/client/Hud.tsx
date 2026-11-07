@@ -113,7 +113,7 @@ export function ChannelPicker({ room, channels, onPick }: { room: { kind: string
 }
 
 /** 우측 상단: FPS → 핑 → K/D/A → RUC → 알림 → 설정 (§23-2 순서) */
-export function TopRight({ fps, ping, you, onSettings }: { fps: number; ping: number; you: You; onSettings: () => void }) {
+export function TopRight({ fps, ping, you, bell, onSettings }: { fps: number; ping: number; you: You; bell: React.ReactNode; onSettings: () => void }) {
   const pingColor = ping < 60 ? "#4CC764" : ping < 120 ? "#F5C542" : "#E5484D";
   return (
     <div className="pointer-events-auto flex items-center gap-1.5">
@@ -121,7 +121,7 @@ export function TopRight({ fps, ping, you, onSettings }: { fps: number; ping: nu
       <span className="rpg-chip" style={{ color: pingColor }}>{ping}ms</span>
       <span className="rpg-chip">K/D/A {you.kda.join("/")}</span>
       <span className="rpg-chip text-[#F2C94C]" title="베타 지갑 — 마인크래프트 서버 RUC 와 별개입니다">{you.ruc.toLocaleString("ko-KR")} RUC</span>
-      <button className="rpg-chip" title="알림" aria-label="알림">🔔</button>
+      {bell}
       <button className="rpg-chip" onClick={onSettings} title="설정 (Esc)" aria-label="설정">⚙</button>
     </div>
   );

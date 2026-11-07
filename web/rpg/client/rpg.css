@@ -248,3 +248,18 @@
   animation: rpg-notice 6s ease forwards;
 }
 @keyframes rpg-notice { 0% { opacity: 0; transform: translateY(-12px); } 8%, 85% { opacity: 1; transform: none; } 100% { opacity: 0; } }
+
+/* 퀘스트 시작 · 완료 팝업 (§19-3) · 알림 토스트 (§22) */
+.rpg-questpop {
+  padding: 8px 22px;
+  color: #fff;
+  background: linear-gradient(#3a2a1e, #2a1d14);
+  border: 3px solid #F2C94C;
+  border-radius: 6px;
+  box-shadow: 0 4px 0 rgba(0, 0, 0, 0.35);
+  animation: rpg-questpop 4.5s ease forwards;
+  z-index: 40;
+}
+@keyframes rpg-questpop { 0% { opacity: 0; transform: translate(-50%, -14px); } 8%, 85% { opacity: 1; transform: translate(-50%, 0); } 100% { opacity: 0; } }
+.rpg-toast { animation: rpg-toast 4s ease forwards; }
+@keyframes rpg-toast { 0% { opacity: 0; transform: translateX(24px); } 8%, 88% { opacity: 1; transform: none; } 100% { opacity: 0; } }

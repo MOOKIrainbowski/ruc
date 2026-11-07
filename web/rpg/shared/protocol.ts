@@ -7,6 +7,7 @@ import type { ElementId } from "./data/elements.ts";
 import type { LineId } from "./data/jobs.ts";
 import type { Grade } from "./data/mobs.ts";
 import type { Slot } from "./data/skills.ts";
+import type { Noti, QState, QuestView } from "./data/quests.ts";
 import type { Progress } from "./progress.ts";
 import type { MoveInput, Mover } from "./movement.ts";
 
@@ -105,6 +106,15 @@ export type C2S =
     }
   /** 아이템 (§15): 옮기기(n = 나눌 개수) · 사용/장착 · 버리기 · 정렬 */
   | { t: "item"; op: "move" | "use" | "drop" | "sort"; a?: ItemPos; b?: ItemPos; n?: number; loc?: "inventory" | "storage" }
+  /**
+   * 퀘스트 (P6): 추적(track) · 게시판(board) · 유저 퀘스트 등록(create) · 수락(accept) · 포기(abandon) · 전달(deliver) · 내리기(cancel) · 신고(report)
+   */
+  | {
+      t: "quest"; op: "track" | "board" | "create" | "accept" | "abandon" | "deliver" | "cancel" | "report"; id?: string | number; on?: boolean;
+      title?: string; kind?: "kill" | "deliver"; target?: string; n?: number; ruc?: number; list?: ItemPos[]; slots?: number; days?: number; rid?: string;
+    }
+  /** 알림 읽음 처리 (id 없으면 모두 읽음은 readAll) */
+  | { t: "noti"; op: "read" | "readAll"; id?: number }
   /** 개발 모드 전용: 순간이동 · 아이템 받기 */
   | { t: "dev"; map?: RoomKind; x?: number; y?: number; give?: string; rarity?: Rarity; n?: number; lv?: number };
 
@@ -125,6 +135,14 @@ export type S2C =
   | { t: "notice"; text: string }
   | { t: "notify"; kind: "mail"; n: number }
   | { t: "econ"; view: "mail" | "shop" | "market" | "enhanced" | "recombined"; data: unknown }
+  /** 퀘스트 (P6): 진행 중 · 끝난 NPC 퀘스트 / 시작·완료 팝업 / 유저 퀘스트 게시판 */
+  | { t: "qs"; active: QState[]; done: string[] }
+  | { t: "qpop"; kind: "start" | "done"; title: string; text: string }
+  | { t: "quest"; view: "board"; data: Pick<QuestView, "board" | "mine" | "taken"> }
+  | { t: "uqp"; id: number; prog: number }
+  /** 알림 (§22): 새 알림 한 건(toast = 오른쪽 아래 토스트) / 접속 때 목록 */
+  | { t: "noti"; n: Noti; toast: boolean }
+  | { t: "notis"; list: Noti[] }
   /** 성장 상태 (전직 · 스킬 · 숙련도) 바뀜 */
   | { t: "prog"; prog: Progress; slots: Partial<Record<Slot, string>> }
   | { t: "pong"; c: number }

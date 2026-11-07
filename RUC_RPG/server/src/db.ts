@@ -116,6 +116,54 @@ CREATE TABLE IF NOT EXISTS rpg_broadcasts (
   text       TEXT NOT NULL,
   created_at INTEGER NOT NULL
 );
+-- 퀘스트 진행 (P6): state = active | done, prog = 목표별 진행 수(JSON 배열)
+CREATE TABLE IF NOT EXISTS rpg_quests (
+  char_id    INTEGER NOT NULL,
+  quest_id   TEXT NOT NULL,
+  state      TEXT NOT NULL,
+  prog       TEXT NOT NULL DEFAULT '[]',
+  tracked    INTEGER NOT NULL DEFAULT 1,
+  updated_at INTEGER NOT NULL,
+  PRIMARY KEY (char_id, quest_id)
+);
+-- 유저 퀘스트 (§19-3): 보상 RUC 는 등록 때 원장에서 빠져 이 줄이 들고 있음, 보상 아이템은 location 'escrow' slot = 1000000 + id * 8 + 순번
+CREATE TABLE IF NOT EXISTS rpg_user_quests (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  owner_id   INTEGER NOT NULL,
+  owner_name TEXT NOT NULL,
+  title      TEXT NOT NULL,
+  kind       TEXT NOT NULL,
+  target     TEXT NOT NULL,
+  n          INTEGER NOT NULL,
+  reward_ruc INTEGER NOT NULL DEFAULT 0,
+  item_ids   TEXT NOT NULL DEFAULT '[]',
+  slots      INTEGER NOT NULL,
+  taken      INTEGER NOT NULL DEFAULT 0,
+  paid       INTEGER NOT NULL DEFAULT 0,
+  status     TEXT NOT NULL DEFAULT 'open',
+  created_at INTEGER NOT NULL,
+  expires_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS rpg_uq_open ON rpg_user_quests (status, expires_at);
+CREATE TABLE IF NOT EXISTS rpg_user_quest_takes (
+  quest_id   INTEGER NOT NULL,
+  char_id    INTEGER NOT NULL,
+  prog       INTEGER NOT NULL DEFAULT 0,
+  state      TEXT NOT NULL DEFAULT 'active',
+  created_at INTEGER NOT NULL,
+  PRIMARY KEY (quest_id, char_id)
+);
+-- 알림 (§22): 영구 저장
+CREATE TABLE IF NOT EXISTS rpg_notifications (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  char_id    INTEGER NOT NULL,
+  kind       TEXT NOT NULL,
+  text       TEXT NOT NULL,
+  data       TEXT,
+  read       INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS rpg_noti_char ON rpg_notifications (char_id, id);
 -- 감사 로그 (§26-2): 아이템 · RUC · 강화 · 관리자 행위 전부
 CREATE TABLE IF NOT EXISTS rpg_audit_log (
   id         INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -364,3 +412,65 @@ const qBroadcast = db.prepare("INSERT INTO rpg_broadcasts (kind, text, created_a
 export const saveBroadcast = (kind: string, text: string) => qBroadcast.run(kind, text, Date.now());
 export const audit = (actor: number | null, action: string, target: string | null, before: unknown, after: unknown) =>
   qAudit.run(actor, action, target, JSON.stringify(before), JSON.stringify(after), Date.now());
+
+// ── 퀘스트 (P6) ──────────────────────────────────────────────────────
+export type QuestRow = { quest_id: string; state: "active" | "done"; prog: number[]; tracked: boolean };
+const qQuests = db.prepare("SELECT * FROM rpg_quests WHERE char_id = ?");
+const qQuestSave = db.prepare(`INSERT INTO rpg_quests (char_id, quest_id, state, prog, tracked, updated_at) VALUES (?, ?, ?, ?, ?, ?)
+  ON CONFLICT(char_id, quest_id) DO UPDATE SET state = excluded.state, prog = excluded.prog, tracked = excluded.tracked, updated_at = excluded.updated_at`);
+export const loadQuests = (id: number): QuestRow[] =>
+  (qQuests.all(id) as { quest_id: string; state: "active" | "done"; prog: string; tracked: number }[]).map((r) => ({ quest_id: r.quest_id, state: r.state, prog: JSON.parse(r.prog), tracked: !!r.tracked }));
+export const saveQuest = (id: number, q: QuestRow) => qQuestSave.run(id, q.quest_id, q.state, JSON.stringify(q.prog), q.tracked ? 1 : 0, Date.now());
+
+export type UQRow = {
+  id: number; owner_id: number; owner_name: string; title: string; kind: "kill" | "deliver"; target: string; n: number; reward_ruc: number;
+  item_ids: string; slots: number; taken: number; paid: number; status: "open" | "closed"; created_at: number; expires_at: number;
+};
+const qUqNew = db.prepare("INSERT INTO rpg_user_quests (owner_id, owner_name, title, kind, target, n, reward_ruc, item_ids, slots, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+const qUqOne = db.prepare("SELECT * FROM rpg_user_quests WHERE id = ?");
+const qUqOpen = db.prepare("SELECT * FROM rpg_user_quests WHERE status = 'open' AND expires_at > ? ORDER BY id DESC LIMIT 200");
+const qUqOwn = db.prepare("SELECT * FROM rpg_user_quests WHERE owner_id = ? AND (status = 'open' OR created_at > ?) ORDER BY id DESC");
+const qUqExpired = db.prepare("SELECT * FROM rpg_user_quests WHERE status = 'open' AND expires_at <= ?");
+const qUqClose = db.prepare("UPDATE rpg_user_quests SET status = 'closed' WHERE id = ? AND status = 'open'");
+const qUqTake = db.prepare("UPDATE rpg_user_quests SET taken = taken + 1 WHERE id = ? AND status = 'open' AND expires_at > ? AND taken < slots");
+const qUqPaid = db.prepare("UPDATE rpg_user_quests SET paid = paid + 1 WHERE id = ?");
+const qUqActiveN = db.prepare("SELECT COUNT(*) AS n FROM rpg_user_quests WHERE owner_id = ? AND status = 'open'");
+export const insertUserQuest = (q: { owner: number; name: string; title: string; kind: string; target: string; n: number; ruc: number; itemIds: string[]; slots: number; expires: number }) =>
+  Number(qUqNew.run(q.owner, q.name, q.title, q.kind, q.target, q.n, q.ruc, JSON.stringify(q.itemIds), q.slots, Date.now(), q.expires).lastInsertRowid);
+export const userQuest = (id: number) => qUqOne.get(id) as UQRow | undefined;
+export const openUserQuests = (now: number) => qUqOpen.all(now) as UQRow[];
+export const ownUserQuests = (owner: number, since: number) => qUqOwn.all(owner, since) as UQRow[];
+export const expiredUserQuests = (now: number) => qUqExpired.all(now) as UQRow[];
+export const closeUserQuest = (id: number) => qUqClose.run(id).changes === 1;
+export const takeSlot = (id: number, now: number) => qUqTake.run(id, now).changes === 1;
+export const markPaid = (id: number) => qUqPaid.run(id);
+export const activeUserQuestCount = (owner: number) => (qUqActiveN.get(owner) as { n: number }).n;
+
+export type TakeRow = { quest_id: number; char_id: number; prog: number; state: "active" | "done" | "dropped" };
+const qTakeNew = db.prepare("INSERT INTO rpg_user_quest_takes (quest_id, char_id, created_at) VALUES (?, ?, ?)");
+const qTakesOf = db.prepare("SELECT * FROM rpg_user_quest_takes WHERE char_id = ? AND state = 'active'");
+const qTakesFor = db.prepare("SELECT * FROM rpg_user_quest_takes WHERE quest_id = ? AND state = 'active'");
+const qTakeProg = db.prepare("UPDATE rpg_user_quest_takes SET prog = ? WHERE quest_id = ? AND char_id = ? AND state = 'active'");
+const qTakeState = db.prepare("UPDATE rpg_user_quest_takes SET state = ? WHERE quest_id = ? AND char_id = ? AND state = 'active'");
+const qTakeAny = db.prepare("SELECT 1 AS x FROM rpg_user_quest_takes WHERE quest_id = ? AND char_id = ?");
+export const insertTake = (quest: number, char: number) => qTakeNew.run(quest, char, Date.now());
+export const activeTakes = (char: number) => qTakesOf.all(char) as TakeRow[];
+export const takesFor = (quest: number) => qTakesFor.all(quest) as TakeRow[];
+export const saveTakeProg = (quest: number, char: number, prog: number) => qTakeProg.run(prog, quest, char);
+export const setTakeState = (quest: number, char: number, state: "done" | "dropped") => qTakeState.run(state, quest, char).changes === 1;
+export const hasTaken = (quest: number, char: number) => !!qTakeAny.get(quest, char);
+
+// ── 알림 (P6, §22) ───────────────────────────────────────────────────
+export type NotiRow = { id: number; char_id: number; kind: string; text: string; data: string | null; read: number; created_at: number };
+const qNotiNew = db.prepare("INSERT INTO rpg_notifications (char_id, kind, text, data, created_at) VALUES (?, ?, ?, ?, ?)");
+const qNotiList = db.prepare("SELECT * FROM rpg_notifications WHERE char_id = ? ORDER BY id DESC LIMIT 50");
+const qNotiRead = db.prepare("UPDATE rpg_notifications SET read = 1 WHERE char_id = ? AND (? = 0 OR id = ?)");
+const qNotiPrune = db.prepare("DELETE FROM rpg_notifications WHERE char_id = ? AND id NOT IN (SELECT id FROM rpg_notifications WHERE char_id = ? ORDER BY id DESC LIMIT 200)");
+export const insertNoti = (char: number, kind: string, text: string, data?: unknown) => {
+  const id = Number(qNotiNew.run(char, kind, text, data === undefined ? null : JSON.stringify(data), Date.now()).lastInsertRowid);
+  qNotiPrune.run(char, char);
+  return id;
+};
+export const listNotis = (char: number) => qNotiList.all(char) as NotiRow[];
+export const readNotis = (char: number, id = 0) => qNotiRead.run(char, id, id);
+

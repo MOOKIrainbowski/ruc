@@ -25,20 +25,10 @@ import { Px } from "./art/px";
 import { TILE_COLOR, VARIANTS, objectFrames, tileAtlas } from "./art/world";
 import { Fx, elColor } from "./fx";
 import type { Net } from "./net";
+import { NPC_LOOK, NPC_PLACE, type Place } from "./npcs";
 import type { Settings } from "./settings";
 
 TextureSource.defaultOptions.scaleMode = "nearest";
-
-/** NPC 외형 (§19-1) */
-const NPC_LOOK: Record<string, { ap: Appearance; outfit: Outfit }> = {
-  lumi: { ap: { hair: 5, hairColor: 6, skin: 0, eyes: 1 }, outfit: { shirt: ["#fff4b0", "#f2d27a", "#c9a24a"], pants: ["#a3d95f", "#6fb840", "#4b902f"], shoe: "#6d513b" } },
-  volt: { ap: { hair: 1, hairColor: 3, skin: 2, eyes: 2 }, outfit: { shirt: ["#8a8f99", "#6f7680", "#4f555e"], pants: ["#6d513b", "#523b2a", "#3a2a1e"], shoe: "#2f2620" } },
-  mir: { ap: { hair: 2, hairColor: 4, skin: 1, eyes: 3 }, outfit: { shirt: ["#c8a0f0", "#9B5DE5", "#6b3fa0"], pants: ["#6b3fa0", "#4e2d78", "#36204f"], shoe: "#36204f" } },
-  sera: { ap: { hair: 3, hairColor: 1, skin: 1, eyes: 0 }, outfit: { shirt: ["#ff9a9e", "#E5484D", "#a8323a"], pants: ["#ddd3c3", "#bdb2a1", "#9e917c"], shoe: "#4a3428" } },
-  owen: { ap: { hair: 0, hairColor: 7, skin: 0, eyes: 0 }, outfit: { shirt: ["#7fb0ff", "#3b6fd6", "#2a4f9e"], pants: ["#ddd3c3", "#bdb2a1", "#9e917c"], shoe: "#4a3428" } },
-  pip: { ap: { hair: 4, hairColor: 2, skin: 0, eyes: 1 }, outfit: { shirt: ["#7fd0ff", "#3BA7FF", "#2a78b8"], pants: ["#94735a", "#6d513b", "#523b2a"], shoe: "#4a3428" } },
-  dario: { ap: { hair: 0, hairColor: 0, skin: 2, eyes: 2 }, outfit: { shirt: ["#d9b07a", "#b08a5a", "#806240"], pants: ["#6d513b", "#523b2a", "#3a2a1e"], shoe: "#2f2620" } },
-};
 
 /** 네임 플레이트 높이 (발밑에서 머리 위까지 px) */
 const PLATE_H: Record<string, number> = { slime: 21, rabbit: 27, goblin: 29, wolf: 23 };
@@ -207,6 +197,7 @@ export class Game {
   /** 성장 상태가 바뀜 (React 스킬창 · HUD) · 시설 · NPC 와 상호작용 (F) → 열 창 */
   onProg: () => void = () => {};
   onPlace: (place: Place) => void = () => {};
+  onTalk: (npc: string) => void = () => {};
   /** 차지 스킬을 모으는 중 (§10-2) */
   charging: { slot: Slot; at: number } | null = null;
   items: Item[] = [];
@@ -359,6 +350,10 @@ export class Game {
         this.entityLayer.addChild(s);
         this.animated.push({ s, frames: sheetFrames(look.ap, look.outfit)[0].slice(0, FRAMES) });
         this.label(`${o.name}\n${prop(o, "role")}`, o.x, o.y - 56, "#FFE14D");
+        const mark = this.label("!", o.x, o.y - 82, "#FFD84D");
+        mark.style.fontSize = 22;
+        mark.visible = false;
+        this.marks.set(String(prop(o, "npc")), mark);
         continue;
       }
       const frames = objectFrames(o).map((c) => Texture.from(c));
@@ -389,6 +384,13 @@ export class Game {
     t.anchor.set(0.5, 1);
     this.screenLayer.addChild(t);
     this.labels.push({ t, x, y });
+    return t;
+  }
+
+  /** 머리 위 ! 표시 (§19-1): 지금 퀘스트가 말을 걸라고 하는 NPC */
+  private marks = new Map<string, Text>();
+  setNpcMarks(npcs: string[]) {
+    for (const [id, t] of this.marks) t.visible = npcs.includes(id);
   }
 
   // ── 엔티티 ───────────────────────────────────────────────────────
@@ -724,6 +726,11 @@ export class Game {
     if (digit) this.sel = Number(digit[1]) - 1;
     else if (code === k.dodge) this.queued.dodge = true;
     else if (code === k.interact) {
+      if (this.near?.type === "npc") {
+        this.net.send({ t: "use", oid: this.near.id }); // 서버: "말 걸기" 퀘스트 목표
+        this.onTalk(String(prop(this.near, "npc")));
+        return;
+      }
       const place = this.placeOf(this.near);
       if (place) this.onPlace(place);
       else if (this.near) this.net.send({ t: "use", oid: this.near.id });
@@ -1132,6 +1139,5 @@ function glowCanvas() {
 }
 
 /** F 로 여는 창 (P4 성장 · P5 경제) */
-export type Place = "job" | "skills" | "mail" | "shop" | "market" | "forge" | "alchemy";
-const PLACE: Record<string, Place> = { mailbox: "mail", tent_shop: "shop", tent_market: "market", anvil: "forge", workbench: "alchemy" };
-const NPC_PLACE: Record<string, Place> = { sera: "job", owen: "skills", pip: "mail", volt: "forge", mir: "alchemy" };
+export type { Place } from "./npcs";
+const PLACE: Record<string, Place> = { mailbox: "mail", tent_shop: "shop", tent_market: "market", anvil: "forge", workbench: "alchemy", board: "board" };

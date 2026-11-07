@@ -5,6 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { FullStats } from "../shared/combat";
 import type { RoomKind } from "../shared/constants";
 import type { Item } from "../shared/data/items";
+import { QUESTS, NOTI_KINDS, type Noti } from "../shared/data/quests";
 import { loadMap, type GameMap, type TiledMap } from "../shared/map";
 import type { ChannelInfo, S2C, You } from "../shared/protocol";
 import { CombatHud, DeathOverlay } from "./CombatHud";
@@ -16,13 +17,14 @@ import { ChannelPicker, Compass, Minimap, TopRight, WorldMap } from "./Hud";
 import { t, type StrKey } from "./i18n";
 import { ItemsWindow } from "./Inventory";
 import { Net } from "./net";
+import { Bell, Dialogue, Journal, QuestPop, Toasts, Tracker, type BoardData, type QStates } from "./Quests";
 import SettingsModal from "./SettingsModal";
 import { loadLocal, mergeSettings, saveLocal, type Settings } from "./settings";
 
 type Phase = "loading" | "create" | "play" | "closed";
-type Popup = "settings" | "map" | "inventory" | "storage" | Place;
+type Popup = "settings" | "map" | "inventory" | "storage" | "journal" | "dialogue" | Place;
 /** 열려 있으면 게임 입력을 막는 팝업 */
-const BLOCKING: Popup[] = ["settings", "inventory", "storage", "skills", "job", "mail", "shop", "market", "forge", "alchemy"];
+const BLOCKING: Popup[] = ["settings", "inventory", "storage", "skills", "job", "mail", "shop", "market", "forge", "alchemy", "journal", "dialogue"];
 /** 창이 열릴 때 서버에서 받아 올 목록 */
 const FETCH: Partial<Record<Place, string>> = { mail: "mail", shop: "shop", market: "market" };
 
@@ -54,6 +56,15 @@ export default function RpgGame({ dev }: { dev?: string }) {
   const [econ, setEcon] = useState<EconData>({});
   const [notice, setNotice] = useState<{ text: string; at: number } | null>(null);
   const toastTimer = useRef(0);
+  // 퀘스트 · 알림 (P6)
+  const [qs, setQs] = useState<QStates>({ active: [], done: [] });
+  const [board, setBoard] = useState<BoardData | null>(null);
+  const [notis, setNotis] = useState<Noti[]>([]);
+  const [toasts, setToasts] = useState<{ key: number; text: string }[]>([]);
+  const [qpop, setQpop] = useState<{ kind: "start" | "done"; title: string; text: string; at: number } | null>(null);
+  const [npc, setNpc] = useState("");
+  const [journalTab, setJournalTab] = useState<"active" | "done" | "board">("active");
+  const marks = useRef<string[]>([]);
   const [popups, setPopups] = useState<Popup[]>([]);
   const toast = useCallback((text: string) => {
     setMsg(text);
@@ -81,6 +92,25 @@ export default function RpgGame({ dev }: { dev?: string }) {
           setYou((y) => y && { ...y, ruc: m.ruc });
           return;
         case "notice": setNotice({ text: m.text, at: Date.now() }); return;
+        case "qs":
+          setQs({ active: m.active, done: m.done });
+          // 머리 위 ! : 지금 퀘스트가 말을 걸라고 하는 NPC
+          marks.current = m.active.flatMap((a) => QUESTS[a.id]?.obj.flatMap((o, i) => (o.type === "talk" && (a.prog[i] ?? 0) < o.n && o.target ? [o.target] : [])) ?? []);
+          game.current?.setNpcMarks(marks.current);
+          return;
+        case "qpop": setQpop({ kind: m.kind, title: m.title, text: m.text, at: Date.now() }); return;
+        case "quest": setBoard(m.data); return;
+        case "uqp": setBoard((b) => b && { ...b, taken: b.taken.map((r) => (r.id === m.id ? { ...r, prog: m.prog } : r)) }); return;
+        case "notis": setNotis(m.list.filter((x) => NOTI_KINDS.includes(x.kind))); return;
+        case "noti": {
+          setNotis((l) => [m.n, ...l].slice(0, 50));
+          if (m.toast) {
+            const key = m.n.id;
+            setToasts((l) => [...l, { key, text: m.n.text }].slice(-4));
+            setTimeout(() => setToasts((l) => l.filter((x) => x.key !== key)), 4000);
+          }
+          return;
+        }
         case "notify": if (m.n) toast(t("ec.mailWaiting", { n: m.n })); return;
         case "econ":
           setEcon((e) => ({ ...e, [m.view]: m.view === "enhanced" || m.view === "recombined" ? { ...(m.data as object), at: Date.now() } : m.data }));
@@ -112,10 +142,20 @@ export default function RpgGame({ dev }: { dev?: string }) {
           g.onItems = setItems;
           g.onProg = () => setYou({ ...g.you });
           g.onPlace = (place) => {
+            if (place === "board") {
+              setJournalTab("board");
+              setPopups((s) => [...s.filter((x) => x === "settings" || x === "map"), "journal"]);
+              n.send({ t: "quest", op: "board" });
+              return;
+            }
             // 시설 창은 하나만 (인벤토리 · 창고와도 겹치지 않게)
             setPopups((s) => [...s.filter((x) => x === "settings" || x === "map"), place]);
             const op = FETCH[place];
             if (op) n.send({ t: "econ", op });
+          };
+          g.onTalk = (id) => {
+            setNpc(id);
+            setPopups((s) => [...s.filter((x) => x === "settings" || x === "map"), "dialogue"]);
           };
           try {
             await g.start(host.current, m.ents, m.fx, m.drops);
@@ -126,6 +166,8 @@ export default function RpgGame({ dev }: { dev?: string }) {
           }
           if (!alive) return g.destroy();
           game.current = g;
+          g.setNpcMarks(marks.current);
+          n.send({ t: "quest", op: "board" });
           if (process.env.NODE_ENV === "development") (window as unknown as { __rpg: Game }).__rpg = g; // 디버그 · E2E 용
           setPhase("play");
           return;
@@ -188,6 +230,11 @@ export default function RpgGame({ dev }: { dev?: string }) {
       else if (e.code === settings.keys.map) toggle("map");
       else if (e.code === settings.keys.inventory) toggle("inventory");
       else if (e.code === settings.keys.skills) toggle("skills");
+      else if (e.code === settings.keys.journal) {
+        setJournalTab("active");
+        toggle("journal");
+        if (!popups.includes("journal")) net.current?.send({ t: "quest", op: "board" });
+      }
       else if (e.code === settings.keys.storage) {
         if (room.kind === "plaza" || popups.includes("storage")) toggle("storage");
         else toast(t("inv.storageOnly"));
@@ -195,7 +242,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
     };
     window.addEventListener("keydown", down);
     return () => window.removeEventListener("keydown", down);
-  }, [phase, capturing, settings.keys.map, settings.keys.inventory, settings.keys.storage, settings.keys.skills, popups, toggle, room.kind, toast]);
+  }, [phase, capturing, settings.keys.map, settings.keys.inventory, settings.keys.storage, settings.keys.skills, settings.keys.journal, popups, toggle, room.kind, toast]);
 
   const top = popups[popups.length - 1];
   const send = useCallback((m: Parameters<Net["send"]>[0]) => net.current?.send(m), []);
@@ -234,7 +281,11 @@ export default function RpgGame({ dev }: { dev?: string }) {
             <ChannelPicker room={room} channels={channels} onPick={(ch) => net.current?.send({ t: "channel", ch })} />
           </div>
           <div className="absolute right-3 top-3" style={{ zoom: settings.hudScale / 100 }}>
-            <TopRight fps={hud.fps} ping={ping} you={you} onSettings={() => toggle("settings")} />
+            <TopRight
+              fps={hud.fps} ping={ping} you={you} onSettings={() => toggle("settings")}
+              bell={<Bell notis={notis} send={send} onRead={(id) => setNotis((l) => l.map((x) => (id === "all" || x.id === id ? { ...x, read: true } : x)))} />}
+            />
+            <div className="mt-2 flex justify-end"><Tracker states={qs} /></div>
           </div>
           <div style={{ zoom: settings.hudScale / 100 }} className="absolute inset-0">
             <CombatHud hud={hud} stats={stats} you={you} settings={settings} items={items} onSelect={(i) => { if (game.current) game.current.sel = i; }} />
@@ -272,6 +323,23 @@ export default function RpgGame({ dev }: { dev?: string }) {
           {top === "alchemy" && <AlchemyWindow items={items} last={econ.recombined} send={send} onClose={() => toggle("alchemy")} />}
         </div>
       )}
+      {phase === "play" && you && top === "dialogue" && (
+        <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
+          <Dialogue
+            npc={npc}
+            states={qs}
+            onClose={() => toggle("dialogue")}
+            onPlace={(place) => { setPopups((s) => s.filter((x) => x !== "dialogue")); game.current?.onPlace(place); }}
+          />
+        </div>
+      )}
+      {phase === "play" && you && top === "journal" && (
+        <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
+          <Journal tab={journalTab} states={qs} board={board} items={items} you={you} send={send} onClose={() => toggle("journal")} />
+        </div>
+      )}
+      {phase === "play" && toasts.length > 0 && <div style={{ zoom: settings.uiScale / 100 }}><Toasts list={toasts} /></div>}
+      {phase === "play" && qpop && Date.now() - qpop.at < 4500 && <QuestPop pop={qpop} />}
       {notice && Date.now() - notice.at < 6500 && (
         <div key={notice.at} className="rpg-notice pointer-events-none absolute left-1/2 top-16 -translate-x-1/2 whitespace-nowrap text-[13px]">{notice.text}</div>
       )}
