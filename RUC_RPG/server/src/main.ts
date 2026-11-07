@@ -328,4 +328,4 @@ function shutdown() {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
-http.listen(PORT, () => console.log(`RPG 게임 서버 ws://localhost:${PORT}${DEV ? " (개발 모드)" : ""}`));
+http.listen(PORT, process.env.RPG_BIND || undefined, () => console.log(`RPG 게임 서버 ws://localhost:${PORT}${DEV ? " (개발 모드)" : ""}`));
