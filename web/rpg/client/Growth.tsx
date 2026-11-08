@@ -161,7 +161,7 @@ export function JobDialog({ you, send, onClose }: { you: You; send: (m: C2S) => 
           <>
             <p className="mt-2">{tier === 1 ? t("job.lead1") : t("job.lead2", { line: LINES[prog.line!].name })}</p>
             <p className="mt-1 font-bold">{t("job.notYet", { lv: you.level, need })}</p>
-            {tier === 2 && <ul className="mt-2 space-y-1">{jobs.map(([id, j]) => <li key={id}><b>{j.star ? "★ " : ""}{j.name}</b> — {j.concept} · <i>{j.passive.name}</i></li>)}</ul>}
+            {tier === 2 && <ul className="mt-2 space-y-1">{jobs.map(([id, j]) => <li key={id}><b>{j.name}</b> — {j.concept} · <i>{j.passive.name}</i></li>)}</ul>}
           </>
         ) : (
           <>
@@ -171,8 +171,8 @@ export function JobDialog({ you, send, onClose }: { you: You; send: (m: C2S) => 
             ) : (
               <div className="mt-2 grid grid-cols-2 gap-2">
                 {jobs.map(([id, j]) => (
-                  <button key={id} disabled={!j.star} className="rpg-panel !rounded-lg p-2 text-left !shadow-none disabled:opacity-50" style={{ outline: valid === id ? `3px solid ${LINES[j.line].color}` : undefined }} onClick={() => setPick(id)}>
-                    <b>{j.star ? "★ " : ""}{j.name}</b> {!j.star && <span className="text-[10px] text-[#8c6642]">({t("job.soon")})</span>}
+                  <button key={id} className="rpg-panel !rounded-lg p-2 text-left !shadow-none" style={{ outline: valid === id ? `3px solid ${LINES[j.line].color}` : undefined }} onClick={() => setPick(id)}>
+                    <b>{j.name}</b> {j.kind && <span className="text-[10px] text-[#8c6642]">({t(j.kind === "magic" ? "job.magic" : "job.hybrid")})</span>}
                     <p className="text-[11px]">{j.concept}</p>
                     <p className="mt-0.5 text-[10px] text-[#8c6642]">{t("sk.passive")} · <b>{j.passive.name}</b>: {j.passive.desc}</p>
                   </button>

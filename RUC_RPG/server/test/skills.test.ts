@@ -11,6 +11,7 @@ const { SKILLS } = await import("../../../web/rpg/shared/data/skills.ts");
 const { loadMap } = await import("../../../web/rpg/shared/map.ts");
 const { needMastery } = await import("../../../web/rpg/shared/progress.ts");
 const { addEffect, find, has, hit, recalc, setRandom } = await import("../src/combat.ts");
+const { H_CRIT } = await import("../../../web/rpg/shared/protocol.ts");
 // 몹을 맵에 놓는 위치는 항상 진짜 난수로 (고정 난수 0.99 에서는 한 구역의 몹이 전부 같은 점에 겹쳐 나와, 거기에 장식 오브젝트가 있으면 못 나옴)
 let fixed: () => number = Math.random;
 const setFixed = (f: () => number) => { fixed = f; setRandom(f); };
@@ -86,7 +87,7 @@ function setup(level: number, line?: string, job?: string, el = "fire", sub?: st
   return { room, p, sent, tick, use, dummy, now: () => now };
 }
 
-test("전직: 계열 배율 · 잠재력 · 스킬 자동 습득 · 슬롯 · 레벨 조건 · ★ 만", () => {
+test("전직: 계열 배율 · 잠재력 · 스킬 자동 습득 · 슬롯 · 레벨 조건", () => {
   const { p } = setup(9);
   assert.match(changeJob(p, { line: "tank" })!, /Lv10/);
   p.char.level = 10;
@@ -101,7 +102,6 @@ test("전직: 계열 배율 · 잠재력 · 스킬 자동 습득 · 슬롯 · �
   p.char.level = 30;
   syncSkills(p);
   assert.ok(p.prog.skills.some((l) => l.id === "taunt_shout") && p.prog.skills.some((l) => l.id === "counter_stance"), "Lv15 · Lv20 계열 스킬");
-  assert.match(changeJob(p, { job: "berserker" })!, /준비 중/);
   assert.match(changeJob(p, { job: "ninja" })!, /계열/);
   assert.equal(changeJob(p, { job: "guardian" }), null);
   assert.equal(p.job, "guardian");
@@ -372,4 +372,111 @@ test("메커니즘: 반격 태세 · 은신 · 부활 · 성역의 방패 · 차
   assert.ok(!dead.dead && dead.respawnAt === 0 && dead.hp > dead.st.hp * 0.3);
   assert.ok(pr.room.ev.length >= 0 && find(dead, "stun") === undefined);
   setFixed(Math.random);
+});
+
+test("P9 세부 직업 24개: 전직 · 전용 스킬 슬롯 · 잠재력 옮기기(마법형 · 혼합형) · 주문력 평타", () => {
+  for (const [id, j] of Object.entries(JOBS)) {
+    const { p } = setup(30, j.line, id, "fire", id === "elementalist" ? "water" : undefined);
+    const kit = Object.values(SKILLS).filter((s) => s.job.includes(id));
+    for (const sk of kit) assert.equal(p.slots[sk.slot], sk.id, `${id}: ${sk.slot} 슬롯에 바로`);
+    if (j.kind) assert.ok(p.prog.pot[1] > 10 + (j.kind === "magic" ? 29 : 14), `${id} 잠재력 → 마법 ${p.prog.pot}`);
+  }
+  // 나이트워커 평타(단검 · 맨손)는 주문력으로: 주문력만 올리면 평타 피해도 오름
+  const { p, room, dummy } = setup(30, "assassin", "nightwalker");
+  assert.ok(p.base.ap > p.base.atk);
+  const d = dummy(20);
+  setFixed(() => 0.99);
+  const spec = { base: 0, atkRatio: 1, apRatio: 0, cat: "physical" as const, el: null, threat: 1, basic: true };
+  p.st.atk = 1;
+  const before = d.hp;
+  hit(room, p, d, spec);
+  assert.ok(before - d.hp <= 3, "물리 평타 스펙 그대로면 공격력 1 → 거의 0");
+  setFixed(Math.random);
+});
+
+test("P9 패시브: 광전사 · 대지수호자 · 나이트워커 · 투척수 2회 충전 · 주술사 · 엔지니어 · 환영자객 · 소환수", () => {
+  // 광전사 「피의 광기」: 잃은 HP 10%마다 1중첩
+  const b = setup(30, "tank", "berserker");
+  b.p.hp = b.p.st.hp * 0.45;
+  b.tick(1);
+  assert.equal(find(b.p, "blood_rage")?.stacks, 5);
+  const ls = b.p.st.lifesteal;
+  b.p.hp = b.p.st.hp;
+  b.tick(1);
+  assert.ok(!has(b.p, "blood_rage") && b.p.st.lifesteal < ls);
+
+  // 대지수호자 「대지의 뿌리」: 멈춰 있으면 방어 +20% · 넉백 면역
+  const e = setup(30, "tank", "earthwarden");
+  e.tick(2);
+  assert.ok(has(e.p, "earth_root"));
+  const x0 = e.p.x;
+  e.room.push(e.p, 30, 0);
+  assert.equal(e.p.x, x0);
+  for (let i = 0; i < 3; i++) e.p.inputs.push({ seq: 9000 + i, mx: 1, my: 0, run: false }); // 틱 내내 걸음
+  e.room.tick(e.now() + TICK_MS);
+  assert.ok(!has(e.p, "earth_root"), "움직이면 풀림");
+
+  // 나이트워커 「밤의 장막」: 은신을 깨는 첫 공격은 치명타
+  const n = setup(30, "assassin", "nightwalker");
+  const d = n.dummy(20);
+  setFixed(() => 0.99);
+  addEffect(n.room, n.p, { id: "stealth", ms: 3000 }, n.p);
+  n.room.ev = [];
+  hit(n.room, n.p, d, { base: 10, atkRatio: 0, apRatio: 1, cat: "magical", el: null, threat: 1 });
+  assert.equal(n.room.ev.find((v) => v[0] === "h")?.[4], H_CRIT);
+  n.room.ev = [];
+  hit(n.room, n.p, d, { base: 10, atkRatio: 0, apRatio: 1, cat: "magical", el: null, threat: 1 });
+  assert.equal(n.room.ev.find((v) => v[0] === "h")?.[4], 0, "은신이 없으면 보통 확률");
+  setFixed(Math.random);
+
+  // 투척수 「손재주」: 투척 스킬 2회 충전
+  const t = setup(30, "ranged", "thrower");
+  const td = t.dummy(60);
+  const cf = () => t.sent.join("").includes("재사용 대기");
+  t.use("dagger_fan", td.x, td.y);
+  t.use("dagger_fan", td.x, td.y);
+  assert.ok(!cf(), "두 번은 바로");
+  t.use("dagger_fan", td.x, td.y);
+  t.tick(2);
+  assert.ok(cf(), "세 번째는 대기");
+
+  // 주술사 「조상의 가호」: 디버프를 지우면 1.5초 보호막
+  const sh = setup(30, "support", "shaman");
+  addEffect(sh.room, sh.p, { id: "slow", ms: 5000, v: 0.3 });
+  sh.use("cleansing_wave", sh.p.x, sh.p.y);
+  assert.ok(!has(sh.p, "slow") && has(sh.p, "shield"));
+
+  // 엔지니어 「정비」: 설치물 지속 +30% · 포탑이 적을 쏨
+  const en = setup(30, "support", "engineer");
+  const ed = en.dummy(80);
+  en.use("deploy_turret", ed.x, ed.y);
+  assert.equal(en.room.pets.length, 1);
+  assert.equal(en.room.pets[0].until - en.now(), 15_000 * 1.3);
+  const hp0 = ed.hp;
+  en.tick(40);
+  assert.ok(ed.hp < hp0, "포탑 사격");
+  assert.ok(en.sent.some((m) => m.includes('"pet"')), "소환수 엔티티 정보");
+
+  // 소환사: 정령 최대 2마리 · 따라다님 · 시간이 지나면 사라짐
+  const su = setup(30, "mage", "summoner");
+  su.use("summon_spirit", su.p.x, su.p.y);
+  su.tick(Math.ceil(6000 / TICK_MS) + 1);
+  su.use("summon_spirit", su.p.x, su.p.y);
+  su.tick(Math.ceil(6000 / TICK_MS) + 1);
+  su.use("summon_spirit", su.p.x, su.p.y);
+  assert.equal(su.room.pets.length, 2, "최대 2 — 오래된 것부터 사라짐");
+  for (let i = 0; i < 30; i++) su.p.inputs.push({ seq: 9000 + i, mx: 1, my: 0, run: false });
+  su.tick(14);
+  for (const q of su.room.pets) assert.ok(Math.hypot(q.x - su.p.x, q.y - su.p.y) < 40, "주인을 따라감");
+  su.tick(Math.ceil(16_000 / TICK_MS));
+  assert.equal(su.room.pets.length, 0);
+
+  // 환영자객 「잔상」: 구르면 분신 + 몹이 2초 동안 놓침
+  const ph = setup(30, "assassin", "phantom");
+  const pd = ph.dummy(40);
+  pd.wait = 0;
+  pd.threat.set(ph.p.id, 100);
+  ph.tick(1, { dg: 1, mx: -1 });
+  assert.ok(ph.room.pets.some((q) => q.key === "decoy"));
+  assert.ok((ph.p.icd.get("decoy") ?? 0) > ph.now());
 });

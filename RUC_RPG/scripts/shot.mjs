@@ -24,9 +24,16 @@ const ws = new WebSocket(page.webSocketDebuggerUrl);
 await new Promise((r) => ws.on("open", r));
 let id = 0;
 const pending = new Map();
-ws.on("message", (m) => { const d = JSON.parse(m); if (d.id && pending.has(d.id)) { pending.get(d.id)(d); pending.delete(d.id); } });
+ws.on("message", (m) => {
+  const d = JSON.parse(m);
+  if (d.id && pending.has(d.id)) { pending.get(d.id)(d); pending.delete(d.id); }
+  // 페이지 오류 · console.error 는 그대로 출력
+  if (d.method === "Runtime.exceptionThrown") console.log("page error:", d.params.exceptionDetails?.exception?.description ?? d.params.exceptionDetails?.text);
+  if (d.method === "Runtime.consoleAPICalled" && d.params.type === "error") console.log("console.error:", d.params.args.map((a) => a.value ?? a.description).join(" "));
+});
 const call = (method, params = {}) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
 await call("Page.enable");
+await call("Runtime.enable");
 await call("Emulation.setDeviceMetricsOverride", { width: 1536, height: 800, deviceScaleFactor: 1, mobile: false });
 await call("Page.navigate", { url });
 await sleep(Number(waitMs));

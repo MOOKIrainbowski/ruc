@@ -262,15 +262,67 @@ function wolf(f: number): Px {
   return p;
 }
 
+// ── P9 소환수 · 설치물 (data/pets.ts) ──
+function spirit(f: number): Px {
+  const p = new Px(32, 32);
+  const b = Math.round(Math.sin((f / 8) * Math.PI * 2) * 2);
+  for (let i = 0; i < 3; i++) p.set(16 + Math.round(Math.sin(f * 0.8 + i * 2) * 2), 23 + b + i, i ? "#7fd3ff" : "#c8f0ff"); // 꼬리
+  p.ellipse(16, 17 + b, 6, 6, "#7fd3ff");
+  p.ellipse(16, 16 + b, 4, 4, "#c8f0ff");
+  p.ellipse(15, 15 + b, 1, 1, "#ffffff");
+  p.set(14, 17 + b, "#1b4a6b");
+  p.set(18, 17 + b, "#1b4a6b");
+  p.outline("#2a6a9a");
+  return p;
+}
+
+function turret(f: number): Px {
+  const p = new Px(32, 32);
+  p.part(9, 23, 14, 5, ["#9aa3ad", "#6b7480", "#474e57"]); // 받침
+  p.rect(14, 19, 4, 4, "#474e57");
+  p.part(10, 12, 12, 8, ["#c9d1d9", "#8a949e", "#5b636c"]); // 몸통
+  p.part(21 - (f % 4 === 0 ? 1 : 0), 14, 7, 3, ["#e2e8ee", "#9aa3ad", "#5b636c"]); // 포신 (쏠 때 뒤로)
+  p.set(13, 14, f % 2 ? "#ff5a36" : "#ffd27a"); // 표시등
+  p.outline();
+  return p;
+}
+
+function mendStation(f: number): Px {
+  const p = new Px(32, 32);
+  const g = Math.round(Math.sin((f / 8) * Math.PI * 2) * 1.5);
+  p.rect(15, 12 + g, 2, 6, "#9be564"); // 안테나
+  p.ellipse(16, 11 + g, 2, 2, "#d6f59a");
+  p.part(9, 18, 14, 10, ["#e8eef2", "#b8c2cc", "#7f8a95"]);
+  p.rect(15, 20, 2, 6, "#4cc764"); // 십자
+  p.rect(13, 22, 6, 2, "#4cc764");
+  p.outline();
+  return p;
+}
+
+function totem(f: number): Px {
+  const p = new Px(32, 32);
+  p.part(12, 8, 8, 20, ["#c98d58", "#a36a3c", "#7d4f2b"]);
+  p.rect(13, 11, 2, 2, "#ffe14d"); // 눈
+  p.rect(17, 11, 2, 2, "#ffe14d");
+  p.rect(14, 15, 4, 1, "#3a2a1e"); // 입
+  p.rect(11, 19, 10, 2, "#5bcb4a"); // 띠
+  const c = f % 4 < 2 ? "#7fd3ff" : "#c8f0ff"; // 머리 위 정령 빛
+  p.set(16, 4, c);
+  p.set(15, 5, c);
+  p.set(17, 5, c);
+  p.outline();
+  return p;
+}
+
 const PAINT: Record<string, (f: number) => Px> = {
-  slime: (f) => slime(f), rabbit, goblin, wolf,
+  slime: (f) => slime(f), rabbit, goblin, wolf, pet_wolf: wolf, pet_spirit: spirit, turret, mend_station: mendStation, totem,
   sprout_slime: sproutSlime, shroom_shaman: shroomShaman, moss_golem: mossGolem, shadow_vine: shadowVine, tree_knight: treeKnight, twin_witch: twinWitch,
   purify_orb: purifyOrb, fern, eldra,
 };
 
 /** 네임 플레이트 높이 (발밑에서 머리 위 px) — 보스는 64px 그림 */
 export const MOB_PLATE: Record<string, number> = {
-  slime: 21, rabbit: 27, goblin: 29, wolf: 23, sprout_slime: 25, shroom_shaman: 27, moss_golem: 31, shadow_vine: 26, tree_knight: 33, twin_witch: 30, purify_orb: 24, fern: 60, eldra: 64,
+  slime: 21, rabbit: 27, goblin: 29, wolf: 23, pet_wolf: 23, pet_spirit: 24, turret: 22, mend_station: 22, totem: 27, sprout_slime: 25, shroom_shaman: 27, moss_golem: 31, shadow_vine: 26, tree_knight: 33, twin_witch: 30, purify_orb: 24, fern: 60, eldra: 64,
 };
 
 /** [오른쪽 4프레임, 왼쪽 4프레임] */

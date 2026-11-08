@@ -143,6 +143,7 @@ export function addEffect(w: World, tgt: Unit, f: FxSpec, src?: Unit): boolean {
       w.ev.push(["h", src?.id ?? 0, tgt.id, 0, H_RESIST, ""]);
       return false;
     }
+    if (src?.job === "illusionist" && MENTAL.has(f.id)) ms *= 1.2; // 환술사 「몽환」
     if (cc && f.id !== "airborne") ms *= 1 - tgt.st.tenacity;
     if (def.cat === "hardCC" && tgt.kind === "p") {
       if (w.now < tgt.ccImmune) return false;
@@ -179,8 +180,13 @@ export function addEffect(w: World, tgt: Unit, f: FxSpec, src?: Unit): boolean {
     addEffect(w, tgt, { id: "freeze", ms: 1500 }, src);
   }
   recalc(tgt);
+  // 성기사 「신성한 방벽」: 보호막을 받으면 보호막량의 10%만큼 주변(6칸) 아군 회복
+  if (f.id === "shield" && tgt.job === "paladin" && v > 0) for (const a of w.around(tgt.x, tgt.y, 96, "p")) if (!foe(w, tgt, a)) applyHeal(w, tgt, a, v * 0.1, true);
   return true;
 }
+
+/** 정신계 디버프 (환술사 「몽환」 지속 +20%) */
+const MENTAL = new Set(["charm", "confuse", "fear", "sleep"]);
 
 export function removeEffect(w: World, u: Unit, id: string) {
   const i = u.fx.findIndex((e) => e.id === id);
@@ -242,6 +248,11 @@ function loseHp(w: World, src: Unit | undefined, tgt: Unit, dmg: number) {
 
 export function die(w: World, u: Unit, by: Unit | undefined) {
   if (u.dead) return;
+  // 흑마법사 「영혼 수확」: 디버프가 걸린 적을 처치하면 HP · 마나 5% 회복
+  if (by?.job === "warlock" && by !== u && u.fx.some((e) => !effectDef(e.id)?.buff)) {
+    applyHeal(w, by, by, by.st.hp * 0.05, true);
+    by.mp = Math.min(by.st.mana, by.mp + by.st.mana * 0.05);
+  }
   u.dead = true;
   u.hp = 0;
   u.fx = [];
@@ -255,7 +266,7 @@ export function die(w: World, u: Unit, by: Unit | undefined) {
  * 타격 한 번. cast = 스킬 시전(숙련도), crit = 치명타 확률 +, execute = 대상 HP 이 비율 이하면 ×2,
  * mul = 차지 배율, ranged = 플레이어 물리 투사체 (이동 중 사격 −20%, 궁수 바람 읽기 제외)
  */
-export type HitSpec = Hit & { threat: number; proc?: boolean; fx?: FxSpec[]; basic?: boolean; cast?: unknown; crit?: number; execute?: number; mul?: number; ranged?: boolean };
+export type HitSpec = Hit & { threat: number; proc?: boolean; fx?: FxSpec[]; basic?: boolean; cast?: unknown; crit?: number; execute?: number; mul?: number; ranged?: boolean; reach?: number };
 
 /** 피해 한 번 (§13-1). 반환: 실제로 깎은 양 (보호막 포함) */
 export function hit(w: World, src: Unit, tgt: Unit, h: HitSpec): number {
@@ -268,8 +279,9 @@ export function hit(w: World, src: Unit, tgt: Unit, h: HitSpec): number {
     w.ev.push(["h", src.id, tgt.id, 0, H_MISS, ""]);
     return 0;
   }
-  if (src !== tgt && has(src, "stealth")) removeEffect(w, src, "stealth"); // 공격하면 은신이 풀림 (§11-1)
-  const crit = rand() < src.st.crit + (h.crit ?? 0);
+  const ambush = src !== tgt && has(src, "stealth");
+  if (ambush) removeEffect(w, src, "stealth"); // 공격하면 은신이 풀림 (§11-1)
+  const crit = (ambush && src.job === "nightwalker") || rand() < src.st.crit + (h.crit ?? 0); // 나이트워커 「밤의 장막」
   const proc = h.proc && h.el ? ELEMENT_PROC[h.el] : undefined;
   let dmg = computeDamage(src.st, tgt.st, { ...h, power: (h.power ?? 0) + (proc?.power ?? 0) }, tgt.el, crit);
   if (h.cat !== "magical" && has(tgt, "freeze")) {
@@ -277,7 +289,7 @@ export function hit(w: World, src: Unit, tgt: Unit, h: HitSpec): number {
     removeEffect(w, tgt, "freeze");
   }
   if (h.el === "electric" && has(tgt, "wet")) dmg = Math.round(dmg * 1.3);
-  dmg = Math.max(1, Math.round(dmg * (h.mul ?? 1) * passiveMul(src, tgt, h)));
+  dmg = Math.max(1, Math.round(dmg * (h.mul ?? 1) * passiveMul(w, src, tgt, h)));
   // 반격 태세: 근접 공격을 막고 그대로 되돌려 주며 1초 기절
   if (h.melee && has(tgt, "counter") && src !== tgt) {
     w.ev.push(["h", src.id, tgt.id, 0, H_COUNTER, ""]);
@@ -295,7 +307,18 @@ export function hit(w: World, src: Unit, tgt: Unit, h: HitSpec): number {
   const vamp = h.cat === "magical" ? src.st.spellVamp : src.st.lifesteal;
   if (vamp > 0) applyHeal(w, src, src, dmg * vamp, false);
   w.struck(src, tgt, dmg, h);
+  if (src.job === "arcanist" && h.skill) src.mp = Math.min(src.st.mana, src.mp + src.st.mana * 0.02); // 비전술사 「비전 순환」
   if (tgt.dead) return dmg;
+  if (h.basic) {
+    // 마검사 「마검 공명」: 평타에 주 속성 추가 피해 (주문력 30%)
+    if (src.job === "spellblade") hit(w, src, tgt, { base: 0, atkRatio: 0, apRatio: 0.3, cat: "magical", el: src.el, threat: 1 });
+    // 권사 「연환」: 평타 4타째에 짧은 에어본
+    if (src.job === "monk") {
+      const c = (src.chiv ??= { tgt: 0, n: 0 });
+      if (++c.n >= 4) { c.n = 0; addEffect(w, tgt, { id: "airborne", ms: 400 }, src); }
+    }
+    if (tgt.dead) return dmg;
+  }
 
   // 스킬 효과 · 속성 부가 효과 (§12-1)
   for (const f of [...(h.fx ?? []), ...(proc?.fx ?? [])]) {
@@ -349,17 +372,37 @@ export function regen(w: World, u: Unit, dt: number) {
 export const fxRows = (w: World, u: Unit): FxRow[] =>
   u.fx.map((e) => (e.dur >= FOREVER_MS ? [e.id, 0, e.stacks, 0, e.v] : [e.id, Math.max(0, Math.round(e.until - w.now)), e.stacks, Math.round(e.dur), Math.round(e.v * 100) / 100]));
 
-// ── 직업 패시브 (§9-3 ★) ──────────────────────────────────────────
+// ── 직업 패시브 (§9-3) ──────────────────────────────────────────
 
-/** 피해 배율: 기사도(같은 대상 3연타 뒤 +30%) · 이동 중 물리 사격 −20% (궁수 바람 읽기는 제외) */
-function passiveMul(src: Unit, tgt: Unit, h: HitSpec): number {
+/** 피해 배율: 처형 · 이동 중 물리 사격 −20%(궁수 제외) · 직업 패시브 */
+function passiveMul(w: World, src: Unit, tgt: Unit, h: HitSpec): number {
   let m = h.execute && tgt.hp <= tgt.st.hp * h.execute ? 2 : 1;
   if (h.ranged && src.mover?.moving && src.job !== "archer") m *= 0.8;
-  if (src.job === "battle_knight") {
-    const c = src.chiv;
-    if (c && c.tgt === tgt.id) {
-      if (c.n >= 3) { m *= 1.3; c.n = 0; } else c.n++;
-    } else src.chiv = { tgt: tgt.id, n: 1 };
+  switch (src.job) {
+    case "battle_knight": { // 기사도: 같은 대상 3연타 뒤 +30%
+      const c = src.chiv;
+      if (c && c.tgt === tgt.id) {
+        if (c.n >= 3) { m *= 1.3; c.n = 0; } else c.n++;
+      } else src.chiv = { tgt: tgt.id, n: 1 };
+      break;
+    }
+    case "gladiator": // 투기장의 함성: 근처(10칸) 적이 1명뿐이면 +15%
+      if ([...w.around(src.x, src.y, 160, "m"), ...w.around(src.x, src.y, 160, "p")].filter((u) => foe(w, src, u)).length <= 1) m *= 1.15;
+      break;
+    case "lancer": // 간격 지배: 사거리 70% 바깥에서 맞히면 +20%
+      if (h.reach && Math.hypot(tgt.x - src.x, tgt.y - src.y) - tgt.r >= h.reach * 0.7) m *= 1.2;
+      break;
+    case "cleric": // 성광: 어둠 속성 적 +25%
+      if (tgt.el === "dark") m *= 1.25;
+      break;
+    case "hunter": // 사냥감 표식: 표식 대상 +10%
+      if (has(tgt, "mark")) m *= 1.1;
+      break;
+    case "sniper": { // 집중: 쌓인 만큼 +10%씩, 맞히면 사라짐
+      const e = find(src, "aim_focus");
+      if (e) { m *= 1 + 0.1 * e.stacks; removeEffect(w, src, "aim_focus"); }
+      break;
+    }
   }
   return m;
 }

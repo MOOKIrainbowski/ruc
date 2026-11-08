@@ -88,7 +88,7 @@ function topThreat(room: Room, m: Mob): Unit | undefined {
   for (const [id, v] of m.threat) {
     const p = room.players.get(id);
     if (!p || p.dead) { m.threat.delete(id); continue; }
-    if (has(p, "stealth")) continue; // 은신한 상대는 놓침 (위협 수치는 남음)
+    if (has(p, "stealth") || room.now < (p.icd.get("decoy") ?? 0)) continue; // 은신 · 잔상(환영자객)은 놓침 (위협 수치는 남음)
     if (v > bv) { bv = v; best = p; }
   }
   return best;
@@ -123,7 +123,7 @@ export function mobTick(room: Room, m: Mob, dt: number) {
     let bd = m.def.aggro;
     for (const p of room.players.values()) {
       const d = dist(m, p);
-      if (!p.dead && !has(p, "stealth") && d < bd) { bd = d; tgt = p; }
+      if (!p.dead && !has(p, "stealth") && room.now >= (p.icd.get("decoy") ?? 0) && d < bd) { bd = d; tgt = p; }
     }
     if (tgt) m.threat.set(tgt.id, 1);
   }

@@ -206,11 +206,13 @@ export function use(p: Player, a: unknown): string | null {
   it.qty--;
   const err = commit(p, "use", "", before, [it]);
   if (err) return err;
-  p.potionAt = now + POTION_CD_MS;
+  const alc = p.job === "alchemist"; // 연금술사 「촉매」: 포션 효과 +30% · 쿨 −20%
+  p.potionAt = now + POTION_CD_MS * (alc ? 0.8 : 1);
   if (p.potionLeft !== null) p.potionLeft--;
-  if (t.heal.hp && p.room) applyHeal(p.room, p, p, t.heal.hp, false);
-  if (t.heal.mp) p.mp = Math.min(p.st.mana, p.mp + t.heal.mp);
-  if (t.heal.en) p.en = Math.min(p.st.energy, p.en + t.heal.en);
+  const k = alc ? 1.3 : 1;
+  if (t.heal.hp && p.room) applyHeal(p.room, p, p, t.heal.hp * k, false);
+  if (t.heal.mp) p.mp = Math.min(p.st.mana, p.mp + t.heal.mp * k);
+  if (t.heal.en) p.en = Math.min(p.st.energy, p.en + t.heal.en * k);
   return null;
 }
 

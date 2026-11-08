@@ -106,6 +106,8 @@ export type HudState = {
   dbg: { cpu: number; dt: number; ents: number; drawn: number; rtt: number; tick: number; kbps: number } | null;
   /** P7: 핑(미니맵) · 핑 휠(화면 좌표 · 고른 칸) · 던전 관전 · 부활할 곳 · 보스 HP 천분율(−1 = 없음) · 결투 시작까지 ms */
   marks: { x: number; y: number; k: PingKind }[];
+  /** 정찰자 파티원이 본 몹 (5초) */
+  spots: { x: number; y: number; until: number }[];
   wheel: { sx: number; sy: number; sel: number } | null;
   ghost: boolean;
   deadKind: string;
@@ -242,6 +244,7 @@ export class Game {
   bossId = 0;
   wheel: { sx: number; sy: number; wx: number; wy: number } | null = null;
   pings: { c: Container; x: number; y: number; k: PingKind; until: number }[] = [];
+  spots: { x: number; y: number; until: number }[] = [];
   /** 화면 가운데 큰 글씨 (보스 페이즈 · 던전 안내 · 결투) */
   onBanner: (text: string, ms: number) => void = () => {};
   /** 채팅 창에 시스템 줄 (파티 드롭 분배 — §21-2 "파티 채팅에 결과 표시") */
@@ -590,15 +593,15 @@ export class Game {
     shadow.anchor.set(0.5);
     shadow.zIndex = -1e6;
     const plate = new Container();
-    const color = mob ? GRADES[info.grade ?? "normal"].color : isMe ? "#ffffff" : "#8fdcff";
-    const label = new Text({ text: mob ? `Lv${info.lv} ${info.name}` : info.name, style: { ...LABEL_STYLE, fill: color } });
+    const color = info.pet ? "#B8F5C8" : mob ? GRADES[info.grade ?? "normal"].color : isMe ? "#ffffff" : "#8fdcff";
+    const label = new Text({ text: mob && !info.pet ? `Lv${info.lv} ${info.name}` : info.name, style: { ...LABEL_STYLE, fill: color } });
     label.anchor.set(0.5, 1);
     label.y = -6;
     const bars = new Graphics();
     const icons = new Container();
     plate.addChild(bars, label, icons);
     let title: Text | null = null;
-    if ((mob && info.grade && info.grade !== "normal") || !mob) {
+    if (!info.pet && ((mob && info.grade && info.grade !== "normal") || !mob)) {
       title = new Text({ text: mob ? GRADES[info.grade!].name : this.titleText(info), style: { ...LABEL_STYLE, fontSize: 10, fill: mob ? color : "#FFE14D" } });
       title.anchor.set(0.5, 1);
       title.y = -19;
@@ -633,7 +636,7 @@ export class Game {
 
   /** 적대 플레이어: 결투장(같은 파티 제외) · 결투 상대 (서버 Room.hostile 과 같게) */
   isFoe(e: Ent) {
-    if (e.mob || e === this.meSprite) return false;
+    if (e.mob || e === this.meSprite || e.info.pet) return false;
     if (this.kind === "arena") return !this.partyIds.has(e.info.id);
     return this.duelFoes.has(e.info.id) && performance.now() >= this.duelAt;
   }
@@ -641,7 +644,7 @@ export class Game {
   /** 파티원 · 적 이름 색 다시 칠함 */
   private paintNames() {
     for (const e of this.ents.values()) {
-      if (e.mob) continue;
+      if (e.mob || e.info.pet) continue;
       e.label.style.fill = this.isFoe(e) ? NAME_COLOR.foe : this.partyIds.has(e.info.id) ? NAME_COLOR.party : NAME_COLOR.other;
     }
   }
@@ -690,7 +693,7 @@ export class Game {
     if (info.id === this.you.id || this.ents.has(info.id)) return;
     const e = this.makeEnt(info);
     e.sprite.visible = e.shadow.visible = e.plate.visible = false; // 첫 스냅샷 전까지 숨김
-    if (!e.mob) e.label.style.fill = this.isFoe(e) ? NAME_COLOR.foe : this.partyIds.has(info.id) ? NAME_COLOR.party : NAME_COLOR.other;
+    if (!e.mob && !info.pet) e.label.style.fill = this.isFoe(e) ? NAME_COLOR.foe : this.partyIds.has(info.id) ? NAME_COLOR.party : NAME_COLOR.other;
     this.ents.set(info.id, e);
   }
 
@@ -995,6 +998,13 @@ export class Game {
         sfx("death");
         return;
       }
+      case "sp": {
+        // 정찰자 「매의 눈」: 파티원이 본 몹 → 미니맵 5초
+        const v = ev[1] as number[];
+        const until = performance.now() + 5000;
+        for (let i = 0; i + 1 < v.length; i += 2) this.spots.push({ x: v[i], y: v[i + 1], until });
+        return;
+      }
       case "pl": {
         // 파티 드롭 분배 결과 (§21-2)
         const [, tpl, rarity, who] = ev as [string, string, Rarity, string];
@@ -1095,7 +1105,7 @@ export class Game {
     let best: Ent | undefined;
     let bd = 24;
     for (const e of this.ents.values()) {
-      if ((!e.mob && !this.isFoe(e)) || e.deadMs > 0 || !e.sprite.visible) continue;
+      if (e.info.pet || (!e.mob && !this.isFoe(e)) || e.deadMs > 0 || !e.sprite.visible) continue;
       const d = Math.sqrt((e.x - ax) ** 2 + (e.y - ay) ** 2);
       if (d <= bd + 10 && Math.sqrt((e.x - this.me.x) ** 2 + (e.y - this.me.y) ** 2) <= range + 18) { bd = d; best = e; }
     }
@@ -1104,7 +1114,7 @@ export class Game {
 
   /** 커서 근처 아군 (없으면 나) — 아군 돌진 예측 */
   private allyNear(ax: number, ay: number): { x: number; y: number } {
-    for (const e of this.ents.values()) if (!e.mob && e.sprite.visible && Math.sqrt((e.x - ax) ** 2 + (e.y - ay) ** 2) <= 30) return e;
+    for (const e of this.ents.values()) if (!e.mob && !e.info.pet && e.sprite.visible && Math.sqrt((e.x - ax) ** 2 + (e.y - ay) ** 2) <= 30) return e;
     return this.me;
   }
 
@@ -1342,6 +1352,7 @@ export class Game {
     for (const e of [me, ...this.ents.values()]) {
       e.plate.position.set(...toScreen(e.x, e.y - (e.mob ? (PLATE_H[e.info.mob!] ?? 24) : PLAYER_PLATE_H)));
       if (e !== me && !e.mob) e.plate.visible = e.sprite.visible && (np === "all" || (np === "party" && this.partyIds.has(e.info.id)));
+      if (e.mob && e.info.pet) e.plate.visible = false; // 소환수 · 설치물은 이름표 없이 (여럿이면 겹침)
       this.drawBars(e);
     }
 
@@ -1370,6 +1381,7 @@ export class Game {
   }
 
   private drawBars(e: Ent) {
+    if (e.info.pet) return; // 소환수는 HP 가 없음
     const key = `${Math.round(e.hp / 20)}:${Math.round(e.res / 20)}`;
     if (key === e.drawn) return;
     e.drawn = key;
@@ -1429,7 +1441,7 @@ export class Game {
     e.sprite.rotation = dead ? -Math.PI / 2 : rolling ? (Math.floor(e.animMs / 75) % 4) * (Math.PI / 2) * (e.dir >= 5 ? -1 : 1) : 0;
     e.sprite.anchor.set(0.5, rolling ? 0.6 : dead ? 0.75 : CHAR_FEET / CHAR_H);
     e.sprite.position.set(e.x, e.y - (rolling ? 9 : dead ? 3 : 0));
-    e.sprite.alpha = dead ? 0.75 : e.fx.some((r) => r[0] === "stealth") ? 0.4 : 1;
+    e.sprite.alpha = dead ? 0.75 : e.info.pet ? 0.5 : e.fx.some((r) => r[0] === "stealth") ? 0.4 : 1;
     e.sprite.tint = e.flash > 0 ? 0xff9090 : dead ? 0xb0a8c0 : 0xffffff;
     e.sprite.zIndex = e.y;
     e.shadow.position.set(e.x, e.y - 1);
@@ -1455,7 +1467,7 @@ export class Game {
       stamina: this.me.stamina,
       staminaMax: this.me.staminaMax,
       exhausted: this.me.exhausted,
-      others: [...this.ents.values()].filter((e) => e.sprite.visible && !(e.flags & F_DEAD)).map((e) => ({ x: e.x, y: e.y, mob: e.mob, party: this.partyIds.has(e.info.id), foe: this.isFoe(e) })),
+      others: [...this.ents.values()].filter((e) => e.sprite.visible && !e.info.pet && !(e.flags & F_DEAD)).map((e) => ({ x: e.x, y: e.y, mob: e.mob, party: this.partyIds.has(e.info.id), foe: this.isFoe(e) })),
       v: [this.v[0], this.v[1], mp, this.v[3], en, this.v[5], this.v[6]],
       cds,
       fx: this.myFx.map((r) => [r[0], Math.max(0, r[1] - age), r[2], r[3], r[4]] as FxRow).filter((r) => r[1] > 0 || r[3] === 0),
@@ -1465,6 +1477,7 @@ export class Game {
       potion: this.v[12] ?? 0,
       charge: this.charging ? Math.min(1, (now - this.charging.at) / (this.skill(this.charging.slot)?.charge?.ms ?? 1000)) : -1,
       marks: this.pings.map((p) => ({ x: p.x, y: p.y, k: p.k })),
+      spots: (this.spots = this.spots.filter((s) => s.until > now)),
       wheel: this.wheel ? { sx: this.wheel.sx, sy: this.wheel.sy, sel: this.wheelSel(this.wheel) } : null,
       ghost: this.ghost,
       deadKind: this.deadKind,

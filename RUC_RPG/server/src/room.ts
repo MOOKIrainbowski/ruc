@@ -27,6 +27,7 @@ import { PARTY, partyExp, partyWeights, pickWeighted, splitWeighted } from "../.
 import { makeUnit } from "./combat.ts";
 import { refreshGear } from "./items.ts";
 import { cast, fire, type Cast, type Shot } from "./skills.ts";
+import { petTick, summon, type Pet } from "./pets.ts";
 
 let idSeq = 1;
 /** 플레이어 · 몹 · 투사체가 같이 쓰는 id */
@@ -103,7 +104,7 @@ export type Player = Unit & {
 /** 저장된 캐릭터로 플레이어를 만듦 (아이템 · 성장 · 장비 스탯 반영, HP 가득) — main · 테스트 공용 */
 export function buildPlayer(ws: WebSocket, discordId: string, char: CharacterRow, x: number, y: number): Player {
   const prog = loadProgress(char);
-  const s = jobStats(char.level, prog.line, prog.pot);
+  const s = jobStats(char.level, prog.line, prog.pot, prog.job);
   const u = makeUnit({ id: newId(), kind: "p", name: char.nickname, el: char.element as ElementId, lv: char.level, x, y, r: 7, base: s, mover: newMover(x, y, s) });
   const p: Player = Object.assign(u, {
     kind: "p" as const, mover: u.mover!, ws, discordId, char, inputs: [], credits: 0, lastSeq: -1, steps: 0, rtt: 0,
@@ -179,6 +180,8 @@ export class Room implements World {
   zones: Zone[] = [];
   drops = new Map<number, Drop>();
   walls: Wall[] = [];
+  /** 소환수 · 설치물 (P9) */
+  pets: Pet[] = [];
   ev: Ev[] = [];
   /** 던전 인스턴스 (없으면 일반 채널) · 예약 실행 (보스 패턴의 경고 → 발동) */
   inst: Inst | null = null;
@@ -389,6 +392,7 @@ export class Room implements World {
   }
 
   push(u: Unit, dx: number, dy: number) {
+    if (has(u, "earth_root")) return; // 대지수호자: 정지 중 넉백 면역
     const m = u.mover ?? u;
     slide(m, this.map.collider, dx, dy);
     u.x = m.x;
@@ -457,9 +461,9 @@ export class Room implements World {
   }
 
   /** 투사체 발사. lag = 지연 보상 되감기(ms), pierce = 꿰뚫는 수, bounce = 다른 적에게 튕기는 수 */
-  shoot(owner: Unit, kind: string, el: string | null, dx: number, dy: number, speed: number, range: number, r: number, spec: HitSpec, seq: number, lag: number, pierce = 0, bounce = 0) {
+  shoot(owner: Unit, kind: string, el: string | null, dx: number, dy: number, speed: number, range: number, r: number, spec: HitSpec, seq: number, lag: number, pierce = 0, bounce = 0, from: { x: number; y: number } = owner) {
     const len = Math.sqrt(dx * dx + dy * dy) || 1;
-    const p: Proj = { id: newId(), owner, team: owner.kind, x: owner.x, y: owner.y, vx: (dx / len) * speed, vy: (dy / len) * speed, left: range, r, spec, lag, pierce, bounce, hits: new Set() };
+    const p: Proj = { id: newId(), owner, team: owner.kind, x: from.x, y: from.y, vx: (dx / len) * speed, vy: (dy / len) * speed, left: range, r, spec, lag, pierce, bounce, hits: new Set() };
     this.projs.push(p);
     this.ev.push(["p", p.id, owner.id, kind, el ?? "", Math.round(p.x), Math.round(p.y), Math.round(p.vx * 100) / 100, Math.round(p.vy * 100) / 100, range, seq]);
   }
@@ -496,7 +500,11 @@ export class Room implements World {
       if (mv.dg) {
         const rolling = m.mv > 0;
         tryRoll(m, mv);
-        if (!rolling && m.mv > 0) quest(p, "roll");
+        if (!rolling && m.mv > 0) {
+          quest(p, "roll");
+          // 환영자객 「잔상」: 구르면 2초 동안 분신이 남고 몹이 나를 놓침
+          if (p.job === "phantom") { summon(this, p, { pet: "decoy", ms: 2000 }); p.icd.set("decoy", this.now + 2000); }
+        }
       }
       if (mv.cs && SKILLS[p.slots[mv.cs] ?? ""]?.charge) p.charge = { slot: mv.cs, from: p.steps };
       if (mv.k) {
@@ -588,17 +596,12 @@ export class Room implements World {
       m.hist.push([now, m.x, m.y]);
       if (m.hist.length > 6) m.hist.shift();
     }
+    if (this.pets.length) petTick(this, dt);
     for (const u of [...this.players.values(), ...this.mobs.values()]) {
       tickEffects(this, u);
       regen(this, u, dt);
     }
-    // 닌자 「그림자 걸음」: 3초 동안 전투하지 않으면 이속 +25%
-    for (const p of this.players.values()) {
-      if (p.job !== "ninja" || p.dead) continue;
-      const idle = now - p.combat >= 3000;
-      if (idle && !has(p, "shadow_step")) addEffect(this, p, { id: "shadow_step", ms: FOREVER_MS }, p);
-      else if (!idle && has(p, "shadow_step")) removeEffect(this, p, "shadow_step");
-    }
+    for (const p of this.players.values()) if (p.job && !p.dead) this.passive(p, now);
     for (const m of [...this.mobs.values()]) {
       if (m.dead && now >= m.removeAt) {
         this.mobs.delete(m.id);
@@ -620,6 +623,46 @@ export class Room implements World {
     this.snapshot(now);
   }
 
+  /** 틱마다 도는 직업 패시브 (§9-3) */
+  private passive(p: Player, now: number) {
+    const toggle = (id: string, on: boolean) => {
+      if (on && !has(p, id)) addEffect(this, p, { id, ms: FOREVER_MS }, p);
+      else if (!on && has(p, id)) removeEffect(this, p, id);
+    };
+    const every = (key: string, ms: number) => {
+      if (now < (p.icd.get(key) ?? 0)) return false;
+      p.icd.set(key, now + ms);
+      return true;
+    };
+    switch (p.job) {
+      case "ninja": // 그림자 걸음: 3초 동안 전투하지 않으면 이속 +25%
+        return toggle("shadow_step", now - p.combat >= 3000);
+      case "earthwarden": // 대지의 뿌리: 정지 중 방어 +20% · 넉백 면역
+        return toggle("earth_root", !p.mover.moving && p.mover.mv <= 0);
+      case "berserker": { // 피의 광기: 잃은 HP 10%마다 1중첩
+        const n = Math.min(10, Math.floor((1 - p.hp / p.st.hp) * 10));
+        toggle("blood_rage", n > 0);
+        const e = find(p, "blood_rage");
+        if (e && e.stacks !== n) { e.stacks = n; p.fxDirty = true; recalc(p); }
+        return;
+      }
+      case "sniper": { // 집중: 1.5초 정지할 때마다 +1중첩 (최대 5)
+        if (p.mover.moving) return void p.icd.set("still", now + 1500);
+        if (every("still", 1500)) addEffect(this, p, { id: "aim_focus", ms: FOREVER_MS }, p);
+        return;
+      }
+      case "bard": // 선율: 주변 10칸 아군 공속 · 이속 +5%
+        if (every("aura", 1000)) for (const a of this.around(p.x, p.y, 160, "p")) if (!this.hostile(p, a)) addEffect(this, a, { id: "melody", ms: 2500, v: 0.05 }, p);
+        return;
+      case "scout": { // 매의 눈: 주변 25칸에서 본 몹을 파티원 미니맵에 공유 (클라가 5초 표시)
+        if (!p.party || !every("spot", 1000)) return;
+        const seen = this.around(p.x, p.y, 400, "m").flatMap((m) => [Math.round(m.x), Math.round(m.y)]);
+        if (seen.length) for (const q of hooks.mates(p).list) if (q !== p) q.out.push(["sp", seen]);
+        return;
+      }
+    }
+  }
+
   /** 스냅샷 (§2-2 · §29, D71): 10Hz · 받는 사람마다 시야(AOI) 안 엔티티를 지난번 보낸 것과의 델타로 · 바이너리 프레임 */
   private snapN = 0;
   private snapshot(now: number) {
@@ -633,6 +676,7 @@ export class Room implements World {
     for (const u of this.mobs.values()) {
       rows.push([u.id, Math.round(u.x), Math.round(u.y), u.dir, (u.moving ? F_MOVING : 0) | (u.dead ? F_DEAD : 0) | (u.wind ? F_CAST : 0), Math.round((u.hp / u.st.hp) * 1000), 0]);
     }
+    for (const q of this.pets) rows.push([q.id, Math.round(q.x), Math.round(q.y), q.dir, q.moving ? F_MOVING : 0, 1000, 0]);
     for (const u of [...this.players.values(), ...this.mobs.values()]) {
       if (!u.fxDirty) continue;
       u.fxDirty = false;

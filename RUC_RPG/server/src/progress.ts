@@ -1,7 +1,7 @@
 import type { ElementId } from "../../../web/rpg/shared/data/elements.ts";
 import { ELEMENTS } from "../../../web/rpg/shared/data/elements.ts";
 import { basicOf } from "../../../web/rpg/shared/data/items.ts";
-import { JOBS, JOB_LV, JOB_POTENTIAL, LINES, jobStats, type LineId } from "../../../web/rpg/shared/data/jobs.ts";
+import { JOBS, JOB_LV, JOB_POTENTIAL, JOB_POT_SHIFT, LINES, jobStats, type LineId } from "../../../web/rpg/shared/data/jobs.ts";
 import { GRADES } from "../../../web/rpg/shared/data/mobs.ts";
 import { APPRENTICE_SLOTS, SKILLS, canLearn, type Slot } from "../../../web/rpg/shared/data/skills.ts";
 import { MASTERY_MOB, POT_GAIN, addMastery, autoLearn, potOf, slotsOf, startLevel, type Learned, type Progress, type SkillGrade } from "../../../web/rpg/shared/progress.ts";
@@ -25,7 +25,7 @@ export function loadProgress(c: CharacterRow): Progress {
 }
 
 /** 레벨 · 계열 · 잠재력 → 기본 스탯 */
-export const charBase = (p: Player) => jobStats(p.char.level, p.prog.line, p.prog.pot);
+export const charBase = (p: Player) => jobStats(p.char.level, p.prog.line, p.prog.pot, p.prog.job);
 
 const send = (p: Player, m: S2C) => p.ws.readyState === 1 && p.ws.send(JSON.stringify(m));
 export const learnedOf = (p: Player, id: string) => p.prog.skills.find((l) => l.id === id);
@@ -117,7 +117,7 @@ export function setLevel(p: Player, lv: number) {
   sendProg(p);
 }
 
-/** 전직 (§9-1). 1차 = 계열(Lv10), 2차 = 그 계열의 ★ 세부 직업(Lv30). 성공하면 null */
+/** 전직 (§9-1). 1차 = 계열(Lv10), 2차 = 그 계열의 세부 직업(Lv30). 마법형 · 혼합형은 잠재력 일부를 마법으로 (D80). 성공하면 null */
 export function changeJob(p: Player, m: { line?: unknown; job?: unknown; sub?: unknown }): string | null {
   const pr = p.prog;
   if (typeof m.line === "string") {
@@ -132,12 +132,16 @@ export function changeJob(p: Player, m: { line?: unknown; job?: unknown; sub?: u
     if (!pr.line || j.line !== pr.line) return "그 계열의 직업이 아닙니다";
     if (pr.job) return "이미 2차 전직을 했습니다";
     if (p.char.level < JOB_LV.tier2) return `2차 전직은 Lv${JOB_LV.tier2} 부터입니다`;
-    if (!j.star) return "아직 준비 중인 직업입니다 (베타)";
     if (m.job === "elementalist") {
       if (typeof m.sub !== "string" || !Object.hasOwn(ELEMENTS, m.sub) || m.sub === p.el || m.sub === "none") return "주 속성과 다른 보조 속성을 골라 주세요";
       pr.sub = m.sub as ElementId;
     }
     pr.job = m.job;
+    if (j.kind) {
+      const k = Math.min(JOB_POT_SHIFT[j.kind], pr.pot[0]);
+      pr.pot[0] -= k;
+      pr.pot[1] += k;
+    }
   } else return "잘못된 요청입니다";
   saveJob(p.char.id, pr.line, pr.job, pr.sub, pr.pot);
   // 전직으로 새로 배운 스킬은 자기 슬롯에 바로 끼움 (슬롯마다 하나, 바꾸려면 K)

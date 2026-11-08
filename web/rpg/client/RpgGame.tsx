@@ -372,7 +372,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
         <div className="pointer-events-none absolute inset-0" style={{ zoom: settings.interfaceScale / 100 }}>
           <div className="absolute left-3 top-3">
             <div className="pointer-events-auto">
-              <Minimap map={world.map} overview={world.overview} hud={hud} size={settings.minimapSize} onOpenFull={() => toggle("map")} />
+              <Minimap map={world.map} overview={world.overview} hud={hud} size={settings.minimapSize} wide={you.prog.job === "scout"} onOpenFull={() => toggle("map")} />
             </div>
             <div style={{ zoom: settings.hudScale / 100 }}>
               <Compass dir={hud.dir} />

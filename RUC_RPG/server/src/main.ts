@@ -19,6 +19,7 @@ import { mailCount } from "./db.ts";
 import { changeJob, equip, saveDirtySkills } from "./progress.ts";
 import { loadQuestState, notify, notiOp, questOp, quest, sendNotis, sendQuests, sweepQuests } from "./quests.ts";
 import { Channels, buildPlayer, info, send, type Player, type Room } from "./room.ts";
+import { petInfo } from "./pets.ts";
 import { RUINS } from "../../../web/rpg/shared/data/dungeons.ts";
 import { KDA } from "../../../web/rpg/shared/data/party.ts";
 import { loadKda } from "./db.ts";
@@ -95,6 +96,7 @@ function enterRoom(p: Player, room: Room) {
   p.potionLeft = room.inst ? RUINS.potionsPerStage : null;
   room.add(p);
   const others = [...room.players.values(), ...room.mobs.values()].filter((u) => u !== p && !u.dead);
+  const pets = room.pets.map(petInfo);
   p.statsSent = JSON.stringify(p.st);
   p.statsDirty = false;
   send(p, {
@@ -105,7 +107,7 @@ function enterRoom(p: Player, room: Room) {
     },
     room: { kind: room.kind, ch: room.ch },
     me: p.mover,
-    ents: others.map(info),
+    ents: [...others.map(info), ...pets],
     fx: [p, ...others].filter((u) => u.fx.length).map((u) => [u.id, fxRows(room, u)]),
     channels: room.inst ? [] : worlds[room.kind as Shared].list(),
     stats: p.st,

@@ -1,6 +1,6 @@
 import { PARTY, PING, PINGS, type PartyAd, type PartyVitals, type PartyView } from "../../../web/rpg/shared/data/party.ts";
 import { TILE } from "../../../web/rpg/shared/constants.ts";
-import { LINES } from "../../../web/rpg/shared/data/jobs.ts";
+import { jobRes } from "../../../web/rpg/shared/data/jobs.ts";
 import { online } from "./economy.ts";
 import { notify, quest } from "./quests.ts";
 import { hooks, send, type Player } from "./room.ts";
@@ -259,7 +259,7 @@ export function partyVitals() {
     for (const cid of pt.members) {
       const q = online.byChar(cid);
       if (!q?.room) continue;
-      const res = q.prog.line && LINES[q.prog.line].res === "energy" ? q.en / Math.max(1, q.st.energy) : q.mp / Math.max(1, q.st.mana);
+      const res = jobRes(q.prog.line, q.prog.job) === "energy" ? q.en / Math.max(1, q.st.energy) : q.mp / Math.max(1, q.st.mana);
       rows.push([cid, Math.round((q.hp / q.st.hp) * 1000), Math.round(res * 1000), Math.round(q.x), Math.round(q.y), q.room.kind, q.room.ch, q.dead ? 1 : 0]);
     }
     for (const cid of pt.members) { const q = online.byChar(cid); if (q) send(q, { t: "pv", v: rows }); }

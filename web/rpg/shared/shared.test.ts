@@ -7,7 +7,7 @@ import { baseStats } from "./character.ts";
 import { castMs, computeDamage, elementMul, finalStats, mitigation, type Hit } from "./combat.ts";
 import { EQUIP_SLOTS, ITEMS, basicOf, durMaxOf, fits, gearOf, itemMods, rollDrops, rollRarity, rollSpecials, type Item } from "./data/items.ts";
 import { ENHANCE, cycleEnd, disassembleRuc, enhanceCost, itemValue, rollEnhance, rollShop, shopCycle } from "./data/economy.ts";
-import { JOBS, LINES, jobStats } from "./data/jobs.ts";
+import { JOBS, LINES, jobRes, jobStats } from "./data/jobs.ts";
 import { MOBS } from "./data/mobs.ts";
 import { addMastery, needMastery, skillNums, startLevel, type Learned } from "./progress.ts";
 import { SKILLS } from "./data/skills.ts";
@@ -263,7 +263,21 @@ test("성장 공식: 필요 숙련도 · 연속 레벨업 · 레벨 상한 · �
   assert.equal(t.ap, b.ap * 0.7);
   assert.equal(jobStats(10, null, [42, 10]).potentialPhys, 42);
   for (const [id, j] of Object.entries(JOBS)) assert.ok(LINES[j.line], id);
-  assert.equal(Object.values(JOBS).filter((j) => j.star).length, 6);
+  // P9: 세부 직업 30개 모두 — 직업마다 전용 Q · W · E · R (2차 전직 Lv30)
+  assert.equal(Object.values(JOBS).filter((j) => j.star).length, 30);
+  for (const id of Object.keys(JOBS)) {
+    const kit = Object.values(SKILLS).filter((s) => s.job.includes(id));
+    assert.equal(kit.map((s) => s.slot).sort().join(""), "EQRW", `${id} 전용 Q · W · E · R`);
+    assert.ok(kit.every((s) => s.learnLv === 30), id);
+  }
+  // 마법형(나이트워커): 공격력 ↔ 주문력 등급, 혼합형(마검사): 주문력 = 공격력 등급 · 자원
+  const b30 = baseStats(30);
+  const nin = jobStats(30, "assassin", [10, 10], "ninja");
+  const nw = jobStats(30, "assassin", [10, 10], "nightwalker");
+  assert.equal(nw.ap / b30.ap, nin.atk / b30.atk);
+  assert.equal(nw.atk / b30.atk, nin.ap / b30.ap);
+  assert.equal(jobStats(30, "warrior", [10, 10], "spellblade").ap / b30.ap, jobStats(30, "warrior", [10, 10]).atk / b30.atk);
+  assert.deepEqual([jobRes("assassin", "nightwalker"), jobRes("warrior", "spellblade"), jobRes("tank", "berserker"), jobRes(null, null)], ["mana", "both", "energy", null]);
 });
 
 test("경제 공식: 가치 · 분해 환불 · 강화 확률 (축복 · 보호) · 비용 · 상점 회차 · 시드 진열", () => {

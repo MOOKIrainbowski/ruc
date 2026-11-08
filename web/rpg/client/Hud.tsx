@@ -32,6 +32,8 @@ function drawMap(ctx: CanvasRenderingContext2D, overview: HTMLCanvasElement, map
   for (const o of map.objects) if (OBJ_DOT[o.type]) dot(o.x, o.y - 4, o.type === "portal" ? 3 : 2, OBJ_DOT[o.type]);
   // 파티원 초록 · 적대 플레이어 빨강 (§23-2)
   for (const o of s.others) dot(o.x, o.y, o.mob ? 1 : 2, o.mob ? "#E5484D" : o.foe ? "#ff3b3b" : o.party ? "#4CC764" : "#8fdcff");
+  // 정찰자 파티원이 본 몹 (주황)
+  for (const o of s.spots) dot(o.x, o.y, 1, "#FF9F43");
   // 핑 (§21-3)
   for (const m of s.marks) {
     const [px, py] = at(m.x, m.y);
@@ -56,13 +58,14 @@ function drawMap(ctx: CanvasRenderingContext2D, overview: HTMLCanvasElement, map
   ctx.fill();
 }
 
-export function Minimap({ map, overview, hud, size, onOpenFull }: { map: GameMap; overview: HTMLCanvasElement; hud: HudState; size: number; onOpenFull: () => void }) {
+/** wide = 정찰자 「매의 눈」: 미니맵 시야 +50% */
+export function Minimap({ map, overview, hud, size, wide, onOpenFull }: { map: GameMap; overview: HTMLCanvasElement; hud: HudState; size: number; wide: boolean; onOpenFull: () => void }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [tiles, setTiles] = useState(40);
   useEffect(() => {
     const ctx = ref.current?.getContext("2d");
-    if (ctx) drawMap(ctx, overview, map, hud, size, tiles, false);
-  }, [hud, size, tiles, map, overview]);
+    if (ctx) drawMap(ctx, overview, map, hud, size, tiles * (wide ? 1.5 : 1), false);
+  }, [hud, size, tiles, wide, map, overview]);
   return (
     <canvas
       ref={ref}

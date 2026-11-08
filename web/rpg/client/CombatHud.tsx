@@ -6,7 +6,7 @@ import type { FullStats } from "../shared/combat";
 import { effectDef, effectDesc } from "../shared/data/effects";
 import { ELEMENTS, type ElementId } from "../shared/data/elements";
 import type { Item } from "../shared/data/items";
-import { LINES, jobName } from "../shared/data/jobs";
+import { jobName, jobRes } from "../shared/data/jobs";
 import { SKILLS, type Slot } from "../shared/data/skills";
 import type { FxRow, You } from "../shared/protocol";
 import { effectIcon, iconUrl, skillIcon, statIcon } from "./art/icons";
@@ -202,7 +202,7 @@ export function CombatHud({ hud, stats, you, settings, items, onSelect }: { hud:
   const buffs = fx.filter((r) => effectDef(r[0])?.buff);
   const debuffs = fx.filter((r) => !effectDef(r[0])?.buff);
   const k = settings.keys;
-  const res = you.prog.line ? LINES[you.prog.line].res : null; // 견습은 둘 다
+  const res = jobRes(you.prog.line, you.prog.job); // 견습 · 마검사는 둘 다, 마법형(나이트워커 · 마궁사)은 마나
   const keyOf: Record<Slot, string> = { A: "", Q: keyLabel(k.skillQ), W: keyLabel(k.skillW), E: keyLabel(k.skillE), R: `${keyLabel(k.skillR)}/${keyLabel(k.skillR2)}` };
   return (
     <>

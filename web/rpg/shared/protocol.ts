@@ -16,7 +16,8 @@ import type { MoveInput, Mover } from "./movement.ts";
 /** 네트워크 메시지 (§27). 베타는 JSON (DECISIONS D4). 필드 이름은 짧게. */
 
 /** 플레이어는 ap(외형) · look(옷 색을 바꾸는 장비 템플릿 id) · tt(칭호 id), 몹은 mob(종류) · grade */
-export type EntityInfo = { id: number; name: string; el: string; lv: number; ap?: Appearance; look?: string[]; jb?: string; tt?: string; mob?: string; grade?: Grade };
+/** pet = 소환수 · 설치물의 주인 id (P9) — 몹 그림(mob) 또는 주인 모습(ap, 잔상) */
+export type EntityInfo = { id: number; name: string; el: string; lv: number; ap?: Appearance; look?: string[]; jb?: string; tt?: string; mob?: string; grade?: Grade; pet?: number };
 /** 스냅샷 한 줄: [id, x, y, dir, flags, HP 천분율, 마나 또는 기력 천분율] */
 export type EntityRow = [number, number, number, number, number, number, number];
 export const F_MOVING = 1;

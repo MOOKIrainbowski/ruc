@@ -1,9 +1,9 @@
 /**
- * 밸런스 시뮬레이션 (§30 P8): ★ 직업 6개를 실제 서버 엔진(시전 · 쿨 · 자원 · 시전 시간 · 패시브 · 원소 반응)으로 돌려 비교.
- *   node scripts/balance.ts [레벨=35] [초=60]
+ * 밸런스 시뮬레이션 (§30 P8 · P9): 세부 직업 30개를 실제 서버 엔진(시전 · 쿨 · 자원 · 시전 시간 · 패시브 · 원소 반응 · 소환수)으로 돌려 비교.
+ *   node scripts/balance.ts [레벨=35] [초=60] [직업 id,…(생략 = 전부)]
  * - 딜: 같은 레벨 · 같은 등급 장비로 허수아비(고대 수목 기사 상급 스탯, HP 무한)에게 쿨이 돈 스킬부터 R > E > Q > W, 없으면 평타. 붙어서 침
  * - 버팀: 같은 허수아비의 물리 · 마법 일반 공격을 몇 대 맞고 쓰러지는지 (보호막 · 회복 제외)
- * - 딜러 4직업(전투기사 · 닌자 · 궁수 · 원소술사)은 중앙값 ±25% 밖이면 표시. 수호기사 · 사제는 역할상 딜이 낮은 게 정상
+ * - 딜러(전사 · 암살자 · 마법사 · 원딜 계열)는 딜러 중앙값 ±25% 밖이면 표시. 탱커 · 서포터는 역할상 딜이 낮은 게 정상 (탱커는 버팀을 봄)
  */
 import { rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
@@ -16,7 +16,7 @@ const { TICK_MS, SIM_MS } = await import("../../../web/rpg/shared/constants.ts")
 const { loadMap } = await import("../../../web/rpg/shared/map.ts");
 const { computeDamage, finalStats } = await import("../../../web/rpg/shared/combat.ts");
 const { MOBS, mobStats } = await import("../../../web/rpg/shared/data/mobs.ts");
-const { JOBS, LINES } = await import("../../../web/rpg/shared/data/jobs.ts");
+const { JOBS, LINES, jobRes } = await import("../../../web/rpg/shared/data/jobs.ts");
 const { createCharacter, db } = await import("../src/db.ts");
 const { recalc, setRandom } = await import("../src/combat.ts");
 const { give, refreshGear, use } = await import("../src/items.ts");
@@ -26,7 +26,8 @@ const { Room, buildPlayer } = await import("../src/room.ts");
 const map = loadMap(JSON.parse(readFileSync(new URL("../../../web/rpg/shared/data/maps/field.json", import.meta.url), "utf8")));
 const ap = { hair: 0, hairColor: 0, skin: 0, eyes: 0 };
 const WEAPON: Record<string, string> = { tank: "fang_sword", warrior: "fang_sword", assassin: "ancient_blade", ranged: "ancient_bow", mage: "ancient_staff", support: "ancient_staff" };
-const STAR = Object.entries(JOBS).filter(([, j]) => j.star);
+const ONLY = process.argv[4]?.split(",");
+const STAR = Object.entries(JOBS).filter(([id]) => !ONLY || ONLY.includes(id));
 let seed = 7;
 setRandom(() => ((seed = (seed * 1664525 + 1013904223) >>> 0) / 2 ** 32)); // 실행마다 같은 결과
 
@@ -71,12 +72,13 @@ for (const [id, job] of STAR) {
   const dps = (1e9 - dummy.hp) / SECS;
   const atk = finalStats(base, []);
   const hits = (cat: "physical" | "magical") => p.st.hp / computeDamage(atk, p.st, { base: 0, atkRatio: 1, apRatio: 0, cat, el: null } as never, p.el, false);
-  rows.push({ job: job.name, line: LINES[job.line].name, dps, phys: hits("physical"), mag: hits("magical"), res: `${p.slots.A} · ${Math.round(LINES[job.line].res === "mana" ? p.mp : p.en)}/${Math.round(LINES[job.line].res === "mana" ? p.st.mana : p.st.energy)}` });
+  const mana = jobRes(job.line, id) !== "energy";
+  rows.push({ job: job.name, line: LINES[job.line].name, dps, phys: hits("physical"), mag: hits("magical"), res: `${p.slots.A} · ${Math.round(mana ? p.mp : p.en)}/${Math.round(mana ? p.st.mana : p.st.energy)}` });
 }
 
 const dealers = rows.filter((r) => !["탱커", "서포터"].includes(r.line)).map((r) => r.dps).sort((a, b) => a - b);
-const med = (dealers[1] + dealers[2]) / 2;
-console.log(`\n밸런스 시뮬레이션 — Lv${LV} ★ 직업, 허수아비(고대 수목 기사 상급 Lv${LV}) ${SECS}초, 고급 무기\n`);
+const med = dealers.length % 2 ? dealers[(dealers.length - 1) / 2] : (dealers[dealers.length / 2 - 1] + dealers[dealers.length / 2]) / 2;
+console.log(`\n밸런스 시뮬레이션 — Lv${LV} 세부 직업, 허수아비(고대 수목 기사 상급 Lv${LV}) ${SECS}초, 고급 무기\n`);
 console.log("직업".padEnd(8), "계열".padEnd(8), "DPS".padStart(8), "딜러 중앙값 대비".padStart(10), "물리 버팀(대)".padStart(10), "마법 버팀(대)".padStart(10), "  평타 · 끝난 뒤 자원");
 for (const r of rows) {
   const dealer = !["탱커", "서포터"].includes(r.line);

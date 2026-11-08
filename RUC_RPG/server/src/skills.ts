@@ -5,7 +5,10 @@ import { SKILLS, type SkillDef, type SkillFx } from "../../../web/rpg/shared/dat
 import { castMove, type MoveInput } from "../../../web/rpg/shared/movement.ts";
 import { MASTERY, skillNums } from "../../../web/rpg/shared/progress.ts";
 import { effectDef } from "../../../web/rpg/shared/data/effects.ts";
-import { addEffect, applyHeal, healPerTick, hit, removeEffect, type HitSpec, type Unit } from "./combat.ts";
+import { JOBS } from "../../../web/rpg/shared/data/jobs.ts";
+import { ENGINEER } from "../../../web/rpg/shared/data/pets.ts";
+import { addEffect, applyHeal, healPerTick, hit, rand, removeEffect, type FxSpec, type HitSpec, type Unit } from "./combat.ts";
+import { summon } from "./pets.ts";
 import type { Mob } from "./mobs.ts";
 import { gainMastery, learnedOf } from "./progress.ts";
 import type { Player, Room } from "./room.ts";
@@ -61,14 +64,38 @@ function elementOf(s: Shot): ElementId | null {
 const scaleFx = (list: SkillFx[] | undefined, mul: number) => list?.map((f) => ({ ...f, v: f.v !== undefined ? f.v * mul : undefined }));
 
 function specOf(s: Shot): HitSpec {
-  const { sk, n } = s;
-  const el = elementOf(s);
+  const { sk, n, p } = s;
+  let el = elementOf(s);
+  let d = sk.damage ?? { base: 0, atkRatio: 0, apRatio: 0 };
+  let cat = sk.category;
+  let proc = !!el;
+  // 마법형 직업(나이트워커 · 마궁사)의 평타는 주문력 기반 (D80). 마궁사 「마력 화살촉」: 주 속성 + 30% 확률로 속성 효과
+  if (sk.slot === "A" && p.job && JOBS[p.job]?.kind === "magic") {
+    d = { base: d.base, atkRatio: 0, apRatio: d.atkRatio + d.apRatio };
+    cat = "magical";
+    if (p.job === "magic_archer") { el = p.el; proc = rand() < 0.3; }
+  }
   return {
-    ...(sk.damage ?? { base: 0, atkRatio: 0, apRatio: 0 }), cat: sk.category, el, gradeMul: n.gradeMul, skillLv: n.lv, skill: sk.slot !== "A",
+    ...d, cat, el, gradeMul: n.gradeMul, skillLv: n.lv, skill: sk.slot !== "A",
     melee: sk.targeting === "melee" || sk.targeting === "dash" || (sk.targeting === "self" && (sk.radius ?? 0) <= 72),
-    threat: sk.threat, proc: !!el, fx: scaleFx(sk.effects, n.fx), basic: sk.slot === "A", cast: s, crit: sk.crit, execute: sk.execute, mul: s.mul,
-    ranged: sk.targeting === "skillshot" && sk.category === "physical",
+    threat: sk.threat, proc, fx: scaleFx(sk.effects, n.fx), basic: sk.slot === "A", cast: s, crit: sk.crit, execute: sk.execute, mul: s.mul,
+    ranged: sk.targeting === "skillshot" && cat === "physical", reach: n.range,
   };
+}
+
+/** 정령사 「정령 친화」: 아군에게 거는 지원에 붙는 시전자 속성 버프 (4초) */
+const SPIRIT_BUFF: Partial<Record<ElementId, FxSpec>> = {
+  fire: { id: "power", ms: 4000, v: 0.08 }, water: { id: "dmgdown", ms: 4000, v: 0.08 }, earth: { id: "guard", ms: 4000, v: 10 },
+  grass: { id: "regen_hp", ms: 4000, dot: 4 }, wind: { id: "haste", ms: 4000, v: 0.1 }, electric: { id: "atkspd", ms: 4000, v: 10 },
+  ice: { id: "tenacity", ms: 4000, v: 0.15 }, light: { id: "shield", ms: 4000, v: 30 }, dark: { id: "vamp", ms: 4000, v: 0.06 },
+  poison: { id: "venom", ms: 4000 }, iron: { id: "guard", ms: 4000, v: 10 }, none: { id: "power", ms: 4000, v: 0.05 },
+};
+
+/** 디버프 해제. 주술사 「조상의 가호」: 하나라도 지웠으면 1.5초 보호막(최대 HP 8%) */
+export function cleanse(room: Room, src: Unit, a: Unit) {
+  const bad = a.fx.filter((e) => !effectDef(e.id)?.buff);
+  for (const e of bad) removeEffect(room, a, e.id);
+  if (bad.length && src.job === "shaman") addEffect(room, a, { id: "shield", ms: 1500, v: Math.round(a.st.hp * 0.08) }, src);
 }
 
 /** 적 한 명에게: 피해(있으면) → 효과 · 넉백 · 숙련도 */
@@ -111,7 +138,9 @@ function support(room: Room, s: Shot, a: Player, healIt = true) {
   }
   if (sk.shield) addEffect(room, a, { id: "shield", ms: sk.shield.ms, v: Math.round((sk.shield.base + p.st.ap * sk.shield.apRatio + a.st.hp * sk.shield.hpPct) * n.power * (1 + p.st.healPower)) }, p);
   for (const f of scaleFx(sk.allyFx, n.fx) ?? []) addEffect(room, a, f, p);
-  if (sk.cleanse) for (const e of [...a.fx]) if (!effectDef(e.id)?.buff) removeEffect(room, a, e.id);
+  if (sk.cleanse) cleanse(room, p, a);
+  const sb = p.job === "spiritcaller" && (sk.allyFx || sk.heal || sk.shield) ? SPIRIT_BUFF[p.el] : undefined;
+  if (sb) addEffect(room, a, sb.dot ? { ...sb, dot: healPerTick(sb.dot + p.st.ap * 0.05, p, a) } : sb, p);
   credit(s, a);
 }
 
@@ -131,6 +160,7 @@ export function cast(room: Room, p: Player, inp: MoveInput): string | null {
   const ay = Number(inp.ay);
   if (!Number.isFinite(ax) || !Number.isFinite(ay)) return "조준 오류";
   const n = skillNums(sk, learnedOf(p, sk.id), slot === "A" ? 0 : p.st.cdr);
+  if (sk.summon && p.job === "engineer") n.cooldownMs *= ENGINEER.cd; // 엔지니어 「정비」
   const sim = p.steps * SIM_MS;
   if (sim < (p.cd[sk.id] ?? 0) - 1) return "재사용 대기 중입니다";
   if (p.mp < n.cost.mana) return "마나가 부족합니다";
@@ -155,7 +185,12 @@ export function cast(room: Room, p: Player, inp: MoveInput): string | null {
   }
   p.mp -= n.cost.mana;
   p.en -= n.cost.energy;
-  p.cd[sk.id] = sim + (slot === "A" ? castMs(sk.cooldownMs, p.st.atkSpeed) : n.cooldownMs);
+  if (sk.throw && p.job === "thrower") {
+    // 투척수 「손재주」: 2회 충전 — "+" 키 = 둘 다 찰 때, 본 키 = 다음에 쓸 수 있을 때
+    const full = Math.max(sim, p.cd[sk.id + "+"] ?? 0) + n.cooldownMs;
+    p.cd[sk.id + "+"] = full;
+    p.cd[sk.id] = Math.max(sim, full - n.cooldownMs);
+  } else p.cd[sk.id] = sim + (slot === "A" ? castMs(sk.cooldownMs, p.st.atkSpeed) : n.cooldownMs);
   const sx = m.x;
   const sy = m.y;
   castMove(m, sk, ax, ay, room.map.collider, n.range, to);
@@ -266,5 +301,6 @@ export function fire(room: Room, s: Shot, sx: number, sy: number, ax: number, ay
     for (const f of scaleFx(sk.selfFx, n.fx) ?? []) addEffect(room, p, f, p);
     if (sk.selfFx) credit(s, p);
     if (sk.special === "wall") room.wall(p, ux, uy);
+    if (sk.summon) summon(room, p, sk.summon);
   }
 }

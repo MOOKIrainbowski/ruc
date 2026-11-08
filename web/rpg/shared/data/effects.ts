@@ -56,6 +56,11 @@ export const EFFECTS = {
   counter: { name: "반격 태세", buff: true, cat: "special", icon: "thorn", color: "#9AA3AD", desc: "근접 공격을 막고 되돌려 주며 공격자를 기절시킵니다" },
   venom: { name: "독 바르기", buff: true, cat: "special", icon: "drop", color: "#9BE564", desc: "평타가 독을 겁니다" },
   shadow_step: { name: "그림자 걸음", buff: true, cat: "stat", mods: () => [{ k: "moveSpeed", mul: 0.25 }], icon: "ghost", color: "#6B3FA0", desc: "전투 밖에서 이동 속도 +25%" },
+  // P9 세부 직업 패시브 (§9-3)
+  blood_rage: { name: "피의 광기", buff: true, cat: "stat", max: 10, mods: (_v, s) => [{ k: "lifesteal", add: 0.02 * s }, { k: "atkSpeed", mul: 0.03 * s }], icon: "fang", color: "#E5484D", desc: "잃은 HP 10%마다 흡혈 +2% · 공속 +3%" },
+  earth_root: { name: "대지의 뿌리", buff: true, cat: "stat", mods: () => [{ k: "pdef", mul: 0.2 }, { k: "mdef", mul: 0.2 }], icon: "seed", color: "#B08A5A", desc: "정지 중 방어 +20% · 넉백 면역" },
+  melody: { name: "선율", buff: true, cat: "stat", mods: (v) => [{ k: "atkSpeed", mul: v }, { k: "moveSpeed", mul: v }], icon: "wave", color: "#FF7EB6", desc: "공격 속도 · 이동 속도 +{v}%" },
+  aim_focus: { name: "집중", buff: true, cat: "special", max: 5, icon: "target", color: "#F2C94C", desc: "멈춰 있는 동안 쌓임 — 다음 공격 피해 +10% × 중첩" },
 
   // ── 디버프 (§11-2) ──
   slow: { name: "둔화", buff: false, cat: "softCC", mods: (v) => [{ k: "moveSpeed", mul: -v }], icon: "arrowDown", color: "#3FC8E8", desc: "이동 속도 −{v}%" },

@@ -157,6 +157,8 @@
   "job.res": "주 자원",
   "job.reach": "사거리",
   "job.confirm": "{name}으로/로 전직",
+  "job.magic": "마법형 — 주문력 · 마나",
+  "job.hybrid": "혼합형 — 공격력 + 주문력 · 마나 + 기력",
   "job.soon": "준비 중",
   "job.sub": "보조 속성 (주 속성과 다르게)",
   "job.stat.hp": "체력",
