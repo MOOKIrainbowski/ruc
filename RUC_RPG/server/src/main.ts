@@ -117,6 +117,7 @@ function enterRoom(p: Player, room: Room) {
     stats: p.st,
     items: p.items,
     drops: room.visibleDrops(p),
+    nodes: room.nodeRows(),
   });
   if (!room.inst) send(p, { t: "dg", s: null });
 }
@@ -354,6 +355,11 @@ wss.on("connection", (ws, req) => {
       }
       case "who":
         return who(player);
+      case "gather": {
+        const err = player.room?.gather(player, Number(m.id));
+        if (err) reply({ t: "error", msg: err });
+        return;
+      }
       case "chat":
       case "bug":
       case "gm": {

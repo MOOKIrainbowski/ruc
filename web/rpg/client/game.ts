@@ -3,7 +3,7 @@ import { castMs, type FullStats } from "../shared/combat";
 import { CHAR_FEET, CHAR_H, CHAR_W, INTERP_DELAY_MS, SIM_MS, SNAP_MS, TILE, type RoomKind } from "../shared/constants";
 import type { Appearance } from "../shared/data/appearance";
 import { effectDef } from "../shared/data/effects";
-import { ITEMS, LOCS, RARITY, basicOf, lookOf, type Item, type Rarity } from "../shared/data/items";
+import { ITEMS, LOCS, RARITY, basicOf, lookOf, type Item, type Rarity, GATHER, type GatherRow } from "../shared/data/items";
 import { JOBS, LINES, type LineId } from "../shared/data/jobs";
 import { GRADES } from "../shared/data/mobs";
 import { SKILLS, SLOTS, type SkillDef, type Slot } from "../shared/data/skills";
@@ -19,7 +19,7 @@ import { josa } from "../shared/josa";
 import { ANIMATED, TILE_NAMES, gid } from "../shared/tiles";
 import { ACTIONS, ACTION_FPS, APPRENTICE, FRAMES, characterSheet, outfitOf, shadowCanvas, type Action, type Outfit } from "./art/character";
 import { effectIcon } from "./art/icons";
-import { itemIcon } from "./art/items";
+import { itemIcon, gatherNode } from "./art/items";
 import { MOB_PLATE, mobFrames } from "./art/mobs";
 import { PINGS, PING, PING_WHEEL, TITLES, type PingKind } from "../shared/data/party";
 import { Px } from "./art/px";
@@ -272,7 +272,27 @@ export class Game {
     this.onItems(items);
   }
 
-  async start(el: HTMLElement, ents: EntityInfo[], fx: [number, FxRow[]][], drops: DropRow[]) {
+  /** 2.5칸 안의 캘 수 있는 채집 지점 id */
+  private nearNode(): number | null {
+    let best: number | null = null;
+    let bd = 24;
+    for (const [id, n] of this.nodes) {
+      const d = Math.hypot(n.x - this.me.x, n.y - this.me.y);
+      if (n.on && d < bd) { bd = d; best = id; }
+    }
+    return best;
+  }
+
+  /** 채집 지점 (P13) */
+  private nodes = new Map<number, { s: Sprite; kind: string; x: number; y: number; on: boolean }>();
+  private setNode(id: number, on: boolean) {
+    const n = this.nodes.get(id);
+    if (!n) return;
+    n.on = on;
+    n.s.texture = Texture.from(gatherNode(n.kind, !on));
+  }
+
+  async start(el: HTMLElement, ents: EntityInfo[], fx: [number, FxRow[]][], drops: DropRow[], nodes: GatherRow[] = []) {
     await this.app.init({ resizeTo: el, background: "#0a1207", antialias: false, preference: "webgl", roundPixels: true });
     this.app.canvas.style.imageRendering = "pixelated";
     el.appendChild(this.app.canvas);
@@ -286,6 +306,14 @@ export class Game {
     for (const e of ents) this.addEnt(e);
     for (const [id, rows] of fx) this.setFx(id, rows);
     for (const d of drops) this.addDrop(d);
+    for (const [id, kind, x, y, on] of nodes) {
+      const s = new Sprite(Texture.from(gatherNode(kind, !on)));
+      s.anchor.set(0.5, 0.85);
+      s.position.set(x, y);
+      s.zIndex = y - 2;
+      this.entityLayer.addChild(s);
+      this.nodes.set(id, { s, kind, x, y, on: !!on });
+    }
 
     const down = (e: KeyboardEvent) => {
       if ((e.target as HTMLElement)?.closest?.("input, textarea, select")) return;
@@ -864,6 +892,11 @@ export class Game {
         this.fx.pillar(e.x, e.y);
         return;
       }
+      case "gn":
+        // 채집 지점: 캐 감(0, 캔 사람) · 다시 생김(1)
+        this.setNode(ev[1] as number, ev[2] === 1);
+        if (ev[2] === 0 && ev[3] === this.you.id) sfx("pickup");
+        return;
       case "tt":
       case "gd": {
         // 칭호 · 길드가 바뀜 → 이름표 칭호 자리
@@ -1074,6 +1107,9 @@ export class Game {
       this.wheel = { sx: this.mouse.sx, sy: this.mouse.sy, wx, wy };
     }
     else if (code === k.interact) {
+      // 채집 (P13): 가장 가까운 캘 수 있는 지점
+      const node = this.nearNode();
+      if (node) return this.net.send({ t: "gather", id: node });
       if (this.near?.type === "npc") {
         this.net.send({ t: "use", oid: this.near.id }); // 서버: "말 걸기" 퀘스트 목표
         this.onTalk(String(prop(this.near, "npc")));
@@ -1364,7 +1400,7 @@ export class Game {
     for (const e of [me, ...this.ents.values()]) {
       e.plate.position.set(...toScreen(e.x, e.y - (e.mob ? (PLATE_H[e.info.mob!] ?? 24) : PLAYER_PLATE_H)));
       if (e !== me && !e.mob) e.plate.visible = e.sprite.visible && (np === "all" || (np === "party" && this.partyIds.has(e.info.id)));
-      if (e.mob && e.info.pet) e.plate.visible = false; // 소환수 · 설치물은 이름표 없이 (여럿이면 겹침)
+      if (e.mob && e.info.pet) e.label.visible = false; // 소환수 · 설치물은 이름 없이 HP 막대만 (여럿이면 겹침)
       this.drawBars(e);
     }
 
@@ -1393,14 +1429,13 @@ export class Game {
   }
 
   private drawBars(e: Ent) {
-    if (e.info.pet) return; // 소환수는 HP 가 없음
     const key = `${Math.round(e.hp / 20)}:${Math.round(e.res / 20)}`;
     if (key === e.drawn) return;
     e.drawn = key;
     const w = e.mob ? 26 : 32;
     const g = e.bars.clear();
     g.rect(-w / 2 - 1, -5, w + 2, e.mob ? 5 : 7).fill(0x1b1420);
-    g.rect(-w / 2, -4, (w * Math.max(0, e.hp)) / 1000, 3).fill(e.mob ? 0xe5484d : 0x4cc764);
+    g.rect(-w / 2, -4, (w * Math.max(0, e.hp)) / 1000, 3).fill(e.mob && !e.info.pet ? 0xe5484d : 0x4cc764); // 소환수는 초록 (P13)
     if (!e.mob) g.rect(-w / 2, -1, (w * Math.max(0, e.res)) / 1000, 2).fill(0x2f7bff);
   }
 
@@ -1484,7 +1519,7 @@ export class Game {
       cds,
       fx: this.myFx.map((r) => [r[0], Math.max(0, r[1] - age), r[2], r[3], r[4]] as FxRow).filter((r) => r[1] > 0 || r[3] === 0),
       dead: this.deadUntil ? Math.max(0, this.deadUntil - now) : 0,
-      hint: !this.near ? null : this.near.type === "portal" ? `${josa(this.near.name, "으로/로")} 이동` : this.near.type === "npc" ? `${this.near.name}에게 말 걸기` : `${this.near.name} 열기`,
+      hint: this.nearNode() ? `${ITEMS[GATHER[this.nodes.get(this.nearNode()!)!.kind].item].name} 채집` : !this.near ? null : this.near.type === "portal" ? `${josa(this.near.name, "으로/로")} 이동` : this.near.type === "npc" ? `${this.near.name}에게 말 걸기` : `${this.near.name} 열기`,
       sel: this.sel,
       potion: this.v[12] ?? 0,
       charge: this.charging ? Math.min(1, (now - this.charging.at) / (this.skill(this.charging.slot)?.charge?.ms ?? 1000)) : -1,

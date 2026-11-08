@@ -1,9 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import {
-  ENCH_POWER, ENCH_SLOTS, ENHANCE, ENHANCE_MAX, MARKET, disassembleRuc, enchantCost, enhanceCost, repairCost, type Price, type ShopSlot,
-} from "../shared/data/economy";
+import { ENCH_POWER, ENCH_SLOTS, ENHANCE, ENHANCE_MAX, MARKET, disassembleRuc, enchantCost, enhanceCost, repairCost, type Price, type ShopSlot, BREW } from "../shared/data/economy";
 import { ENCHANTS, ITEMS, RARITIES, RARITY, type Ench, type Item, type ItemPos, type Rarity, type StoredItem } from "../shared/data/items";
 import type { C2S, You } from "../shared/protocol";
 import { ItemImg, nameColor } from "./Inventory";
@@ -374,8 +372,23 @@ export function AlchemyWindow({ items, last, send, onClose }: { items: Item[]; l
         <span className="rpg-islot">{last && Date.now() - last.at < 4000 && <ItemImg it={{ id: "r", tpl: last.tpl, loc: "inventory", slot: 0, qty: 1, rarity: last.rarity, enh: 0, sp: [], dur: 0, durMax: 0 }} />}</span>
         <button className="rpg-btn ml-auto" disabled={chosen.length !== 3} onClick={() => { send({ t: "econ", op: "recombine", list: chosen.map(pos), rid: rid() }); setPicks([]); }}>{t("ec.recombine")}</button>
       </div>
-      <div className="flex max-h-[40vh] flex-wrap gap-1 overflow-y-auto">
+      <div className="flex max-h-[30vh] flex-wrap gap-1 overflow-y-auto">
         {bag.map((i) => <ItemCell key={i.id} it={i} small onClick={() => add(i)} />)}
+      </div>
+      {/* 제조 (P13): 채집물 → 포션 · 강화석 */}
+      <h3 className="mt-3 font-bold">{t("ec.brew")}</h3>
+      <p className="text-[11px] text-[#8c6642]">{t("ec.brewLead")}</p>
+      <div className="mt-1 space-y-1">
+        {BREW.map((r, i) => {
+          const have = (tpl: string) => bag.filter((x) => x.tpl === tpl).reduce((a, x) => a + x.qty, 0);
+          const ok = r.need.every((n) => have(n.tpl) >= n.qty);
+          return (
+            <div key={i} className="flex items-center gap-2 rounded border border-[#c9a97a] bg-[#f6e9c8] px-2 py-1">
+              <span className="flex-1">{r.need.map((n) => `${ITEMS[n.tpl].name} ${have(n.tpl)}/${n.qty}`).join(" + ")} → <b>{ITEMS[r.out].name} ×{r.qty}</b></span>
+              <button className="rpg-btn !px-2 !py-0.5 !text-[11px]" disabled={!ok} onClick={() => send({ t: "econ", op: "brew", id: i, rid: rid() })}>{t("ec.brewBtn")}</button>
+            </div>
+          );
+        })}
       </div>
     </Window>
   );

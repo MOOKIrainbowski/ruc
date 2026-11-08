@@ -2,7 +2,7 @@ import type { FullStats } from "./combat.ts";
 import type { RoomKind } from "./constants.ts";
 import type { Appearance } from "./data/appearance.ts";
 import type { Price } from "./data/economy.ts";
-import type { Item, ItemPos, Rarity } from "./data/items.ts";
+import type { GatherRow, Item, ItemPos, Rarity } from "./data/items.ts";
 import type { ElementId } from "./data/elements.ts";
 import type { LineId } from "./data/jobs.ts";
 import type { Grade } from "./data/mobs.ts";
@@ -128,7 +128,7 @@ export type C2S =
    */
   | {
       t: "quest"; op: "track" | "board" | "create" | "accept" | "abandon" | "deliver" | "cancel" | "report"; id?: string | number; on?: boolean;
-      title?: string; kind?: "kill" | "deliver" | "stage" | "duel"; target?: string; n?: number; ruc?: number; list?: ItemPos[]; slots?: number; days?: number; rid?: string;
+      title?: string; kind?: "kill" | "deliver" | "stage" | "duel" | "collect"; target?: string; n?: number; ruc?: number; list?: ItemPos[]; slots?: number; days?: number; rid?: string;
     }
   /** 알림 읽음 처리 (id 없으면 모두 읽음은 readAll) */
   | { t: "noti"; op: "read" | "readAll"; id?: number }
@@ -145,6 +145,8 @@ export type C2S =
   /** 칭호 고르기 (null = 떼기) · 현황판(Tab) */
   | { t: "title"; id: string | null }
   | { t: "who" }
+  /** 채집 (P13): 채집 지점 id */
+  | { t: "gather"; id: number }
   /** 채팅 (§5 Enter): 같은 방 · 파티 · 길드. "/p 말" = 파티, "/g 말" = 길드, "/w 닉 말" · "/r 말" = 귓속말, "/gm …" = GM 명령 */
   | { t: "chat"; ch?: "room" | "party" | "guild"; text: string }
   /** 친구 (P10): 신청(name) · 수락/거절/삭제(cid) · 차단(name 또는 cid) · 차단 해제(cid) */
@@ -163,7 +165,7 @@ export type S2C =
   | { t: "createError"; msg: string }
   | {
       t: "joined"; you: You; room: { kind: RoomKind; ch: number }; me: Mover; ents: EntityInfo[]; fx: [number, FxRow[]][];
-      channels: ChannelInfo[]; stats: FullStats; items: Item[]; drops: DropRow[];
+      channels: ChannelInfo[]; stats: FullStats; items: Item[]; drops: DropRow[]; nodes?: GatherRow[];
     }
   | { t: "spawn"; e: EntityInfo }
   | { t: "despawn"; id: number }

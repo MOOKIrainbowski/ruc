@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { CHAR_H, CHAR_W } from "../shared/constants";
 import { ITEMS, type Item } from "../shared/data/items";
 import {
-  MOB_CHOICES, NPCS, QUESTS, USER_QUEST, objText, userQuestFee,
+  COLLECT_CHOICES, MOB_CHOICES, NPCS, QUESTS, USER_QUEST, objText, userQuestFee,
   type Noti, type QState, type QuestView, type UserKind, type UserQuestRow,
 } from "../shared/data/quests";
 import type { You } from "../shared/protocol";
@@ -90,7 +90,7 @@ type BoardTab = "browse" | "register" | "mine";
 
 const goalText = (r: { kind: string; target: string; n: number }) =>
   r.kind === "kill" ? `${MOB_CHOICES.find(([k]) => k === r.target)?.[1] ?? r.target} ${r.n}마리 처치` :
-  r.kind === "stage" ? `고목의 유적 ${r.n}스테이지 도달` : r.kind === "duel" ? `결투 ${r.n}번 승리` : `${ITEMS[r.target]?.name ?? r.target} ${r.n}개 전달`;
+  r.kind === "stage" ? `고목의 유적 ${r.n}스테이지 도달` : r.kind === "duel" ? `결투 ${r.n}번 승리` : r.kind === "collect" ? `${ITEMS[r.target]?.name ?? r.target} ${r.n}개 채집` : `${ITEMS[r.target]?.name ?? r.target} ${r.n}개 전달`;
 const rewardText = (r: { ruc: number; items: [string, number][] }) =>
   [r.ruc ? `${won(r.ruc)} RUC` : "", ...r.items.map(([tp, n]) => `${ITEMS[tp]?.name ?? tp}${n > 1 ? ` ×${n}` : ""}`)].filter(Boolean).join(" + ");
 const leftText = (ms: number) => {
@@ -201,14 +201,14 @@ function Register({ items, ruc, send, done }: { items: Item[]; ruc: number; send
     <div className="flex flex-col gap-1.5">
       {field(t("qj.formTitle"), <input className="rpg-input flex-1" maxLength={24} value={title} onChange={(e) => setTitle(e.target.value)} />)}
       {field(t("qj.kind"), (
-        <select className="rpg-input" value={kind} onChange={(e) => { const k = e.target.value as UserKind; setKind(k); setTarget(k === "kill" ? "slime" : k === "stage" ? "ruins" : k === "duel" ? "duel" : ITEM_CHOICES[0][0]); if (k === "stage") setN(1); }}>
+        <select className="rpg-input" value={kind} onChange={(e) => { const k = e.target.value as UserKind; setKind(k); setTarget(k === "kill" ? "slime" : k === "stage" ? "ruins" : k === "duel" ? "duel" : k === "collect" ? "herb" : ITEM_CHOICES[0][0]); if (k === "stage") setN(1); }}>
           <option value="kill">{t("qj.kill")}</option><option value="deliver">{t("qj.deliverKind")}</option>
-          <option value="stage">{t("qj.stageKind")}</option><option value="duel">{t("qj.duelKind")}</option>
+          <option value="stage">{t("qj.stageKind")}</option><option value="duel">{t("qj.duelKind")}</option><option value="collect">{t("qj.collectKind")}</option>
         </select>
       ))}
-      {(kind === "kill" || kind === "deliver") && field(t("qj.target"), (
+      {(kind === "kill" || kind === "deliver" || kind === "collect") && field(t("qj.target"), (
         <select className="rpg-input" value={target} onChange={(e) => setTarget(e.target.value)}>
-          {(kind === "kill" ? MOB_CHOICES : ITEM_CHOICES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+          {(kind === "kill" ? MOB_CHOICES : kind === "collect" ? COLLECT_CHOICES : ITEM_CHOICES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       ))}
       {field(kind === "stage" ? t("qj.stageN") : t("qj.n"), <input className="rpg-input w-24" inputMode="numeric" value={n} onChange={(e) => setN(num(e.target.value, 1, kind === "stage" ? 10 : USER_QUEST.maxN))} />)}

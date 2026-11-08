@@ -1,6 +1,6 @@
 import { ITEMS, type Item, type ItemPos, type Rarity } from "../../../web/rpg/shared/data/items.ts";
 import {
-  FIRST_QUEST, FOUNTAIN_R, FOUNTAIN_SPOTS, MOB_CHOICES, NOTI_TOAST, NPCS, QUESTS, USER_QUEST, userQuestFee,
+  COLLECT_CHOICES, FIRST_QUEST, FOUNTAIN_R, FOUNTAIN_SPOTS, MOB_CHOICES, NOTI_TOAST, NPCS, QUESTS, USER_QUEST, userQuestFee,
   type Noti, type NotiKind, type QState, type QuestView, type UserKind, type UserQuestRow,
 } from "../../../web/rpg/shared/data/quests.ts";
 import {
@@ -96,7 +96,7 @@ export function quest(p: Player, type: string, target?: string, n = 1) {
     if (touched) { changed = true; saveQuest(p.char.id, q); check(p, q); }
   }
   if (changed) sendQuests(p);
-  if (type === "kill" || type === "stage" || type === "duel") userProg(p, type, target ?? "", n);
+  if (type === "kill" || type === "stage" || type === "duel" || type === "collect") userProg(p, type, target ?? "", n);
 }
 
 function check(p: Player, q: QuestRow) {
@@ -173,8 +173,8 @@ export function uqCreate(p: Player, m: Record<string, unknown>): string | null {
   const days = Number(m.days ?? USER_QUEST.maxDays);
   const list = Array.isArray(m.list) ? (m.list as unknown[]) : [];
   if (title.length < 2 || title.length > 24) return "제목은 2~24자로 써 주세요";
-  if (kind !== "kill" && kind !== "deliver" && kind !== "stage" && kind !== "duel") return "목표 유형이 올바르지 않습니다";
-  const okTarget = kind === "kill" ? MOB_CHOICES.some(([k]) => k === target) : kind === "deliver" ? Object.hasOwn(ITEMS, target) : kind === "stage" ? target === "ruins" : target === "duel";
+  if (kind !== "kill" && kind !== "deliver" && kind !== "stage" && kind !== "duel" && kind !== "collect") return "목표 유형이 올바르지 않습니다";
+  const okTarget = kind === "kill" ? MOB_CHOICES.some(([k]) => k === target) : kind === "deliver" ? Object.hasOwn(ITEMS, target) : kind === "collect" ? COLLECT_CHOICES.some(([k]) => k === target) : kind === "stage" ? target === "ruins" : target === "duel";
   if (!okTarget) return "목표 대상이 올바르지 않습니다";
   if (!Number.isInteger(n) || n < 1 || n > (kind === "stage" ? RUINS.stages.length : USER_QUEST.maxN)) return kind === "stage" ? `스테이지는 1~${RUINS.stages.length} 사이로 정해 주세요` : `수량은 1~${USER_QUEST.maxN} 사이로 정해 주세요`;
   if (!Number.isInteger(ruc) || ruc < 0 || ruc > USER_QUEST.maxRuc) return "보상 RUC 가 올바르지 않습니다";
@@ -253,7 +253,7 @@ function userProg(p: Player, type: string, target: string, n: number) {
     const r = userQuest(qid);
     if (!r || r.kind !== type || (type !== "duel" && r.target !== target)) continue;
     if (r.status !== "open" || r.expires_at <= Date.now()) { p.takes.delete(qid); continue; }
-    const now = type === "stage" ? Math.max(prog, n) : prog + 1;
+    const now = type === "stage" ? Math.max(prog, n) : prog + (type === "collect" ? n : 1);
     if (now === prog) continue;
     p.takes.set(qid, now);
     saveTakeProg(qid, p.char.id, now);

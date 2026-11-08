@@ -4,7 +4,7 @@ import { AOI, CHANNEL_CAP, INPUT_CREDITS_MAX, INPUT_CREDITS_PER_TICK, SIM_MS, SN
 import { diffRows, frame } from "../../../web/rpg/shared/snapshot.ts";
 import { packMover } from "../../../web/rpg/shared/movement.ts";
 import { FOREVER_MS } from "../../../web/rpg/shared/data/effects.ts";
-import { rollDrops, type Item, type Rarity, type Special } from "../../../web/rpg/shared/data/items.ts";
+import { GATHER, rollDrops, type GatherRow, type Item, type Rarity, type Special } from "../../../web/rpg/shared/data/items.ts";
 import { GRADES, mobExp } from "../../../web/rpg/shared/data/mobs.ts";
 import { SKILLS, SLOTS, type Slot } from "../../../web/rpg/shared/data/skills.ts";
 import { COMBAT } from "../../../web/rpg/shared/data/stats.ts";
@@ -27,7 +27,7 @@ import { PARTY, partyExp, partyWeights, pickWeighted, splitWeighted } from "../.
 import { makeUnit } from "./combat.ts";
 import { refreshGear } from "./items.ts";
 import { cast, fire, type Cast, type Shot } from "./skills.ts";
-import { petTick, summon, type Pet } from "./pets.ts";
+import { petTick, summon, unsummon, type Pet } from "./pets.ts";
 
 let idSeq = 1;
 /** 플레이어 · 몹 · 투사체가 같이 쓰는 id */
@@ -190,6 +190,8 @@ export class Room implements World {
   walls: Wall[] = [];
   /** 소환수 · 설치물 (P9) */
   pets: Pet[] = [];
+  /** 채집 지점 (P13) */
+  nodes: { id: number; kind: string; x: number; y: number; readyAt: number }[] = [];
   ev: Ev[] = [];
   /** 던전 인스턴스 (없으면 일반 채널) · 예약 실행 (보스 패턴의 경고 → 발동) */
   inst: Inst | null = null;
@@ -210,6 +212,51 @@ export class Room implements World {
       this.zones.push({ mob: String(prop(o, "mob")), count: Number(prop(o, "count") ?? 5), lv: [a, b || a], grade: (prop(o, "grade") as Mob["grade"]) || "normal", x: o.x, y: o.y - o.height / 2, r: o.width / 2, alive: 0, respawn: [] });
     }
     for (const z of this.zones) for (let i = 0; i < z.count; i++) this.addMob(z);
+    // 채집 지점 (P13): 필드 구역마다 3곳 (구역 반지름 1.3배 안, 막힌 곳 제외)
+    if (kind === "field") {
+      const total = Object.values(GATHER).reduce((a, g) => a + g.w, 0);
+      for (const z of this.zones)
+        for (let i = 0; i < 3; i++) {
+          let r = rand() * total;
+          const k = Object.keys(GATHER).find((g) => (r -= GATHER[g].w) < 0) ?? "herb";
+          for (let t = 0; t < 12; t++) {
+            const a = rand() * Math.PI * 2;
+            const d = Math.sqrt(rand()) * z.r * 1.3;
+            const x = Math.round(z.x + Math.cos(a) * d);
+            const y = Math.round(z.y + Math.sin(a) * d);
+            if (blocked(map.collider, x, y)) continue;
+            this.nodes.push({ id: newId(), kind: k, x, y, readyAt: 0 });
+            break;
+          }
+        }
+    }
+  }
+
+  /** 채집 지점 목록 (입장 때) */
+  nodeRows(): GatherRow[] {
+    return this.nodes.map((n) => [n.id, n.kind, n.x, n.y, this.now >= n.readyAt ? 1 : 0]);
+  }
+
+  /** 채집 (P13): 가까이 · 다시 생긴 지점 · 0.6초에 한 번 → 재료 1개, collect 퀘스트 */
+  gather(p: Player, id: number): string | null {
+    const n = this.nodes.find((x) => x.id === id);
+    if (!n || p.dead) return "채집할 수 없습니다";
+    if (this.now < n.readyAt) return "이미 누가 캐 갔어요 — 잠시 뒤에 다시 생깁니다";
+    if (dist(p, n) > 26) return "조금 더 가까이 가세요";
+    if (this.now < (p.icd.get("gather") ?? 0)) return null;
+    p.icd.set("gather", this.now + 600);
+    const g = GATHER[n.kind];
+    const err = pickUp(p, g.item, 1, "common", `gather:${this.kind}`);
+    if (err) return err;
+    n.readyAt = this.now + g.respawnMs;
+    this.ev.push(["gn", n.id, 0, p.id]);
+    quest(p, "collect", g.item);
+    return null;
+  }
+
+  /** 몹이 노릴 수 있는 대상: 플레이어 · 소환수 (P13) */
+  combatant(id: number): Unit | undefined {
+    return this.players.get(id) ?? this.pets.find((q) => q.id === id);
   }
 
   get full() {
@@ -287,9 +334,10 @@ export class Room implements World {
 
   // ── World ──────────────────────────────────────────────────────
   damaged(src: Unit, tgt: Unit, amount: number, threat: number, h?: HitSpec) {
-    if (src.kind === "p" && tgt.kind === "p") (tgt as Player).hitBy.set(src.id, this.now);
+    if (src.kind === "p" && tgt.kind === "p" && !tgt.petOf) (tgt as Player).hitBy.set(src.id, this.now);
     if (tgt.kind !== "m" || src.kind !== "p") return;
     const m = tgt as Mob;
+    if (h?.pet) m.threat.set(h.pet, (m.threat.get(h.pet) ?? 0) + amount * (h.taunt ?? 0.5)); // 소환수 위협 (P13)
     m.lastShot = (h?.cast as Shot | undefined) ?? null;
     m.threat.set(src.id, (m.threat.get(src.id) ?? 0) + amount * threat);
     m.dmgBy.set(src.id, (m.dmgBy.get(src.id) ?? 0) + amount);
@@ -307,7 +355,7 @@ export class Room implements World {
       // 독 바르기: 평타가 독을 검
       if (h.basic && has(src, "venom") && !tgt.dead) addEffect(this, tgt, { id: "poison", ms: 4000, dot: Math.max(1, amount * 0.15) }, src);
     }
-    if (tgt.kind === "p") onTaken(this, tgt as Player, src, amount, h);
+    if (tgt.kind === "p" && !tgt.petOf) onTaken(this, tgt as Player, src, amount, h);
   }
 
   around(x: number, y: number, r: number, kind: "p" | "m"): Unit[] {
@@ -344,6 +392,7 @@ export class Room implements World {
   }
 
   killed(u: Unit, by: Unit | undefined) {
+    if (u.petOf) return unsummon(this, u as Pet); // 소환수가 쓰러짐 (P13)
     if (u.kind === "m") {
       const m = u as Mob;
       m.removeAt = this.now + 1000;
@@ -545,7 +594,7 @@ export class Room implements World {
         pr.y += (pr.vy / speed) * (total / n);
         pr.left -= total / n;
         if (pr.team === "m" && this.walls.some((w) => segDist(w, pr.x, pr.y) <= pr.r + 3)) { end = true; break; }
-        const targets: Unit[] = pr.team === "p" ? this.foes(pr.owner) : [...this.players.values()];
+        const targets: Unit[] = pr.team === "p" ? this.foes(pr.owner) : [...this.players.values(), ...this.pets];
         for (const t of targets) {
           if (t.dead || pr.hits.has(t.id)) continue;
           const q = this.posAt(t, pr.lag);
@@ -605,10 +654,12 @@ export class Room implements World {
       if (m.hist.length > 6) m.hist.shift();
     }
     if (this.pets.length) petTick(this, dt);
-    for (const u of [...this.players.values(), ...this.mobs.values()]) {
+    for (const u of [...this.players.values(), ...this.mobs.values(), ...this.pets]) {
       tickEffects(this, u);
       regen(this, u, dt);
     }
+    // 채집 지점 다시 생김 (P13)
+    for (const n of this.nodes) if (n.readyAt && now >= n.readyAt) { n.readyAt = 0; this.ev.push(["gn", n.id, 1, 0]); }
     for (const p of this.players.values()) if (p.job && !p.dead) this.passive(p, now);
     for (const m of [...this.mobs.values()]) {
       if (m.dead && now >= m.removeAt) {
@@ -684,7 +735,7 @@ export class Room implements World {
     for (const u of this.mobs.values()) {
       rows.push([u.id, Math.round(u.x), Math.round(u.y), u.dir, (u.moving ? F_MOVING : 0) | (u.dead ? F_DEAD : 0) | (u.wind ? F_CAST : 0), Math.round((u.hp / u.st.hp) * 1000), 0]);
     }
-    for (const q of this.pets) rows.push([q.id, Math.round(q.x), Math.round(q.y), q.dir, q.moving ? F_MOVING : 0, 1000, 0]);
+    for (const q of this.pets) rows.push([q.id, Math.round(q.x), Math.round(q.y), q.dir, q.moving ? F_MOVING : 0, Math.round((q.hp / q.st.hp) * 1000), 0]);
     for (const u of [...this.players.values(), ...this.mobs.values()]) {
       if (!u.fxDirty) continue;
       u.fxDirty = false;

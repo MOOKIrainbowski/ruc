@@ -485,7 +485,7 @@ export const loadQuests = (id: number): QuestRow[] =>
 export const saveQuest = (id: number, q: QuestRow) => qQuestSave.run(id, q.quest_id, q.state, JSON.stringify(q.prog), q.tracked ? 1 : 0, Date.now());
 
 export type UQRow = {
-  id: number; owner_id: number; owner_name: string; title: string; kind: "kill" | "deliver" | "stage" | "duel"; target: string; n: number; reward_ruc: number;
+  id: number; owner_id: number; owner_name: string; title: string; kind: "kill" | "deliver" | "stage" | "duel" | "collect"; target: string; n: number; reward_ruc: number;
   item_ids: string; slots: number; taken: number; paid: number; status: "open" | "closed"; created_at: number; expires_at: number;
 };
 const qUqNew = db.prepare("INSERT INTO rpg_user_quests (owner_id, owner_name, title, kind, target, n, reward_ruc, item_ids, slots, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");

@@ -131,8 +131,10 @@ export const USER_QUEST = {
   maxSlots: 20,
   maxRuc: 1_000_000,
 };
-/** kill 처치 · deliver 전달 · stage 던전 스테이지 도달(reach_stage) · duel 결투 승리(duel_win) */
-export type UserKind = "kill" | "deliver" | "stage" | "duel";
+/** kill 처치 · deliver 전달 · stage 던전 스테이지 도달(reach_stage) · duel 결투 승리(duel_win) · collect 채집(P13) */
+export type UserKind = "kill" | "deliver" | "stage" | "duel" | "collect";
+/** collect 목표로 고를 수 있는 채집물 */
+export const COLLECT_CHOICES = [["herb", "약초"], ["blue_herb", "푸른 약초"], ["ore", "광석"]] as const;
 
 export const userQuestFee = (ruc: number, slots: number) => Math.ceil(ruc * slots * USER_QUEST.feeRate);
 

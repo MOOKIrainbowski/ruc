@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { fmt } from "../../../web/rpg/shared/josa.ts";
 import {
-  ENCH_POWER, ENCH_SLOTS, ENHANCE, ENHANCE_MAX, ENHANCE_OPT, MAIL, MARKET, PREFIXES, SHOP_GOODS, cycleEnd, disassembleRuc, enchantCost, enhanceCost, meetsPrice,
+  BREW, ENCH_POWER, ENCH_SLOTS, ENHANCE, ENHANCE_MAX, ENHANCE_OPT, MAIL, MARKET, PREFIXES, SHOP_GOODS, cycleEnd, disassembleRuc, enchantCost, enhanceCost, meetsPrice,
   recombine as rollRecombine, repairCost, rollEnch, rollEnhance, rollShop, shopCycle, tenName, type Price, type ShopSlot,
 } from "../../../web/rpg/shared/data/economy.ts";
 import { ENCHANTS, ITEMS, LOCS, RARITIES, STACK, capOf, durMaxOf, stackable, type Item, type ItemPos, type Loc, type Rarity, type StoredItem } from "../../../web/rpg/shared/data/items.ts";
@@ -445,7 +445,7 @@ const PLACES: Record<string, [string[], string[], string]> = {
 };
 const PLACE_OF: Record<string, string> = {
   mail: "mail", claim: "mail", claimAll: "mail", shop: "shop", buy: "shop", market: "market", sell: "market", mbuy: "market", cancel: "market",
-  enhance: "forge", enchant: "forge", repair: "forge", recombine: "alchemy",
+  enhance: "forge", enchant: "forge", repair: "forge", recombine: "alchemy", brew: "alchemy",
 };
 
 export type EconMsg = { op?: unknown; id?: unknown; a?: unknown; b?: unknown; n?: unknown; cycle?: unknown; prices?: unknown; opt?: unknown; list?: unknown; blessed?: unknown; protect?: unknown; slot?: unknown; rid?: unknown };
@@ -476,6 +476,7 @@ export function econOp(p: Player, m: EconMsg): string | null {
     case "repair": err = repair(p, m.a, m.rid); break;
     case "disassemble": err = disassemble(p, m.a, m.rid); break;
     case "recombine": err = recombineOp(p, m.list, m.rid); break;
+    case "brew": err = brew(p, m.id); break;
     default: return "알 수 없는 요청";
   }
   refreshGear(p);
@@ -485,6 +486,17 @@ export function econOp(p: Player, m: EconMsg): string | null {
   if (place === "shop") send(p, { t: "econ", view: "shop", data: shopView(p) });
   if (place === "market") send(p, { t: "econ", view: "market", data: marketView(p) });
   return err;
+}
+
+/** 연금술 제조 (P13): 채집물 → 포션 · 강화석. 재료를 쓰고 결과를 넣는 것이 한 트랜잭션 (가방이 가득 차면 둘 다 안 됨) */
+export function brew(p: Player, idx: unknown): string | null {
+  const r = BREW[Number(idx)];
+  if (!r) return "잘못된 요청입니다";
+  return atomic(p, "brew", () => {
+    for (const n of r.need) take(p, n.qty, (i) => i.tpl === n.tpl, "brew");
+    const e = give(p, r.out, r.qty, ITEMS[r.out].rarity ?? "common", "brew");
+    if (e) fail(e);
+  });
 }
 
 /** 몹 처치 RUC (§20-2): 막타 기여자 지갑으로 바로 */

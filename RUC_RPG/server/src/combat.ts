@@ -55,6 +55,8 @@ export type Unit = {
   icd: Map<string, number>;
   /** 플레이어만 */
   mover?: Mover;
+  /** 소환수면 주인 id (P13) */
+  petOf?: number;
 };
 
 /** 방이 제공하는 것 */
@@ -274,7 +276,7 @@ export function die(w: World, u: Unit, by: Unit | undefined) {
  * 타격 한 번. cast = 스킬 시전(숙련도), crit = 치명타 확률 +, execute = 대상 HP 이 비율 이하면 ×2,
  * mul = 차지 배율, ranged = 플레이어 물리 투사체 (이동 중 사격 −20%, 궁수 바람 읽기 제외)
  */
-export type HitSpec = Hit & { threat: number; proc?: boolean; fx?: FxSpec[]; basic?: boolean; cast?: unknown; crit?: number; execute?: number; mul?: number; ranged?: boolean; reach?: number };
+export type HitSpec = Hit & { threat: number; proc?: boolean; fx?: FxSpec[]; basic?: boolean; cast?: unknown; crit?: number; execute?: number; mul?: number; ranged?: boolean; reach?: number; pet?: number; taunt?: number };
 
 /** 피해 한 번 (§13-1). 반환: 실제로 깎은 양 (보호막 포함) */
 export function hit(w: World, src: Unit, tgt: Unit, h: HitSpec): number {
@@ -417,7 +419,7 @@ function passiveMul(w: World, src: Unit, tgt: Unit, h: HitSpec): number {
 
 /** 수호의 맹세: 근처(96px) 수호기사가 아군 피해의 15%를 대신 받고, 대신 받은 피해는 20% 줄임 */
 function guardianShare(w: World, src: Unit, tgt: Unit, dmg: number): number {
-  if (tgt.kind !== "p" || dmg < 2) return dmg;
+  if (tgt.kind !== "p" || tgt.petOf || dmg < 2) return dmg;
   const g = w.around(tgt.x, tgt.y, 96, "p").find((u) => u !== tgt && u.job === "guardian" && !foe(w, u, tgt) && u !== src);
   if (!g) return dmg;
   const part = Math.round(dmg * 0.15);

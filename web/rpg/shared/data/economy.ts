@@ -114,6 +114,13 @@ const SHOP_POOL: { item: string; w: number; stock: number }[] = [
   ...["old_dagger", "wood_sword", "apprentice_staff", "hunter_bow", "goblin_axe", "leather_cap", "leather_vest", "leather_pants", "leather_boots", "leather_gloves", "meadow_cape", "copper_ring", "rabbit_charm"]
     .map((item) => ({ item, w: 2, stock: 1 })),
 ];
+/** 연금술 제조 (P13): 채집물 → 포션 · 강화석 (연금술사 미르) */
+export const BREW: { out: string; qty: number; need: { tpl: string; qty: number }[] }[] = [
+  { out: "hp_potion_s", qty: 2, need: [{ tpl: "herb", qty: 3 }] },
+  { out: "mp_potion_s", qty: 2, need: [{ tpl: "blue_herb", qty: 3 }] },
+  { out: "hp_potion_m", qty: 1, need: [{ tpl: "herb", qty: 4 }, { tpl: "blue_herb", qty: 2 }] },
+  { out: "enhance_stone", qty: 1, need: [{ tpl: "ore", qty: 5 }] },
+];
 /** 늘 파는 잡화 (P12): 회차 진열과 따로, 한 회차에 99개까지 */
 export const SHOP_GOODS: { item: string; price: number }[] = [
   { item: "return_scroll", price: 40 }, { item: "revive_feather", price: 300 }, { item: "elixir_power", price: 250 }, { item: "elixir_luck", price: 250 },

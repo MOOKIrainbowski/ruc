@@ -223,7 +223,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
             setPopups((s) => [...s.filter((x) => x === "settings" || x === "map"), "dialogue"]);
           };
           try {
-            await g.start(host.current, m.ents, m.fx, m.drops);
+            await g.start(host.current, m.ents, m.fx, m.drops, m.nodes);
           } catch {
             setMsg(t("noWebgl"));
             setPhase("closed");

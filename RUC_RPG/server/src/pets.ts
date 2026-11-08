@@ -1,15 +1,16 @@
 import { ENGINEER, PETS, type PetDef } from "../../../web/rpg/shared/data/pets.ts";
 import { blocked, dir8, slide } from "../../../web/rpg/shared/movement.ts";
 import type { EntityInfo } from "../../../web/rpg/shared/protocol.ts";
-import { applyHeal, healPerTick, hit, rand, type HitSpec, type Unit } from "./combat.ts";
+import { applyHeal, healPerTick, hit, makeUnit, rand, recalc, type HitSpec, type Unit } from "./combat.ts";
 import { newId, type Player, type Room } from "./room.ts";
 import { cleanse } from "./skills.ts";
 
 /**
- * 소환수 · 설치물 (P9, D81). 방의 pets 에 있고 스냅샷에 엔티티 줄로 실림 — 몹 · 플레이어가 아니라 맞지도 막지도 않음.
- * 피해 · 치유는 주인의 스탯 + 소환수 계수로, 주인이 한 것으로 계산 (경험치 · 위협 · 처치 기여도 주인).
+ * 소환수 · 설치물 (P9 D81 · P13 D95). 방의 pets 에 있고 스냅샷에 엔티티 줄로 실림.
+ * 피해 · 치유는 주인의 스탯 + 소환수 계수로, 주인이 한 것으로 계산 (경험치 · 처치 기여도 주인).
+ * P13: 전투 유닛(HP = 주인 최대 HP × def.hp) — 몹이 노리고 때릴 수 있음. 소환수가 준 피해는 그 소환수의 위협(× taunt)으로, 주인 위협은 30%만.
  */
-export type Pet = { id: number; owner: Player; def: PetDef; key: string; x: number; y: number; dir: number; moving: boolean; until: number; next: number; ox: number; oy: number };
+export type Pet = Unit & { owner: Player; def: PetDef; key: string; dir: number; moving: boolean; until: number; next: number; ox: number; oy: number };
 
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.hypot(a.x - b.x, a.y - b.y);
 
@@ -31,9 +32,14 @@ export function summon(room: Room, p: Player, s: { pet: string; ms: number; max?
     const ox = Math.cos(a) * 24;
     const oy = Math.sin(a) * 16;
     const free = !blocked(room.map.collider, p.x + ox, p.y + oy);
-    const q: Pet = { id: newId(), owner: p, def, key: s.pet, x: free ? p.x + ox : p.x, y: free ? p.y + oy : p.y, dir: p.mover.dir, moving: false, until: room.now + life, next: room.now + 400, ox, oy };
+    const u = makeUnit({ id: newId(), kind: "p", name: def.name, el: p.el, lv: p.lv, x: free ? p.x + ox : p.x, y: free ? p.y + oy : p.y, r: 6, base: { ...p.base, hp: Math.max(1, Math.round(p.st.hp * def.hp)) } });
+    const q: Pet = Object.assign(u, { petOf: p.id, owner: p, def, key: s.pet, dir: p.mover.dir, moving: false, until: room.now + life, next: room.now + 400, ox, oy });
+    recalc(q);
+    q.hp = q.st.hp;
     room.pets.push(q);
     room.broadcast({ t: "spawn", e: petInfo(q) });
+    // 잔상: 주인을 노리던 근처 몹이 잔상을 노림
+    if (s.pet === "decoy") for (const m of room.mobs.values()) if (m.threat.has(p.id) && dist(m, q) <= 220) m.threat.set(q.id, m.threat.get(p.id)! * 2 + 50);
   }
 }
 
@@ -58,7 +64,7 @@ function nearestFoe(room: Room, q: Pet, range: number): Unit | undefined {
 const spec = (q: Pet): HitSpec => {
   const d = q.def;
   const el = d.el === "owner" ? q.owner.el : (d.el ?? null);
-  return { ...d.damage!, cat: d.category ?? "physical", el, threat: 1, proc: !!el && el !== "none", fx: d.fx, melee: d.act === "melee" };
+  return { ...d.damage!, cat: d.category ?? "physical", el, threat: 0.3, proc: !!el && el !== "none", fx: d.fx, melee: d.act === "melee", pet: q.id, taunt: d.taunt };
 };
 
 function moveTo(room: Room, q: Pet, tx: number, ty: number, stop: number, dt: number) {
@@ -77,7 +83,7 @@ function moveTo(room: Room, q: Pet, tx: number, ty: number, stop: number, dt: nu
 export function petTick(room: Room, dt: number) {
   for (const q of [...room.pets]) {
     const o = q.owner;
-    if (room.now >= q.until || o.dead || o.room !== room) { unsummon(room, q); continue; }
+    if (room.now >= q.until || o.dead || o.room !== room || q.dead) { unsummon(room, q); continue; }
     q.moving = false;
     const d = q.def;
     const tgt = d.act === "melee" || d.act === "shot" ? nearestFoe(room, q, d.follow ? 150 : d.range) : undefined;

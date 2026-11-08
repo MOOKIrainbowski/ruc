@@ -147,6 +147,10 @@ export const ITEMS: Record<string, Template> = {
   return_scroll: { name: "귀환 주문서", kind: "consumable", icon: "scroll", lv: 1, rarity: "common", use: { recall: true }, value: 20, desc: "3초 뒤 햇살광장으로 돌아갑니다. 움직이거나 공격받으면 취소 (던전 안에서는 못 씀)." },
   random_box: { name: "랜덤 상자", kind: "consumable", icon: "box", lv: 1, rarity: "rare", use: { box: true }, value: 200, desc: "열면 장비 · 강화 재료 · 부가석 · 포션 중 하나. 운이 높을수록 좋은 희귀도." },
   storage_ticket: { name: "창고 확장권", kind: "consumable", icon: "ticket", lv: 1, rarity: "mythic", use: { tab: true }, value: 1000, desc: "창고를 27칸 늘립니다 (두 번까지, 54 → 108칸)." },
+  // ── 채집물 (P13, 초원) — 연금술사 미르에게서 포션 · 강화석으로 ──
+  herb: mat("약초", "herb", "common", "초원 풀숲에서 캔 약초. 세 뿌리면 체력 포션이 된다.", 3),
+  blue_herb: mat("푸른 약초", "blue_herb", "common", "이슬을 머금은 푸른 잎. 마나 포션의 재료.", 4),
+  ore: mat("광석", "ore", "common", "바위 틈의 반짝이는 광석. 다섯 개를 녹이면 강화석 하나.", 5),
   // ── 재료 ──
   slime_jelly: mat("슬라임 젤리", "jelly", "poor", "말랑말랑. 강화 재료로 쓰인다는 소문이 있다.", 2),
   rabbit_fluff: mat("토끼 솜털", "fluff", "poor", "손바닥 위에서 바람도 없이 둥실 떠오른다.", 3),
@@ -352,3 +356,12 @@ export function rollBox(rand: () => number, luck: number): { tpl: string; qty: n
   const t = ITEMS[pick.tpl];
   return { tpl: pick.tpl, qty: pick.qty ?? 1, rarity: t.rarity ?? rollRarity(rand, 0.1 + luck / 400) };
 }
+
+/** 채집 지점 (P13, D94): 필드 구역마다 서버가 놓음 → F 로 캐면 재료, respawnMs 뒤 다시 생김 */
+export const GATHER: Record<string, { item: string; respawnMs: number; w: number }> = {
+  herb: { item: "herb", respawnMs: 45_000, w: 5 },
+  blue_herb: { item: "blue_herb", respawnMs: 45_000, w: 3 },
+  ore: { item: "ore", respawnMs: 60_000, w: 2 },
+};
+/** 채집 지점 한 줄: [id, 종류, x, y, 캘 수 있음 1/0] */
+export type GatherRow = [number, string, number, number, number];

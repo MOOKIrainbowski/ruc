@@ -86,7 +86,7 @@ function topThreat(room: Room, m: Mob): Unit | undefined {
   let best: Unit | undefined;
   let bv = -1;
   for (const [id, v] of m.threat) {
-    const p = room.players.get(id);
+    const p = room.combatant(id); // 플레이어 · 소환수 (P13)
     if (!p || p.dead) { m.threat.delete(id); continue; }
     if (has(p, "stealth") || room.now < (p.icd.get("decoy") ?? 0)) continue; // 은신 · 잔상(환영자객)은 놓침 (위협 수치는 남음)
     if (v > bv) { bv = v; best = p; }
@@ -308,7 +308,7 @@ function resolve(room: Room, m: Mob) {
   const a = m.def.attack;
   const base: HitSpec = { base: 0, atkRatio: 1, apRatio: 0, cat: "physical", el: m.el, threat: 0, melee: a.kind === "melee", basic: true };
   if (!w.sp) {
-    const t = room.players.get(w.tgt);
+    const t = room.combatant(w.tgt);
     if (!t || t.dead) return;
     if (a.kind === "shot") room.shoot(m, `mob:${m.key}`, m.el, t.x - m.x, t.y - m.y, a.speed ?? 150, a.range * 1.3, 5, { ...base, cat: "magical", melee: false }, -1, 0);
     else if (dist(m, t) <= a.range + t.r + 6) hit(room, m, t, { ...base, fx: a.fx ? [a.fx] : undefined });
