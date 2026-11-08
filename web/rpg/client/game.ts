@@ -20,7 +20,8 @@ import { ANIMATED, TILE_NAMES, gid } from "../shared/tiles";
 import { ACTIONS, ACTION_FPS, APPRENTICE, FRAMES, characterSheet, outfitOf, shadowCanvas, type Action, type Outfit } from "./art/character";
 import { effectIcon } from "./art/icons";
 import { itemIcon } from "./art/items";
-import { mobFrames } from "./art/mobs";
+import { MOB_PLATE, mobFrames } from "./art/mobs";
+import { PINGS, PING, PING_WHEEL, TITLES, type PingKind } from "../shared/data/party";
 import { Px } from "./art/px";
 import { hash } from "./art/px";
 import { DECAL_VARIANTS, TILE_COLOR, VARIANTS, contactShadow, decalSheet, objectFrames, tileAtlas } from "./art/world";
@@ -32,9 +33,11 @@ import type { Settings } from "./settings";
 
 TextureSource.defaultOptions.scaleMode = "nearest";
 
-/** 네임 플레이트 높이 (발밑에서 머리 위까지 px) */
-const PLATE_H: Record<string, number> = { slime: 21, rabbit: 27, goblin: 29, wolf: 23 };
+/** 네임 플레이트 높이 (발밑에서 머리 위까지 px) — 몹은 art/mobs.ts MOB_PLATE */
+const PLATE_H = MOB_PLATE;
 const PLAYER_PLATE_H = 37;
+/** 닉네임 색 (§23-2): 나 흰색 · 파티원 초록 · 일반 하늘색 · 적(결투 상대 · 결투장) 빨강 */
+const NAME_COLOR = { me: "#ffffff", party: "#7CFC6A", other: "#8fdcff", foe: "#ff6b6b" };
 
 /** 시전 불가지만 안내는 안 띄움 (쿨 · 다른 동작 중) */
 const QUIET = "";
@@ -82,7 +85,7 @@ export type HudState = {
   stamina: number;
   staminaMax: number;
   exhausted: boolean;
-  others: { x: number; y: number; mob: boolean }[];
+  others: { x: number; y: number; mob: boolean; party: boolean; foe: boolean }[];
   /** [HP, 최대, 마나, 최대, 기력, 최대, 보호막] — 예측 비용 반영 */
   v: number[];
   /** 슬롯별 [남은 ms, 전체 ms, 자원 충분] */
@@ -96,6 +99,13 @@ export type HudState = {
   potion: number;
   /** 차지 스킬 모으는 정도 0~1 (없으면 −1) */
   charge: number;
+  /** P7: 핑(미니맵) · 핑 휠(화면 좌표 · 고른 칸) · 던전 관전 · 부활할 곳 · 보스 HP 천분율(−1 = 없음) · 결투 시작까지 ms */
+  marks: { x: number; y: number; k: PingKind }[];
+  wheel: { sx: number; sy: number; sel: number } | null;
+  ghost: boolean;
+  deadKind: string;
+  bossHp: number;
+  duelIn: number;
 };
 
 /** 바닥 아이템: 아이콘 + (희귀 이상) 빛 · 주우면 주운 사람 쪽으로 날아감 */
@@ -211,6 +221,18 @@ export class Game {
   sel = 0;
   drops = new Map<number, GroundItem>();
   private toasted = new Map<string, number>();
+  // P7: 파티원 · 결투 상대 (엔티티 id) · 핑 · 던전 관전 · 보스
+  partyIds = new Set<number>();
+  inParty = false;
+  duelFoes = new Set<number>();
+  duelAt = 0;
+  ghost = false;
+  deadKind = "";
+  bossId = 0;
+  wheel: { sx: number; sy: number; wx: number; wy: number } | null = null;
+  pings: { c: Container; x: number; y: number; k: PingKind; until: number }[] = [];
+  /** 화면 가운데 큰 글씨 (보스 페이즈 · 던전 안내 · 결투) */
+  onBanner: (text: string, ms: number) => void = () => {};
   private fpsAcc = { n: 0, t: 0 };
   private disposers: (() => void)[] = [];
 
@@ -257,6 +279,7 @@ export class Game {
     };
     const up = (e: KeyboardEvent) => {
       this.keys.delete(e.code);
+      if (e.code === this.settings.keys.ping && this.wheel) this.releaseWheel();
       const slot = this.slotOfKey(e.code);
       if (this.aiming && slot === this.aiming) { this.queue(this.aiming); this.aiming = null; }
       // 차지 스킬: 떼면 쏨
@@ -274,6 +297,11 @@ export class Game {
     const mdown = (e: MouseEvent) => {
       if (this.inputBlocked) return;
       move(e);
+      // 빠른 핑 (§21-3): Alt+클릭 — 공격하지 않음
+      if (e.button === 0 && e.altKey) {
+        if (this.inParty) { const [wx, wy] = this.aimPoint(); this.net.send({ t: "mark", k: "danger", x: wx, y: wy }); }
+        return;
+      }
       if (e.button === 0) this.mouse.held = true;
       if (e.button === 2) this.useHotbar();
     };
@@ -350,7 +378,7 @@ export class Game {
     const glowTex = Texture.from(glowCanvas());
     const contactTex = Texture.from(contactShadow());
     for (const o of this.map.objects) {
-      if (o.type === "spawn" || o.type === "spawn_zone") continue;
+      if (o.type === "spawn" || o.type === "spawn_zone" || o.type === "stage_area") continue;
       if (o.type === "npc") {
         const look = NPC_LOOK[String(prop(o, "npc"))];
         const s = new Sprite(sheetFrames(look.ap, look.outfit)[0][0]);
@@ -376,7 +404,7 @@ export class Game {
       const CONTACT: Record<string, [number, number]> = {
         tree: [0.95, 9], building: [1.0, 8], tent_shop: [1.0, 7], tent_market: [1.0, 7], bench: [1.0, 5], lamp: [0.8, 5], statue: [1.0, 7], well: [1.0, 6],
         barrel: [1.0, 5], crate: [1.0, 5], crate_stack: [1.0, 6], flowerpot: [0.9, 4], haystack: [1.0, 6], sack: [0.9, 4], log: [1.0, 5], fence: [1.0, 4],
-        rock: [1.0, 5], stump: [1.0, 5], bush: [1.1, 5], board: [1.0, 5], workbench: [1.0, 5], anvil: [1.0, 5], mailbox: [0.9, 4], mushroom: [0.8, 4],
+        rock: [1.0, 5], stump: [1.0, 5], bush: [1.1, 5], board: [1.0, 5], workbench: [1.0, 5], anvil: [1.0, 5], mailbox: [0.9, 4], mushroom: [0.8, 4], pillar: [1.2, 5],
       };
       const cs = CONTACT[o.type];
       if (cs) {
@@ -388,7 +416,7 @@ export class Game {
         sh.zIndex = -1e6;
         this.entityLayer.addChild(sh);
       }
-      if (["tree", "barrel", "crate", "crate_stack", "flowerpot", "banner", "well", "haystack", "sack", "log", "fence", "mushroom", "lamp", "building", "tent_shop", "tent_market", "statue", "bench", "board", "mailbox", "workbench", "anvil", "rock", "stump", "bush", "sign"].includes(o.type)) this.staticSprites.push(s);
+      if (["tree", "barrel", "crate", "crate_stack", "flowerpot", "banner", "well", "haystack", "sack", "log", "fence", "mushroom", "lamp", "building", "tent_shop", "tent_market", "statue", "bench", "board", "mailbox", "workbench", "anvil", "rock", "stump", "bush", "sign", "pillar"].includes(o.type)) this.staticSprites.push(s);
       if (o.type === "lamp") this.lightSrc.push({ x: o.x, y: o.y - 26, r: 70, color: 0xffd27a, flicker: 0.02 });
       if (o.type === "campfire") this.lightSrc.push({ x: o.x, y: o.y - 6, r: 80, color: 0xff9a4a, flicker: 0.07 });
       if (o.type === "portal") this.lightSrc.push({ x: o.x, y: o.y - o.height / 2, r: 56, color: o.properties?.find((x) => x.name === "target")?.value === "dungeon" ? 0xb07aff : o.properties?.find((x) => x.name === "target")?.value === "arena" ? 0xff6a6a : 0x6aff8a, flicker: 0.04 });
@@ -424,7 +452,7 @@ export class Game {
     // 오브젝트가 차지한 칸에는 데칼을 뿌리지 않음
     const taken = new Uint8Array(w * h);
     for (const o of this.map.objects) {
-      if (o.type === "spawn" || o.type === "spawn_zone") continue;
+      if (o.type === "spawn" || o.type === "spawn_zone" || o.type === "stage_area") continue;
       for (let y = Math.floor((o.y - o.height) / TILE) - 1; y <= Math.floor(o.y / TILE); y++) for (let x = Math.floor((o.x - o.width / 2) / TILE) - 1; x <= Math.floor((o.x + o.width / 2) / TILE); x++) if (x >= 0 && y >= 0 && x < w && y < h) taken[y * w + x] = 1;
     }
     const vn = (x: number, y: number) => {
@@ -539,7 +567,8 @@ export class Game {
     const mob = !!info.mob;
     const frames = mob ? mobTextures(info.mob!) : sheetFrames(info.ap!, outfitOf(info.look));
     const sprite = new Sprite(frames[0][0]);
-    sprite.anchor.set(0.5, mob ? 29 / 32 : CHAR_FEET / CHAR_H);
+    const fh = frames[0][0].height;
+    sprite.anchor.set(0.5, mob ? (fh - 3) / fh : CHAR_FEET / CHAR_H);
     const shadow = new Sprite(shadowTex());
     shadow.anchor.set(0.5);
     shadow.zIndex = -1e6;
@@ -553,7 +582,7 @@ export class Game {
     plate.addChild(bars, label, icons);
     let title: Text | null = null;
     if ((mob && info.grade && info.grade !== "normal") || !mob) {
-      title = new Text({ text: mob ? GRADES[info.grade!].name : this.jobTitle(info.jb), style: { ...LABEL_STYLE, fontSize: 10, fill: mob ? color : "#FFE14D" } });
+      title = new Text({ text: mob ? GRADES[info.grade!].name : this.titleText(info), style: { ...LABEL_STYLE, fontSize: 10, fill: mob ? color : "#FFE14D" } });
       title.anchor.set(0.5, 1);
       title.y = -19;
       plate.addChild(title);
@@ -579,10 +608,70 @@ export class Game {
     return !jb ? "" : jb in LINES ? LINES[jb as LineId].name : (JOBS[jb]?.name ?? "");
   }
 
+  /** 칭호 자리: 고른 칭호(「」), 없으면 직업 이름 */
+  private titleText(info: EntityInfo) {
+    return info.tt && TITLES[info.tt] ? `「${TITLES[info.tt]}」` : this.jobTitle(info.jb);
+  }
+
+  /** 적대 플레이어: 결투장(같은 파티 제외) · 결투 상대 (서버 Room.hostile 과 같게) */
+  isFoe(e: Ent) {
+    if (e.mob || e === this.meSprite) return false;
+    if (this.kind === "arena") return !this.partyIds.has(e.info.id);
+    return this.duelFoes.has(e.info.id) && performance.now() >= this.duelAt;
+  }
+
+  /** 파티원 · 적 이름 색 다시 칠함 */
+  private paintNames() {
+    for (const e of this.ents.values()) {
+      if (e.mob) continue;
+      e.label.style.fill = this.isFoe(e) ? NAME_COLOR.foe : this.partyIds.has(e.info.id) ? NAME_COLOR.party : NAME_COLOR.other;
+    }
+  }
+
+  setParty(ids: number[], inParty: boolean) {
+    const key = ids.join();
+    this.inParty = inParty;
+    if (key === [...this.partyIds].join()) return;
+    this.partyIds = new Set(ids);
+    this.paintNames();
+  }
+
+  /** 핑 표시: 3초 (§21-3) */
+  addPing(k: PingKind, x: number, y: number, from: string) {
+    const def = PINGS[k];
+    if (!def) return;
+    const c = new Container();
+    const ring = new Graphics().circle(0, 0, 14).stroke({ color: def.color, width: 3, alpha: 0.9 }).circle(0, 0, 4).fill(def.color);
+    const icon = new Text({ text: def.icon, style: { ...LABEL_STYLE, fill: def.color, fontSize: 18 } });
+    icon.anchor.set(0.5, 1.4);
+    const name = new Text({ text: `${def.name} · ${from}`, style: { ...LABEL_STYLE, fill: "#ffffff", fontSize: 11 } });
+    name.anchor.set(0.5, -1.1);
+    c.addChild(ring, icon, name);
+    this.screenLayer.addChild(c);
+    this.pings.push({ c, x, y, k, until: performance.now() + PING.ms });
+  }
+
+  /** 핑 휠을 떼면: 휠 가운데에서 마우스 방향의 칸 (가까우면 '위험') */
+  private releaseWheel() {
+    const w = this.wheel!;
+    this.wheel = null;
+    const sel = this.wheelSel(w);
+    this.net.send({ t: "mark", k: sel < 0 ? "danger" : PING_WHEEL[sel], x: w.wx, y: w.wy });
+  }
+
+  private wheelSel(w: { sx: number; sy: number }) {
+    const dx = this.mouse.sx - w.sx;
+    const dy = this.mouse.sy - w.sy;
+    if (Math.hypot(dx, dy) < 18) return -1;
+    const a = (Math.atan2(dx, -dy) + Math.PI * 2) % (Math.PI * 2); // 위 = 0, 시계 방향
+    return Math.round(a / ((Math.PI * 2) / PING_WHEEL.length)) % PING_WHEEL.length;
+  }
+
   addEnt(info: EntityInfo) {
     if (info.id === this.you.id || this.ents.has(info.id)) return;
     const e = this.makeEnt(info);
     e.sprite.visible = e.shadow.visible = e.plate.visible = false; // 첫 스냅샷 전까지 숨김
+    if (!e.mob) e.label.style.fill = this.isFoe(e) ? NAME_COLOR.foe : this.partyIds.has(info.id) ? NAME_COLOR.party : NAME_COLOR.other;
     this.ents.set(info.id, e);
   }
 
@@ -735,8 +824,35 @@ export class Game {
         const e = this.ent(ev[1] as number);
         if (!e) return;
         e.deadMs = 0;
-        if (e === this.meSprite) this.deadUntil = 0;
+        if (e === this.meSprite) { this.deadUntil = 0; this.ghost = false; }
         this.fx.pillar(e.x, e.y);
+        return;
+      }
+      case "tt": {
+        const e = this.ent(ev[1] as number);
+        if (!e || e.mob) return;
+        e.info.tt = (ev[2] as string) || undefined;
+        if (e.title) e.title.text = this.titleText(e.info);
+        return;
+      }
+      case "bp": {
+        // 보스 페이즈 전환 (§20-4)
+        this.onBanner(`${ev[2]}`, 2600);
+        if (this.settings.shake) this.fx.shake = 400;
+        const e = this.ent(ev[1] as number);
+        if (e) this.fx.burst(e.x, e.y - 30, e.info.el || "grass", 30);
+        return;
+      }
+      case "ann": {
+        const [, text, ms, id] = ev as [string, string, number, number?];
+        const e = id ? this.ent(id) : undefined;
+        if (e) this.fx.number(e.x, e.y - 52, text, "#ff9a9e", true);
+        else this.onBanner(text, ms || 2500);
+        return;
+      }
+      case "wp": {
+        const [, x, y, r] = ev as number[] as [never, number, number, number];
+        this.fx.number(x, y - r, "여기로 모여요!", "#FFE14D", true);
         return;
       }
       case "job": {
@@ -744,7 +860,7 @@ export class Game {
         const e = this.ent(id);
         if (!e || e.mob) return;
         e.info.jb = job || line;
-        if (e.title) e.title.text = this.jobTitle(e.info.jb);
+        if (e.title) e.title.text = this.titleText(e.info);
         this.fx.pillar(e.x, e.y);
         return;
       }
@@ -833,11 +949,37 @@ export class Game {
         if (dur === 0) this.toast(`「${ITEMS[it.tpl].name}」의 내구도가 다 닳아 성능이 꺼졌습니다`);
         return;
       }
-      case "dead":
-        this.deadUntil = performance.now() + (ev[1] as number);
+      case "dead": {
+        const [, ms, kind] = ev as [string, number, string?];
+        this.deadKind = kind ?? "plaza";
+        // 던전: 관전 (공용 부활 · 파티원 부활까지)
+        if (kind === "dungeon") this.ghost = true;
+        else this.deadUntil = performance.now() + ms;
         this.meSprite.deadMs = 1;
         this.mouse.held = false;
         return;
+      }
+      case "pl": {
+        // 파티 드롭 분배 결과 (§21-2)
+        const [, tpl, rarity, who] = ev as [string, string, Rarity, string];
+        const t = ITEMS[tpl];
+        if (t) this.onToast(`[파티] 「${t.name}」${rarity !== "common" && !t.rarity ? `(${RARITY[rarity].name})` : ""} → ${who}`);
+        return;
+      }
+      case "duel": {
+        const [, kind, foes, v] = ev as [string, string, number[], number | string];
+        if (kind === "start") {
+          this.duelFoes = new Set(foes);
+          this.duelAt = performance.now() + Number(v);
+          this.onBanner(`결투! ${Math.ceil(Number(v) / 1000)}초 뒤 시작`, Number(v));
+          setTimeout(() => this.paintNames(), Number(v) + 50);
+        } else {
+          this.duelFoes.clear();
+          this.onBanner(v === "win" ? "결투 승리!" : v === "lose" ? "결투 패배…" : "결투 무승부", 2600);
+        }
+        this.paintNames();
+        return;
+      }
     }
   }
 
@@ -867,6 +1009,12 @@ export class Game {
     const digit = /^Digit([1-5])$/.exec(code);
     if (digit) this.sel = Number(digit[1]) - 1;
     else if (code === k.dodge) this.queued.dodge = true;
+    else if (code === k.ping) {
+      // 핑 휠 (§21-3): 누르고 있는 동안 휠, 떼면 커서 자리(누른 순간)에 핑
+      if (!this.inParty) return this.toast("핑은 파티 중에만 쓸 수 있습니다 (P 파티창)");
+      const [wx, wy] = this.aimPoint();
+      this.wheel = { sx: this.mouse.sx, sy: this.mouse.sy, wx, wy };
+    }
     else if (code === k.interact) {
       if (this.near?.type === "npc") {
         this.net.send({ t: "use", oid: this.near.id }); // 서버: "말 걸기" 퀘스트 목표
@@ -911,7 +1059,7 @@ export class Game {
     let best: Ent | undefined;
     let bd = 24;
     for (const e of this.ents.values()) {
-      if (!e.mob || e.deadMs > 0 || !e.sprite.visible) continue;
+      if ((!e.mob && !this.isFoe(e)) || e.deadMs > 0 || !e.sprite.visible) continue;
       const d = Math.sqrt((e.x - ax) ** 2 + (e.y - ay) ** 2);
       if (d <= bd + 10 && Math.sqrt((e.x - this.me.x) ** 2 + (e.y - this.me.y) ** 2) <= range + 18) { bd = d; best = e; }
     }
@@ -929,7 +1077,7 @@ export class Game {
     const sk = this.skill(k);
     if (!sk) return k === "R" ? "궁극기는 1차 전직(Lv10) 후 열립니다" : "스킬이 없는 슬롯입니다 (K 스킬창)";
     if (this.kind === "plaza") return "광장은 안전지대라 공격 · 스킬을 쓸 수 없습니다";
-    if (this.deadUntil) return QUIET;
+    if (this.deadUntil || this.ghost) return QUIET;
     const b = this.blocks();
     if (k === "A" ? b.atk : b.skill) return "지금은 쓸 수 없습니다";
     if (this.me.mv > 0 || this.me.lock > 0) return QUIET;
@@ -1070,7 +1218,7 @@ export class Game {
     me.dir = this.me.dir;
     const rolling = this.me.mv > 0 && this.me.rollCd > ROLL.cdSteps;
     if (this.me.mv > 0 && !rolling) this.fx.burst(me.x, me.y - 12, this.you.element, 1); // 돌진 잔상
-    me.flags = (rolling ? F_ROLL : 0) | (this.deadUntil ? F_DEAD : 0);
+    me.flags = (rolling ? F_ROLL : 0) | (this.deadUntil || this.ghost ? F_DEAD : 0);
     me.hp = (this.v[0] / Math.max(1, this.v[1])) * 1000;
     me.res = (this.v[2] / Math.max(1, this.v[3])) * 1000;
     this.animate(me, this.me.running ? "run" : this.me.moving ? "walk" : "idle", dt, now);
@@ -1128,8 +1276,9 @@ export class Game {
     const z = this.zoom;
     const mapW = this.map.w * TILE;
     const mapH = this.map.h * TILE;
-    const cx = Math.max(sw / 2 / z, Math.min(mapW - sw / 2 / z, me.x));
-    const cy = Math.max(sh / 2 / z, Math.min(mapH - sh / 2 / z, me.y - 16));
+    // 맵이 화면보다 작으면 가운데 (아주 넓은 화면에서 한쪽만 검게 비지 않게)
+    const cx = mapW * z <= sw ? mapW / 2 : Math.max(sw / 2 / z, Math.min(mapW - sw / 2 / z, me.x));
+    const cy = mapH * z <= sh ? mapH / 2 : Math.max(sh / 2 / z, Math.min(mapH - sh / 2 / z, me.y - 16));
     const shake = this.fx.shake > 0 && this.settings.shake ? Math.round((Math.random() - 0.5) * 4) : 0;
     this.world.scale.set(z);
     this.world.position.set(Math.round(sw / 2 - cx * z) + shake, Math.round(sh / 2 - cy * z));
@@ -1142,9 +1291,20 @@ export class Game {
     }
     for (const l of this.labels) l.t.position.set(...toScreen(l.x, l.y));
     const np = this.settings.nameplates;
+    // 핑 (화면 좌표로 따라감 · 3초 · 깜빡이며 사라짐)
+    const pnow = performance.now();
+    this.pings = this.pings.filter((p) => {
+      if (pnow >= p.until) { p.c.destroy({ children: true }); return false; }
+      p.c.position.set(...toScreen(p.x, p.y));
+      const left = p.until - pnow;
+      p.c.alpha = left < 600 ? left / 600 : 1;
+      const age = PING.ms - left;
+      p.c.scale.set(age < 200 ? 2 - age / 200 : 1); // 찍힐 때 크게 → 제자리
+      return true;
+    });
     for (const e of [me, ...this.ents.values()]) {
       e.plate.position.set(...toScreen(e.x, e.y - (e.mob ? (PLATE_H[e.info.mob!] ?? 24) : PLAYER_PLATE_H)));
-      if (e !== me && !e.mob) e.plate.visible = e.sprite.visible && np === "all";
+      if (e !== me && !e.mob) e.plate.visible = e.sprite.visible && (np === "all" || (np === "party" && this.partyIds.has(e.info.id)));
       this.drawBars(e);
     }
 
@@ -1258,7 +1418,7 @@ export class Game {
       stamina: this.me.stamina,
       staminaMax: this.me.staminaMax,
       exhausted: this.me.exhausted,
-      others: [...this.ents.values()].filter((e) => e.sprite.visible && !(e.flags & F_DEAD)).map((e) => ({ x: e.x, y: e.y, mob: e.mob })),
+      others: [...this.ents.values()].filter((e) => e.sprite.visible && !(e.flags & F_DEAD)).map((e) => ({ x: e.x, y: e.y, mob: e.mob, party: this.partyIds.has(e.info.id), foe: this.isFoe(e) })),
       v: [this.v[0], this.v[1], mp, this.v[3], en, this.v[5], this.v[6]],
       cds,
       fx: this.myFx.map((r) => [r[0], Math.max(0, r[1] - age), r[2], r[3], r[4]] as FxRow).filter((r) => r[1] > 0 || r[3] === 0),
@@ -1267,6 +1427,12 @@ export class Game {
       sel: this.sel,
       potion: this.v[12] ?? 0,
       charge: this.charging ? Math.min(1, (now - this.charging.at) / (this.skill(this.charging.slot)?.charge?.ms ?? 1000)) : -1,
+      marks: this.pings.map((p) => ({ x: p.x, y: p.y, k: p.k })),
+      wheel: this.wheel ? { sx: this.wheel.sx, sy: this.wheel.sy, sel: this.wheelSel(this.wheel) } : null,
+      ghost: this.ghost,
+      deadKind: this.deadKind,
+      bossHp: this.bossId ? (this.ents.get(this.bossId)?.hp ?? 0) : -1,
+      duelIn: this.duelFoes.size && now < this.duelAt ? this.duelAt - now : 0,
     };
   }
 }

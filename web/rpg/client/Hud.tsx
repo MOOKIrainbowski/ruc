@@ -5,7 +5,8 @@ import { DIRS, DIR_KO, TILE } from "../shared/constants";
 import type { GameMap } from "../shared/map";
 import type { ChannelInfo, You } from "../shared/protocol";
 import type { HudState } from "./game";
-import { t } from "./i18n";
+import { t, type StrKey } from "./i18n";
+import { PINGS } from "../shared/data/party";
 
 /** 미니맵 점 색 (§23-2) */
 const OBJ_DOT: Record<string, string> = { npc: "#FFE14D", tent_shop: "#FF9F43", tent_market: "#1FB5A8", portal: "#B57BFF", mailbox: "#3b6fd6" };
@@ -29,7 +30,17 @@ function drawMap(ctx: CanvasRenderingContext2D, overview: HTMLCanvasElement, map
     ctx.fillRect(Math.round(px - r), Math.round(py - r), r * 2, r * 2);
   };
   for (const o of map.objects) if (OBJ_DOT[o.type]) dot(o.x, o.y - 4, o.type === "portal" ? 3 : 2, OBJ_DOT[o.type]);
-  for (const o of s.others) dot(o.x, o.y, o.mob ? 1 : 2, o.mob ? "#E5484D" : "#8fdcff");
+  // 파티원 초록 · 적대 플레이어 빨강 (§23-2)
+  for (const o of s.others) dot(o.x, o.y, o.mob ? 1 : 2, o.mob ? "#E5484D" : o.foe ? "#ff3b3b" : o.party ? "#4CC764" : "#8fdcff");
+  // 핑 (§21-3)
+  for (const m of s.marks) {
+    const [px, py] = at(m.x, m.y);
+    ctx.strokeStyle = PINGS[m.k].color;
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.arc(px, py, 5 + (Date.now() % 600) / 120, 0, Math.PI * 2);
+    ctx.stroke();
+  }
   // 나: 바라보는 쪽으로 삼각형
   const [mx, my] = at(s.x, s.y);
   const a = ((90 - s.dir * 45) * Math.PI) / 180;
@@ -89,7 +100,7 @@ export function Compass({ dir }: { dir: number }) {
 
 export function ChannelPicker({ room, channels, onPick }: { room: { kind: string; ch: number }; channels: ChannelInfo[]; onPick: (ch: number) => void }) {
   const [open, setOpen] = useState(false);
-  const name = t(room.kind === "plaza" ? "hud.plaza" : "hud.field");
+  const name = t(`hud.${room.kind}` as StrKey);
   return (
     <div className="relative mt-1.5 inline-block pointer-events-auto">
       <button className="rpg-chip" onClick={() => setOpen(!open)}>{t("hud.channel", { room: name, ch: room.ch })} ▾</button>

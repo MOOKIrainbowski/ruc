@@ -250,3 +250,53 @@ test("경제 동시 요청: 둘이 같은 물건을 동시에 사면 한 명만 
   assert.equal(views(g, "market").length >= 1, true);
   for (const c of [g, h, i]) c.ws.close();
 });
+
+test("P7 실제 접속: 파티 초대 알림 → 수락 → 핑 → 파티장이 유적의 문에서 입장 확인 → 둘 다 던전 1스테이지 → 나가기 → 결투장 포털", async () => {
+  const plaza = loadMap(JSON.parse(readFileSync(new URL("../../../web/rpg/shared/data/maps/plaza.json", import.meta.url), "utf8")) as TiledMap);
+  const join = async (sub: string, nick: string) => {
+    const c = client(sub);
+    await c.open;
+    await c.until((m) => m.t === "needCreate");
+    c.send({ t: "create", nickname: nick, appearance: ap, element: "grass" });
+    await c.until((m) => m.t === "joined");
+    return c;
+  };
+  const [a, b] = [await join("PA", "파티장"), await join("PB", "파티원")];
+  a.send({ t: "party", op: "invite", name: "파티원" });
+  const noti = await b.until<Extract<S2C, { t: "noti" }>>((m) => m.t === "noti" && m.n.kind === "party_invite");
+  assert.equal(noti.toast, true, "파티 초대는 토스트");
+  b.send({ t: "party", op: "accept", id: noti.n.data!.party as number });
+  await a.until((m) => m.t === "party" && m.party?.members.length === 2);
+  await b.until((m) => m.t === "pv" && m.v.length === 2);
+  a.send({ t: "mark", k: "attack", x: 700, y: 900 });
+  await b.until((m) => m.t === "mark" && m.k === "attack" && m.from === "파티장");
+  // 유적의 문: 파티원이 먼저 쓰면 안내, 파티장은 확인 창
+  const gate = plaza.objects.find((o) => o.type === "portal" && prop(o, "target") === "dungeon")!;
+  for (const c of [a, b]) {
+    c.send({ t: "dev", map: "plaza", x: gate.x, y: gate.y + 12 });
+    await c.until((m) => m.t === "joined" && Math.abs(m.me.y - gate.y - 12) < 1);
+  }
+  b.send({ t: "use", oid: gate.id });
+  await b.until((m) => m.t === "error" && m.msg.includes("파티장"));
+  a.send({ t: "use", oid: gate.id });
+  await a.until((m) => m.t === "ask" && m.kind === "dungeon" && m.members.length === 2);
+  a.send({ t: "dungeon", op: "enter" });
+  for (const c of [a, b]) {
+    const j = await c.until<Extract<S2C, { t: "joined" }>>((m) => m.t === "joined" && m.room.kind === "dungeon");
+    assert.equal(j.ents.filter((e) => e.mob === "sprout_slime").length, 12);
+    await c.until((m) => m.t === "dg" && m.s?.stage === 1 && m.s.phase === "fight" && m.s.potions === 5);
+  }
+  b.send({ t: "dungeon", op: "leave" });
+  await b.until((m) => m.t === "joined" && m.room.kind === "plaza");
+  await b.until((m) => m.t === "dg" && m.s === null);
+  // 결투장 포털 (광장 동쪽)
+  const arena = plaza.objects.find((o) => o.type === "portal" && prop(o, "target") === "arena")!;
+  b.send({ t: "dev", map: "plaza", x: arena.x - 40, y: arena.y - 8 });
+  await b.until((m) => m.t === "joined" && Math.abs(m.me.x - arena.x + 40) < 1);
+  b.send({ t: "use", oid: arena.id });
+  await b.until((m) => m.t === "joined" && m.room.kind === "arena");
+  b.send({ t: "who" });
+  await b.until((m) => m.t === "who" && m.list.some((w) => w.name === "파티원"));
+  a.ws.close();
+  b.ws.close();
+});

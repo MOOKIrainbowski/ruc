@@ -71,7 +71,12 @@ export interface World {
   push(u: Unit, dx: number, dy: number): void;
   /** (x, y) 반경 r 안의 살아 있는 플레이어(p) · 몹(m) */
   around(x: number, y: number, r: number, kind: "p" | "m"): Unit[];
+  /** 적대 관계 (P7 결투장 · 결투). 없으면 플레이어 ↔ 몹만 */
+  hostile?(a: Unit, b: Unit): boolean;
+  /** 쓰러지기 직전: true 면 죽이지 않음 (결투 패배는 체력 1로 끝남) */
+  spare?(src: Unit | undefined, u: Unit): boolean;
 }
+const foe = (w: World, a: Unit, b: Unit) => (w.hostile ? w.hostile(a, b) : a.kind !== b.kind);
 
 export function makeUnit(o: { id: number; kind: "p" | "m"; name: string; el: ElementId; lv: number; x: number; y: number; r: number; base: Stats; mover?: Mover }): Unit {
   const u: Unit = {
@@ -232,7 +237,7 @@ function loseHp(w: World, src: Unit | undefined, tgt: Unit, dmg: number) {
   tgt.combat = w.now;
   if (src) src.combat = w.now;
   if (has(tgt, "sleep")) removeEffect(w, tgt, "sleep");
-  if (tgt.hp <= 0) die(w, tgt, src);
+  if (tgt.hp <= 0 && !w.spare?.(src, tgt)) die(w, tgt, src);
 }
 
 export function die(w: World, u: Unit, by: Unit | undefined) {
@@ -362,7 +367,7 @@ function passiveMul(src: Unit, tgt: Unit, h: HitSpec): number {
 /** 수호의 맹세: 근처(96px) 수호기사가 아군 피해의 15%를 대신 받고, 대신 받은 피해는 20% 줄임 */
 function guardianShare(w: World, src: Unit, tgt: Unit, dmg: number): number {
   if (tgt.kind !== "p" || dmg < 2) return dmg;
-  const g = w.around(tgt.x, tgt.y, 96, "p").find((u) => u !== tgt && u.job === "guardian");
+  const g = w.around(tgt.x, tgt.y, 96, "p").find((u) => u !== tgt && u.job === "guardian" && !foe(w, u, tgt) && u !== src);
   if (!g) return dmg;
   const part = Math.round(dmg * 0.15);
   const taken = Math.max(1, Math.round(part * 0.8));
@@ -376,7 +381,7 @@ function react(w: World, src: Unit, tgt: Unit, el: ElementId, dmg: number): numb
   const r = REACTIONS.find((x) => x.b === el && has(tgt, x.a));
   if (!r) return dmg;
   const rm = src.job === "elementalist" ? 1.25 : 1;
-  const others = () => w.around(tgt.x, tgt.y, 48, tgt.kind).filter((u) => u !== tgt);
+  const others = () => w.around(tgt.x, tgt.y, 48, tgt.kind).filter((u) => u !== tgt && foe(w, src, u));
   switch (r.a + "+" + r.b) {
     case "wet+electric":
       removeEffect(w, tgt, "wet");

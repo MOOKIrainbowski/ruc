@@ -114,6 +114,12 @@ export const ITEMS: Record<string, Template> = {
   copper_ring: { name: "구리 반지", kind: "accessory", slot: "ring", icon: "ring", lv: 1, stats: { atk: 2, ap: 2 }, desc: "흔하지만 왠지 행운이 따르는 것 같다." },
   rabbit_charm: { name: "토끼발 목걸이", kind: "accessory", slot: "necklace", icon: "necklace", lv: 3, stats: { luck: 2, moveSpeed: 2 }, desc: "토끼정령이 떨어뜨린 솜털 뭉치를 엮었다." },
   fang_earring: { name: "늑대 송곳니 귀걸이", kind: "accessory", slot: "earring", icon: "earring", lv: 10, stats: { crit: 0.03, critDmg: 0.05 }, desc: "귀에 걸면 늑대 울음소리가 들리는 듯하다." },
+  // ── 던전 "고목의 유적" 장비 (§20-3) ──
+  ancient_blade: { name: "고목 수호검", kind: "weapon", slot: "weapon", basic: "slash", icon: "sword", lv: 15, stats: { atk: 22, crit: 0.03, hp: 30 }, desc: "엘드라의 뿌리가 감싸던 검. 칼날에서 숲 냄새가 난다." },
+  ancient_staff: { name: "고목 지팡이", kind: "weapon", slot: "weapon", basic: "bolt", icon: "staff", lv: 15, stats: { ap: 22, mana: 40, cdr: 0.03 }, desc: "천 년 묵은 가지에 정령의 숨결이 남아 있다." },
+  ancient_bow: { name: "고목 장궁", kind: "weapon", slot: "weapon", basic: "shot", icon: "bow", lv: 15, stats: { atk: 19, crit: 0.05 }, desc: "시위를 당기면 잎사귀가 바람에 떤다." },
+  ancient_mail: { name: "고대 수피 갑옷", kind: "armor", slot: "chest", icon: "chest", lv: 15, stats: { pdef: 16, mdef: 10, hp: 70 }, look: ["#b9a27a", "#8a7350", "#5e4c33"], desc: "고대 수목 기사의 껍질을 덧대 만든 갑옷." },
+  twin_ring: { name: "쌍생화 반지", kind: "accessory", slot: "ring", icon: "ring", lv: 15, stats: { atk: 5, ap: 5, crit: 0.02 }, desc: "두 송이 꽃이 서로를 감싸 안은 반지." },
   // ── 포션 (공유 쿨 8초) ──
   hp_potion_s: potion("체력 포션 (소)", "potion_hp", { hp: 80 }, "딸기 맛이 난다."),
   hp_potion_m: potion("체력 포션 (중)", "potion_hp", { hp: 200 }, "딸기에 꿀을 조금 넣었다."),
@@ -132,6 +138,12 @@ export const ITEMS: Record<string, Template> = {
   enhance_stone: mat("강화석", "stone", "rare", "광장 대장간의 강화대에서 장비를 강화할 때 씁니다.", 15),
   protect_scroll: mat("강화 보호 주문서", "scroll", "advanced", "강화가 파괴로 끝나도 실패(유지)로 바꿔 줍니다. 강화할 때 자동으로 한 장 씁니다.", 10),
   blessed_stone: mat("축복 강화석", "stone", "mythic", "강화 성공률 +10%p (파괴율은 그대로). 강화할 때 고르면 한 개 씁니다.", 2),
+  // 던전 재료 (§20-3)
+  spore_dust: mat("포자 가루", "spore", "common", "버섯 주술사의 모자에서 털어 낸 가루. 재채기가 난다.", 6),
+  moss_heart: mat("이끼 낀 돌심장", "moss", "rare", "아직도 아주 천천히 뛰고 있다.", 20),
+  dark_sap: mat("어둠 수액", "sap", "rare", "그림자 덩굴에서 배어 나온 끈적한 수액.", 18),
+  ancient_bark: mat("고대 수피 갑옷 조각", "bark", "advanced", "고대 수목 기사의 갑옷에서 떨어진 조각.", 30),
+  spirit_leaf: mat("정령의 잎사귀", "leaf", "rare", "균형을 되찾은 정령이 남긴 잎사귀. 은은하게 빛난다.", 40),
   // 부가석 (§16-2): 희귀도가 수치를 정함
   ench_atk: mat("공격력 부가석", "gem", undefined, "마법부여: 공격력", 8, "atk"),
   ench_ap: mat("주문력 부가석", "gem", undefined, "마법부여: 주문력", 8, "ap"),

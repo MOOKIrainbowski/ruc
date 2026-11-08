@@ -11,6 +11,7 @@ import {
 import { at, atomic, fail, keyOf, mail, online, pay, take } from "./economy.ts";
 import { newItem, refreshGear, sendInv } from "./items.ts";
 import { gainExp, type Player } from "./room.ts";
+import { RUINS } from "../../../web/rpg/shared/data/dungeons.ts";
 
 /**
  * 퀘스트 (§19) · 알림 (§22). 목표는 서버가 직접 본 일만 센다: 진행도는 서버 이벤트(quest())로만 오르고 클라이언트 신고는 없음.
@@ -68,7 +69,10 @@ function start(p: Player, id: string, announce = true) {
 }
 
 function syncLevel(p: Player, q: QuestRow) {
-  QUESTS[q.quest_id].obj.forEach((o, i) => { if (o.type === "level") q.prog[i] = Math.min(o.n, p.char.level); });
+  QUESTS[q.quest_id].obj.forEach((o, i) => {
+    if (o.type === "level") q.prog[i] = Math.min(o.n, p.char.level);
+    if (o.type === "party" && p.party) q.prog[i] = o.n; // 이미 파티에 있으면 바로 (P7)
+  });
   check(p, q);
 }
 
@@ -81,14 +85,18 @@ export function quest(p: Player, type: string, target?: string, n = 1) {
     QUESTS[q.quest_id].obj.forEach((o, i) => {
       if (o.type !== type || q.prog[i] >= o.n) return;
       if (type === "level") q.prog[i] = Math.min(o.n, p.char.level);
-      else if (!o.target || o.target === "*" || o.target === target) q.prog[i] = Math.min(o.n, q.prog[i] + n);
+      else if (type === "stage") {
+        // 던전 스테이지 도달: 가장 높이 간 스테이지 (n = 스테이지 번호)
+        if ((o.target && o.target !== target) || n <= q.prog[i]) return;
+        q.prog[i] = Math.min(o.n, n);
+      } else if (!o.target || o.target === "*" || o.target === target) q.prog[i] = Math.min(o.n, q.prog[i] + n);
       else return;
       touched = true;
     });
     if (touched) { changed = true; saveQuest(p.char.id, q); check(p, q); }
   }
   if (changed) sendQuests(p);
-  if (type === "kill" && target) userKill(p, target);
+  if (type === "kill" || type === "stage" || type === "duel") userProg(p, type, target ?? "", n);
 }
 
 function check(p: Player, q: QuestRow) {
@@ -165,9 +173,10 @@ export function uqCreate(p: Player, m: Record<string, unknown>): string | null {
   const days = Number(m.days ?? USER_QUEST.maxDays);
   const list = Array.isArray(m.list) ? (m.list as unknown[]) : [];
   if (title.length < 2 || title.length > 24) return "제목은 2~24자로 써 주세요";
-  if (kind !== "kill" && kind !== "deliver") return "목표 유형이 올바르지 않습니다";
-  if (kind === "kill" ? !MOB_CHOICES.some(([k]) => k === target) : !Object.hasOwn(ITEMS, target)) return "목표 대상이 올바르지 않습니다";
-  if (!Number.isInteger(n) || n < 1 || n > USER_QUEST.maxN) return `수량은 1~${USER_QUEST.maxN} 사이로 정해 주세요`;
+  if (kind !== "kill" && kind !== "deliver" && kind !== "stage" && kind !== "duel") return "목표 유형이 올바르지 않습니다";
+  const okTarget = kind === "kill" ? MOB_CHOICES.some(([k]) => k === target) : kind === "deliver" ? Object.hasOwn(ITEMS, target) : kind === "stage" ? target === "ruins" : target === "duel";
+  if (!okTarget) return "목표 대상이 올바르지 않습니다";
+  if (!Number.isInteger(n) || n < 1 || n > (kind === "stage" ? RUINS.stages.length : USER_QUEST.maxN)) return kind === "stage" ? `스테이지는 1~${RUINS.stages.length} 사이로 정해 주세요` : `수량은 1~${USER_QUEST.maxN} 사이로 정해 주세요`;
   if (!Number.isInteger(ruc) || ruc < 0 || ruc > USER_QUEST.maxRuc) return "보상 RUC 가 올바르지 않습니다";
   if (!Number.isInteger(slots) || slots < 1 || slots > USER_QUEST.maxSlots) return `인원은 1~${USER_QUEST.maxSlots}명입니다`;
   if (!Number.isInteger(days) || days < 1 || days > USER_QUEST.maxDays) return `기한은 1~${USER_QUEST.maxDays}일입니다`;
@@ -235,12 +244,14 @@ function payout(r: UQRow, to: number) {
   if (r.paid + 1 >= r.slots) closeUserQuest(r.id);
 }
 
-function userKill(p: Player, mob: string) {
+/** 유저 퀘스트 진행 (서버 이벤트만): 처치 · 던전 스테이지 도달(가장 높은 스테이지) · 결투 승리 */
+function userProg(p: Player, type: string, target: string, n: number) {
   for (const [qid, prog] of [...p.takes]) {
     const r = userQuest(qid);
-    if (!r || r.kind !== "kill" || r.target !== mob) continue;
+    if (!r || r.kind !== type || (type !== "duel" && r.target !== target)) continue;
     if (r.status !== "open" || r.expires_at <= Date.now()) { p.takes.delete(qid); continue; }
-    const now = prog + 1;
+    const now = type === "stage" ? Math.max(prog, n) : prog + 1;
+    if (now === prog) continue;
     p.takes.set(qid, now);
     saveTakeProg(qid, p.char.id, now);
     send(p, { t: "uqp", id: qid, prog: now });

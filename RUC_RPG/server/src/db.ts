@@ -195,9 +195,31 @@ export function tx<T>(fn: () => T): T {
 }
 export const inTx = () => depth > 0;
 
-// 단계마다 늘어난 캐릭터 칸 — 이미 있는 DB 에도 붙임 (P4: 전직 · 잠재력)
+// P7: K/D/A (§13-3 시즌 단위) · 칭호 (§26-2 rpg_character_titles)
+db.exec(`
+CREATE TABLE IF NOT EXISTS rpg_kda (
+  character_id INTEGER NOT NULL,
+  season       TEXT NOT NULL,
+  kills        INTEGER NOT NULL DEFAULT 0,
+  deaths       INTEGER NOT NULL DEFAULT 0,
+  assists      INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (character_id, season)
+);
+CREATE TABLE IF NOT EXISTS rpg_character_titles (
+  character_id INTEGER NOT NULL,
+  title_id     TEXT NOT NULL,
+  created_at   INTEGER NOT NULL,
+  PRIMARY KEY (character_id, title_id)
+);
+-- (예약 §21-4) 길드 · 영지 · 국가 — 베타에서는 비워 둠
+CREATE TABLE IF NOT EXISTS rpg_guilds (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS rpg_territories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS rpg_nations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL);
+`);
+
+// 단계마다 늘어난 캐릭터 칸 — 이미 있는 DB 에도 붙임 (P4: 전직 · 잠재력, P7: 칭호)
 const charCols = new Set((db.prepare("PRAGMA table_info(rpg_characters)").all() as { name: string }[]).map((c) => c.name));
-for (const [col, def] of [["job_tier1", "TEXT"], ["job_tier2", "TEXT"], ["job_sub", "TEXT"], ["potential_phys", "REAL NOT NULL DEFAULT 10"], ["potential_mag", "REAL NOT NULL DEFAULT 10"]])
+for (const [col, def] of [["job_tier1", "TEXT"], ["job_tier2", "TEXT"], ["job_sub", "TEXT"], ["potential_phys", "REAL NOT NULL DEFAULT 10"], ["potential_mag", "REAL NOT NULL DEFAULT 10"], ["title_id", "TEXT"]])
   if (!charCols.has(col)) db.exec(`ALTER TABLE rpg_characters ADD COLUMN ${col} ${def}`);
 
 export type CharacterRow = {
@@ -217,6 +239,8 @@ export type CharacterRow = {
   job_sub: string | null;
   potential_phys: number;
   potential_mag: number;
+  /** 고른 칭호 (TITLES id) */
+  title_id: string | null;
 };
 
 type Raw = Omit<CharacterRow, "appearance" | "position" | "settings"> & { appearance: string; position: string | null; settings: string | null };
@@ -423,7 +447,7 @@ export const loadQuests = (id: number): QuestRow[] =>
 export const saveQuest = (id: number, q: QuestRow) => qQuestSave.run(id, q.quest_id, q.state, JSON.stringify(q.prog), q.tracked ? 1 : 0, Date.now());
 
 export type UQRow = {
-  id: number; owner_id: number; owner_name: string; title: string; kind: "kill" | "deliver"; target: string; n: number; reward_ruc: number;
+  id: number; owner_id: number; owner_name: string; title: string; kind: "kill" | "deliver" | "stage" | "duel"; target: string; n: number; reward_ruc: number;
   item_ids: string; slots: number; taken: number; paid: number; status: "open" | "closed"; created_at: number; expires_at: number;
 };
 const qUqNew = db.prepare("INSERT INTO rpg_user_quests (owner_id, owner_name, title, kind, target, n, reward_ruc, item_ids, slots, created_at, expires_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
@@ -473,4 +497,25 @@ export const insertNoti = (char: number, kind: string, text: string, data?: unkn
 };
 export const listNotis = (char: number) => qNotiList.all(char) as NotiRow[];
 export const readNotis = (char: number, id = 0) => qNotiRead.run(char, id, id);
+
+// ── K/D/A · 칭호 · 서버 공지 (P7) ─────────────────────────────────────
+const qKda = db.prepare("SELECT kills, deaths, assists FROM rpg_kda WHERE character_id = ? AND season = ?");
+const qKdaAdd = db.prepare(`INSERT INTO rpg_kda (character_id, season, kills, deaths, assists) VALUES (?, ?, ?, ?, ?)
+  ON CONFLICT(character_id, season) DO UPDATE SET kills = kills + excluded.kills, deaths = deaths + excluded.deaths, assists = assists + excluded.assists`);
+export function loadKda(char: number, season: string): [number, number, number] {
+  const r = qKda.get(char, season) as { kills: number; deaths: number; assists: number } | undefined;
+  return r ? [r.kills, r.deaths, r.assists] : [0, 0, 0];
+}
+export const addKda = (char: number, season: string, k: number, d: number, a: number) => qKdaAdd.run(char, season, k, d, a);
+
+const qTitles = db.prepare("SELECT title_id FROM rpg_character_titles WHERE character_id = ? ORDER BY created_at");
+const qTitleAdd = db.prepare("INSERT OR IGNORE INTO rpg_character_titles (character_id, title_id, created_at) VALUES (?, ?, ?)");
+const qTitleSet = db.prepare("UPDATE rpg_characters SET title_id = ? WHERE id = ?");
+export const loadTitles = (char: number) => (qTitles.all(char) as { title_id: string }[]).map((r) => r.title_id);
+/** 새로 받았으면 true */
+export const grantTitle = (char: number, id: string) => qTitleAdd.run(char, id, Date.now()).changes === 1;
+export const setTitle = (char: number, id: string | null) => qTitleSet.run(id, char);
+
+const qBroadcastKind = db.prepare("SELECT 1 AS x FROM rpg_broadcasts WHERE kind = ? LIMIT 1");
+export const broadcastExists = (kind: string) => !!qBroadcastKind.get(kind);
 

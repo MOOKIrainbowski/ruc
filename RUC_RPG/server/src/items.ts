@@ -201,11 +201,13 @@ export function use(p: Player, a: unknown): string | null {
   if (p.dead) return "쓰러진 상태입니다";
   const now = p.room?.now ?? Date.now();
   if (now < p.potionAt) return "포션 재사용 대기 중입니다";
+  if (p.potionLeft !== null && p.potionLeft <= 0) return "이번 스테이지에서는 포션을 더 쓸 수 없습니다 (던전 회복 제한)";
   const before = [clone(it)];
   it.qty--;
   const err = commit(p, "use", "", before, [it]);
   if (err) return err;
   p.potionAt = now + POTION_CD_MS;
+  if (p.potionLeft !== null) p.potionLeft--;
   if (t.heal.hp && p.room) applyHeal(p.room, p, p, t.heal.hp, false);
   if (t.heal.mp) p.mp = Math.min(p.st.mana, p.mp + t.heal.mp);
   if (t.heal.en) p.en = Math.min(p.st.energy, p.en + t.heal.en);

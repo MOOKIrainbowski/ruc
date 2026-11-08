@@ -494,6 +494,20 @@ export function objectFrames(o: TiledObject): HTMLCanvasElement[] {
       p.rect(13, 13, 1, 2, "#f2ead8");
       break;
     }
+    case "pillar": {
+      // 유적의 무너진 기둥 (P7): 이끼 낀 돌 기둥 · broken = 위가 부러짐
+      const broken = o.properties?.find((x) => x.name === "broken")?.value === 1;
+      const top = broken ? 18 : 6;
+      p.part(1, h - 7, w - 2, 7, ["#d8d0c0", "#b0a690", "#7f7666"]);
+      p.rect(1, h - 4, w - 2, 1, "#7f7666");
+      p.part(3, top, w - 6, h - 7 - top, ["#e6dfcf", "#c4baa4", "#8f8573"]);
+      for (let y = top + 3; y < h - 8; y += 4) p.rect(4, y, w - 8, 1, "#a89e88");
+      if (broken) for (let x = 3; x < w - 3; x++) p.set(x, top - ((x * 7) % 3), "#c4baa4");
+      else p.part(1, top - 4, w - 2, 5, ["#d8d0c0", "#b0a690", "#7f7666"]);
+      for (let i = 0; i < 9; i++) p.set(3 + ((i * 5) % (w - 6)), h - 9 - ((i * 7) % 14), i % 2 ? "#6fae4a" : "#4f8a2b"); // 이끼
+      p.rect(3, h - 8, 3, 1, "#5c9a33");
+      break;
+    }
     case "rock":
       ball(p, 8, 10, 7, 5, ["#e0d6c6", "#bdb2a1", "#8f857a"]);
       p.rect(4, 7, 3, 1, STONE[0]);
@@ -534,7 +548,7 @@ export function objectFrames(o: TiledObject): HTMLCanvasElement[] {
     }
     case "portal": {
       const col = o.properties?.find((x) => x.name === "target")?.value;
-      const c: C3 = col === "dungeon" ? ["#e6ccff", "#9B5DE5", "#5a2f99"] : col === "arena" ? ["#ffc4c4", "#E5484D", "#99262a"] : ["#d4ffc4", "#4CC764", "#2a7a3a"];
+      const c: C3 = col === "dungeon" ? ["#e6ccff", "#9B5DE5", "#5a2f99"] : col === "arena" ? ["#ffc4c4", "#E5484D", "#99262a"] : col === "next" ? ["#fff4b0", "#F2C94C", "#a8842a"] : ["#d4ffc4", "#4CC764", "#2a7a3a"];
       const frames: HTMLCanvasElement[] = [];
       for (let f = 0; f < 8; f++) {
         const q = new Px(w, h);

@@ -20,7 +20,8 @@ export const DIRS = ["S", "SE", "E", "NE", "N", "NW", "W", "SW"] as const;
 export type Dir = (typeof DIRS)[number];
 export const DIR_KO = ["남", "남동", "동", "북동", "북", "북서", "서", "남서"];
 
-export const CHANNEL_CAP = { plaza: 60, field: 40 } as const;
+/** 방 종류별 정원. 광장 · 필드 · 결투장은 채널, 던전은 파티마다 인스턴스 (P7) */
+export const CHANNEL_CAP = { plaza: 60, field: 40, arena: 40, dungeon: 5 } as const;
 export type RoomKind = keyof typeof CHANNEL_CAP;
 
 export const WS_PORT = 2567;

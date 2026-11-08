@@ -68,7 +68,7 @@ test("튜토리얼: 새 캐릭터는 첫 퀘스트부터, 서버가 본 일만 �
   assert.equal(p.ruc, before + 100);
 });
 
-test("튜토리얼 전체: 11단계가 이어지고 마지막(세라와 대화)까지 완료, 같은 목표를 다시 채워도 두 번 보상하지 않음", () => {
+test("튜토리얼 전체: 13단계(P7 파티 · 던전 포함)가 이어지고 마지막(세라와 대화)까지 완료, 같은 목표를 다시 채워도 두 번 보상하지 않음", () => {
   const { p } = mk();
   const mails0 = listMail(p.char.id, Date.now()).length;
   const step: Record<string, () => void> = {
@@ -81,6 +81,9 @@ test("튜토리얼 전체: 11단계가 이어지고 마지막(세라와 대화)�
     tut_slime: () => { for (let i = 0; i < 5; i++) Q.quest(p, "kill", "slime"); },
     tut_enhance: () => Q.quest(p, "enhance"),
     tut_skill: () => Q.quest(p, "equip"),
+    tut_party: () => Q.quest(p, "party"),
+    // 스테이지 도달은 가장 높은 스테이지 — 같은 스테이지를 또 깨도 그대로, 더 높으면 바로 채워짐
+    tut_dungeon: () => { Q.quest(p, "stage", "field", 1); assert.deepEqual(active(p), ["tut_dungeon"], "다른 던전은 안 셈"); Q.quest(p, "stage", "ruins", 2); },
     tut_lv10: () => { p.char.level = 10; Q.quest(p, "level"); },
     tut_job: () => Q.quest(p, "talk", "sera"),
   };

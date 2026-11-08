@@ -1,7 +1,7 @@
 # 러크 RPG 베타 — 인수인계 (다음에 이어서 개발할 때 가장 먼저 읽을 문서)
 
-> 작성: 2026-11-08 · 기준 커밋: `c83207a` 위에 "그래픽 3차(맵 사실감 · 고급 UI)" 커밋이 올라간 상태
-> 지시서 원본은 `RUC_RPG/RUC_RPG_PROMPT.md`(§30 단계표), 결정 기록은 `docs/DECISIONS.md`(D1~D54+), 단계 기록은 `docs/PLAN.md`.
+> 작성: 2026-11-08 · **P7 파티 · 던전까지 반영** (그래픽 3차 `23a9d81` 위의 P7 커밋)
+> 지시서 원본은 `RUC_RPG/RUC_RPG_PROMPT.md`(§30 단계표), 결정 기록은 `docs/DECISIONS.md`(D1~D70), 단계 기록은 `docs/PLAN.md`.
 > 이 문서는 "지금 어디까지 됐고, 어떻게 돌리고, 무엇을 조심하고, 다음에 뭘 하는가"만 모아 둔 요약입니다.
 
 ---
@@ -10,9 +10,9 @@
 
 | 항목 | 상태 |
 |---|---|
-| 개발 단계 | **P0~P6 완료 · 웹사이트에 배포됨.** 다음은 **P7 파티 · 던전**, 그다음 P8 베타 폴리시 |
+| 개발 단계 | **P0~P7 완료 · 웹사이트에 배포됨.** 다음은 **P8 베타 폴리시**, 그다음 운영 오픈(게임 서버 호스팅) |
 | 그래픽 | 3등신 캐릭터(8프레임) · 세밀한 16×16 타일 · 32×32 아이콘 · 사실적 그래픽 모드 · 메이플풍 + 디아블로풍 + 고급(금테 양피지) UI · 사실적 맵(경계 · 데칼 · 접촉 그림자 · 장식) |
-| 테스트 | 서버 쪽 56개(공용 17 · 전투 5 · 아이템 3 · 스킬 12 · 경제 7 · 퀘스트 6 · E2E 6) 전부 통과 |
+| 테스트 | 65개(공용 19 · 전투 5 · 아이템 3 · 스킬 12 · 경제 7 · 퀘스트 6 · 파티/던전/결투 6 · E2E 7) 전부 통과 |
 | 운영 사이트 | `https://ruc-server.vercel.app` — `/rpg` 는 **"오픈 준비 중"** (게임 서버를 어디에도 호스팅하지 않았기 때문) |
 | 게임 서버 호스팅 | **미정** — 사용자가 "가장 마지막 단계로 미룬다"고 함. 계획은 오라클 무료 VM (`RUC_RPG/deploy/README.md`) |
 | RUC | **베타 격리 지갑**만 (`RUC_MODE=beta`). 마크 서버 실제 RUC 와 연동하는 코드는 만들지 않기로 사용자가 정함 (D1) |
@@ -34,7 +34,7 @@ web/lib/rpg.ts                    rpgOpen() — 개발 모드이거나 (WS 주�
 web/rpg/shared/                   클라 · 서버 공용 (TypeScript, 서버가 그대로 import)
   constants.ts                    TILE 16 · 틱 20Hz · CHAR_W/H 32×40 · CHAR_FEET 34
   movement.ts · combat.ts         이동 시뮬레이션 · 피해 공식 (클라 예측 + 서버 재생에 같이 씀)
-  data/                           items · skills · jobs · mobs · effects · elements · economy · quests · maps/*.json
+  data/                           items · skills · jobs · mobs(+보스 타임라인) · effects · elements · economy · quests · party · dungeons · maps/*.json (plaza · field · arena · dungeon)
   protocol.ts                     네트워크 메시지 타입 (C2S · S2C · 방 이벤트 주석)
   locales/ko.json                 UI 문자열 (인라인 한글 금지 — 여기에 키를 추가)
 web/rpg/client/                   PixiJS 렌더러 + React HUD
@@ -42,6 +42,7 @@ web/rpg/client/                   PixiJS 렌더러 + React HUD
   RpgGame.tsx                     React 루트 (접속 · 창 열고 닫기 · 상태)
   CombatHud.tsx · Hud.tsx         전투 HUD(구슬 · 스킬 · 막대 · 스탯창) · 미니맵 · 나침반
   Inventory.tsx · Growth.tsx · Economy.tsx · Quests.tsx    창들
+  Party.tsx                       P7: 파티창(P) · 파티 프레임 · 확인 창(결투 · 던전 입장) · 던전 HUD · 보스 HP 바 · 관전/공용 부활 · 현황판(Tab) · 핑 휠(G) · 배너
   realistic.ts                    사실적 그래픽 모드 (조명 · 그림자 · 비네트)
   fx.ts                           전투 이펙트 · 피해 숫자
   art/                            코드로 그리는 도트 그림: character · mobs · world(타일 · 오브젝트 · 데칼) · icons · items · px(Px 버퍼 + refine32)
@@ -49,9 +50,10 @@ web/rpg/client/                   PixiJS 렌더러 + React HUD
 RUC_RPG/server/                   게임 서버 (Node 24, `ws`, `node:sqlite`, TS 직접 실행)
   src/main.ts                     접속 · 메시지 분배 · 틱 루프
   src/room.ts                     방(채널) · 입력 처리 · 몹/플레이어 · 경험치
-  src/combat.ts · skills.ts · mobs.ts · items.ts · progress.ts · economy.ts · quests.ts · db.ts
+  src/combat.ts · skills.ts · mobs.ts(+보스 패턴) · items.ts · progress.ts · economy.ts · quests.ts · db.ts
+  src/party.ts · pvp.ts · dungeon.ts   P7: 파티(메모리) · 핑 / 결투 · 결투장 · K/D/A · 현황판 / 던전 인스턴스 · 스테이지 · 보상 · 칭호
   test/                           단위 · E2E 테스트
-RUC_RPG/scripts/                  맵 생성(gen-plaza → gen-field → decorate) · shot.mjs(헤드리스 캡처)
+RUC_RPG/scripts/                  맵 생성(gen-plaza → gen-field → decorate, gen-dungeon · gen-arena) · shot.mjs(헤드리스 캡처)
 RUC_RPG/deploy/                   오라클 VM 배포 도구 (setup.sh · deploy.sh · README) — 아직 안 씀
 RUC_RPG/docs/                     RPG_RECON · DECISIONS · PLAN · HANDOFF(이 문서)
 ```
@@ -90,6 +92,7 @@ cd RUC_RPG/server && npm run dev      # 게임 서버 ws://localhost:2567 (node 
 - **P4 성장**: 직업 6계열 · 세부 직업 30(★6) · 전직(세라) · 숙련도 · 스킬 레벨 · 등급 · 잠재력 · 스킬창(K) · ★6 직업 스킬 63개 · 원소 반응
 - **P5 경제(베타 지갑)**: RUC 원장(요청 id 멱등) · 우편함 · 일반 상점(6시간 · 개인 진열) · 유저 상점(에스크로 · 복합 가격 · 수수료 5%) · 강화(+10 공지) · 마법부여 · 수리 · 분해 · 재조합
 - **P6 퀘스트 · NPC · 알림**: 튜토리얼 11단계(말 걸기 → 분수 → 구르기 → 우편 → 상점 → 첫 전투 → 슬라임 5 → 강화 → 스킬 슬롯 → Lv10 → 전직) · NPC 대화창 · 일지(J) · 추적창 · 유저 퀘스트(처치/전달, 에스크로) · 알림 센터 · 토스트
+- **P7 파티 · 던전 · 결투**: 파티(초대 · 신청 · 추방 · 위임 · 해산 · 모집, 알림 수락 버튼, 1분 접속 유예) · 분배(경험치 20타일 균등 + 5%/인, RUC · 드롭 파티장 1.5 : 1) · 핑 휠 7종 · 파티 프레임 · 던전 "고목의 유적" 10스테이지(보스 페른 2페이즈 · 엘드라 3페이즈 — 분산 · 집결 · 구슬 전멸기, 공용 부활 3, 포션 5/스테이지, 15분, 클리어 우편 보상 · 칭호 · 최초 클리어 공지) · 결투장 · 필드 결투(1:1 · 파티) · K/D/A · 현황판 · 칭호 · 튜토리얼 13단계(파티 · 던전 1스테이지 추가) · 유저 퀘스트 목표 stage · duel
 - **그래픽 개선 1~3** (테스트 피드백 반영):
   - 캐릭터 32×40 · 3등신 · 동작 8프레임 · 남동/북동 3/4 몸 디자인 · 몹 · 물 · 모닥불 · 포털 8프레임
   - 타일 16×16 세밀화 · 오브젝트(나무 · 건물 · 천막 …) · 아이콘 32×32(`refine32`) · 맵 사실감(아래 5절)
@@ -125,6 +128,10 @@ cd RUC_RPG/server && npm run dev      # 게임 서버 ws://localhost:2567 (node 
 - `.rpg-panel` 에 `position: relative` 를 직접 주면 Tailwind 의 `absolute` 를 덮어써서 레이아웃이 깨짐(스탯창 사고). 지금은 `.rpg-panel:not(.absolute):not(.fixed)`.
 - 맵 JSON 변경은 게임 서버 재시작 필요. 방(맵)을 옮기면 Game 이 새로 만들어져 `__rpg` · 그래픽 설정 참조가 바뀜.
 - 브라우저 확장(`mcp__claude-in-chrome`)이 끊기면 `RUC_RPG/scripts/shot.mjs` 로 헤드리스 캡처. 이 방식은 FPS 가 낮게 나옴(소프트웨어 GL) — 성능 판단 금지.
+- **브라우저 테스트 중에 `web/rpg/client/*.tsx` 를 고치면 Fast Refresh 가 열린 탭 전부를 다시 접속시킴** → 던전에 있던 사람이 광장으로 가고 인스턴스가 비어 사라짐 (P7 테스트에서 겪음, 버그 아님). 클라 수정은 테스트 전에 끝낼 것.
+- 파티는 메모리에만 있어서 **게임 서버를 다시 켜면 파티 · 던전이 모두 풀림**. 게임 서버 `--watch` 의 자식 node 만 끄면 "Waiting for file changes" 로 멈춤 → `src/main.ts` 를 touch 하면 다시 뜸.
+- 테스트 화면은 2560×1249 (확대 ×2) — 맵 폭이 1280px(80칸) 보다 작으면 가운데 정렬로 양옆이 빔(D70).
+- 서버 `Room.tick` 끝의 스냅샷이 `room.ev` 를 비움 → 단위 테스트에서 방 이벤트는 보낸 메시지(`s` 의 `ev`)에서 읽을 것 (`party.test.ts evsSince`).
 - `git` 이 CRLF 경고를 내는 것은 정상(autocrlf).
 - 운영 DB 와 로컬 DB 는 별개. 운영 서버에 배포해도 DB 는 덮어쓰지 않도록 `deploy.sh` 가 만듦.
 
@@ -133,7 +140,8 @@ cd RUC_RPG/server && npm run dev      # 게임 서버 ws://localhost:2567 (node 
 ## 8. 알려진 한계 · 미룬 것
 
 - **게임 서버 호스팅**(P8 이후/마지막): 오라클 무료 VM 계획만 있음. Vercel 에서는 불가(함수 웹소켓 베타는 연결이 5분(Hobby)/최대 13분(Pro)에 끊기고 인스턴스 메모리가 공유되지 않음, Sandbox 는 Hobby 45분 · CPU 월 5시간) — 조사 결과 `README.md` 참고.
-- 튜토리얼 파티 · 던전 단계는 P7 에서 추가(D43). 유저 퀘스트 목표 `reach_stage` · `duel_win` · `collect` 는 던전/결투/채집이 생긴 뒤(D44). 같은 IP/부계정 감지 로그는 서버가 IP 를 받게 될 때(D46). 알림의 파티 4종 · 선물 · 수락/거절 버튼은 P7(D47).
+- 유저 퀘스트 목표 `collect` 는 채집 시스템이 생길 때(D69). 같은 IP/부계정 감지 로그는 서버가 IP 를 받게 될 때(D46). 알림 `gift` 는 선물 기능이 생길 때.
+- P7 에서 미룬 것: 부활 깃털 아이템(D62) · 파티 채팅(D58, 지금은 토스트) · 핑 효과음(P8) · 길드 · 영지 · 국가(빈 테이블만, §21-4) · 보스 밸런스 정밀 조정(P8 시뮬레이션). 파티는 서버 재시작 시 풀림(D57).
 - 아이콘은 16×16 원본을 `refine32` 로 변환한 것이라 수작업 32×32 만큼은 아님(D49). 인벤토리 칸은 아직 마인크래프트식 회색 베벨.
 - 사운드(BGM · 효과음)는 없음(P8). 준비 중 직업 24개의 스킬 키트(D36). 창고 탭 확장 · 랜덤 상자 · 영약 같은 RUC 상품(정식 후보).
 - 마크 서버의 실제 RUC 연동은 만들지 않음(베타 격리 지갑, D1).
@@ -142,16 +150,18 @@ cd RUC_RPG/server && npm run dev      # 게임 서버 ws://localhost:2567 (node 
 
 ## 9. 다음 할 일
 
-### P7 파티 · 던전 (지시서 §20 · §21 · §30)
-- **파티**(§21): 초대 · 신청 · 수락 · 추방 · 위임, 최대 인원, 1.5:1 경험치/드롭 분배, 파티 프레임(HUD), 핑 휠(§21-3), 파티 알림(`party_invite` · `party_join_request` · `party_accepted` · `party_kicked` — 종류는 이미 `NOTI_KINDS` 에 있음, 수락/거절 버튼은 `Quests.tsx Bell` 에 추가)
-- **던전 "고목의 유적"**(§20-3 · §20-4): 인스턴스 방(새 `RoomKind`) 10스테이지 · 보스 2종(JSON 타임라인) · 공용 부활 3회 · 최초 클리어 서버 공지(`rpg_broadcasts` · `notice` 는 이미 있음) · 광장 북쪽 "고대 유적의 문" 포털(`target: "dungeon"` — 서버가 지금 "준비 중" 메시지를 돌려줌, `main.ts use()`)
-- **K/D/A · 결투**(§13-3): 광장 동쪽 결투장 포털(`target: "arena"`)
-- 튜토리얼 9 · 10단계(파티 만들기 · 던전 1스테이지)를 `shared/data/quests.ts` 에 추가하고 `tut_job` 앞에 끼우기. 유저 퀘스트 목표 `reach_stage` 추가
-- DoD(§30): 5인 파티로 1~10 스테이지
-- 건드릴 곳 예상: `shared/constants.ts`(`CHANNEL_CAP` · `RoomKind`), `server/src/room.ts`(던전 방 · 스테이지 진행), 새 `server/src/party.ts`, `protocol.ts`, `client/` 파티 프레임 · 핑 · 던전 HUD, `MAP_JSON`(RpgGame.tsx)에 던전 맵, `gen-dungeon.ts`
+### P7 구조 (바꾸기 전에)
+- **적대 판정은 `Room.hostile(a, b)` 하나**: 플레이어 ↔ 몹 항상, 결투장 = 다른 파티, 결투 = 시작된 상대 편. 스킬 · 투사체 · 원소 반응 · 수호의 맹세가 모두 `room.foes()` / `w.hostile` 을 거침. 클라 `Game.isFoe` 가 같은 규칙(이름 빨강 · 적 지정 스킬).
+- **room 은 party · pvp · dungeon 을 import 하지 않음** — `room.ts hooks`(mates · defeat · pvpKill · left), `mobs.ts bossHooks`, `party.ts partyHooks`, `dungeon.ts dgHooks`(main 이 채움)로 연결 (순환 import 방지).
+- 던전 방 = `new Room("dungeon", 파티 id, map)` + `room.inst = Run`. main 의 틱 루프가 `dungeonRooms()` 도 돌림. 방이 비면 다음 틱에 사라짐. 결투 패배는 `World.spare` 로 죽음을 막음.
+- 던전 개발용: `{ t: "dev", stage: n }` (1 = 지금 스테이지 끝내기, 2~10 = 건너뛰기, 보상 없음).
 
-### P8 베타 폴리시 (지시서 §30)
-- 밸런스 시뮬레이션 스크립트 · 성능(AOI · 델타 · 바이너리 · 풀링, F3 오버레이) · GM 도구 · 버그 제보 · 사운드 · E2E · IP 로깅(D46)
+### P8 베타 폴리시 (지시서 §30) — 다음 할 일
+- **밸런스 시뮬레이션 스크립트**(직업별 DPS · 생존력 비교, 던전 스테이지 · 보스 소요 시간 — 지금은 Lv30 5인 기준 페른 ≈ 45초 · 엘드라 ≈ 4분 정도로 손 계산만)
+- **성능**(§29): AOI(관심 영역) · 델타 스냅샷 · 바이너리(MessagePack) · 오브젝트 풀링 · F3 디버그 오버레이 — 지금은 방 전체를 매 틱 JSON 으로 보냄 (`room.ts snapshot` 의 ponytail 주석)
+- **GM 도구**(§28 디스코드 ID 화이트리스트, `/gm give · tp · level · spawn · ruc · mute/kick/ban · announce`, 감사 로그) — 개발용 `dev` 메시지를 GM 권한으로 승격하는 방향
+- **버그 제보**(설정 창 버튼 → 스크린샷 + 좌표 + 로그 → DB 또는 디스코드 웹훅), **사운드**(8/16비트 효과음 · BGM 광장/필드/던전/보스, 핑 효과음), **E2E**(핵심 루프), **IP 로깅**(D46)
+- 아트 패스(D25 · D36): 장비 레이어 · 망토 · 문장, 수작업 32×32 아이콘(D49)
 
 ### 마지막: 운영 오픈
 - 오라클 VM → `bash RUC_RPG/deploy/deploy.sh --setup` → Vercel 환경변수 2개 → 재배포 → `/rpg` 열림 → 이후 단계마다 `deploy.sh` 로 게임 서버도 같이 배포
@@ -159,6 +169,6 @@ cd RUC_RPG/server && npm run dev      # 게임 서버 ws://localhost:2567 (node 
 ---
 
 ## 10. 새 대화를 시작할 때 이렇게 말하면 됩니다
-> "RUC_RPG/docs/HANDOFF.md 읽고 이어서 P7 파티 · 던전 개발해줘."
+> "RUC_RPG/docs/HANDOFF.md 읽고 이어서 P8 베타 폴리시 개발해줘."
 
 (자동 메모리에도 진행 상태 · 배포 규칙 · 함정이 저장돼 있어 같은 PC · 같은 프로젝트에서는 이어집니다.)

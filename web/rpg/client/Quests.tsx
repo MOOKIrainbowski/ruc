@@ -5,7 +5,7 @@ import { CHAR_H, CHAR_W } from "../shared/constants";
 import { ITEMS, type Item } from "../shared/data/items";
 import {
   MOB_CHOICES, NPCS, QUESTS, USER_QUEST, objText, userQuestFee,
-  type Noti, type QState, type QuestView, type UserQuestRow,
+  type Noti, type QState, type QuestView, type UserKind, type UserQuestRow,
 } from "../shared/data/quests";
 import type { You } from "../shared/protocol";
 import { FRAMES, characterSheet } from "./art/character";
@@ -88,7 +88,8 @@ type Tab = "active" | "done" | "board";
 type BoardTab = "browse" | "register" | "mine";
 
 const goalText = (r: { kind: string; target: string; n: number }) =>
-  r.kind === "kill" ? `${MOB_CHOICES.find(([k]) => k === r.target)?.[1] ?? r.target} ${r.n}마리 처치` : `${ITEMS[r.target]?.name ?? r.target} ${r.n}개 전달`;
+  r.kind === "kill" ? `${MOB_CHOICES.find(([k]) => k === r.target)?.[1] ?? r.target} ${r.n}마리 처치` :
+  r.kind === "stage" ? `고목의 유적 ${r.n}스테이지 도달` : r.kind === "duel" ? `결투 ${r.n}번 승리` : `${ITEMS[r.target]?.name ?? r.target} ${r.n}개 전달`;
 const rewardText = (r: { ruc: number; items: [string, number][] }) =>
   [r.ruc ? `${won(r.ruc)} RUC` : "", ...r.items.map(([tp, n]) => `${ITEMS[tp]?.name ?? tp}${n > 1 ? ` ×${n}` : ""}`)].filter(Boolean).join(" + ");
 const leftText = (ms: number) => {
@@ -130,7 +131,7 @@ export function Journal({ tab: first, states, board, items, you, send, onClose }
             {board?.taken.map((r) => (
               <div key={r.id} className="mb-2 rounded border border-[#c9a97a] bg-[#f6e9c8] p-2">
                 <div className="flex justify-between"><b>{r.title}</b><span className="text-[11px] text-[#8c6642]">{r.owner}</span></div>
-                <div>• {goalText(r)} {r.kind === "kill" ? `${Math.min(r.prog, r.n)}/${r.n}` : ""}</div>
+                <div>• {goalText(r)} {r.kind !== "deliver" ? `${Math.min(r.prog, r.n)}/${r.n}` : ""}</div>
                 <div className="text-[11px] text-[#8c6642]">{t("qj.reward")}: {rewardText(r) || "-"}</div>
                 <div className="mt-1 flex gap-1.5">
                   {r.kind === "deliver" && <button className="rpg-btn" onClick={() => send({ t: "quest", op: "deliver", id: r.id, rid: crypto.randomUUID() })}>{t("qj.deliver")}</button>}
@@ -183,7 +184,7 @@ const ITEM_CHOICES = Object.entries(ITEMS).filter(([, v]) => v.kind === "materia
 
 function Register({ items, ruc, send, done }: { items: Item[]; ruc: number; send: Send; done: () => void }) {
   const [title, setTitle] = useState("");
-  const [kind, setKind] = useState<"kill" | "deliver">("kill");
+  const [kind, setKind] = useState<UserKind>("kill");
   const [target, setTarget] = useState("slime");
   const [n, setN] = useState(5);
   const [reward, setReward] = useState(100);
@@ -199,16 +200,17 @@ function Register({ items, ruc, send, done }: { items: Item[]; ruc: number; send
     <div className="flex flex-col gap-1.5">
       {field(t("qj.formTitle"), <input className="rpg-input flex-1" maxLength={24} value={title} onChange={(e) => setTitle(e.target.value)} />)}
       {field(t("qj.kind"), (
-        <select className="rpg-input" value={kind} onChange={(e) => { const k = e.target.value as "kill" | "deliver"; setKind(k); setTarget(k === "kill" ? "slime" : ITEM_CHOICES[0][0]); }}>
+        <select className="rpg-input" value={kind} onChange={(e) => { const k = e.target.value as UserKind; setKind(k); setTarget(k === "kill" ? "slime" : k === "stage" ? "ruins" : k === "duel" ? "duel" : ITEM_CHOICES[0][0]); if (k === "stage") setN(1); }}>
           <option value="kill">{t("qj.kill")}</option><option value="deliver">{t("qj.deliverKind")}</option>
+          <option value="stage">{t("qj.stageKind")}</option><option value="duel">{t("qj.duelKind")}</option>
         </select>
       ))}
-      {field(t("qj.target"), (
+      {(kind === "kill" || kind === "deliver") && field(t("qj.target"), (
         <select className="rpg-input" value={target} onChange={(e) => setTarget(e.target.value)}>
           {(kind === "kill" ? MOB_CHOICES : ITEM_CHOICES).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
         </select>
       ))}
-      {field(t("qj.n"), <input className="rpg-input w-24" inputMode="numeric" value={n} onChange={(e) => setN(num(e.target.value, 1, USER_QUEST.maxN))} />)}
+      {field(kind === "stage" ? t("qj.stageN") : t("qj.n"), <input className="rpg-input w-24" inputMode="numeric" value={n} onChange={(e) => setN(num(e.target.value, 1, kind === "stage" ? 10 : USER_QUEST.maxN))} />)}
       {field(t("qj.ruc"), <input className="rpg-input w-32" inputMode="numeric" value={reward} onChange={(e) => setReward(num(e.target.value, 0, USER_QUEST.maxRuc))} />)}
       {field(t("qj.slots"), <input className="rpg-input w-24" inputMode="numeric" value={slots} onChange={(e) => { const v = num(e.target.value, 1, USER_QUEST.maxSlots); setSlots(v); if (v > 1) setPick([]); }} />)}
       {field(t("qj.days"), <input className="rpg-input w-24" inputMode="numeric" value={days} onChange={(e) => setDays(num(e.target.value, 1, USER_QUEST.maxDays))} />)}
@@ -278,10 +280,25 @@ export function Bell({ notis, send, onRead }: { notis: Noti[]; send: Send; onRea
           <div className="max-h-[280px] overflow-y-auto">
             {!notis.length && <p className="py-4 text-center text-[#8c6642]">{t("noti.empty")}</p>}
             {notis.map((n) => (
-              <button key={n.id} className={`flex w-full gap-2 border-b border-[#d8c19a] px-1 py-1 text-left ${n.read ? "opacity-60" : ""}`} onClick={() => { if (!n.read) { send({ t: "noti", op: "read", id: n.id }); onRead(n.id); } }}>
+              <div key={n.id} role="button" tabIndex={0} className={`flex w-full gap-2 border-b border-[#d8c19a] px-1 py-1 text-left ${n.read ? "opacity-60" : ""}`} onClick={() => { if (!n.read) { send({ t: "noti", op: "read", id: n.id }); onRead(n.id); } }}>
                 <span>{ICON[n.kind] ?? "ℹ"}</span>
-                <span className="flex-1">{n.text}<span className="block text-[10px] text-[#8c6642]">{ago(n.at)}</span></span>
-              </button>
+                <span className="flex-1">
+                  {n.text}<span className="block text-[10px] text-[#8c6642]">{ago(n.at)}</span>
+                  {/* 바로 수락 · 거절 (§22) — 파티 초대 · 가입 신청 */}
+                  {!n.read && n.kind === "party_invite" && typeof n.data?.party === "number" && (
+                    <span className="mt-1 flex gap-1">
+                      <button className="rpg-btn !px-1.5 !py-0 !text-[10px]" onClick={(e) => { e.stopPropagation(); send({ t: "party", op: "accept", id: n.data!.party as number }); send({ t: "noti", op: "read", id: n.id }); onRead(n.id); }}>{t("noti.accept")}</button>
+                      <button className="rpg-btn !px-1.5 !py-0 !text-[10px]" onClick={(e) => { e.stopPropagation(); send({ t: "party", op: "decline", id: n.data!.party as number }); send({ t: "noti", op: "read", id: n.id }); onRead(n.id); }}>{t("noti.decline")}</button>
+                    </span>
+                  )}
+                  {!n.read && n.kind === "party_join_request" && typeof n.data?.cid === "number" && (
+                    <span className="mt-1 flex gap-1">
+                      <button className="rpg-btn !px-1.5 !py-0 !text-[10px]" onClick={(e) => { e.stopPropagation(); send({ t: "party", op: "approve", cid: n.data!.cid as number }); send({ t: "noti", op: "read", id: n.id }); onRead(n.id); }}>{t("noti.accept")}</button>
+                      <button className="rpg-btn !px-1.5 !py-0 !text-[10px]" onClick={(e) => { e.stopPropagation(); send({ t: "party", op: "reject", cid: n.data!.cid as number }); send({ t: "noti", op: "read", id: n.id }); onRead(n.id); }}>{t("noti.decline")}</button>
+                    </span>
+                  )}
+                </span>
+              </div>
             ))}
           </div>
         </div>

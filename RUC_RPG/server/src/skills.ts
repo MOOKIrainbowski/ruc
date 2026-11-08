@@ -27,23 +27,23 @@ export type Cast = { at: number; s: Shot; sx: number; sy: number; ax: number; ay
 
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
 
-/** 커서 근처(24px) · 사거리 안의 살아 있는 적 */
+/** 커서 근처(24px) · 사거리 안의 살아 있는 적 (몹 · 적대 플레이어) */
 function enemyNear(room: Room, p: Player, ax: number, ay: number, range: number): Unit | undefined {
   let best: Unit | undefined;
   let bd = 24;
-  for (const m of room.mobs.values()) {
+  for (const m of room.foes(p)) {
     const d = dist(m, { x: ax, y: ay });
-    if (!m.dead && d <= bd + m.r && dist(m, p) <= range + m.r + 8) { bd = d; best = m; }
+    if (d <= bd + m.r && dist(m, p) <= range + m.r + 8) { bd = d; best = m; }
   }
   return best;
 }
 
-/** 커서 근처 아군 (없으면 자신). dead = 쓰러진 아군도 고름 (부활) */
+/** 커서 근처 아군 (없으면 자신). dead = 쓰러진 아군도 고름 (부활). 적대 플레이어는 아군이 아님 */
 function allyNear(room: Room, p: Player, ax: number, ay: number, range: number, dead: boolean): Player {
   let best: Player = p;
   let bd = 24;
   for (const o of room.players.values()) {
-    if (o === p || (o.dead && !dead)) continue;
+    if (o === p || (o.dead && !dead) || room.hostile(p, o)) continue;
     const d = dist(o, { x: ax, y: ay });
     if (d <= bd + o.r && dist(o, p) <= range + 8) { bd = d; best = o; }
   }
@@ -79,7 +79,7 @@ function strike(room: Room, s: Shot, t: Unit, from: { x: number; y: number }) {
   else {
     for (const f of spec.fx ?? []) addEffect(room, t, f, s.p);
     room.damaged(s.p, t, 0, s.sk.threat);
-    credit(s, t);
+    if (t.kind === "m") credit(s, t);
   }
   if (s.sk.knock && !t.dead) {
     const dx = t.x - from.x;
@@ -201,8 +201,8 @@ export function fire(room: Room, s: Shot, sx: number, sy: number, ax: number, ay
   const ux = dx / len;
   const uy = dy / len;
   const lag = room.lagOf(p);
-  const live = [...room.mobs.values()].filter((m) => !m.dead);
-  const allies = (x: number, y: number, r: number) => [...room.players.values()].filter((o) => !o.dead && (o === p || dist(o, { x, y }) <= r));
+  const live = room.foes(p);
+  const allies = (x: number, y: number, r: number) => [...room.players.values()].filter((o) => !o.dead && (o === p || (dist(o, { x, y }) <= r && !room.hostile(p, o))));
   switch (sk.targeting) {
     case "skillshot": {
       const count = sk.count ?? 1;

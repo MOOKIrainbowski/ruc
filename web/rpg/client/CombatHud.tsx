@@ -239,13 +239,13 @@ export function CombatHud({ hud, stats, you, settings, items, onSelect }: { hud:
   );
 }
 
-export function DeathOverlay({ ms }: { ms: number }) {
+export function DeathOverlay({ ms, arena }: { ms: number; arena?: boolean }) {
   return (
     <div className="absolute inset-0 flex items-center justify-center bg-[rgba(27,20,32,0.45)]">
       <div className="rpg-panel px-8 py-5 text-center">
         <p className="text-lg font-bold">{t("hud.dead")}</p>
-        <p className="mt-1 text-[12px]">{t("hud.respawn", { s: Math.ceil(ms / 1000) })}</p>
-        <p className="mt-1 text-[11px] text-[#8c6642]">{t("hud.deathNote")}</p>
+        <p className="mt-1 text-[12px]">{t(arena ? "hud.respawnArena" : "hud.respawn", { s: Math.ceil(ms / 1000) })}</p>
+        <p className="mt-1 text-[11px] text-[#8c6642]">{t(arena ? "hud.deathNoteArena" : "hud.deathNote")}</p>
       </div>
     </div>
   );

@@ -1,7 +1,7 @@
-import { MOBS, mobStats, type Grade, type MobDef } from "../../../web/rpg/shared/data/mobs.ts";
+import { MOBS, mobStats, type BossMove, type Grade, type MobDef } from "../../../web/rpg/shared/data/mobs.ts";
 import { MOVE } from "../../../web/rpg/shared/data/stats.ts";
 import { blocked, dir8, slide } from "../../../web/rpg/shared/movement.ts";
-import { find, has, hit, makeUnit, rand, type HitSpec, type Unit } from "./combat.ts";
+import { die, dotDamage, find, has, hit, makeUnit, rand, type HitSpec, type Unit } from "./combat.ts";
 import type { Room } from "./room.ts";
 import type { Shot } from "./skills.ts";
 
@@ -37,6 +37,9 @@ export type Mob = Unit & {
   removeAt: number;
   /** 마지막으로 맞힌 스킬 (막타 숙련도) */
   lastShot: Shot | null;
+  /** 보스 (§20-4): 지금 페이즈 · 타임라인 위치 (전투가 끝나면 null) */
+  phase: number;
+  tl: { i: number; base: number } | null;
 };
 
 export const RESPAWN_MS = 15_000;
@@ -55,6 +58,7 @@ export function spawnMob(room: Room, id: number, z: Zone): Mob | null {
     return Object.assign(u, {
       key: z.mob, def, grade: z.grade, zone: z, home: { x, y }, dir: 0, moving: false, state: "idle" as const, wait: room.now + rand() * 3000,
       tx: x, ty: y, threat: new Map(), dmgBy: new Map(), atkReady: 0, spReady: 0, swings: 0, wind: null, hist: [], removeAt: 0, lastShot: null,
+      phase: 0, tl: null,
     });
   }
   return null;
@@ -92,7 +96,7 @@ function topThreat(room: Room, m: Mob): Unit | undefined {
 
 export function mobTick(room: Room, m: Mob, dt: number) {
   m.moving = false;
-  if (m.dead) return;
+  if (m.dead || m.def.passive) return;
   const now = room.now;
   if (m.block.move && m.block.atk) { m.wind = null; return; } // 기절 · 빙결 · 에어본 · 수면
 
@@ -123,7 +127,8 @@ export function mobTick(room: Room, m: Mob, dt: number) {
     }
     if (tgt) m.threat.set(tgt.id, 1);
   }
-  if (!tgt) { m.wind = null; wander(room, m, dt); return; }
+  if (!tgt) { m.wind = null; m.tl = null; wander(room, m, dt); return; }
+  if (m.def.boss) bossTick(room, m, tgt);
 
   if (dist(m, m.zone) > m.zone.r + m.def.leash) {
     m.state = "leash";
@@ -150,6 +155,115 @@ export function mobTick(room: Room, m: Mob, dt: number) {
   if (d > (a.kind === "shot" ? a.range * 0.8 : reach * 0.7)) moveTo(room, m, tgt.x, tgt.y, 1, dt);
   else m.dir = dir8(tgt.x - m.x, tgt.y - m.y);
 }
+
+// ── 보스 패턴 (§20-4 JSON 타임라인) ─────────────────────────────────────
+
+/** HP 비율로 페이즈를 고르고, 페이즈 타임라인을 loopMs 주기로 되풀이 */
+function bossTick(room: Room, m: Mob, tgt: Unit) {
+  const phases = m.def.boss!.phases;
+  let ph = m.phase;
+  while (ph + 1 < phases.length && m.hp / m.st.hp <= phases[ph + 1].hp) ph++;
+  if (ph !== m.phase) room.ev.push(["bp", m.id, phases[ph].name]);
+  if (ph !== m.phase || !m.tl) {
+    m.phase = ph;
+    m.tl = { i: 0, base: room.now };
+  }
+  const P = phases[ph];
+  const tl = m.tl;
+  for (let guard = 0; guard < P.timeline.length && room.now >= tl.base + P.timeline[tl.i].at; guard++) {
+    bossMove(room, m, tgt, P.timeline[tl.i].move);
+    if (++tl.i >= P.timeline.length) { tl.i = 0; tl.base += P.loopMs; }
+  }
+}
+
+const shuffle = <T>(a: T[]) => { for (let i = a.length - 1; i > 0; i--) { const j = Math.floor(rand() * (i + 1)); [a[i], a[j]] = [a[j], a[i]]; } return a; };
+
+export function bossMove(room: Room, m: Mob, tgt: Unit, mv: BossMove) {
+  const alive = [...room.players.values()].filter((p) => !p.dead);
+  const spec = (mul: number, fx?: { id: string; ms: number; v?: number }): HitSpec => ({ base: 0, atkRatio: mul, apRatio: 0, cat: "physical", el: m.el, threat: 0, melee: false, basic: false, fx: fx ? [fx] : undefined });
+  const circle = (x: number, y: number, r: number, ms: number, mul: number, fx?: { id: string; ms: number; v?: number }) => {
+    room.ev.push(["w", "circle", Math.round(x), Math.round(y), 0, r, 0, ms]);
+    room.later(ms, () => { if (!m.dead) for (const p of room.players.values()) if (!p.dead && dist(p, { x, y }) <= r + p.r) hit(room, m, p, spec(mul, fx)); });
+  };
+  switch (mv.kind) {
+    case "slam":
+      for (const t of (mv.count ? shuffle(alive).slice(0, mv.count) : [tgt])) circle(t.x, t.y, mv.r, mv.windMs, mv.mul, mv.fx);
+      return;
+    case "nova":
+      return circle(m.x, m.y, mv.r, mv.windMs, mv.mul, mv.fx);
+    case "line": {
+      const ang = Math.atan2(tgt.y - m.y, tgt.x - m.x);
+      room.ev.push(["w", "line", Math.round(m.x), Math.round(m.y), Math.round(ang * 1000) / 1000, mv.len, mv.width, mv.windMs]);
+      m.wind = null;
+      room.later(mv.windMs, () => {
+        if (m.dead) return;
+        const ux = Math.cos(ang);
+        const uy = Math.sin(ang);
+        const sx = m.x;
+        const sy = m.y;
+        if (mv.lunge) for (let i = 0; i < 10; i++) slide(m, room.map.collider, (ux * mv.len) / 10, (uy * mv.len) / 10);
+        for (const p of room.players.values()) {
+          if (p.dead) continue;
+          const t = Math.max(0, Math.min(mv.len, (p.x - sx) * ux + (p.y - sy) * uy));
+          if (Math.hypot(sx + ux * t - p.x, sy + uy * t - p.y) <= mv.width / 2 + p.r) hit(room, m, p, spec(mv.mul, mv.fx));
+        }
+      });
+      return;
+    }
+    case "summon":
+      for (let i = 0; i < mv.n; i++) {
+        const a = room.addMob({ mob: mv.mob, count: 0, lv: [m.lv, m.lv], grade: mv.grade, x: m.x, y: m.y, r: 48, alive: 0, respawn: [] });
+        if (a) { a.threat.set(tgt.id, 1); summoned(room, a); }
+      }
+      return;
+    case "spread":
+      // 분산: 모든 플레이어 발밑 원 — 터질 때 다른 플레이어가 원 안에 있으면 그 수만큼 더 아픔
+      for (const p of alive) room.ev.push(["w", "circle", Math.round(p.x), Math.round(p.y), 0, mv.r, 0, mv.windMs]);
+      room.later(mv.windMs, () => {
+        if (m.dead) return;
+        const now = [...room.players.values()].filter((p) => !p.dead);
+        for (const p of now) hit(room, m, p, spec(mv.mul * (1 + now.filter((o) => o !== p && dist(o, p) <= mv.r).length)));
+      });
+      return;
+    case "stack": {
+      // 집결: 한 곳에 큰 원 — 안에 든 사람 수로 피해를 나눔, 아무도 없으면 전원이 절반씩
+      const t = alive[Math.floor(rand() * alive.length)] ?? tgt;
+      const at = { x: t.x, y: t.y };
+      room.ev.push(["w", "circle", Math.round(at.x), Math.round(at.y), 0, mv.r, 0, mv.windMs]);
+      room.ev.push(["wp", Math.round(at.x), Math.round(at.y), mv.r, mv.windMs]);
+      room.later(mv.windMs, () => {
+        if (m.dead) return;
+        const now = [...room.players.values()].filter((p) => !p.dead);
+        const inside = now.filter((p) => dist(p, at) <= mv.r + p.r);
+        if (inside.length) for (const p of inside) hit(room, m, p, spec(mv.mul / inside.length));
+        else for (const p of now) hit(room, m, p, spec(mv.mul / 2));
+      });
+      return;
+    }
+    case "orbs": {
+      // 전멸기: 정화의 구슬을 ms 안에 다 부수지 못하면 남은 구슬마다 최대 체력의 pct (방어 무시)
+      room.ev.push(["ann", "정화의 구슬을 모두 부수세요!", mv.ms]);
+      const orbs: Mob[] = [];
+      for (let i = 0; i < mv.n; i++) {
+        const a = (i / mv.n) * Math.PI * 2 + rand();
+        const o = room.addMob({ mob: "purify_orb", count: 0, lv: [m.lv, m.lv], grade: "normal", x: Math.round(m.x + Math.cos(a) * 96), y: Math.round(m.y + Math.sin(a) * 80), r: 12, alive: 0, respawn: [] });
+        if (o) { orbs.push(o); summoned(room, o); }
+      }
+      room.later(mv.ms, () => {
+        const left = orbs.filter((o) => !o.dead);
+        if (!left.length || m.dead) return;
+        for (const o of left) die(room, o, undefined);
+        room.ev.push(["ann", `정화 실패! (남은 구슬 ${left.length}개)`, 2500]);
+        for (const p of room.players.values()) if (!p.dead) dotDamage(room, m, p, p.st.hp * mv.pct * left.length);
+      });
+      return;
+    }
+  }
+}
+
+/** 던전이 소환된 몹에게 인원 보정 등을 거는 곳 (dungeon.ts 가 채움) */
+export const bossHooks = { summoned: (_room: Room, _m: Mob) => {} };
+const summoned = (room: Room, m: Mob) => bossHooks.summoned(room, m);
 
 function wander(room: Room, m: Mob, dt: number) {
   const now = room.now;

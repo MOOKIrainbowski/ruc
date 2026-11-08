@@ -17,8 +17,14 @@ import { econOp, online as econOnline, sweep, welcome } from "./economy.ts";
 import { give, itemOp, sendInv } from "./items.ts";
 import { mailCount } from "./db.ts";
 import { changeJob, charBase, equip, saveDirtySkills, sendProg, syncSkills } from "./progress.ts";
-import { loadQuestState, notify, notiOp, questOp, quest, sendBoard, sendNotis, sendQuests, sweepQuests } from "./quests.ts";
-import { Channels, buildPlayer, info, send, type Player } from "./room.ts";
+import { loadQuestState, notify, notiOp, questOp, quest, sendNotis, sendQuests, sweepQuests } from "./quests.ts";
+import { Channels, buildPlayer, info, send, type Player, type Room } from "./room.ts";
+import { RUINS } from "../../../web/rpg/shared/data/dungeons.ts";
+import { KDA } from "../../../web/rpg/shared/data/party.ts";
+import { loadKda } from "./db.ts";
+import { dgHooks, devStage, dungeonOp, dungeonPortal, dungeonRooms, sendTitles, setDungeonMap, titleOp, usePortal } from "./dungeon.ts";
+import { markOp, partyOp, partyTick, partyVitals, rejoin } from "./party.ts";
+import { duelOp, duelTick, who } from "./pvp.ts";
 
 const DEV = process.argv.includes("--dev");
 const SECRET = process.env.RPG_TICKET_SECRET?.trim() || (DEV ? DEV_TICKET_SECRET : "");
@@ -30,19 +36,24 @@ const PORT = Number(process.env.PORT) || WS_PORT;
 const ORIGINS = (process.env.RPG_ALLOWED_ORIGINS || "http://localhost:3000,https://ruc-server.vercel.app").split(",").map((s) => s.trim());
 
 const mapFile = (name: string) => loadMap(JSON.parse(readFileSync(new URL(`../../../web/rpg/shared/data/maps/${name}.json`, import.meta.url), "utf8")) as TiledMap);
-const maps: Record<RoomKind, GameMap> = { plaza: mapFile("plaza"), field: mapFile("field") };
-const worlds: Record<RoomKind, Channels> = { plaza: new Channels("plaza", maps.plaza), field: new Channels("field", maps.field) };
+const maps: Record<RoomKind, GameMap> = { plaza: mapFile("plaza"), field: mapFile("field"), arena: mapFile("arena"), dungeon: mapFile("dungeon") };
+/** 채널로 나뉘는 맵 (던전은 파티마다 인스턴스 — dungeon.ts) */
+type Shared = Exclude<RoomKind, "dungeon">;
+const worlds: Record<Shared, Channels> = { plaza: new Channels("plaza", maps.plaza), field: new Channels("field", maps.field), arena: new Channels("arena", maps.arena) };
+const shared = (k: string): k is Shared => Object.hasOwn(worlds, k);
+setDungeonMap(maps.dungeon);
 
 const online = new Map<string, Player>(); // 디스코드 ID → 접속 중인 플레이어
 econOnline.byChar = (id) => [...online.values()].find((p) => p.char.id === id);
 econOnline.all = () => [...online.values()];
 
 /** 저장된 맵 · 위치 · HP 로 플레이어를 만듦. kind = 들어갈 맵 */
-function makePlayer(ws: WebSocket, t: Ticket, char: CharacterRow): { p: Player; kind: RoomKind } {
+function makePlayer(ws: WebSocket, t: Ticket, char: CharacterRow): { p: Player; kind: Shared } {
   const saved = char.position;
-  const kind: RoomKind = saved && saved.map in maps && !blocked(maps[saved.map as RoomKind].collider, saved.x, saved.y) ? (saved.map as RoomKind) : "plaza";
+  const kind: Shared = saved && shared(saved.map) && !blocked(maps[saved.map].collider, saved.x, saved.y) ? saved.map : "plaza";
   const pos = kind === saved?.map ? saved : maps.plaza.spawn;
   const p = buildPlayer(ws, t.sub, char, pos.x, pos.y);
+  p.kda = loadKda(char.id, KDA.season);
   // 저장된 HP · 마나 · 기력 (장비 스탯을 얹은 뒤)
   const full = !saved?.hp || saved.hp <= 0;
   p.hp = full ? p.st.hp : Math.min(saved.hp!, p.st.hp);
@@ -51,7 +62,15 @@ function makePlayer(ws: WebSocket, t: Ticket, char: CharacterRow): { p: Player; 
   return { p, kind };
 }
 
-function join(p: Player, kind: RoomKind, ch?: number) {
+/** 지금 방에서 나감 (채널이면 빈 끝 채널 정리, 던전은 dungeon.ts 가 정리) */
+function exit(p: Player) {
+  const prev = p.room;
+  if (!prev) return;
+  prev.remove(p);
+  if (!prev.inst) worlds[prev.kind as Shared].trim();
+}
+
+function join(p: Player, kind: Shared, ch?: number) {
   const w = worlds[kind];
   const prev = p.room;
   if (ch) {
@@ -59,12 +78,15 @@ function join(p: Player, kind: RoomKind, ch?: number) {
     if (!t || (t !== prev && t.full)) return send(p, { t: "error", msg: "그 채널은 가득 찼습니다" });
   }
   // 먼저 나간 뒤 고름 — 혼자 있던 채널이 trim 으로 닫혀도 닫힌 방에 들어가지 않게, 같은 맵 안 이동은 같은 채널 유지
-  if (prev) {
-    prev.remove(p);
-    worlds[prev.kind].trim();
-  }
+  exit(p);
   const room = (ch && w.get(ch)) || (prev?.kind === kind && w.rooms.includes(prev) ? prev : w.pick());
+  enterRoom(p, room);
+}
+
+/** 방에 넣고 화면 전체(joined)를 보냄 */
+function enterRoom(p: Player, room: Room) {
   p.inputs = [];
+  p.potionLeft = room.inst ? RUINS.potionsPerStage : null;
   room.add(p);
   const others = [...room.players.values(), ...room.mobs.values()].filter((u) => u !== p && !u.dead);
   p.statsSent = JSON.stringify(p.st);
@@ -73,32 +95,50 @@ function join(p: Player, kind: RoomKind, ch?: number) {
     t: "joined",
     you: {
       id: p.id, nickname: p.char.nickname, level: p.char.level, exp: p.char.exp, element: p.char.element, appearance: p.char.appearance,
-      ruc: p.ruc, kda: [0, 0, 0], settings: p.char.settings, slots: p.slots, prog: p.prog,
+      ruc: p.ruc, kda: p.kda, settings: p.char.settings, slots: p.slots, prog: p.prog,
     },
     room: { kind: room.kind, ch: room.ch },
     me: p.mover,
     ents: others.map(info),
     fx: [p, ...others].filter((u) => u.fx.length).map((u) => [u.id, fxRows(room, u)]),
-    channels: w.list(),
+    channels: room.inst ? [] : worlds[room.kind as Shared].list(),
     stats: p.st,
     items: p.items,
     drops: room.visibleDrops(p),
   });
+  if (!room.inst) send(p, { t: "dg", s: null });
 }
 
-/** 다른 맵(또는 같은 맵 다른 곳)으로 */
-function travel(p: Player, kind: RoomKind, x: number, y: number) {
+const setPos = (p: Player, x: number, y: number) => {
   const m = p.mover;
   m.x = p.x = x;
   m.y = p.y = y;
   m.mv = m.lock = m.aim = 0;
+};
+
+/** 다른 맵(또는 같은 맵 다른 곳)으로 */
+function travel(p: Player, kind: Shared, x: number, y: number) {
+  setPos(p, x, y);
   join(p, kind);
 }
+
+dgHooks.place = (p, room, x, y) => {
+  setPos(p, x, y);
+  exit(p);
+  enterRoom(p, room);
+};
+/** 던전 → 광장 (유적의 문 앞). 쓰러져 있으면 살려서 (던전 사망은 페널티 없음) */
+dgHooks.toPlaza = (p) => {
+  const a = arrival("plaza", "dungeon");
+  if (p.dead) return respawn(p, a);
+  travel(p, "plaza", a.x, a.y);
+};
 
 function save(p: Player) {
   saveDirtySkills(p);
   if (!p.room) return;
-  if (p.dead) savePosition(p.char.id, { map: "plaza", ...maps.plaza.spawn });
+  if (p.room.inst) savePosition(p.char.id, { map: "plaza", ...arrival("plaza", "dungeon") });
+  else if (p.dead) savePosition(p.char.id, { map: "plaza", ...maps.plaza.spawn });
   else savePosition(p.char.id, { map: p.room.kind, x: p.x, y: p.y, hp: Math.round(p.hp), mp: Math.round(p.mp), en: Math.round(p.en) });
 }
 
@@ -106,16 +146,15 @@ function leave(p: Player) {
   if (online.get(p.discordId) === p) online.delete(p.discordId);
   if (p.room) {
     save(p);
-    const kind = p.room.kind;
-    p.room.remove(p);
-    worlds[kind].trim();
+    exit(p);
   }
 }
 
-/** 광장 부활 (§13-4): 5초 뒤, 완전 회복. 경험치 손실은 쓰러질 때 이미 적용 */
-function respawn(p: Player) {
+/** 부활 (§13-4): 5초 뒤, 완전 회복 — 광장(결투장에서 쓰러지면 결투장). 경험치 손실은 쓰러질 때 이미 적용 */
+function respawn(p: Player, at?: { x: number; y: number }) {
   p.dead = false;
   p.respawnAt = 0;
+  p.deadAt = 0;
   p.fx = [];
   p.fxDirty = true;
   recalc(p);
@@ -124,22 +163,26 @@ function respawn(p: Player) {
   p.en = p.st.energy;
   p.mover.stamina = p.mover.staminaMax;
   p.mover.exhausted = false;
-  travel(p, "plaza", maps.plaza.spawn.x, maps.plaza.spawn.y);
+  const kind: Shared = at ? "plaza" : p.respawnKind === "arena" ? "arena" : "plaza";
+  const to = at ?? maps[kind].spawn;
+  travel(p, kind, to.x, to.y);
 }
 
 /** 포털이 이어지는 곳: 도착 맵에서 출발 맵으로 가는 포털의 ax · ay (없으면 포털 아래) */
-function arrival(to: RoomKind, from: RoomKind) {
+function arrival(to: RoomKind, from: string) {
   const o = maps[to].objects.find((x) => x.type === "portal" && prop(x, "target") === from);
   if (!o) return maps[to].spawn;
   return { x: Number(prop(o, "ax") ?? o.x), y: Number(prop(o, "ay") ?? o.y + 24) };
 }
 
 /** 접속 직후: 지갑 · 퀘스트 · 알림을 맞추고 방에 들어감 */
-function enter(p: Player, kind: RoomKind) {
+function enter(p: Player, kind: Shared) {
   welcome(p);
+  rejoin(p);
   loadQuestState(p);
   join(p, kind);
   sendQuests(p);
+  sendTitles(p);
   const n = mailCount(p.char.id, Date.now());
   if (n) {
     send(p, { t: "notify", kind: "mail", n });
@@ -155,9 +198,12 @@ function use(p: Player, oid: number) {
   if (distToObj(o, p.x, p.y) > USE_RANGE + 8) return send(p, { t: "error", msg: "조금 더 가까이 가세요" });
   if (o.type === "portal") {
     const target = String(prop(o, "target"));
-    if (!(target in maps)) return send(p, { t: "error", msg: `「${o.name}」은 아직 준비 중입니다 (던전 · 결투장은 P7)` });
-    const a = arrival(target as RoomKind, room.kind);
-    return travel(p, target as RoomKind, a.x, a.y);
+    const err = room.inst ? dungeonPortal(p, target) : target === "dungeon" ? usePortal(p) : null;
+    if (err) send(p, { t: "error", msg: err });
+    if (room.inst || target === "dungeon") return;
+    if (!shared(target)) return send(p, { t: "error", msg: `「${o.name}」은 아직 준비 중입니다` });
+    const a = arrival(target, room.kind);
+    return travel(p, target, a.x, a.y);
   }
   if (o.type === "npc") return quest(p, "talk", String(prop(o, "npc"))); // 대화창은 클라이언트가 엶 (대사는 공용 데이터)
 }
@@ -170,7 +216,7 @@ function nearInstructor(p: Player) {
 
 const http = createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ ok: true, online: online.size, plaza: worlds.plaza.list(), field: worlds.field.list() }));
+  res.end(JSON.stringify({ ok: true, online: online.size, plaza: worlds.plaza.list(), field: worlds.field.list(), arena: worlds.arena.list(), dungeons: dungeonRooms().length }));
 });
 const wss = new WebSocketServer({ server: http, maxPayload: 8 * 1024 });
 
@@ -249,8 +295,20 @@ wss.on("connection", (ws, req) => {
         }
         return;
       case "channel":
-        if (player.room && player.room.ch !== m.ch && !player.dead) join(player, player.room.kind, Number(m.ch));
+        if (player.room && !player.room.inst && player.room.ch !== m.ch && !player.dead) join(player, player.room.kind as Shared, Number(m.ch));
         return;
+      case "party":
+      case "mark":
+      case "duel":
+      case "dungeon":
+      case "title": {
+        const err =
+          m.t === "party" ? partyOp(player, m) : m.t === "mark" ? markOp(player, m) : m.t === "duel" ? duelOp(player, m) : m.t === "dungeon" ? dungeonOp(player, m.op) : titleOp(player, m.id);
+        if (err) reply({ t: "error", msg: err });
+        return;
+      }
+      case "who":
+        return who(player);
       case "use":
         return use(player, Number(m.oid));
       case "job": {
@@ -306,10 +364,11 @@ wss.on("connection", (ws, req) => {
           if (err) reply({ t: "error", msg: err });
           return void sendInv(player);
         }
-        const map = m.map && maps[m.map];
+        if (m.stage) return devStage(player, Number(m.stage));
+        const map = m.map && shared(m.map) && maps[m.map];
         const x = Number(m.x);
         const y = Number(m.y);
-        if (map && !blocked(map.collider, x, y)) travel(player, m.map!, x, y);
+        if (map && !blocked(map.collider, x, y)) travel(player, m.map as Shared, x, y);
         return;
       }
     }
@@ -327,10 +386,14 @@ let tickCount = 0;
 function loop() {
   const now = Date.now();
   for (const w of Object.values(worlds)) for (const r of w.rooms) r.tick(now);
+  for (const r of dungeonRooms()) r.tick(now);
+  duelTick(now);
   for (const p of online.values()) if (p.respawnAt && now >= p.respawnAt) respawn(p);
-  if (++tickCount % 40 === 0) {
-    const lists = { plaza: worlds.plaza.list(), field: worlds.field.list() };
-    for (const p of online.values()) if (p.room) send(p, { t: "channels", list: lists[p.room.kind] });
+  if (++tickCount % 10 === 0) partyVitals();
+  if (tickCount % 20 === 0) partyTick(now);
+  if (tickCount % 40 === 0) {
+    const lists = { plaza: worlds.plaza.list(), field: worlds.field.list(), arena: worlds.arena.list() };
+    for (const p of online.values()) if (p.room && !p.room.inst) send(p, { t: "channels", list: lists[p.room.kind as Shared] });
   }
   if (tickCount % 600 === 0) for (const p of online.values()) save(p);
   if (tickCount % 1200 === 1) { sweep(now); sweepQuests(now); } // 1분마다: 유저 상점 만료 반환 · 30일 지난 우편 정리

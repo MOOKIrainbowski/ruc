@@ -8,13 +8,15 @@ import type { LineId } from "./data/jobs.ts";
 import type { Grade } from "./data/mobs.ts";
 import type { Slot } from "./data/skills.ts";
 import type { Noti, QState, QuestView } from "./data/quests.ts";
+import type { DungeonState } from "./data/dungeons.ts";
+import type { PartyAd, PartyVitals, PartyView, PingKind } from "./data/party.ts";
 import type { Progress } from "./progress.ts";
 import type { MoveInput, Mover } from "./movement.ts";
 
 /** 네트워크 메시지 (§27). 베타는 JSON (DECISIONS D4). 필드 이름은 짧게. */
 
-/** 플레이어는 ap(외형) · look(옷 색을 바꾸는 장비 템플릿 id), 몹은 mob(종류) · grade */
-export type EntityInfo = { id: number; name: string; el: string; lv: number; ap?: Appearance; look?: string[]; jb?: string; mob?: string; grade?: Grade };
+/** 플레이어는 ap(외형) · look(옷 색을 바꾸는 장비 템플릿 id) · tt(칭호 id), 몹은 mob(종류) · grade */
+export type EntityInfo = { id: number; name: string; el: string; lv: number; ap?: Appearance; look?: string[]; jb?: string; tt?: string; mob?: string; grade?: Grade };
 /** 스냅샷 한 줄: [id, x, y, dir, flags, HP 천분율, 마나 또는 기력 천분율] */
 export type EntityRow = [number, number, number, number, number, number, number];
 export const F_MOVING = 1;
@@ -55,6 +57,9 @@ export const H_COUNTER = 64;
  *  ["dr", 드롭 id, 템플릿, 희귀도, 개수, x, y]     바닥 아이템 (처치 기여자에게는 개인 이벤트로 먼저, 30초 뒤 모두에게)
  *  ["dx", 드롭 id, 주운 id(0 = 사라짐)]
  *  ["eq", id, look[]]                               옷 색이 바뀌는 장비를 바꿔 입음
+ *  ["tt", id, 칭호 id]                              칭호 바꿈
+ *  ["bp", 보스 id, 페이즈 이름]                       보스 페이즈 전환 (§20-4)
+ *  ["wp", x, y, 반경]                               집결 장판 (보스 stack — 다 같이 들어가야 덜 아픔)
  * 개인 이벤트:
  *  ["cf", seq, 이유]                               시전 거부 → 예측 취소
  *  ["xp", 얻은 양, 현재 경험치, 레벨]
@@ -63,8 +68,10 @@ export const H_COUNTER = 64;
  *  ["du", 아이템 id, 내구도]                         내구도 바뀜
  *  ["sk", 스킬 id, 레벨, "learn" | "lv" | "grade"]  새로 배움 · 스킬 레벨업 · 등급 오름
  *  ["ruc", 양]                                      몹 처치 RUC (베타 지갑)
+ *  ["pl", 템플릿, 희귀도, 받은 사람 이름]             파티 드롭 분배 결과 (§21-2 — 파티 채팅 대신)
+ *  ["duel", "start" | "end", 상대 엔티티 id[], 시작까지 ms | 결과("win" | "lose" | "draw")]
  */
-export type Ev = (string | number | FxRow[] | string[])[];
+export type Ev = (string | number | FxRow[] | string[] | number[])[];
 export type DropRow = ["dr", number, string, Rarity, number, number, number];
 
 export type You = {
@@ -111,12 +118,25 @@ export type C2S =
    */
   | {
       t: "quest"; op: "track" | "board" | "create" | "accept" | "abandon" | "deliver" | "cancel" | "report"; id?: string | number; on?: boolean;
-      title?: string; kind?: "kill" | "deliver"; target?: string; n?: number; ruc?: number; list?: ItemPos[]; slots?: number; days?: number; rid?: string;
+      title?: string; kind?: "kill" | "deliver" | "stage" | "duel"; target?: string; n?: number; ruc?: number; list?: ItemPos[]; slots?: number; days?: number; rid?: string;
     }
   /** 알림 읽음 처리 (id 없으면 모두 읽음은 readAll) */
   | { t: "noti"; op: "read" | "readAll"; id?: number }
-  /** 개발 모드 전용: 순간이동 · 아이템 받기 */
-  | { t: "dev"; map?: RoomKind; x?: number; y?: number; give?: string; rarity?: Rarity; n?: number; lv?: number };
+  /**
+   * 파티 (§21, P7): 만들기 · 초대(name) · 초대 수락/거절(id) · 가입 신청(id) · 신청 승인/거절(cid) · 추방 · 위임 · 탈퇴 · 해산 · 모집 공개(open, note) · 모집 목록
+   */
+  | { t: "party"; op: "create" | "invite" | "accept" | "decline" | "request" | "approve" | "reject" | "kick" | "promote" | "leave" | "disband" | "open" | "list"; name?: string; id?: number; cid?: number; on?: boolean; note?: string }
+  /** 핑 (§21-3): 파티원에게 월드 좌표 */
+  | { t: "mark"; k: PingKind; x: number; y: number }
+  /** 결투 (§13-3): 신청(name, party = 파티 대 파티) · 수락 · 거절 */
+  | { t: "duel"; op: "ask" | "accept" | "decline"; name?: string; party?: boolean; id?: number }
+  /** 던전 (§20-4): 입장 확인(파티장) · 공용 부활 · 나가기(중간 포기) */
+  | { t: "dungeon"; op: "enter" | "revive" | "leave" }
+  /** 칭호 고르기 (null = 떼기) · 현황판(Tab) */
+  | { t: "title"; id: string | null }
+  | { t: "who" }
+  /** 개발 모드 전용: 순간이동 · 아이템 받기 · 레벨 · 던전 스테이지 건너뛰기(stage) */
+  | { t: "dev"; map?: RoomKind; x?: number; y?: number; give?: string; rarity?: Rarity; n?: number; lv?: number; stage?: number };
 
 export type S2C =
   | { t: "needCreate"; defaultName: string }
@@ -148,4 +168,17 @@ export type S2C =
   | { t: "pong"; c: number }
   | { t: "channels"; list: ChannelInfo[] }
   | { t: "kicked"; reason: "dup" | "rate" | "auth" | "server" }
+  /** 파티 (P7): 내 파티(없으면 null) · 파티원 상태(2Hz) · 모집 중인 파티 · 핑 */
+  | { t: "party"; party: PartyView | null }
+  | { t: "pv"; v: PartyVitals[] }
+  | { t: "ads"; list: PartyAd[] }
+  | { t: "mark"; k: PingKind; x: number; y: number; from: string }
+  /** 확인 창: 결투 신청 받음 · 던전 입장 확인(파티장) */
+  | { t: "ask"; kind: "duel"; id: number; from: string; party: boolean }
+  | { t: "ask"; kind: "dungeon"; members: string[]; recommend: string }
+  /** K/D/A · 칭호 목록 · 현황판 · 던전 상태(없으면 null) */
+  | { t: "kda"; kda: [number, number, number] }
+  | { t: "titles"; list: string[]; on: string | null }
+  | { t: "who"; list: { name: string; lv: number; jb: string; kda: [number, number, number]; party: boolean }[] }
+  | { t: "dg"; s: DungeonState | null }
   | { t: "error"; msg: string };

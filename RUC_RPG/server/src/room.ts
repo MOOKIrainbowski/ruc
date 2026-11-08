@@ -21,6 +21,7 @@ import { newMover } from "../../../web/rpg/shared/movement.ts";
 import type { ElementId } from "../../../web/rpg/shared/data/elements.ts";
 import { loadItems, type QuestRow } from "./db.ts";
 import { quest, reachTick } from "./quests.ts";
+import { PARTY, partyExp, partyWeights, pickWeighted, splitWeighted } from "../../../web/rpg/shared/data/party.ts";
 import { makeUnit } from "./combat.ts";
 import { refreshGear } from "./items.ts";
 import { cast, fire, type Cast, type Shot } from "./skills.ts";
@@ -75,6 +76,22 @@ export type Player = Unit & {
   dealt: number;
   taken: number;
   basics: number;
+  // P7: 파티 · K/D/A · 칭호 · 결투 · 던전
+  /** 파티 id (0 = 없음) */
+  party: number;
+  kda: [number, number, number];
+  title: string | null;
+  /** 나를 때리거나 디버프를 건 플레이어 → 시각 (어시스트, §13-3) */
+  hitBy: Map<number, number>;
+  /** 결투 id · 편(0/1) · 지금 싸우는 중(시작 뒤 · 패배 전) */
+  duel: number;
+  duelSide: number;
+  duelOn: boolean;
+  /** 던전: 이번 스테이지에 남은 포션 (null = 제한 없음) · 쓰러진 시각 */
+  potionLeft: number | null;
+  deadAt: number;
+  /** 부활할 맵 (결투장에서 쓰러지면 결투장) */
+  respawnKind: RoomKind;
 };
 
 /** 저장된 캐릭터로 플레이어를 만듦 (아이템 · 성장 · 장비 스탯 반영, HP 가득) — main · 테스트 공용 */
@@ -86,6 +103,7 @@ export function buildPlayer(ws: WebSocket, discordId: string, char: CharacterRow
     kind: "p" as const, mover: u.mover!, ws, discordId, char, inputs: [], credits: 0, lastSeq: -1, steps: 0, rtt: 0,
     room: null, out: [], respawnAt: 0, statsSent: "", ...playerState(loadItems(char.id), prog),
   });
+  p.title = char.title_id ?? null;
   syncSkills(p); // 견습 스킬 · 레벨 도달 스킬 (예전 캐릭터도) — 접속 때 안내는 안 띄움
   p.out = [];
   refreshGear(p);
@@ -100,6 +118,8 @@ export const playerState = (items: Item[], prog: Progress) => ({
   items, procs: [] as Special[], look: [] as string[], potionAt: 0, shieldAt: 0, dealt: 0, taken: 0, basics: 0,
   prog, progDirty: false, progAt: 0, skillsDirty: new Set<string>(), charge: null, cd: {} as Record<string, number>, slots: {} as Partial<Record<Slot, string>>, ruc: 0,
   quests: new Map<string, QuestRow>(), takes: new Map<number, number>(), reach: 0,
+  party: 0, kda: [0, 0, 0] as [number, number, number], title: null as string | null, hitBy: new Map<number, number>(), duel: 0, duelSide: 0, duelOn: false,
+  potionLeft: null as number | null, deadAt: 0, respawnKind: "plaza" as RoomKind,
 });
 
 /**
@@ -121,7 +141,26 @@ const segDist = (w: Wall, x: number, y: number) => {
 
 export const send = (p: Player, m: S2C) => p.ws.readyState === 1 && p.ws.send(JSON.stringify(m));
 export const info = (u: Unit): EntityInfo =>
-  u.kind === "p" ? { id: u.id, name: u.name, ap: (u as Player).char.appearance, look: (u as Player).look, el: u.el, lv: u.lv, jb: (u as Player).prog.job ?? (u as Player).prog.line ?? "" } : { id: u.id, name: u.name, el: u.el, lv: u.lv, mob: (u as Mob).key, grade: (u as Mob).grade };
+  u.kind === "p"
+    ? { id: u.id, name: u.name, ap: (u as Player).char.appearance, look: (u as Player).look, el: u.el, lv: u.lv, jb: (u as Player).prog.job ?? (u as Player).prog.line ?? "", ...((u as Player).title ? { tt: (u as Player).title! } : {}) }
+    : { id: u.id, name: u.name, el: u.el, lv: u.lv, mob: (u as Mob).key, grade: (u as Mob).grade };
+
+/** 던전 인스턴스가 방에 거는 것 (dungeon.ts) */
+export interface Inst {
+  tick(now: number): void;
+  killed(u: Unit, by: Unit | undefined): void;
+}
+
+/**
+ * 다른 모듈이 채우는 연결점 — room 이 party · pvp 를 import 하지 않게 (순환 참조 방지).
+ * mates = 같은 방에 있는 파티원(자기 포함) · 파티장 캐릭터 id, defeat = 결투 패배, pvpKill = 플레이어에게 쓰러짐, left = 방을 떠남
+ */
+export const hooks = {
+  mates: (p: Player): { list: Player[]; leader: number } => ({ list: [p], leader: p.char.id }),
+  defeat: (_room: Room, _p: Player, _by: Player | undefined) => {},
+  pvpKill: (_room: Room, _p: Player, _by: Player) => {},
+  left: (_room: Room, _p: Player) => {},
+};
 
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
 
@@ -135,6 +174,9 @@ export class Room implements World {
   drops = new Map<number, Drop>();
   walls: Wall[] = [];
   ev: Ev[] = [];
+  /** 던전 인스턴스 (없으면 일반 채널) · 예약 실행 (보스 패턴의 경고 → 발동) */
+  inst: Inst | null = null;
+  timers: { at: number; fn: () => void }[] = [];
   now = 0;
   kind: RoomKind;
   ch: number;
@@ -161,7 +203,7 @@ export class Room implements World {
     return this.players.get(id) ?? this.mobs.get(id);
   }
 
-  private broadcast(m: S2C, except?: Player) {
+  broadcast(m: S2C, except?: Player) {
     const s = JSON.stringify(m);
     for (const o of this.players.values()) if (o !== except && o.ws.readyState === 1) o.ws.send(s);
   }
@@ -173,6 +215,7 @@ export class Room implements World {
   }
 
   remove(p: Player) {
+    hooks.left(this, p);
     this.players.delete(p.id);
     p.room = null;
     this.casts = this.casts.filter((c) => c.s.p !== p);
@@ -180,15 +223,54 @@ export class Room implements World {
     this.broadcast({ t: "despawn", id: p.id });
   }
 
-  private addMob(z: Zone) {
+  addMob(z: Zone): Mob | null {
     const m = spawnMob(this, newId(), z);
-    if (!m) return;
+    if (!m) return null;
     this.mobs.set(m.id, m);
     this.broadcast({ t: "spawn", e: info(m) });
+    return m;
+  }
+
+  /** ms 뒤에 실행 (보스 패턴) */
+  later(ms: number, fn: () => void) {
+    this.timers.push({ at: this.now + ms, fn });
+  }
+
+  /**
+   * 적대 관계 (§13-3): 플레이어 ↔ 몹은 항상. 플레이어끼리는 결투장(같은 파티 제외) · 결투 중인 상대만.
+   * 광장 · 필드 · 던전은 서로 못 때림.
+   */
+  hostile(a: Unit, b: Unit): boolean {
+    if (a === b) return false;
+    if (a.kind !== b.kind) return true;
+    if (a.kind === "m") return false;
+    const p = a as Player;
+    const q = b as Player;
+    if (this.kind === "arena") return !(p.party && p.party === q.party);
+    return p.duelOn && q.duelOn && p.duel === q.duel && p.duelSide !== q.duelSide;
+  }
+
+  /** p 가 공격할 수 있는 살아 있는 대상 (몹 + 적대 플레이어) */
+  foes(p: Unit): Unit[] {
+    const out: Unit[] = [];
+    for (const m of this.mobs.values()) if (!m.dead) out.push(m);
+    if (p.kind === "p" && (this.kind === "arena" || (p as Player).duelOn)) for (const o of this.players.values()) if (!o.dead && this.hostile(p, o)) out.push(o);
+    return out;
+  }
+
+  /** 결투 패배: 쓰러지는 대신 체력 1로 결투에서 빠짐 */
+  spare(src: Unit | undefined, u: Unit): boolean {
+    if (u.kind !== "p") return false;
+    const p = u as Player;
+    if (!p.duelOn || (src && (src.kind !== "p" || (src as Player).duel !== p.duel))) return false;
+    p.hp = 1;
+    hooks.defeat(this, p, src as Player | undefined);
+    return true;
   }
 
   // ── World ──────────────────────────────────────────────────────
   damaged(src: Unit, tgt: Unit, amount: number, threat: number, h?: HitSpec) {
+    if (src.kind === "p" && tgt.kind === "p") (tgt as Player).hitBy.set(src.id, this.now);
     if (tgt.kind !== "m" || src.kind !== "p") return;
     const m = tgt as Mob;
     m.lastShot = (h?.cast as Shot | undefined) ?? null;
@@ -221,6 +303,7 @@ export class Room implements World {
     if (!p.dead) return;
     p.dead = false;
     p.respawnAt = 0;
+    p.deadAt = 0;
     recalc(p);
     p.hp = Math.max(1, Math.round(p.st.hp * pct));
     this.ev.push(["rv", p.id]);
@@ -248,37 +331,55 @@ export class Room implements World {
       const m = u as Mob;
       m.removeAt = this.now + 1000;
       m.zone.alive--;
-      m.zone.respawn.push(this.now + RESPAWN_MS);
+      if (m.zone.count) m.zone.respawn.push(this.now + RESPAWN_MS);
       let best: Player | undefined;
       let bv = 0;
       for (const [id, v] of m.dmgBy) {
         const p = this.players.get(id);
         if (p && v > bv) { bv = v; best = p; }
       }
-      if (best) {
-        gainExp(this, best, mobExp(m.def, m.lv, m.grade, best.lv));
-        quest(best, "kill", m.key);
+      // 파티 분배 (§21-2): 경험치는 반경 20타일 안 파티원에게 균등 + 인원당 5%, RUC · 드롭은 같은 방 파티원에게 파티장 1.5 : 1
+      const party = best ? hooks.mates(best) : null;
+      if (best && party) {
+        const near = party.list.filter((q) => !q.dead && (q === best || Math.hypot(q.x - m.x, q.y - m.y) <= PARTY.expRange));
+        for (const q of near) {
+          gainExp(this, q, partyExp(mobExp(m.def, m.lv, m.grade, q.lv), near.length));
+          quest(q, "kill", m.key);
+        }
         const [lo, hi] = m.def.ruc;
-        dropRuc(best, (lo + Math.floor(rand() * (hi - lo + 1))) * (1 + Object.keys(GRADES).indexOf(m.grade)), m.key);
+        const total = (lo + Math.floor(rand() * (hi - lo + 1))) * (1 + Object.keys(GRADES).indexOf(m.grade));
+        const shares = splitWeighted(total, partyWeights(party.list.map((q) => q.char.id), party.leader));
+        party.list.forEach((q, i) => dropRuc(q, shares[i], m.key));
       }
       if (by?.kind === "p") onKill(this, by as Player);
       // 숙련도: 막타를 친 스킬 +5
       const s = m.lastShot;
       if (s && s.sk.slot !== "A") gainMastery(s.p, s.mid, MASTERY.kill, m.grade);
-      this.loot(m, best);
+      this.loot(m, best, party);
+      this.inst?.killed(u, by);
       return;
     }
     // 플레이어: 5초 뒤 광장 부활, 현재 레벨 필요 경험치의 3% 손실 (레벨은 안 내려감, §13-4)
     const p = u as Player;
-    const loss = Math.min(p.char.exp, Math.floor(expToNext(p.char.level) * COMBAT.deathExpLoss));
-    p.char.exp -= loss;
-    saveProgress(p.char.id, p.char.level, p.char.exp);
-    p.out.push(["xp", -loss, p.char.exp, p.char.level]);
-    deathWear(p);
-    p.respawnAt = this.now + COMBAT.respawnMs;
     this.casts = this.casts.filter((c) => c.s.p !== p);
     p.charge = null;
-    p.out.push(["dead", COMBAT.respawnMs]);
+    p.deadAt = this.now;
+    const pvp = by?.kind === "p" && by !== p;
+    if (pvp) hooks.pvpKill(this, p, by as Player);
+    this.inst?.killed(u, by);
+    // 던전: 관전 — 파티원이 부활시키거나 공용 부활 (§20-4)
+    if (this.inst) return void p.out.push(["dead", 0, "dungeon"]);
+    // 결투장 · 다른 플레이어에게 쓰러지면 페널티 없음, 결투장에서는 결투장으로 부활
+    if (!pvp && this.kind !== "arena") {
+      const loss = Math.min(p.char.exp, Math.floor(expToNext(p.char.level) * COMBAT.deathExpLoss));
+      p.char.exp -= loss;
+      saveProgress(p.char.id, p.char.level, p.char.exp);
+      p.out.push(["xp", -loss, p.char.exp, p.char.level]);
+      deathWear(p);
+    }
+    p.respawnKind = this.kind === "arena" ? "arena" : "plaza";
+    p.respawnAt = this.now + COMBAT.respawnMs;
+    p.out.push(["dead", COMBAT.respawnMs, p.respawnKind]);
   }
 
   push(u: Unit, dx: number, dy: number) {
@@ -288,9 +389,11 @@ export class Room implements World {
     u.y = m.y;
   }
 
-  /** 드롭 굴려서 몹 주변에 흩뿌림. 운은 처치 경험치를 받는 플레이어 것 */
-  private loot(m: Mob, killer: Player | undefined) {
-    const owners = new Set([...m.dmgBy.keys()].filter((id) => this.players.has(id)));
+  /** 드롭 굴려서 몹 주변에 흩뿌림. 운은 처치 경험치를 받는 플레이어 것. 파티면 아이템마다 가중치 추첨으로 주인 한 명 (§21-2) */
+  private loot(m: Mob, killer: Player | undefined, party: { list: Player[]; leader: number } | null) {
+    const hitters = new Set([...m.dmgBy.keys()].filter((id) => this.players.has(id)));
+    const team = party && party.list.length > 1 ? party.list : null;
+    const weights = team ? partyWeights(team.map((q) => q.char.id), party!.leader) : [];
     const gi = Object.keys(GRADES).indexOf(m.grade);
     for (const r of rollDrops(m.def.drops, gi, killer?.st.luck ?? 0, rand)) {
       let x = m.x;
@@ -301,6 +404,12 @@ export class Room implements World {
         const tx = Math.round(m.x + Math.cos(a) * d);
         const ty = Math.round(m.y + Math.sin(a) * d);
         if (!blocked(this.map.collider, tx, ty)) { x = tx; y = ty; break; }
+      }
+      let owners = hitters;
+      if (team) {
+        const win = team[pickWeighted(weights, rand())];
+        owners = new Set([win.id]);
+        for (const q of team) q.out.push(["pl", r.tpl, r.rarity, win.char.nickname]);
       }
       const d: Drop = { id: newId(), ...r, x, y, owners: owners.size ? owners : null, pickAt: this.now + DROP.pickMs, publicAt: this.now + DROP.ownMs, until: this.now + DROP.lifeMs, told: new Set() };
       this.drops.set(d.id, d);
@@ -349,12 +458,12 @@ export class Room implements World {
     this.ev.push(["p", p.id, owner.id, kind, el ?? "", Math.round(p.x), Math.round(p.y), Math.round(p.vx * 100) / 100, Math.round(p.vy * 100) / 100, range, seq]);
   }
 
-  /** 지연 보상: 공격자 화면에 보였던 lag ms 전 위치 */
-  posAt(m: Mob, lag: number) {
-    if (lag <= 0) return m;
+  /** 지연 보상: 공격자 화면에 보였던 lag ms 전 위치 (몹만 — 플레이어는 지금 위치) */
+  posAt(u: Unit, lag: number) {
+    if (lag <= 0 || u.kind !== "m") return u;
     const t = this.now - lag;
-    let best: { x: number; y: number } = m;
-    for (const [ht, x, y] of m.hist) if (ht <= t) best = { x, y };
+    let best: { x: number; y: number } = u;
+    for (const [ht, x, y] of (u as Mob).hist) if (ht <= t) best = { x, y };
     return best;
   }
 
@@ -414,10 +523,10 @@ export class Room implements World {
         pr.y += (pr.vy / speed) * (total / n);
         pr.left -= total / n;
         if (pr.team === "m" && this.walls.some((w) => segDist(w, pr.x, pr.y) <= pr.r + 3)) { end = true; break; }
-        const targets: Unit[] = pr.team === "p" ? [...this.mobs.values()] : [...this.players.values()];
+        const targets: Unit[] = pr.team === "p" ? this.foes(pr.owner) : [...this.players.values()];
         for (const t of targets) {
           if (t.dead || pr.hits.has(t.id)) continue;
-          const q = t.kind === "m" ? this.posAt(t as Mob, pr.lag) : t;
+          const q = this.posAt(t, pr.lag);
           if (dist(pr, q) > pr.r + t.r) continue;
           hit(this, pr.owner, t, pr.spec);
           pr.hits.add(t.id);
@@ -496,6 +605,12 @@ export class Room implements World {
       z.respawn = z.respawn.filter((t) => now < t);
       for (let i = 0; i < due.length && z.alive < z.count; i++) this.addMob(z);
     }
+    if (this.timers.length) {
+      const due = this.timers.filter((t) => now >= t.at);
+      this.timers = this.timers.filter((t) => now < t.at);
+      for (const t of due) t.fn();
+    }
+    this.inst?.tick(now);
     this.snapshot(now);
   }
 

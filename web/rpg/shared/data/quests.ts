@@ -1,6 +1,6 @@
 /** NPC 퀘스트 · 튜토리얼 (§19) · 유저 퀘스트 규칙 · 알림 종류 (§22). 서버와 클라이언트가 같이 씀. */
 
-/** 서버가 검증할 수 있는 목표 유형 (§19-3). P7 에서 reach_stage · duel_win · collect 추가 */
+/** 서버가 검증할 수 있는 목표 유형 (§19-3). collect(채집물)는 채집 시스템이 생길 때 */
 export type ObjType =
   | "talk"    // target = NPC id
   | "reach"   // target = "fountain" (분수 둘레 네 곳을 모두 지남, n = 4)
@@ -11,7 +11,10 @@ export type ObjType =
   | "kill"    // target = 몹 종류 ("*" = 아무거나)
   | "enhance" // 강화 성공
   | "equip"   // 스킬 슬롯 바꿈
-  | "level";  // 레벨 도달 (n = 레벨)
+  | "level"   // 레벨 도달 (n = 레벨)
+  | "party"   // 파티 만들기 · 들어가기 (P7)
+  | "stage"   // 던전 스테이지 도달 (reach_stage, n = 스테이지 번호 — 가장 높이 간 스테이지)
+  | "duel";   // 결투 승리 (duel_win)
 export type Objective = { type: ObjType; target?: string; n: number };
 export type Reward = { exp?: number; ruc?: number; items?: [string, number][] };
 export type QuestDef = {
@@ -56,7 +59,11 @@ export const TUTORIAL: QuestDef[] = [
   T({ id: "tut_enhance", title: "대장간 체험", desc: "광장 북쪽 강화대에서 장비를 +1 강화해 보자. (우편의 나무 검과 강화석을 써요)", hint: "강화대(대장장이 볼트) 앞에서 F. 장비를 고르고 강화석을 넣어요.", npc: "volt",
     obj: [{ type: "enhance", n: 1 }], reward: { exp: 100 }, next: "tut_skill" }),
   T({ id: "tut_skill", title: "스킬 정리", desc: "K 키로 스킬창을 열어 스킬 슬롯을 한 번 바꿔 보자. (전투 중에는 바꿀 수 없어요)", hint: "K 키 = 스킬창. 스킬을 눌러 슬롯에 장착해요.", npc: "owen",
-    obj: [{ type: "equip", n: 1 }], reward: { exp: 100 }, next: "tut_lv10" }),
+    obj: [{ type: "equip", n: 1 }], reward: { exp: 100 }, next: "tut_party" }),
+  T({ id: "tut_party", title: "함께라면", desc: "P 키로 파티창을 열어 파티를 만들거나 다른 모험가의 파티에 들어가자. 혼자여도 파티를 만들 수 있어요.", hint: "P = 파티창. 파티 중에는 G 를 누르고 있으면 핑 휠, Alt+클릭은 빠른 핑이에요.", npc: "dario",
+    obj: [{ type: "party", n: 1 }], reward: { exp: 120, items: [["hp_potion_m", 3]] }, next: "tut_dungeon" }),
+  T({ id: "tut_dungeon", title: "고목의 유적", desc: "광장 북쪽 '고대 유적의 문'으로 던전에 들어가 1스테이지를 정화하자. 파티장이 입장을 확인해요.", hint: "던전에서 쓰러지면 파티원이 부활시키거나 공용 부활(3회)을 쓸 수 있어요. 스테이지마다 포션은 5개까지.", npc: "dario",
+    obj: [{ type: "stage", target: "ruins", n: 1 }], reward: { exp: 250, ruc: 300, items: [["enhance_stone", 3]] }, next: "tut_lv10" }),
   T({ id: "tut_lv10", title: "10레벨의 문턱", desc: "초원에서 사냥하며 레벨 10에 도달하자. 고블린과 덩굴늑대를 상대해 볼 만해요.", hint: "포션(숫자키)으로 체력을 관리하며 사냥하세요. 힘들면 광장으로 돌아와 쉬어도 돼요.", npc: "lumi",
     obj: [{ type: "level", n: 10 }], reward: { exp: 0, ruc: 500, items: [["hp_potion_s", 5]] }, next: "tut_job" }),
   T({ id: "tut_job", title: "첫 전직", desc: "직업 교관 세라에게 말을 걸어 1차 전직을 하자.", hint: "광장 북동쪽의 세라 앞에서 F → 계열을 고르면 전직해요.", npc: "sera",
@@ -79,10 +86,16 @@ export function objText(o: Objective, got: number): string {
     enhance: "강화 성공",
     equip: "스킬 슬롯 바꾸기",
     level: "레벨 도달",
+    party: "파티 만들기 · 들어가기",
+    stage: `고목의 유적 ${o.n}스테이지 정화`,
+    duel: "결투 승리",
   };
   return o.type === "level" ? `Lv.${o.n} 도달 (현재 ${n})` : o.n > 1 ? `${what[o.type]} ${n}/${o.n}` : `${what[o.type]} ${n >= o.n ? "✔" : ""}`.trim();
 }
-const MOB_NAME: Record<string, string> = { slime: "슬라임", rabbit: "토끼정령", goblin: "고블린", wolf: "덩굴늑대" };
+const MOB_NAME: Record<string, string> = {
+  slime: "슬라임", rabbit: "토끼정령", goblin: "고블린", wolf: "덩굴늑대",
+  sprout_slime: "새싹 슬라임", shroom_shaman: "버섯 주술사", moss_golem: "이끼 골렘", shadow_vine: "그림자 덩굴", tree_knight: "고대 수목 기사", twin_witch: "쌍둥이 꽃의 마녀",
+};
 export const MOB_CHOICES = Object.entries(MOB_NAME);
 
 /** NPC 소개 · 평소 대사 (§19-1). 대화창에서 쓰고, 루미는 튜토리얼 진행에 따라 안내를 덧붙임 */
@@ -94,7 +107,12 @@ export const NPCS: Record<string, NpcInfo> = {
   sera: { name: "세라", role: "직업 교관", place: "전직하기", lines: ["Lv.10이 되면 1차 전직을, Lv.30이 되면 2차 전직을 할 수 있어요. 어떤 길을 걸을지 잘 생각해 보세요."] },
   owen: { name: "오웬", role: "스킬 교관", place: "스킬창 열기", lines: ["스킬은 쓸수록 숙련도가 쌓여서 강해져. 스킬북은 몬스터가 가끔 떨어뜨리지."] },
   pip: { name: "핍", role: "우편 집배원", place: "우편함 열기", lines: ["우편은 30일 동안 보관돼요. 받지 않은 우편이 있으면 알려 드릴게요!"] },
-  dario: { name: "다리오", role: "유적 탐험가", lines: ["북쪽의 '고대 유적의 문' 너머엔 던전이 있지. 아직 길을 정비 중이라 곧 열릴 거야."] },
+  dario: { name: "다리오", role: "유적 탐험가", lines: [
+    "북쪽 '고대 유적의 문' 너머가 고목의 유적이야. 균형이 깨진 정령들이 우글거리지. 열 개의 방 끝에 고목왕 엘드라가 있어.",
+    "혼자 가도 되지만 파티를 꾸리는 게 좋아. P 키로 파티창을 열어 봐. 파티장이 문 앞에서 입장을 확인하면 다 같이 들어가지.",
+    "안에선 쓰러져도 바로 광장으로 안 돌아와. 동료가 일으켜 주거나 공용 부활(3번)을 쓰면 돼. 다 쓰러지면… 처음부터야.",
+    "동쪽 다리 건너 결투장에선 언제든 한판 붙을 수 있어. 초원에선 P 창에서 결투를 신청하고.",
+  ] },
 };
 
 // ── 유저 퀘스트 (§19-3) ───────────────────────────────────────────────
@@ -113,7 +131,8 @@ export const USER_QUEST = {
   maxSlots: 20,
   maxRuc: 1_000_000,
 };
-export type UserKind = "kill" | "deliver";
+/** kill 처치 · deliver 전달 · stage 던전 스테이지 도달(reach_stage) · duel 결투 승리(duel_win) */
+export type UserKind = "kill" | "deliver" | "stage" | "duel";
 
 export const userQuestFee = (ruc: number, slots: number) => Math.ceil(ruc * slots * USER_QUEST.feeRate);
 

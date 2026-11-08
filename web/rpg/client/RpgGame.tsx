@@ -18,13 +18,16 @@ import { t, type StrKey } from "./i18n";
 import { ItemsWindow } from "./Inventory";
 import { Net } from "./net";
 import { Bell, Dialogue, Journal, QuestPop, Toasts, Tracker, type BoardData, type QStates } from "./Quests";
+import { AskPrompt, Banner, DungeonHud, GhostOverlay, PartyFrames, PartyWindow, PingWheel, Scoreboard, type Ask, type Who } from "./Party";
+import { ROOM_NAME, type DungeonState } from "../shared/data/dungeons";
+import type { PartyAd, PartyVitals, PartyView } from "../shared/data/party";
 import SettingsModal from "./SettingsModal";
 import { loadLocal, mergeSettings, saveLocal, type Settings } from "./settings";
 
 type Phase = "loading" | "create" | "play" | "closed";
-type Popup = "settings" | "map" | "inventory" | "storage" | "journal" | "dialogue" | Place;
+type Popup = "settings" | "map" | "inventory" | "storage" | "journal" | "dialogue" | "party" | Place;
 /** 열려 있으면 게임 입력을 막는 팝업 */
-const BLOCKING: Popup[] = ["settings", "inventory", "storage", "skills", "job", "mail", "shop", "market", "forge", "alchemy", "journal", "dialogue"];
+const BLOCKING: Popup[] = ["settings", "inventory", "storage", "skills", "job", "mail", "shop", "market", "forge", "alchemy", "journal", "dialogue", "party"];
 /** 창이 열릴 때 서버에서 받아 올 목록 */
 const FETCH: Partial<Record<Place, string>> = { mail: "mail", shop: "shop", market: "market" };
 
@@ -32,8 +35,10 @@ const FETCH: Partial<Record<Place, string>> = { mail: "mail", shop: "shop", mark
 const MAP_JSON: Record<RoomKind, () => Promise<{ default: unknown }>> = {
   plaza: () => import("../shared/data/maps/plaza.json"),
   field: () => import("../shared/data/maps/field.json"),
+  arena: () => import("../shared/data/maps/arena.json"),
+  dungeon: () => import("../shared/data/maps/dungeon.json"),
 };
-const MAP_NAME: Record<RoomKind, string> = { plaza: "햇살광장 솔라스", field: "햇살 초원" };
+const MAP_NAME = ROOM_NAME;
 const mapCache = new Map<RoomKind, { map: GameMap; overview: HTMLCanvasElement }>();
 
 export default function RpgGame({ dev }: { dev?: string }) {
@@ -69,6 +74,19 @@ export default function RpgGame({ dev }: { dev?: string }) {
   const lastLv = useRef(0);
   const [levelUp, setLevelUp] = useState(0);
   const [popups, setPopups] = useState<Popup[]>([]);
+  // 파티 · 던전 · 결투 (P7)
+  const [party, setParty] = useState<PartyView | null>(null);
+  const [pv, setPv] = useState<PartyVitals[]>([]);
+  const [ads, setAds] = useState<PartyAd[]>([]);
+  const [who, setWho] = useState<Who>([]);
+  const [ask, setAsk] = useState<Ask | null>(null);
+  const [titles, setTitles] = useState<{ list: string[]; on: string | null }>({ list: [], on: null });
+  const [dg, setDg] = useState<{ s: DungeonState; at: number } | null>(null);
+  const [banner, setBanner] = useState<{ text: string; at: number; ms: number } | null>(null);
+  const [boardOpen, setBoardOpen] = useState(false);
+  const deadAt = useRef(0);
+  /** 파티원 엔티티 id · 파티 여부 — 맵을 옮겨 새로 만든 Game 에도 바로 넣음 */
+  const social = useRef<{ ids: number[]; inParty: boolean }>({ ids: [], inParty: false });
   const toast = useCallback((text: string) => {
     setMsg(text);
     clearTimeout(toastTimer.current);
@@ -115,10 +133,20 @@ export default function RpgGame({ dev }: { dev?: string }) {
           return;
         }
         case "notify": if (m.n) toast(t("ec.mailWaiting", { n: m.n })); return;
+        case "party": setParty(m.party); return;
+        case "pv": setPv(m.v); return;
+        case "ads": setAds(m.list); return;
+        case "who": setWho(m.list); return;
+        case "ask": setAsk(m); return;
+        case "kda": setYou((y) => y && { ...y, kda: m.kda }); if (game.current) game.current.you.kda = m.kda; return;
+        case "titles": setTitles({ list: m.list, on: m.on }); return;
+        case "dg": setDg(m.s ? { s: m.s, at: Date.now() } : null); if (game.current) game.current.bossId = m.s?.boss?.id ?? 0; return;
+        case "mark": game.current?.addPing(m.k, m.x, m.y, m.from); return;
         case "econ":
           setEcon((e) => ({ ...e, [m.view]: m.view === "enhanced" || m.view === "recombined" ? { ...(m.data as object), at: Date.now() } : m.data }));
           return;
         case "joined": {
+          setAsk(null); // 방을 옮기면 지난 확인 창(입장 · 결투)은 의미가 없음
           setYou(m.you);
           setRoom(m.room);
           setChannels(m.channels);
@@ -141,6 +169,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
           setWorld(w);
           const g = new Game(w.map, m.room.kind, n, m.you, m.me, s, m.stats, m.items);
           g.onToast = toast;
+          g.onBanner = (text, ms) => setBanner({ text, at: Date.now(), ms });
           g.onXp = (_, exp, level) => setYou((y) => y && { ...y, exp, level });
           g.onItems = setItems;
           g.onProg = () => setYou({ ...g.you });
@@ -170,6 +199,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
           if (!alive) return g.destroy();
           game.current = g;
           g.setNpcMarks(marks.current);
+          g.setParty(social.current.ids, social.current.inParty);
           n.send({ t: "quest", op: "board" });
           if (process.env.NODE_ENV === "development") (window as unknown as { __rpg: Game }).__rpg = g; // 디버그 · E2E 용
           setPhase("play");
@@ -222,6 +252,16 @@ export default function RpgGame({ dev }: { dev?: string }) {
     if (game.current) game.current.inputBlocked = popups.some((p) => BLOCKING.includes(p));
   }, [popups]);
 
+  // 파티원 엔티티 (이름표 초록 · 미니맵 · 결투장 적 판정)
+  useEffect(() => {
+    social.current = { ids: party ? party.members.filter((m) => m.eid && m.eid !== you?.id).map((m) => m.eid) : [], inParty: !!party };
+    game.current?.setParty(social.current.ids, social.current.inParty);
+  }, [party, you?.id, phase, room]);
+  useEffect(() => {
+    if (hud?.ghost && !deadAt.current) deadAt.current = Date.now();
+    if (!hud?.ghost) deadAt.current = 0;
+  }, [hud?.ghost]);
+
   // 창고는 광장에서만 (§15-3) — 광장을 떠나면 닫음
   useEffect(() => {
     if (room.kind !== "plaza") setPopups((s) => s.filter((p) => p !== "storage"));
@@ -249,14 +289,24 @@ export default function RpgGame({ dev }: { dev?: string }) {
         toggle("journal");
         if (!popups.includes("journal")) net.current?.send({ t: "quest", op: "board" });
       }
+      else if (e.code === settings.keys.party) {
+        toggle("party");
+        if (!popups.includes("party")) net.current?.send({ t: "who" });
+      }
+      else if (e.code === settings.keys.board && !e.repeat) {
+        setBoardOpen(true);
+        net.current?.send({ t: "who" });
+      }
       else if (e.code === settings.keys.storage) {
         if (room.kind === "plaza" || popups.includes("storage")) toggle("storage");
         else toast(t("inv.storageOnly"));
       }
     };
+    const up = (e: KeyboardEvent) => { if (e.code === settings.keys.board) setBoardOpen(false); };
     window.addEventListener("keydown", down);
-    return () => window.removeEventListener("keydown", down);
-  }, [phase, capturing, settings.keys.map, settings.keys.inventory, settings.keys.storage, settings.keys.skills, settings.keys.journal, popups, toggle, room.kind, toast]);
+    window.addEventListener("keyup", up);
+    return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
+  }, [phase, capturing, settings.keys.map, settings.keys.inventory, settings.keys.storage, settings.keys.skills, settings.keys.journal, settings.keys.party, settings.keys.board, popups, toggle, room.kind, toast]);
 
   const top = popups[popups.length - 1];
   const send = useCallback((m: Parameters<Net["send"]>[0]) => net.current?.send(m), []);
@@ -293,9 +343,11 @@ export default function RpgGame({ dev }: { dev?: string }) {
             <div style={{ zoom: settings.hudScale / 100 }}>
               <Compass dir={hud.dir} />
               <br />
-              <ChannelPicker room={room} channels={channels} onPick={(ch) => net.current?.send({ t: "channel", ch })} />
+              {room.kind !== "dungeon" && <ChannelPicker room={room} channels={channels} onPick={(ch) => net.current?.send({ t: "channel", ch })} />}
+              <PartyFrames party={party} pv={pv} you={you} here={room} />
             </div>
           </div>
+          {dg && room.kind === "dungeon" && <DungeonHud dg={dg.s} hud={hud} at={dg.at} send={send} />}
           <div className="absolute right-3 top-3" style={{ zoom: settings.hudScale / 100 }}>
             <TopRight
               fps={hud.fps} ping={ping} you={you} onSettings={() => toggle("settings")}
@@ -307,7 +359,22 @@ export default function RpgGame({ dev }: { dev?: string }) {
             <CombatHud hud={hud} stats={stats} you={you} settings={settings} items={items} onSelect={(i) => { if (game.current) game.current.sel = i; }} />
           </div>
           {msg && <div className="rpg-chip absolute bottom-[200px] left-1/2 -translate-x-1/2 whitespace-nowrap">{msg}</div>}
-          {hud.dead > 0 && <DeathOverlay ms={hud.dead} />}
+          {hud.dead > 0 && !hud.ghost && <DeathOverlay ms={hud.dead} arena={hud.deadKind === "arena"} />}
+          {hud.ghost && <GhostOverlay dg={dg?.s ?? null} since={deadAt.current || Date.now()} send={send} />}
+          {ask?.kind === "duel" && <AskPrompt ask={ask} send={send} onClose={() => setAsk(null)} />}
+          {boardOpen && <Scoreboard list={who} room={room.kind === "dungeon" ? MAP_NAME.dungeon : t("hud.channel", { room: MAP_NAME[room.kind as RoomKind], ch: room.ch })} />}
+        </div>
+      )}
+      {phase === "play" && hud?.wheel && <PingWheel wheel={hud.wheel} />}
+      {phase === "play" && banner && Date.now() - banner.at < banner.ms && <Banner key={banner.at} text={banner.text} />}
+      {phase === "play" && ask?.kind === "dungeon" && (
+        <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
+          <AskPrompt ask={ask} send={send} onClose={() => setAsk(null)} />
+        </div>
+      )}
+      {phase === "play" && you && top === "party" && (
+        <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
+          <PartyWindow you={you} party={party} ads={ads} who={who} titles={titles} send={send} onClose={() => toggle("party")} />
         </div>
       )}
 

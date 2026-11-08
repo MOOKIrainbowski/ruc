@@ -290,3 +290,46 @@ test("경제 공식: 가치 · 분해 환불 · 강화 확률 (축복 · 보호)
   assert.notDeepEqual(rollShop(8, 100, 5), a);
   assert.ok(a.every((x) => ["poor", "common", "rare", "advanced", "mythic"].includes(x.rarity) && x.price > 0));
 });
+
+test("파티 분배 (§21-2): 파티장 1.5 : 1 정수 나누기 · 가중치 추첨 · 경험치 균등 + 인원당 5%", async () => {
+  const { PARTY, partyExp, partyWeights, pickWeighted, splitWeighted } = await import("./data/party.ts");
+  const w = partyWeights([1, 2, 3, 4, 5], 1);
+  assert.deepEqual(w, [1.5, 1, 1, 1, 1]);
+  const s = splitWeighted(5000, w);
+  assert.equal(s.reduce((a, b) => a + b, 0), 5000, "합은 그대로");
+  assert.deepEqual(s, [1364, 909, 909, 909, 909], "5인: 파티장 27.3% · 각 18.2%");
+  assert.deepEqual(splitWeighted(7, [1.5, 1]), [4, 3]);
+  assert.deepEqual(splitWeighted(0, [1.5, 1]), [0, 0]);
+  assert.equal(pickWeighted(w, 0), 0);
+  assert.equal(pickWeighted(w, 1.5 / 5.5 - 1e-9), 0);
+  assert.equal(pickWeighted(w, 1.5 / 5.5 + 1e-9), 1);
+  assert.equal(pickWeighted(w, 0.999999), 4);
+  // 추첨 비율 ≈ 가중치
+  const hits = [0, 0];
+  for (let i = 0; i < 2500; i++) hits[pickWeighted([1.5, 1], i / 2500)]++;
+  assert.deepEqual(hits, [1500, 1000]);
+  assert.equal(partyExp(100, 1), 100, "혼자면 보너스 없음");
+  assert.equal(partyExp(100, 2), Math.round((100 * (1 + PARTY.expBonus * 2)) / 2));
+  assert.equal(partyExp(100, 5), 25);
+});
+
+test("던전 데이터 (§20-3): 10스테이지 · 5 · 10 보스(페이즈 2 · 3) · 몹 · 드롭 아이템이 다 있음", async () => {
+  const { RUINS, legendaryChance, memberHp } = await import("./data/dungeons.ts");
+  assert.equal(RUINS.stages.length, 10);
+  for (const st of RUINS.stages) for (const g of st.groups) assert.ok(MOBS[g.mob], g.mob);
+  assert.equal(MOBS.fern.boss!.phases.length, 2);
+  assert.equal(MOBS.eldra.boss!.phases.length, 3);
+  assert.ok(MOBS.eldra.boss!.phases.some((p) => p.timeline.some((x) => x.move.kind === "orbs")), "전멸기 구슬 정화");
+  assert.ok(MOBS.eldra.boss!.phases.some((p) => p.timeline.some((x) => x.move.kind === "spread")) && MOBS.eldra.boss!.phases.some((p) => p.timeline.some((x) => x.move.kind === "stack")), "분산 · 집결");
+  for (const m of Object.values(MOBS)) for (const d of m.drops) assert.ok(d.item === "book_random" || ITEMS[d.item], d.item);
+  for (const m of Object.values(MOBS)) for (const ph of m.boss?.phases ?? []) for (const x of ph.timeline) if (x.move.kind === "summon") assert.ok(MOBS[x.move.mob]);
+  for (const g of RUINS.clear.gear) assert.ok(ITEMS[g]?.slot, g);
+  assert.equal(memberHp(1), 1);
+  assert.equal(memberHp(5), 1 + 0.6 * 4);
+  assert.equal(legendaryChance(0), 0.05);
+  assert.ok(legendaryChance(100) > 0.05);
+  for (const n of ["arena", "dungeon"]) {
+    const m = loadMap(JSON.parse(readFileSync(new URL(`./data/maps/${n}.json`, import.meta.url), "utf8")) as TiledMap);
+    assert.ok(!blocked(m.collider, m.spawn.x, m.spawn.y), `${n} 시작 위치`);
+  }
+});
