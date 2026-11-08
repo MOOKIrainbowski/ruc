@@ -3,6 +3,18 @@
 export type C3 = readonly [string, string, string]; // 밝은 면 · 기본 · 그늘 (광원 왼쪽 위)
 export const OUTLINE = "#2b1d2e"; // 순수 검정 금지 (§25 아트 방향)
 
+/** 색 밝게 · 어둡게 (k = 0~1) */
+export function lighten(hex: string, k: number) {
+  const n = parseInt(hex.slice(1, 7), 16);
+  const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(v + (255 - v) * k));
+  return `#${c.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
+export function darken(hex: string, k: number) {
+  const n = parseInt(hex.slice(1, 7), 16);
+  const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(v * (1 - k)));
+  return `#${c.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
+}
+
 const cache = new Map<string, number>();
 /** "#rrggbb" / "#rrggbbaa" → ImageData Uint32 (리틀 엔디언 ABGR) */
 export function rgba(hex: string): number {

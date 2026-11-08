@@ -1,5 +1,5 @@
 import { effectDef } from "../../shared/data/effects";
-import { OUTLINE, Px, refine32 } from "./px";
+import { darken, lighten, OUTLINE, Px, refine32 } from "./px";
 
 /**
  * 아이콘: 16×16 그림을 refine32 로 32×32 세밀하게 (§10-5 · §11 · §6-1). 팔레트 + 문자열 격자로 정의 (§25-1).
@@ -56,16 +56,6 @@ const G: Record<string, string[]> = {
   fang: ["#.....#", "##...##", "#+#.#+#", ".#...#.", ".#...#.", "..#.#..", "......."],
 };
 
-function lighten(hex: string, k: number) {
-  const n = parseInt(hex.slice(1, 7), 16);
-  const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(v + (255 - v) * k));
-  return `#${c.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
-}
-function darken(hex: string, k: number) {
-  const n = parseInt(hex.slice(1, 7), 16);
-  const c = [n >> 16, (n >> 8) & 255, n & 255].map((v) => Math.round(v * (1 - k)));
-  return `#${c.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
-}
 
 /** 글리프를 (ox, oy) 에 scale 배로 */
 function glyph(p: Px, name: string, ox: number, oy: number, color: string, scale = 2) {

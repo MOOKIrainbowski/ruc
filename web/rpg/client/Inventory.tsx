@@ -164,7 +164,8 @@ function Preview({ you, items }: { you: You; items: Item[] }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const [dir, setDir] = useState(0);
   const look = lookOf(items).join();
-  const sheet = useMemo(() => characterSheet(you.appearance, outfitOf(look ? look.split(",") : [])), [you.appearance, look]);
+  const jb = you.prog.job ?? "";
+  const sheet = useMemo(() => characterSheet(you.appearance, outfitOf(look ? look.split(",") : [], jb)), [you.appearance, look, jb]);
   useEffect(() => {
     const ctx = ref.current?.getContext("2d");
     if (!ctx) return;

@@ -74,8 +74,11 @@ export type Template = {
   heal?: { hp?: number; mp?: number; en?: number };
   /** 희귀도가 정해진 아이템 (소모품 · 재료). 없으면 드롭 때 롤 */
   rarity?: Rarity;
-  /** 입었을 때 캐릭터 옷 색 (흉갑 · 바지 = [밝은 면, 기본, 그늘], 신발 = 한 색) */
+  /** 입었을 때 캐릭터 외형 (§8-3 · P11): 흉갑 · 바지 · 투구 · 망토 · 무기 = [밝은 면, 기본, 그늘], 신발 · 장갑 = 한 색 */
   look?: [string, string, string] | string;
+  /** 투구 모양 (cap = 모자 · 그 밖 = 투구) · 지팡이/완드 보석 색 */
+  shape?: "cap" | "helm";
+  gem?: string;
   /** 스킬북: 이 스킬을 배우거나 등급을 올림 */
   skill?: string;
   /** 부가석: 마법부여 종류 (data/economy.ts ENCHANTS) */
@@ -91,33 +94,33 @@ const mat = (name: string, icon: string, rarity: Rarity | undefined, desc: strin
 
 export const ITEMS: Record<string, Template> = {
   // ── 무기 ──
-  old_dagger: { name: "낡은 단검", kind: "weapon", slot: "weapon", basic: "slash", icon: "dagger", lv: 1, stats: { atk: 4, atkSpeed: 15 }, desc: "날은 무뎌졌지만 손에 착 붙는다." },
-  wood_sword: { name: "나무 검", kind: "weapon", slot: "weapon", basic: "slash", icon: "sword", lv: 1, stats: { atk: 7 }, desc: "광장 아이들이 칼싸움 놀이에 쓰던 검. 의외로 단단하다." },
-  apprentice_staff: { name: "견습 지팡이", kind: "weapon", slot: "weapon", basic: "bolt", icon: "staff", lv: 1, stats: { ap: 7, mana: 10 }, desc: "끝에 박힌 작은 마력석이 따뜻하게 빛난다." },
-  hunter_bow: { name: "사냥꾼의 활", kind: "weapon", slot: "weapon", basic: "shot", icon: "bow", lv: 3, stats: { atk: 6, crit: 0.02 }, desc: "초원 토끼를 쫓던 사냥꾼이 쓰던 활." },
-  goblin_axe: { name: "고블린 손도끼", kind: "weapon", slot: "weapon", basic: "slash", icon: "axe", lv: 6, stats: { atk: 11, critDmg: 0.1 }, desc: "이 빠진 도끼날에 고블린 이빨 자국이 남아 있다." },
-  fang_sword: { name: "송곳니 검", kind: "weapon", slot: "weapon", basic: "slash", icon: "sword", lv: 10, stats: { atk: 15, crit: 0.03 }, desc: "덩굴 늑대의 송곳니를 갈아 만든 검." },
-  vine_wand: { name: "덩굴 완드", kind: "weapon", slot: "weapon", basic: "bolt", icon: "wand", lv: 10, stats: { ap: 14, mana: 20 }, desc: "감긴 덩굴이 아직도 조금씩 자란다." },
+  old_dagger: { name: "낡은 단검", kind: "weapon", slot: "weapon", basic: "slash", icon: "dagger", lv: 1, stats: { atk: 4, atkSpeed: 15 }, look: ["#d9dde2", "#a7aeb6", "#6f7780"], desc: "날은 무뎌졌지만 손에 착 붙는다." },
+  wood_sword: { name: "나무 검", kind: "weapon", slot: "weapon", basic: "slash", icon: "sword", lv: 1, stats: { atk: 7 }, look: ["#e8c48f", "#c49a6c", "#8a6440"], desc: "광장 아이들이 칼싸움 놀이에 쓰던 검. 의외로 단단하다." },
+  apprentice_staff: { name: "견습 지팡이", kind: "weapon", slot: "weapon", basic: "bolt", icon: "staff", lv: 1, stats: { ap: 7, mana: 10 }, look: ["#c98d58", "#a36a3c", "#7d4f2b"], gem: "#7fd3ff", desc: "끝에 박힌 작은 마력석이 따뜻하게 빛난다." },
+  hunter_bow: { name: "사냥꾼의 활", kind: "weapon", slot: "weapon", basic: "shot", icon: "bow", lv: 3, stats: { atk: 6, crit: 0.02 }, look: ["#d9a066", "#a36a3c", "#7d4f2b"], desc: "초원 토끼를 쫓던 사냥꾼이 쓰던 활." },
+  goblin_axe: { name: "고블린 손도끼", kind: "weapon", slot: "weapon", basic: "slash", icon: "axe", lv: 6, stats: { atk: 11, critDmg: 0.1 }, look: ["#c9c2b2", "#8f877a", "#5e574d"], desc: "이 빠진 도끼날에 고블린 이빨 자국이 남아 있다." },
+  fang_sword: { name: "송곳니 검", kind: "weapon", slot: "weapon", basic: "slash", icon: "sword", lv: 10, stats: { atk: 15, crit: 0.03 }, look: ["#fffaf0", "#e2d6b8", "#b3a586"], desc: "덩굴 늑대의 송곳니를 갈아 만든 검." },
+  vine_wand: { name: "덩굴 완드", kind: "weapon", slot: "weapon", basic: "bolt", icon: "wand", lv: 10, stats: { ap: 14, mana: 20 }, look: ["#a3e06a", "#6fb840", "#4b902f"], gem: "#ffe14d", desc: "감긴 덩굴이 아직도 조금씩 자란다." },
   // ── 방어구 ──
-  leather_cap: { name: "가죽 모자", kind: "armor", slot: "helmet", icon: "helmet", lv: 1, stats: { pdef: 3, hp: 10 }, desc: "햇볕을 가리기에 딱 좋다." },
+  leather_cap: { name: "가죽 모자", kind: "armor", slot: "helmet", icon: "helmet", lv: 1, stats: { pdef: 3, hp: 10 }, look: ["#d9b07a", "#a0764c", "#7a5636"], shape: "cap", desc: "햇볕을 가리기에 딱 좋다." },
   leather_vest: { name: "가죽 조끼", kind: "armor", slot: "chest", icon: "chest", lv: 1, stats: { pdef: 5, hp: 20 }, look: ["#c49a6c", "#a0764c", "#7a5636"], desc: "주머니가 많아서 모험가들이 좋아한다." },
   leather_pants: { name: "가죽 바지", kind: "armor", slot: "legs", icon: "legs", lv: 1, stats: { pdef: 4, hp: 15 }, look: ["#8a6a4a", "#6b4f36", "#4f3826"], desc: "무릎에 덧댄 천이 든든하다." },
   leather_boots: { name: "가죽 장화", kind: "armor", slot: "boots", icon: "boots", lv: 1, stats: { pdef: 2, moveSpeed: 3 }, look: "#5a3b2a", desc: "초원 진흙도 문제없다." },
-  leather_gloves: { name: "가죽 장갑", kind: "armor", slot: "gloves", icon: "gloves", lv: 1, stats: { pdef: 2, atkSpeed: 5 }, desc: "손바닥이 미끄럽지 않게 홈이 파여 있다." },
-  meadow_cape: { name: "초원 망토", kind: "armor", slot: "cape", icon: "cape", lv: 3, stats: { mdef: 4, regen: 2 }, desc: "바람이 불면 풀 냄새가 난다." },
-  sprout_helm: { name: "새싹 수호자 투구", kind: "armor", slot: "helmet", icon: "helmet", lv: 8, set: "sprout_guardian", stats: { pdef: 6, mdef: 4, hp: 25 }, desc: "투구 꼭대기에서 새싹이 고개를 내민다." },
+  leather_gloves: { name: "가죽 장갑", kind: "armor", slot: "gloves", icon: "gloves", lv: 1, stats: { pdef: 2, atkSpeed: 5 }, look: "#8a6440", desc: "손바닥이 미끄럽지 않게 홈이 파여 있다." },
+  meadow_cape: { name: "초원 망토", kind: "armor", slot: "cape", icon: "cape", lv: 3, stats: { mdef: 4, regen: 2 }, look: ["#b5f07a", "#5fa845", "#3f7a2f"], desc: "바람이 불면 풀 냄새가 난다." },
+  sprout_helm: { name: "새싹 수호자 투구", kind: "armor", slot: "helmet", icon: "helmet", lv: 8, set: "sprout_guardian", look: ["#b5f07a", "#6fb840", "#3f7a2f"], stats: { pdef: 6, mdef: 4, hp: 25 }, desc: "투구 꼭대기에서 새싹이 고개를 내민다." },
   sprout_mail: { name: "새싹 수호자 갑옷", kind: "armor", slot: "chest", icon: "chest", lv: 8, set: "sprout_guardian", stats: { pdef: 9, mdef: 6, hp: 40 }, look: ["#a3e06a", "#6fb840", "#4b902f"], desc: "나무껍질과 잎맥을 엮어 만든 갑옷." },
   sprout_greaves: { name: "새싹 수호자 각반", kind: "armor", slot: "legs", icon: "legs", lv: 8, set: "sprout_guardian", stats: { pdef: 7, mdef: 5, hp: 30 }, look: ["#7fb84a", "#5a8a35", "#3f6a26"], desc: "걸을 때마다 잎이 바스락거린다." },
   sprout_boots: { name: "새싹 수호자 장화", kind: "armor", slot: "boots", icon: "boots", lv: 8, set: "sprout_guardian", stats: { pdef: 4, mdef: 3, moveSpeed: 4 }, look: "#3f6a26", desc: "밟은 자리에 작은 꽃이 핀다는 소문." },
-  sprout_gloves: { name: "새싹 수호자 장갑", kind: "armor", slot: "gloves", icon: "gloves", lv: 8, set: "sprout_guardian", stats: { pdef: 4, mdef: 3, atkSpeed: 6 }, desc: "손등에 덩굴무늬가 수놓여 있다." },
+  sprout_gloves: { name: "새싹 수호자 장갑", kind: "armor", slot: "gloves", icon: "gloves", lv: 8, set: "sprout_guardian", look: "#4b902f", stats: { pdef: 4, mdef: 3, atkSpeed: 6 }, desc: "손등에 덩굴무늬가 수놓여 있다." },
   // ── 장신구 ──
   copper_ring: { name: "구리 반지", kind: "accessory", slot: "ring", icon: "ring", lv: 1, stats: { atk: 2, ap: 2 }, desc: "흔하지만 왠지 행운이 따르는 것 같다." },
   rabbit_charm: { name: "토끼발 목걸이", kind: "accessory", slot: "necklace", icon: "necklace", lv: 3, stats: { luck: 2, moveSpeed: 2 }, desc: "토끼정령이 떨어뜨린 솜털 뭉치를 엮었다." },
   fang_earring: { name: "늑대 송곳니 귀걸이", kind: "accessory", slot: "earring", icon: "earring", lv: 10, stats: { crit: 0.03, critDmg: 0.05 }, desc: "귀에 걸면 늑대 울음소리가 들리는 듯하다." },
   // ── 던전 "고목의 유적" 장비 (§20-3) ──
-  ancient_blade: { name: "고목 수호검", kind: "weapon", slot: "weapon", basic: "slash", icon: "sword", lv: 15, stats: { atk: 22, crit: 0.03, hp: 30 }, desc: "엘드라의 뿌리가 감싸던 검. 칼날에서 숲 냄새가 난다." },
-  ancient_staff: { name: "고목 지팡이", kind: "weapon", slot: "weapon", basic: "bolt", icon: "staff", lv: 15, stats: { ap: 22, mana: 40, cdr: 0.03 }, desc: "천 년 묵은 가지에 정령의 숨결이 남아 있다." },
-  ancient_bow: { name: "고목 장궁", kind: "weapon", slot: "weapon", basic: "shot", icon: "bow", lv: 15, stats: { atk: 19, crit: 0.05 }, desc: "시위를 당기면 잎사귀가 바람에 떤다." },
+  ancient_blade: { name: "고목 수호검", kind: "weapon", slot: "weapon", basic: "slash", icon: "sword", lv: 15, stats: { atk: 22, crit: 0.03, hp: 30 }, look: ["#eefadf", "#b9d69a", "#7da35e"], desc: "엘드라의 뿌리가 감싸던 검. 칼날에서 숲 냄새가 난다." },
+  ancient_staff: { name: "고목 지팡이", kind: "weapon", slot: "weapon", basic: "bolt", icon: "staff", lv: 15, stats: { ap: 22, mana: 40, cdr: 0.03 }, look: ["#d4c09a", "#8a7350", "#5e4c33"], gem: "#b5f07a", desc: "천 년 묵은 가지에 정령의 숨결이 남아 있다." },
+  ancient_bow: { name: "고목 장궁", kind: "weapon", slot: "weapon", basic: "shot", icon: "bow", lv: 15, stats: { atk: 19, crit: 0.05 }, look: ["#d4c09a", "#8a7350", "#5e4c33"], desc: "시위를 당기면 잎사귀가 바람에 떤다." },
   ancient_mail: { name: "고대 수피 갑옷", kind: "armor", slot: "chest", icon: "chest", lv: 15, stats: { pdef: 16, mdef: 10, hp: 70 }, look: ["#b9a27a", "#8a7350", "#5e4c33"], desc: "고대 수목 기사의 껍질을 덧대 만든 갑옷." },
   twin_ring: { name: "쌍생화 반지", kind: "accessory", slot: "ring", icon: "ring", lv: 15, stats: { atk: 5, ap: 5, crit: 0.02 }, desc: "두 송이 꽃이 서로를 감싸 안은 반지." },
   // ── 포션 (공유 쿨 8초) ──

@@ -144,6 +144,7 @@ export function changeJob(p: Player, m: { line?: unknown; job?: unknown; sub?: u
     }
   } else return "잘못된 요청입니다";
   saveJob(p.char.id, pr.line, pr.job, pr.sub, pr.pot);
+  p.room?.ev.push(["jb", p.id, pr.job ?? pr.line ?? ""]); // 이름표 직업 · 2차 전직 망토 · 문장 (P11)
   // 전직으로 새로 배운 스킬은 자기 슬롯에 바로 끼움 (슬롯마다 하나, 바꾸려면 K)
   const before = new Set(pr.skills.map((l) => l.id));
   syncSkills(p);

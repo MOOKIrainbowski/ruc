@@ -585,7 +585,7 @@ export class Game {
   // ── 엔티티 ───────────────────────────────────────────────────────
   private makeEnt(info: EntityInfo, isMe = false): Ent {
     const mob = !!info.mob;
-    const frames = mob ? mobTextures(info.mob!) : sheetFrames(info.ap!, outfitOf(info.look));
+    const frames = mob ? mobTextures(info.mob!) : sheetFrames(info.ap!, outfitOf(info.look, info.jb));
     const sprite = new Sprite(frames[0][0]);
     const fh = frames[0][0].height;
     sprite.anchor.set(0.5, mob ? (fh - 3) / fh : CHAR_FEET / CHAR_H);
@@ -923,7 +923,16 @@ export class Game {
         const e = this.ent(ev[1] as number);
         if (!e || e.mob) return;
         e.info.look = ev[2] as string[];
-        e.frames = sheetFrames(e.info.ap!, outfitOf(e.info.look));
+        e.frames = sheetFrames(e.info.ap!, outfitOf(e.info.look, e.info.jb));
+        return;
+      }
+      case "jb": {
+        // 전직 (P11): 칭호 자리 직업 이름 · 2차 전직 망토 · 문장
+        const e = this.ent(ev[1] as number);
+        if (!e || e.mob) return;
+        e.info.jb = ev[2] as string;
+        if (e.title) e.title.text = this.titleText(e.info);
+        e.frames = sheetFrames(e.info.ap!, outfitOf(e.info.look, e.info.jb));
         return;
       }
       case "lv": {
