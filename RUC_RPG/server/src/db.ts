@@ -233,8 +233,17 @@ CREATE TABLE IF NOT EXISTS rpg_bug_reports (
   img        TEXT,
   created_at INTEGER NOT NULL
 );
--- (예약 §21-4) 길드 · 영지 · 국가 — 베타에서는 비워 둠
+-- 길드 (P10 기초 — 길드장 · 길드원) · 영지 · 국가는 아직 자리만 (§21-4)
 CREATE TABLE IF NOT EXISTS rpg_guilds (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL);
+CREATE TABLE IF NOT EXISTS rpg_guild_members (char_id INTEGER PRIMARY KEY, guild_id INTEGER NOT NULL, joined_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS rpg_guild_mem ON rpg_guild_members (guild_id);
+-- 친구 · 차단 (P10): char_id 쪽에서 본 관계 — pending(내가 신청) · ok(친구, 양쪽에 한 줄씩) · block(내가 차단)
+CREATE TABLE IF NOT EXISTS rpg_friends (char_id INTEGER NOT NULL, other_id INTEGER NOT NULL, state TEXT NOT NULL, created_at INTEGER NOT NULL, PRIMARY KEY (char_id, other_id));
+CREATE INDEX IF NOT EXISTS rpg_friends_other ON rpg_friends (other_id);
+-- 채팅 저장 (P10, P8 에서 미룸): 7일
+CREATE TABLE IF NOT EXISTS rpg_chat_log (id INTEGER PRIMARY KEY AUTOINCREMENT, ch TEXT NOT NULL, from_id INTEGER, to_id INTEGER, guild_id INTEGER, place TEXT, text TEXT NOT NULL, created_at INTEGER NOT NULL);
+CREATE INDEX IF NOT EXISTS rpg_chat_time ON rpg_chat_log (created_at);
+CREATE INDEX IF NOT EXISTS rpg_chat_guild ON rpg_chat_log (guild_id, id);
 CREATE TABLE IF NOT EXISTS rpg_territories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS rpg_nations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL);
 `);
@@ -243,6 +252,9 @@ CREATE TABLE IF NOT EXISTS rpg_nations (id INTEGER PRIMARY KEY AUTOINCREMENT, na
 const charCols = new Set((db.prepare("PRAGMA table_info(rpg_characters)").all() as { name: string }[]).map((c) => c.name));
 for (const [col, def] of [["job_tier1", "TEXT"], ["job_tier2", "TEXT"], ["job_sub", "TEXT"], ["potential_phys", "REAL NOT NULL DEFAULT 10"], ["potential_mag", "REAL NOT NULL DEFAULT 10"], ["title_id", "TEXT"], ["last_ip", "TEXT"]])
   if (!charCols.has(col)) db.exec(`ALTER TABLE rpg_characters ADD COLUMN ${col} ${def}`);
+
+const guildCols = new Set((db.prepare("PRAGMA table_info(rpg_guilds)").all() as { name: string }[]).map((c) => c.name));
+for (const [col, def] of [["master_id", "INTEGER"], ["notice", "TEXT NOT NULL DEFAULT ''"]]) if (!guildCols.has(col)) db.exec(`ALTER TABLE rpg_guilds ADD COLUMN ${col} ${def}`);
 
 export type CharacterRow = {
   id: number;
@@ -562,3 +574,64 @@ export const listBugs = (n: number) => qBugs.all(n) as BugRow[];
 
 const qIp = db.prepare("UPDATE rpg_characters SET last_ip = ? WHERE id = ?");
 export const saveIp = (id: number, ip: string) => qIp.run(ip, id);
+
+// ── 소셜 (P10): 친구 · 차단 · 길드 · 채팅 저장 ─────────────────────────────
+const JB = "COALESCE(c.job_tier2, c.job_tier1, '')";
+const qCharName = db.prepare("SELECT id, nickname, level FROM rpg_characters WHERE nickname = ?");
+export const charByName = (name: string) => (qCharName.get(name) as { id: number; nickname: string; level: number } | undefined) ?? null;
+export type RelRow = { cid: number; name: string; lv: number; jb: string; state: string };
+const qRelMine = db.prepare(`SELECT f.other_id AS cid, c.nickname AS name, c.level AS lv, ${JB} AS jb, f.state FROM rpg_friends f JOIN rpg_characters c ON c.id = f.other_id WHERE f.char_id = ? ORDER BY c.nickname`);
+const qRelIn = db.prepare(`SELECT f.char_id AS cid, c.nickname AS name, c.level AS lv, ${JB} AS jb, f.state FROM rpg_friends f JOIN rpg_characters c ON c.id = f.char_id WHERE f.other_id = ? AND f.state = 'pending'`);
+const qRel = db.prepare("SELECT state FROM rpg_friends WHERE char_id = ? AND other_id = ?");
+const qRelSet = db.prepare("INSERT INTO rpg_friends (char_id, other_id, state, created_at) VALUES (?, ?, ?, ?) ON CONFLICT(char_id, other_id) DO UPDATE SET state = excluded.state");
+const qRelDel = db.prepare("DELETE FROM rpg_friends WHERE char_id = ? AND other_id = ? AND (? = '' OR state = ?)");
+/** 내가 맺은 관계 (친구 · 보낸 신청 · 차단) */
+export const relationsOf = (cid: number) => qRelMine.all(cid) as RelRow[];
+/** 나에게 온 친구 신청 */
+export const incomingOf = (cid: number) => qRelIn.all(cid) as RelRow[];
+export const relation = (a: number, b: number) => (qRel.get(a, b) as { state: string } | undefined)?.state ?? null;
+export const setRelation = (a: number, b: number, state: "pending" | "ok" | "block") => qRelSet.run(a, b, state, Date.now());
+/** state 를 주면 그 상태일 때만 지움 */
+export const delRelation = (a: number, b: number, state = "") => qRelDel.run(a, b, state, state).changes > 0;
+
+export type GuildRow = { id: number; name: string; notice: string; master_id: number };
+const qGuildNew = db.prepare("INSERT INTO rpg_guilds (name, created_at, master_id, notice) VALUES (?, ?, ?, '')");
+const qGuildOf = db.prepare("SELECT g.id, g.name, g.notice, g.master_id FROM rpg_guild_members m JOIN rpg_guilds g ON g.id = m.guild_id WHERE m.char_id = ?");
+const qGuild = db.prepare("SELECT id, name, notice, master_id FROM rpg_guilds WHERE id = ?");
+const qGuildName = db.prepare("SELECT id, name, notice, master_id FROM rpg_guilds WHERE name = ? COLLATE NOCASE");
+const qGuildMembers = db.prepare(`SELECT m.char_id AS cid, c.nickname AS name, c.level AS lv, ${JB} AS jb FROM rpg_guild_members m JOIN rpg_characters c ON c.id = m.char_id WHERE m.guild_id = ? ORDER BY m.joined_at`);
+const qGuildJoin = db.prepare("INSERT INTO rpg_guild_members (char_id, guild_id, joined_at) VALUES (?, ?, ?)");
+const qGuildLeave = db.prepare("DELETE FROM rpg_guild_members WHERE char_id = ?");
+const qGuildMaster = db.prepare("UPDATE rpg_guilds SET master_id = ? WHERE id = ?");
+const qGuildNotice = db.prepare("UPDATE rpg_guilds SET notice = ? WHERE id = ?");
+const qGuildDropMembers = db.prepare("DELETE FROM rpg_guild_members WHERE guild_id = ?");
+const qGuildDrop = db.prepare("DELETE FROM rpg_guilds WHERE id = ?");
+/** 길드 만들기 + 길드장 가입 (부르는 쪽 트랜잭션 안). 이름이 겹치면 null */
+export function createGuild(name: string, master: number): number | null {
+  if (guildByName(name)) return null;
+  const id = Number(qGuildNew.run(name, Date.now(), master).lastInsertRowid);
+  qGuildJoin.run(master, id, Date.now());
+  return id;
+}
+export const guildOf = (cid: number) => (qGuildOf.get(cid) as GuildRow | undefined) ?? null;
+export const guildById = (id: number) => (qGuild.get(id) as GuildRow | undefined) ?? null;
+export const guildByName = (name: string) => (qGuildName.get(name) as GuildRow | undefined) ?? null;
+export const guildMembers = (id: number) => qGuildMembers.all(id) as { cid: number; name: string; lv: number; jb: string }[];
+export const joinGuild = (cid: number, id: number) => qGuildJoin.run(cid, id, Date.now());
+export const leaveGuild = (cid: number) => qGuildLeave.run(cid).changes > 0;
+export const setGuildMaster = (id: number, cid: number) => qGuildMaster.run(cid, id);
+export const setGuildNotice = (id: number, text: string) => qGuildNotice.run(text, id);
+export const dropGuild = (id: number) => tx(() => { qGuildDropMembers.run(id); qGuildDrop.run(id); });
+
+export type ChatRow = { ch: string; from_name: string | null; to_name: string | null; text: string; created_at: number };
+const qChatAdd = db.prepare("INSERT INTO rpg_chat_log (ch, from_id, to_id, guild_id, place, text, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
+const qChatGuild = db.prepare(`SELECT l.ch, a.nickname AS from_name, NULL AS to_name, l.text, l.created_at FROM rpg_chat_log l LEFT JOIN rpg_characters a ON a.id = l.from_id
+  WHERE l.guild_id = ? AND l.ch = 'guild' ORDER BY l.id DESC LIMIT ?`);
+const qChatWhisper = db.prepare(`SELECT l.ch, a.nickname AS from_name, b.nickname AS to_name, l.text, l.created_at FROM rpg_chat_log l
+  LEFT JOIN rpg_characters a ON a.id = l.from_id LEFT JOIN rpg_characters b ON b.id = l.to_id
+  WHERE l.ch = 'whisper' AND (l.from_id = ? OR l.to_id = ?) ORDER BY l.id DESC LIMIT ?`);
+const qChatPurge = db.prepare("DELETE FROM rpg_chat_log WHERE created_at < ?");
+export const logChat = (ch: string, from: number | null, to: number | null, guild: number | null, place: string | null, text: string) => qChatAdd.run(ch, from, to, guild, place, text, Date.now());
+export const guildChat = (guild: number, n: number) => (qChatGuild.all(guild, n) as ChatRow[]).reverse();
+export const whispers = (cid: number, n: number) => (qChatWhisper.all(cid, cid, n) as ChatRow[]).reverse();
+export const purgeChat = (before: number) => qChatPurge.run(before).changes;

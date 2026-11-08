@@ -21,16 +21,18 @@ import { Bell, Dialogue, Journal, QuestPop, Toasts, Tracker, type BoardData, typ
 import { AskPrompt, Banner, DungeonHud, GhostOverlay, PartyFrames, PartyWindow, PingWheel, Scoreboard, type Ask, type Who } from "./Party";
 import { ROOM_NAME, type DungeonState } from "../shared/data/dungeons";
 import type { PartyAd, PartyVitals, PartyView } from "../shared/data/party";
-import { BugWindow, ChatBox, DebugOverlay, GmWindow, captureConsole, logLine, type ChatLine, type GmData } from "./Ops";
+import { BugWindow, ChatBox, DebugOverlay, GmWindow, captureConsole, logLine, type ChatLine, type ChatMode, type GmData } from "./Ops";
+import { SocialWindow } from "./Social";
+import type { SocialView } from "../shared/data/social";
 import { CHAT } from "../shared/data/chat";
 import { bgm, setVolume, sfx, unlock } from "./sound";
 import SettingsModal from "./SettingsModal";
 import { loadLocal, mergeSettings, saveLocal, type Settings } from "./settings";
 
 type Phase = "loading" | "create" | "play" | "closed";
-type Popup = "settings" | "map" | "inventory" | "storage" | "journal" | "dialogue" | "party" | "gm" | "bug" | Place;
+type Popup = "settings" | "map" | "inventory" | "storage" | "journal" | "dialogue" | "party" | "social" | "gm" | "bug" | Place;
 /** 열려 있으면 게임 입력을 막는 팝업 */
-const BLOCKING: Popup[] = ["settings", "inventory", "storage", "skills", "job", "mail", "shop", "market", "forge", "alchemy", "journal", "dialogue", "party", "gm", "bug"];
+const BLOCKING: Popup[] = ["settings", "inventory", "storage", "skills", "job", "mail", "shop", "market", "forge", "alchemy", "journal", "dialogue", "party", "social", "gm", "bug"];
 /** 창이 열릴 때 서버에서 받아 올 목록 */
 const FETCH: Partial<Record<Place, string>> = { mail: "mail", shop: "shop", market: "market" };
 
@@ -91,7 +93,12 @@ export default function RpgGame({ dev }: { dev?: string }) {
   // 채팅 · GM 창 · F3 (P8)
   const [chat, setChat] = useState<ChatLine[]>([]);
   const [chatOpen, setChatOpen] = useState(false);
-  const [chatParty, setChatParty] = useState(false);
+  const [chatMode, setChatMode] = useState<ChatMode>("room");
+  const [chatSeed, setChatSeed] = useState({ text: "", n: 0 });
+  // 소셜 (P10): 친구 · 차단 · 길드 — 차단한 사람의 채팅은 숨김
+  const [soc, setSoc] = useState<SocialView>({ friends: [], pending: [], blocked: [], guild: null });
+  const blockedNames = useRef(new Set<string>());
+  const whisperTo = useCallback((name: string) => { setChatSeed((s) => ({ text: `/w ${name} `, n: s.n + 1 })); setChatOpen(true); }, []);
   const [gm, setGm] = useState<GmData>({});
   const [debug, setDebug] = useState(false);
   const chatKey = useRef(0);
@@ -118,7 +125,14 @@ export default function RpgGame({ dev }: { dev?: string }) {
         case "kicked": setMsg(t(`kicked.${m.reason}` as StrKey)); setPhase("closed"); return;
         case "channels": setChannels(m.list); return;
         case "error": toast(m.msg); logLine(`[안내] ${m.msg}`); return;
-        case "chat": addChat({ ch: m.ch, from: m.from, text: m.text, at: m.at }); return;
+        case "chat":
+          if ((m.ch === "room" || m.ch === "party") && blockedNames.current.has(m.from)) return;
+          addChat({ ch: m.ch, from: m.from, text: m.text, at: m.at, to: m.to });
+          return;
+        case "social":
+          setSoc(m.s);
+          blockedNames.current = new Set(m.s.blocked.map((b) => b.name));
+          return;
         case "gm": setGm((g) => ({ ...g, ...m })); return;
         case "stats": setStats(m.s); game.current?.onMessage(m); return;
         case "ruc":
@@ -323,6 +337,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
         toggle("journal");
         if (!popups.includes("journal")) net.current?.send({ t: "quest", op: "board" });
       }
+      else if (e.code === settings.keys.social) toggle("social");
       else if (e.code === settings.keys.party) {
         toggle("party");
         if (!popups.includes("party")) net.current?.send({ t: "who" });
@@ -393,7 +408,10 @@ export default function RpgGame({ dev }: { dev?: string }) {
             <CombatHud hud={hud} stats={stats} you={you} settings={settings} items={items} onSelect={(i) => { if (game.current) game.current.sel = i; }} />
           </div>
           {msg && <div className="rpg-chip absolute bottom-[200px] left-1/2 -translate-x-1/2 whitespace-nowrap">{msg}</div>}
-          <ChatBox lines={chat} open={chatOpen} party={chatParty} onSend={(text) => send({ t: "chat", text })} onClose={() => setChatOpen(false)} onToggleParty={() => setChatParty((v) => !v)} />
+          <ChatBox
+            lines={chat} open={chatOpen} mode={chatMode} seed={chatSeed} onSend={(text) => send({ t: "chat", text })} onClose={() => setChatOpen(false)}
+            onMode={() => setChatMode((v) => (v === "room" ? "party" : v === "party" ? "guild" : "room"))}
+          />
           {hud.dbg && <DebugOverlay d={hud.dbg} fps={hud.fps} />}
           {hud.dead > 0 && !hud.ghost && <DeathOverlay ms={hud.dead} arena={hud.deadKind === "arena"} />}
           {hud.ghost && <GhostOverlay dg={dg?.s ?? null} since={deadAt.current || Date.now()} send={send} />}
@@ -416,6 +434,11 @@ export default function RpgGame({ dev }: { dev?: string }) {
       {phase === "play" && top === "bug" && (
         <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
           <BugWindow shot={() => game.current?.screenshot() ?? Promise.resolve(null)} send={send} onClose={() => toggle("bug")} />
+        </div>
+      )}
+      {phase === "play" && you && top === "social" && (
+        <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
+          <SocialWindow you={you} s={soc} send={send} onWhisper={(name) => { toggle("social"); whisperTo(name); }} onClose={() => toggle("social")} />
         </div>
       )}
       {phase === "play" && you && top === "party" && (

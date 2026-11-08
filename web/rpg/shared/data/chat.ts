@@ -8,7 +8,7 @@ export const CHAT = {
   /** 화면에 남기는 줄 수 */
   keep: 60,
 };
-export type ChatChannel = "room" | "party" | "system" | "gm";
+export type ChatChannel = "room" | "party" | "system" | "gm" | "guild" | "whisper";
 
 /** 기본 욕설 목록 — 글자 사이에 띄어쓰기 · 기호 · 숫자를 끼워 넣어도 걸림 */
 export const BANNED = [

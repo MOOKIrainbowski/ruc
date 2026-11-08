@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { CHAT } from "../shared/data/chat";
+import { CHAT, type ChatChannel } from "../shared/data/chat";
 import { ROOM_NAME } from "../shared/data/dungeons";
 import type { RoomKind } from "../shared/constants";
 import type { S2C } from "../shared/protocol";
@@ -11,7 +11,9 @@ import { t } from "./i18n";
 /** P8 운영 화면: 채팅(Enter) · F3 디버그 오버레이 · GM 창(F8) · 버그 제보 (§5 · §28 · §29) */
 
 type Send = (m: Parameters<import("./net").Net["send"]>[0]) => void;
-export type ChatLine = { ch: "room" | "party" | "system" | "gm"; from: string; text: string; at: number; key: number };
+export type ChatLine = { ch: ChatChannel; from: string; text: string; at: number; key: number; to?: string };
+/** 채팅 보낼 곳 (Tab 버튼으로 돌아가며) */
+export type ChatMode = "room" | "party" | "guild";
 export type GmData = Omit<Extract<S2C, { t: "gm" }>, "t">;
 
 // ── 클라이언트 로그 (버그 제보에 붙임): 콘솔 오류 · 경고 · 안내 문구 최근 60줄 ────────────────
@@ -33,11 +35,14 @@ export function captureConsole() {
 }
 
 // ── 채팅 (Enter, §5) ─────────────────────────────────────────────────
-const CH_COLOR = { room: "#ffffff", party: "#9be36b", system: "#F2C94C", gm: "#ff9a9e" };
-export function ChatBox({ lines, open, party, onSend, onClose, onToggleParty }: {
-  lines: ChatLine[]; open: boolean; party: boolean; onSend: (text: string) => void; onClose: () => void; onToggleParty: () => void;
+const CH_COLOR: Record<ChatChannel, string> = { room: "#ffffff", party: "#9be36b", system: "#F2C94C", gm: "#ff9a9e", guild: "#7fe3e3", whisper: "#e7a3ff" };
+const PREFIX: Record<ChatMode, string> = { room: "", party: "/p ", guild: "/g " };
+/** seed = 채팅을 열면서 미리 넣을 글 (귓속말 버튼: "/w 닉 ") */
+export function ChatBox({ lines, open, mode, seed, onSend, onClose, onMode }: {
+  lines: ChatLine[]; open: boolean; mode: ChatMode; seed: { text: string; n: number }; onSend: (text: string) => void; onClose: () => void; onMode: () => void;
 }) {
   const [text, setText] = useState("");
+  useEffect(() => { if (seed.n) setText(seed.text); }, [seed]);
   const input = useRef<HTMLInputElement>(null);
   const list = useRef<HTMLDivElement>(null);
   const [, tick] = useState(0);
@@ -53,13 +58,14 @@ export function ChatBox({ lines, open, party, onSend, onClose, onToggleParty }: 
       <div ref={list} className={`${open ? "max-h-[220px] overflow-y-auto" : ""} flex flex-col gap-px text-[12px] leading-snug [text-shadow:0_1px_0_#000,0_0_3px_#000]`}>
         {shown.map((l) => (
           <div key={l.key} style={{ color: CH_COLOR[l.ch] }} className="whitespace-pre-wrap break-words">
-            {l.ch === "party" ? t("chat.tagParty") : l.ch === "gm" ? t("chat.tagGm") : ""}{l.from && <b>{l.from}: </b>}{l.text}
+            {l.ch === "party" ? t("chat.tagParty") : l.ch === "gm" ? t("chat.tagGm") : l.ch === "guild" ? t("chat.tagGuild") : ""}
+            {l.ch === "whisper" ? <b>{t("chat.tagWhisper")}{l.from} → {l.to}: </b> : l.from && <b>{l.from}: </b>}{l.text}
           </div>
         ))}
       </div>
       {open && (
-        <form className="mt-1 flex gap-1" onSubmit={(e) => { e.preventDefault(); if (text.trim()) onSend(party && !text.startsWith("/") ? `/p ${text}` : text); setText(""); onClose(); }}>
-          <button type="button" className="rpg-btn !px-1.5 !py-0 !text-[10px]" data-on={party} onClick={onToggleParty} title={t("chat.toggle")}>{party ? t("chat.party") : t("chat.room")}</button>
+        <form className="mt-1 flex gap-1" onSubmit={(e) => { e.preventDefault(); if (text.trim()) onSend(text.startsWith("/") ? text : PREFIX[mode] + text); setText(""); onClose(); }}>
+          <button type="button" className="rpg-btn !px-1.5 !py-0 !text-[10px]" data-on={mode !== "room"} onClick={onMode} title={t("chat.toggle")}>{t(`chat.${mode}`)}</button>
           <input
             ref={input} className="rpg-input flex-1 !py-0.5 text-[12px]" maxLength={CHAT.maxLen} value={text} placeholder={t("chat.ph")}
             onChange={(e) => setText(e.target.value)}

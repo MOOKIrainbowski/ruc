@@ -10,6 +10,7 @@ import {
 import type { You } from "../shared/protocol";
 import { FRAMES, characterSheet } from "./art/character";
 import { t } from "./i18n";
+import { SOCIAL_ICON, socialAction } from "./Social";
 import { NPC_LOOK, NPC_PLACE, type Place } from "./npcs";
 
 type Send = (m: Parameters<import("./net").Net["send"]>[0]) => void;
@@ -281,7 +282,7 @@ export function Bell({ notis, send, onRead }: { notis: Noti[]; send: Send; onRea
             {!notis.length && <p className="py-4 text-center text-[#8c6642]">{t("noti.empty")}</p>}
             {notis.map((n) => (
               <div key={n.id} role="button" tabIndex={0} className={`flex w-full gap-2 border-b border-[#d8c19a] px-1 py-1 text-left ${n.read ? "opacity-60" : ""}`} onClick={() => { if (!n.read) { send({ t: "noti", op: "read", id: n.id }); onRead(n.id); } }}>
-                <span>{ICON[n.kind] ?? "ℹ"}</span>
+                <span>{ICON[n.kind] ?? SOCIAL_ICON[n.kind] ?? "ℹ"}</span>
                 <span className="flex-1">
                   {n.text}<span className="block text-[10px] text-[#8c6642]">{ago(n.at)}</span>
                   {/* 바로 수락 · 거절 (§22) — 파티 초대 · 가입 신청 */}
@@ -289,6 +290,13 @@ export function Bell({ notis, send, onRead }: { notis: Noti[]; send: Send; onRea
                     <span className="mt-1 flex gap-1">
                       <button className="rpg-btn !px-1.5 !py-0 !text-[10px]" onClick={(e) => { e.stopPropagation(); send({ t: "party", op: "accept", id: n.data!.party as number }); send({ t: "noti", op: "read", id: n.id }); onRead(n.id); }}>{t("noti.accept")}</button>
                       <button className="rpg-btn !px-1.5 !py-0 !text-[10px]" onClick={(e) => { e.stopPropagation(); send({ t: "party", op: "decline", id: n.data!.party as number }); send({ t: "noti", op: "read", id: n.id }); onRead(n.id); }}>{t("noti.decline")}</button>
+                    </span>
+                  )}
+                  {!n.read && socialAction(n.kind, n.data, true) && (
+                    <span className="mt-1 flex gap-1">
+                      {[true, false].map((yes) => (
+                        <button key={String(yes)} className="rpg-btn !px-1.5 !py-0 !text-[10px]" onClick={(e) => { e.stopPropagation(); send(socialAction(n.kind, n.data, yes)!); send({ t: "noti", op: "read", id: n.id }); onRead(n.id); }}>{t(yes ? "noti.accept" : "noti.decline")}</button>
+                      ))}
                     </span>
                   )}
                   {!n.read && n.kind === "party_join_request" && typeof n.data?.cid === "number" && (

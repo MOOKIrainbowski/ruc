@@ -10,6 +10,8 @@ import type { Slot } from "./data/skills.ts";
 import type { Noti, QState, QuestView } from "./data/quests.ts";
 import type { DungeonState } from "./data/dungeons.ts";
 import type { PartyAd, PartyVitals, PartyView, PingKind } from "./data/party.ts";
+import type { ChatChannel } from "./data/chat.ts";
+import type { SocialView } from "./data/social.ts";
 import type { Progress } from "./progress.ts";
 import type { MoveInput, Mover } from "./movement.ts";
 
@@ -17,7 +19,7 @@ import type { MoveInput, Mover } from "./movement.ts";
 
 /** 플레이어는 ap(외형) · look(옷 색을 바꾸는 장비 템플릿 id) · tt(칭호 id), 몹은 mob(종류) · grade */
 /** pet = 소환수 · 설치물의 주인 id (P9) — 몹 그림(mob) 또는 주인 모습(ap, 잔상) */
-export type EntityInfo = { id: number; name: string; el: string; lv: number; ap?: Appearance; look?: string[]; jb?: string; tt?: string; mob?: string; grade?: Grade; pet?: number };
+export type EntityInfo = { id: number; name: string; el: string; lv: number; ap?: Appearance; look?: string[]; jb?: string; tt?: string; mob?: string; grade?: Grade; pet?: number; gd?: string };
 /** 스냅샷 한 줄: [id, x, y, dir, flags, HP 천분율, 마나 또는 기력 천분율] */
 export type EntityRow = [number, number, number, number, number, number, number];
 export const F_MOVING = 1;
@@ -89,6 +91,9 @@ export type You = {
   prog: Progress;
   /** GM (§28) — F8 GM 창 */
   gm?: boolean;
+  /** 내 이름표: 칭호 · 길드 (P10) */
+  tt?: string;
+  gd?: string;
 };
 
 export type ChannelInfo = { ch: number; n: number; cap: number };
@@ -138,8 +143,12 @@ export type C2S =
   /** 칭호 고르기 (null = 떼기) · 현황판(Tab) */
   | { t: "title"; id: string | null }
   | { t: "who" }
-  /** 채팅 (§5 Enter): 같은 방 · 파티. "/p 말" = 파티, "/gm …" = GM 명령 */
-  | { t: "chat"; ch?: "room" | "party"; text: string }
+  /** 채팅 (§5 Enter): 같은 방 · 파티 · 길드. "/p 말" = 파티, "/g 말" = 길드, "/w 닉 말" · "/r 말" = 귓속말, "/gm …" = GM 명령 */
+  | { t: "chat"; ch?: "room" | "party" | "guild"; text: string }
+  /** 친구 (P10): 신청(name) · 수락/거절/삭제(cid) · 차단(name 또는 cid) · 차단 해제(cid) */
+  | { t: "friend"; op: "request" | "accept" | "decline" | "remove" | "block" | "unblock"; name?: string; cid?: number }
+  /** 길드 (P10): 만들기(name) · 초대(name) · 초대 수락/거절(id) · 가입 신청(name = 길드 이름) · 승인/거절(cid) · 탈퇴 · 추방 · 위임(cid) · 공지(text) · 해산 */
+  | { t: "guild"; op: "create" | "invite" | "accept" | "decline" | "apply" | "approve" | "reject" | "leave" | "kick" | "promote" | "notice" | "disband"; name?: string; id?: number; cid?: number; text?: string }
   /** 버그 제보 (§28): 설명 · 스크린샷(JPEG data URL) · 클라이언트 로그 */
   | { t: "bug"; text: string; img?: string; log?: string[] }
   /** GM 창 (F8): 접속자 · 버그 제보 목록, bug = 그 제보의 스크린샷 */
@@ -179,8 +188,10 @@ export type S2C =
   | { t: "pong"; c: number; tk?: number }
   | { t: "channels"; list: ChannelInfo[] }
   | { t: "kicked"; reason: "dup" | "rate" | "auth" | "server" | "banned" | "gm" }
-  /** 채팅 한 줄 (ch: 방 · 파티 · 시스템 · 운영) */
-  | { t: "chat"; ch: "room" | "party" | "system" | "gm"; from: string; text: string; at: number }
+  /** 채팅 한 줄 (ch: 방 · 파티 · 시스템 · 운영 · 길드 · 귓속말 — 귓속말은 to = 받는 사람) */
+  | { t: "chat"; ch: ChatChannel; from: string; text: string; at: number; to?: string }
+  /** 소셜 창 (P10): 친구 · 받은 신청 · 차단 · 길드 */
+  | { t: "social"; s: SocialView }
   /** GM 창 데이터 */
   | { t: "gm"; players?: { name: string; lv: number; where: string; ch: number; x: number; y: number; party: boolean; muted: boolean }[]; bugs?: { id: number; name: string; place: string; text: string; at: number; img: boolean }[]; bug?: { id: number; img: string | null; log: string[] } | null }
   /** 파티 (P7): 내 파티(없으면 null) · 파티원 상태(2Hz) · 모집 중인 파티 · 핑 */

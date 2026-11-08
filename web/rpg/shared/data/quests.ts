@@ -140,10 +140,12 @@ export const userQuestFee = (ruc: number, slots: number) => Math.ceil(ruc * slot
 export const NOTI_KINDS = [
   "party_invite", "party_join_request", "party_accepted", "party_kicked", "gift", "mail_unclaimed",
   "quest_complete", "quest_accepted_by", "market_sold", "market_expired", "enhance_broadcast", "system",
+  // P10 소셜
+  "friend_request", "friend_accepted", "guild_invite", "guild_request", "guild_joined", "guild_kicked",
 ] as const;
 export type NotiKind = (typeof NOTI_KINDS)[number];
 /** 화면 오른쪽 아래에 토스트로 띄울 중요한 알림 (4초) */
-export const NOTI_TOAST: NotiKind[] = ["party_invite", "party_join_request", "quest_complete", "quest_accepted_by", "gift", "market_sold"];
+export const NOTI_TOAST: NotiKind[] = ["party_invite", "party_join_request", "quest_complete", "quest_accepted_by", "gift", "market_sold", "friend_request", "guild_invite", "guild_request"];
 export type Noti = { id: number; kind: NotiKind; text: string; at: number; read: boolean; data?: Record<string, unknown> };
 
 /** 일지 · 서버가 주고받는 퀘스트 상태 */

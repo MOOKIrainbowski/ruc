@@ -282,7 +282,7 @@ export class Game {
     this.app.stage.addChild(this.world, this.screenLayer);
     this.realism = new Realism(this.app, this.world, this.app.stage, this.entityLayer, this.screenLayer);
     for (const s of this.staticSprites) this.realism.addStatic(s);
-    this.meSprite = this.makeEnt({ id: this.you.id, name: this.you.nickname, ap: this.you.appearance, look: lookOf(this.items), el: this.you.element, lv: this.you.level, jb: this.you.prog.job ?? this.you.prog.line ?? "" }, true);
+    this.meSprite = this.makeEnt({ id: this.you.id, name: this.you.nickname, ap: this.you.appearance, look: lookOf(this.items), el: this.you.element, lv: this.you.level, jb: this.you.prog.job ?? this.you.prog.line ?? "", tt: this.you.tt, gd: this.you.gd }, true);
     for (const e of ents) this.addEnt(e);
     for (const [id, rows] of fx) this.setFx(id, rows);
     for (const d of drops) this.addDrop(d);
@@ -631,7 +631,8 @@ export class Game {
 
   /** 칭호 자리: 고른 칭호(「」), 없으면 직업 이름 */
   private titleText(info: EntityInfo) {
-    return info.tt && TITLES[info.tt] ? `「${TITLES[info.tt]}」` : this.jobTitle(info.jb);
+    const t = info.tt && TITLES[info.tt] ? `「${TITLES[info.tt]}」` : this.jobTitle(info.jb);
+    return info.gd ? `‹${info.gd}› ${t}` : t; // 길드 (P10)
   }
 
   /** 적대 플레이어: 결투장(같은 파티 제외) · 결투 상대 (서버 Room.hostile 과 같게) */
@@ -863,10 +864,12 @@ export class Game {
         this.fx.pillar(e.x, e.y);
         return;
       }
-      case "tt": {
+      case "tt":
+      case "gd": {
+        // 칭호 · 길드가 바뀜 → 이름표 칭호 자리
         const e = this.ent(ev[1] as number);
         if (!e || e.mob) return;
-        e.info.tt = (ev[2] as string) || undefined;
+        e.info[ev[0] === "tt" ? "tt" : "gd"] = (ev[2] as string) || undefined;
         if (e.title) e.title.text = this.titleText(e.info);
         return;
       }

@@ -20,6 +20,7 @@ import { changeJob, equip, saveDirtySkills } from "./progress.ts";
 import { loadQuestState, notify, notiOp, questOp, quest, sendNotis, sendQuests, sweepQuests } from "./quests.ts";
 import { Channels, buildPlayer, info, send, type Player, type Room } from "./room.ts";
 import { petInfo } from "./pets.ts";
+import { friendOp, guildOp, socialLogin, socialLogout } from "./social.ts";
 import { RUINS } from "../../../web/rpg/shared/data/dungeons.ts";
 import { KDA } from "../../../web/rpg/shared/data/party.ts";
 import { loadKda } from "./db.ts";
@@ -28,7 +29,8 @@ import { markOp, partyOp, partyTick, partyVitals, rejoin } from "./party.ts";
 import { duelOp, duelTick, who } from "./pvp.ts";
 import { chatOp } from "./chat.ts";
 import { bugOp, gmHooks, gmPanel, isGM, setGmDev } from "./gm.ts";
-import { activeSanction, audit, saveIp } from "./db.ts";
+import { activeSanction, audit, purgeChat, saveIp } from "./db.ts";
+import { CHAT_LOG } from "../../../web/rpg/shared/data/social.ts";
 import { setLevel } from "./progress.ts";
 
 const DEV = process.argv.includes("--dev");
@@ -104,6 +106,7 @@ function enterRoom(p: Player, room: Room) {
     you: {
       id: p.id, nickname: p.char.nickname, level: p.char.level, exp: p.char.exp, element: p.char.element, appearance: p.char.appearance,
       ruc: p.ruc, kda: p.kda, settings: p.char.settings, slots: p.slots, prog: p.prog, gm: isGM(p),
+      ...(p.title ? { tt: p.title } : {}), ...(p.guild ? { gd: p.guild.name } : {}),
     },
     room: { kind: room.kind, ch: room.ch },
     me: p.mover,
@@ -153,7 +156,10 @@ function save(p: Player) {
 }
 
 function leave(p: Player) {
-  if (online.get(p.discordId) === p) online.delete(p.discordId);
+  if (online.get(p.discordId) === p) {
+    online.delete(p.discordId);
+    socialLogout(p); // 친구 · 길드원에게 접속 끊음 알림 (P10)
+  }
   if (p.room) {
     save(p);
     exit(p);
@@ -206,6 +212,7 @@ function enter(p: Player, kind: Shared) {
     notify(p.char.id, "mail_unclaimed", `받지 않은 우편이 ${n}통 있어요`, undefined, true);
   }
   sendNotis(p);
+  socialLogin(p);
 }
 
 function use(p: Player, oid: number) {
@@ -328,6 +335,12 @@ wss.on("connection", (ws, req) => {
       case "channel":
         if (player.room && !player.room.inst && player.room.ch !== m.ch && !player.dead) join(player, player.room.kind as Shared, Number(m.ch));
         return;
+      case "friend":
+      case "guild": {
+        const err = m.t === "friend" ? friendOp(player, m) : guildOp(player, m);
+        if (err) reply({ t: "error", msg: err });
+        return;
+      }
       case "party":
       case "mark":
       case "duel":
@@ -421,6 +434,7 @@ function loop() {
     for (const p of online.values()) if (p.room && !p.room.inst) send(p, { t: "channels", list: lists[p.room.kind as Shared] });
   }
   if (tickCount % 600 === 0) for (const p of online.values()) save(p);
+  if (tickCount % 72_000 === 0) purgeChat(Date.now() - CHAT_LOG.keepDays * 86_400_000); // 채팅 저장 7일 (1시간마다 정리)
   if (tickCount % 1200 === 1) { sweep(now); sweepQuests(now); } // 1분마다: 유저 상점 만료 반환 · 30일 지난 우편 정리
   tickMs = Math.round((performance.now() - t0) * 100) / 100;
   next += TICK_MS;

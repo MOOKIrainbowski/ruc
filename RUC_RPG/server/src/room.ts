@@ -21,7 +21,7 @@ import { charBase, gainMastery, loadProgress, sendProg, syncSkills } from "./pro
 import { jobStats } from "../../../web/rpg/shared/data/jobs.ts";
 import { newMover } from "../../../web/rpg/shared/movement.ts";
 import type { ElementId } from "../../../web/rpg/shared/data/elements.ts";
-import { loadItems, type QuestRow } from "./db.ts";
+import { guildOf, loadItems, type QuestRow } from "./db.ts";
 import { quest, reachTick } from "./quests.ts";
 import { PARTY, partyExp, partyWeights, pickWeighted, splitWeighted } from "../../../web/rpg/shared/data/party.ts";
 import { makeUnit } from "./combat.ts";
@@ -99,6 +99,8 @@ export type Player = Unit & {
   sent: Map<number, EntityRow>;
   /** 접속 IP (D46) */
   ip: string;
+  /** 길드 (P10, 이름표에 ‹이름›) */
+  guild: { id: number; name: string } | null;
 };
 
 /** 저장된 캐릭터로 플레이어를 만듦 (아이템 · 성장 · 장비 스탯 반영, HP 가득) — main · 테스트 공용 */
@@ -111,6 +113,8 @@ export function buildPlayer(ws: WebSocket, discordId: string, char: CharacterRow
     room: null, out: [], respawnAt: 0, statsSent: "", ...playerState(loadItems(char.id), prog),
   });
   p.title = char.title_id ?? null;
+  const g = guildOf(char.id); // 방에 들어가기 전에 — 다른 사람에게 가는 spawn 정보에 길드 이름 (P10)
+  p.guild = g && { id: g.id, name: g.name };
   syncSkills(p); // 견습 스킬 · 레벨 도달 스킬 (예전 캐릭터도) — 접속 때 안내는 안 띄움
   p.out = [];
   refreshGear(p);
@@ -127,6 +131,7 @@ export const playerState = (items: Item[], prog: Progress) => ({
   quests: new Map<string, QuestRow>(), takes: new Map<number, number>(), reach: 0,
   party: 0, kda: [0, 0, 0] as [number, number, number], title: null as string | null, hitBy: new Map<number, number>(), duel: 0, duelSide: 0, duelOn: false,
   potionLeft: null as number | null, deadAt: 0, respawnKind: "plaza" as RoomKind, sent: new Map<number, EntityRow>(), ip: "",
+  guild: null as { id: number; name: string } | null,
 });
 
 /**
@@ -149,7 +154,7 @@ const segDist = (w: Wall, x: number, y: number) => {
 export const send = (p: Player, m: S2C) => p.ws.readyState === 1 && p.ws.send(JSON.stringify(m));
 export const info = (u: Unit): EntityInfo =>
   u.kind === "p"
-    ? { id: u.id, name: u.name, ap: (u as Player).char.appearance, look: (u as Player).look, el: u.el, lv: u.lv, jb: (u as Player).prog.job ?? (u as Player).prog.line ?? "", ...((u as Player).title ? { tt: (u as Player).title! } : {}) }
+    ? { id: u.id, name: u.name, ap: (u as Player).char.appearance, look: (u as Player).look, el: u.el, lv: u.lv, jb: (u as Player).prog.job ?? (u as Player).prog.line ?? "", ...((u as Player).title ? { tt: (u as Player).title! } : {}), ...((u as Player).guild ? { gd: (u as Player).guild!.name } : {}) }
     : { id: u.id, name: u.name, el: u.el, lv: u.lv, mob: (u as Mob).key, grade: (u as Mob).grade };
 
 /** 던전 인스턴스가 방에 거는 것 (dungeon.ts) */
