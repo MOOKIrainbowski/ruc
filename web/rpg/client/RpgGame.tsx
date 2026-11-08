@@ -43,6 +43,7 @@ const MAP_JSON: Record<RoomKind, () => Promise<{ default: unknown }>> = {
   plaza: () => import("../shared/data/maps/plaza.json"),
   field: () => import("../shared/data/maps/field.json"),
   arena: () => import("../shared/data/maps/arena.json"),
+  highland: () => import("../shared/data/maps/highland.json"),
   dungeon: () => import("../shared/data/maps/dungeon.json"),
 };
 const MAP_NAME = ROOM_NAME;

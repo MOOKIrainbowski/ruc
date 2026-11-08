@@ -63,7 +63,10 @@ export const JOBS: Record<string, Job> = {
 };
 
 /** 전직 레벨 · 잠재력 보너스 (§9-1) */
-export const JOB_LV = { tier1: 10, tier2: 30 } as const;
+export const JOB_LV = { tier1: 10, tier2: 30, tier3: 60 } as const;
+/** 3차 각성 (P15, §9-1 정식 → 베타 · D100): Lv60 · 2차 전직 뒤. 기본 스탯 +10% · 전용 궁극기 피해/치유 +50% · 쿨 −25% · 금빛 망토 테두리 */
+export const AWAKEN = { stat: 0.1, ultPower: 1.5, ultCd: 0.75 };
+export const AWAKEN_NAME: Record<LineId, string> = { tank: "불굴의 각성", warrior: "전장의 각성", assassin: "그림자의 각성", mage: "원소의 각성", ranged: "매의 각성", support: "성소의 각성" };
 export const JOB_POTENTIAL = 30;
 /** 견습 · 1차 · 2차 이름 */
 export const jobName = (line: LineId | null, job: string | null) => (job ? JOBS[job].name : line ? LINES[line].name : "견습 모험가");
@@ -88,7 +91,7 @@ export function jobRes(line: LineId | null, job: string | null): "energy" | "man
 export const JOB_POT_SHIFT = { magic: 30, hybrid: 15 } as const;
 
 /** 레벨 · 계열 · 잠재력을 반영한 기본 스탯 (장비 · 버프 전). 마법형은 공격력 ↔ 주문력 등급을 뒤집고, 혼합형은 주문력 = 공격력 등급 */
-export function jobStats(level: number, line: LineId | null, pot: [number, number], job: string | null = null): Stats {
+export function jobStats(level: number, line: LineId | null, pot: [number, number], job: string | null = null, awake = false): Stats {
   const s = baseStats(level);
   if (line) {
     const kind = job ? JOBS[job]?.kind : undefined;
@@ -104,6 +107,7 @@ export function jobStats(level: number, line: LineId | null, pot: [number, numbe
     s.atkSpeed *= m("atkSpeed");
     s.moveSpeed *= m("moveSpeed");
     s.spirit *= m("spirit");
+    if (awake) for (const k of ["hp", "atk", "ap", "pdef", "mdef"] as const) s[k] *= 1 + AWAKEN.stat; // 3차 각성
   }
   s.potentialPhys = pot[0];
   s.potentialMag = pot[1];

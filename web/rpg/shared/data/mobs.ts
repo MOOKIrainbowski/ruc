@@ -1,7 +1,7 @@
 import type { Stats } from "../character.ts";
 import { BASE_STATS } from "./stats.ts";
 import type { ElementId } from "./elements.ts";
-import type { DropRoll } from "./items.ts";
+import { tierGear, type DropRoll } from "./items.ts";
 
 /** 몹 등급 (§20-1) */
 export const GRADES = {
@@ -81,6 +81,9 @@ export type BossMove =
 export type BossPhase = { hp: number; name: string; loopMs: number; timeline: { at: number; move: BossMove }[] };
 export type BossDef = { phases: BossPhase[] };
 
+/** 그 단계 장비를 전부 같은 확률로 (P15) */
+const gearDrops = (key: string, chance: number): DropRoll[] => tierGear(key).map((item) => ({ item, chance }));
+
 export const MOBS: Record<string, MobDef> = {
   slime: {
     name: "초원 슬라임", el: "grass", r: 9, hp: 70, atk: 7, pdef: 3, mdef: 2, speed: 50, exp: 14, aggro: 0, leash: 120, ruc: [1, 3],
@@ -119,6 +122,44 @@ export const MOBS: Record<string, MobDef> = {
       { item: "fang_sword", chance: 0.02 }, { item: "vine_wand", chance: 0.02 }, { item: "fang_earring", chance: 0.015 }, { item: "enhance_stone", chance: 0.04 },
       { item: "book_random", chance: 0.012 },
     ],
+  },
+
+  // ── 황혼 고원 (P15, Lv30~100 · D99) — 드롭: 그 레벨대 장비 단계 (data/items.ts TIERS) ──
+  dusk_imp: {
+    name: "황혼 임프", el: "dark", r: 9, hp: 150, atk: 14, pdef: 10, mdef: 12, speed: 80, exp: 70, aggro: 110, leash: 160, ruc: [8, 16],
+    attack: { kind: "melee", range: 20, cdMs: 1100, windMs: 250, fx: { id: "curse", ms: 2000, chance: 0.2 } },
+    special: { shape: "line", size: 70, width: 16, windMs: 600, mul: 1.6, cdMs: 6000, minRange: 30, maxRange: 80, lunge: true },
+    drops: [{ item: "enhance_stone", chance: 0.1 }, { item: "hp_potion_l", chance: 0.06 }, { item: "ore", chance: 0.2 }, ...gearDrops("dusk", 0.012), { item: "random_box", chance: 0.004 }],
+  },
+  stone_boar: {
+    name: "바위 멧돼지", el: "earth", r: 12, hp: 230, atk: 15, pdef: 18, mdef: 8, speed: 70, exp: 85, aggro: 90, leash: 170, ruc: [10, 20],
+    attack: { kind: "melee", range: 24, cdMs: 1500, windMs: 350 },
+    special: { shape: "line", size: 100, width: 22, windMs: 800, mul: 2, cdMs: 7000, minRange: 40, maxRange: 110, lunge: true, fx: { id: "stun", ms: 800 } },
+    drops: [{ item: "enhance_stone", chance: 0.12 }, { item: "ore", chance: 0.4, qty: [1, 2] }, { item: "hp_potion_l", chance: 0.06 }, ...gearDrops("dusk", 0.015), { item: "random_box", chance: 0.005 }],
+  },
+  frost_harpy: {
+    name: "서리 하피", el: "ice", r: 10, hp: 170, atk: 16, pdef: 10, mdef: 16, speed: 90, exp: 95, aggro: 150, leash: 180, ruc: [12, 24],
+    attack: { kind: "shot", range: 140, cdMs: 1400, windMs: 300, speed: 180, fx: { id: "chill", ms: 2500, v: 0.15 } },
+    special: { shape: "circle", size: 40, windMs: 1000, mul: 1.8, cdMs: 7000, maxRange: 150, fx: { id: "slow", ms: 2000, v: 0.4 } },
+    drops: [{ item: "enhance_stone", chance: 0.14 }, { item: "mp_potion_l", chance: 0.08 }, { item: "blue_herb", chance: 0.3 }, ...gearDrops("frost", 0.012), { item: "random_box", chance: 0.006 }],
+  },
+  ember_golem: {
+    name: "잿불 골렘", el: "fire", r: 14, hp: 300, atk: 17, pdef: 22, mdef: 12, speed: 50, exp: 110, aggro: 110, leash: 170, ruc: [14, 28],
+    attack: { kind: "melee", range: 26, cdMs: 1800, windMs: 450, fx: { id: "burn", ms: 3000, dot: 0.1, chance: 0.3 } },
+    special: { shape: "circle", size: 46, windMs: 1100, mul: 2.2, every: 3, fx: { id: "stun", ms: 900 } },
+    drops: [{ item: "enhance_stone", chance: 0.18 }, { item: "ore", chance: 0.5, qty: [1, 3] }, { item: "blessed_stone", chance: 0.01 }, ...gearDrops("frost", 0.006), ...gearDrops("ember", 0.008), { item: "random_box", chance: 0.007 }],
+  },
+  shade_knight: {
+    name: "그림자 기사", el: "dark", r: 12, hp: 260, atk: 19, pdef: 20, mdef: 18, speed: 75, exp: 125, aggro: 160, leash: 180, ruc: [16, 32],
+    attack: { kind: "melee", range: 26, cdMs: 1200, windMs: 300, fx: { id: "bleed", ms: 3000, dot: 0.12, chance: 0.3 } },
+    special: { shape: "line", size: 110, width: 20, windMs: 700, mul: 2.2, cdMs: 6000, minRange: 40, maxRange: 120, lunge: true, fx: { id: "fear", ms: 800 } },
+    drops: [{ item: "enhance_stone", chance: 0.2 }, { item: "dark_sap", chance: 0.3 }, { item: "protect_scroll", chance: 0.02 }, ...gearDrops("ember", 0.012), { item: "random_box", chance: 0.008 }],
+  },
+  storm_drake: {
+    name: "폭풍 비룡", el: "electric", r: 14, hp: 320, atk: 20, pdef: 18, mdef: 20, speed: 85, exp: 140, aggro: 170, leash: 200, ruc: [20, 40],
+    attack: { kind: "shot", range: 150, cdMs: 1300, windMs: 300, speed: 200, fx: { id: "shock", ms: 400, chance: 0.2 } },
+    special: { shape: "circle", size: 52, windMs: 1200, mul: 2.4, cdMs: 6500, maxRange: 160, fx: { id: "stun", ms: 1000 } },
+    drops: [{ item: "enhance_stone", chance: 0.25 }, { item: "blessed_stone", chance: 0.02 }, { item: "storage_ticket", chance: 0.002 }, ...gearDrops("storm", 0.01), { item: "random_box", chance: 0.01 }],
   },
 
   // ── 던전 "고목의 유적" (§20-3) ──────────────────────────────────────

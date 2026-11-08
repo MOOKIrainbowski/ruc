@@ -95,6 +95,7 @@ export function objText(o: Objective, got: number): string {
 const MOB_NAME: Record<string, string> = {
   slime: "슬라임", rabbit: "토끼정령", goblin: "고블린", wolf: "덩굴늑대",
   sprout_slime: "새싹 슬라임", shroom_shaman: "버섯 주술사", moss_golem: "이끼 골렘", shadow_vine: "그림자 덩굴", tree_knight: "고대 수목 기사", twin_witch: "쌍둥이 꽃의 마녀",
+  dusk_imp: "황혼 임프", stone_boar: "바위 멧돼지", frost_harpy: "서리 하피", ember_golem: "잿불 골렘", shade_knight: "그림자 기사", storm_drake: "폭풍 비룡",
 };
 export const MOB_CHOICES = Object.entries(MOB_NAME);
 

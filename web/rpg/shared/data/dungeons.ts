@@ -2,7 +2,7 @@ import type { RoomKind } from "../constants.ts";
 import type { Grade } from "./mobs.ts";
 
 /** 맵 이름 (미니맵 · 채널 · 전체 지도) */
-export const ROOM_NAME: Record<RoomKind, string> = { plaza: "햇살광장 솔라스", field: "햇살 초원", arena: "결투장", dungeon: "고목의 유적" };
+export const ROOM_NAME: Record<RoomKind, string> = { plaza: "햇살광장 솔라스", field: "햇살 초원", arena: "결투장", dungeon: "고목의 유적", highland: "황혼 고원" };
 
 /**
  * 던전 "고목의 유적" (§20-3 · §20-4). 풀 속성, 권장 Lv10~30, 1~5인.

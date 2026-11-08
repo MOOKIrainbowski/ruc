@@ -19,7 +19,7 @@ import type { MoveInput, Mover } from "./movement.ts";
 
 /** 플레이어는 ap(외형) · look(옷 색을 바꾸는 장비 템플릿 id) · tt(칭호 id), 몹은 mob(종류) · grade */
 /** pet = 소환수 · 설치물의 주인 id (P9) — 몹 그림(mob) 또는 주인 모습(ap, 잔상) */
-export type EntityInfo = { id: number; name: string; el: string; lv: number; ap?: Appearance; look?: string[]; jb?: string; tt?: string; mob?: string; grade?: Grade; pet?: number; gd?: string; nt?: string };
+export type EntityInfo = { id: number; name: string; el: string; lv: number; ap?: Appearance; look?: string[]; jb?: string; tt?: string; mob?: string; grade?: Grade; pet?: number; gd?: string; nt?: string; aw?: 1 };
 /** 스냅샷 한 줄: [id, x, y, dir, flags, HP 천분율, 마나 또는 기력 천분율] */
 export type EntityRow = [number, number, number, number, number, number, number];
 export const F_MOVING = 1;
@@ -111,7 +111,7 @@ export type C2S =
   /** 상호작용(F): 포털 등 맵 오브젝트 id */
   | { t: "use"; oid: number }
   /** 전직 (§9-1): 1차 = 계열, 2차 = 세부 직업 (원소술사는 보조 속성) — 직업 교관 근처에서 */
-  | { t: "job"; line?: LineId; job?: string; sub?: ElementId }
+  | { t: "job"; awaken?: boolean; line?: LineId; job?: string; sub?: ElementId }
   /** 스킬 슬롯 장착 · 해제 (비전투 상태, §10-1) */
   | { t: "equip"; skill: string; slot: Slot | null }
   /**

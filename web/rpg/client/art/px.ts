@@ -15,6 +15,34 @@ export function darken(hex: string, k: number) {
   return `#${c.map((v) => v.toString(16).padStart(2, "0")).join("")}`;
 }
 
+/** 그림 전체 색조 돌리기 (외곽선 · 투명은 그대로) — 몹 변종 (P15). deg = 색상 회전, sat · light = 배율 */
+export function hueShift(p: Px, deg: number, sat = 1, light = 1): Px {
+  const ol = rgba(OUTLINE);
+  for (let i = 0; i < p.d.length; i++) {
+    const v = p.d[i];
+    if (!(v >>> 24) || v === ol) continue;
+    let r = (v & 255) / 255, g = ((v >>> 8) & 255) / 255, b = ((v >>> 16) & 255) / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b);
+    let h = 0, s = 0;
+    const l = (mx + mn) / 2;
+    if (mx !== mn) {
+      const d = mx - mn;
+      s = l > 0.5 ? d / (2 - mx - mn) : d / (mx + mn);
+      h = mx === r ? (g - b) / d + (g < b ? 6 : 0) : mx === g ? (b - r) / d + 2 : (r - g) / d + 4;
+      h /= 6;
+    }
+    h = (((h + deg / 360) % 1) + 1) % 1;
+    s = Math.min(1, s * sat);
+    const L = Math.min(1, l * light);
+    const q = L < 0.5 ? L * (1 + s) : L + s - L * s;
+    const pp = 2 * L - q;
+    const f = (t: number) => { t = ((t % 1) + 1) % 1; return t < 1 / 6 ? pp + (q - pp) * 6 * t : t < 0.5 ? q : t < 2 / 3 ? pp + (q - pp) * (2 / 3 - t) * 6 : pp; };
+    [r, g, b] = s === 0 ? [L, L, L] : [f(h + 1 / 3), f(h), f(h - 1 / 3)];
+    p.d[i] = ((v >>> 24) << 24 | Math.round(b * 255) << 16 | Math.round(g * 255) << 8 | Math.round(r * 255)) >>> 0;
+  }
+  return p;
+}
+
 const cache = new Map<string, number>();
 /** "#rrggbb" / "#rrggbbaa" → ImageData Uint32 (리틀 엔디언 ABGR) */
 export function rgba(hex: string): number {

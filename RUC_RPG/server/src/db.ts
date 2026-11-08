@@ -252,7 +252,7 @@ CREATE TABLE IF NOT EXISTS rpg_nations (id INTEGER PRIMARY KEY AUTOINCREMENT, na
 
 // 단계마다 늘어난 캐릭터 칸 — 이미 있는 DB 에도 붙임 (P4: 전직 · 잠재력, P7: 칭호)
 const charCols = new Set((db.prepare("PRAGMA table_info(rpg_characters)").all() as { name: string }[]).map((c) => c.name));
-for (const [col, def] of [["job_tier1", "TEXT"], ["job_tier2", "TEXT"], ["job_sub", "TEXT"], ["potential_phys", "REAL NOT NULL DEFAULT 10"], ["potential_mag", "REAL NOT NULL DEFAULT 10"], ["title_id", "TEXT"], ["last_ip", "TEXT"], ["storage_tabs", "INTEGER NOT NULL DEFAULT 0"]])
+for (const [col, def] of [["job_tier1", "TEXT"], ["job_tier2", "TEXT"], ["job_sub", "TEXT"], ["potential_phys", "REAL NOT NULL DEFAULT 10"], ["potential_mag", "REAL NOT NULL DEFAULT 10"], ["title_id", "TEXT"], ["last_ip", "TEXT"], ["storage_tabs", "INTEGER NOT NULL DEFAULT 0"], ["awakened", "INTEGER NOT NULL DEFAULT 0"]])
   if (!charCols.has(col)) db.exec(`ALTER TABLE rpg_characters ADD COLUMN ${col} ${def}`);
 
 const guildCols = new Set((db.prepare("PRAGMA table_info(rpg_guilds)").all() as { name: string }[]).map((c) => c.name));
@@ -279,8 +279,9 @@ export type CharacterRow = {
   /** 1차 전직 계열 · 2차 세부 직업 · 원소술사 보조 속성 · 잠재력 */
   job_tier1: string | null;
   job_tier2: string | null;
-  /** 창고 확장 장수 (P12) */
+  /** 창고 확장 장수 (P12) · 3차 각성 (P15) */
   storage_tabs?: number;
+  awakened?: number;
   job_sub: string | null;
   potential_phys: number;
   potential_mag: number;
@@ -697,3 +698,5 @@ export const setNationRuler = (nid: number, gid: number) => qNationRuler.run(gid
 export const dropNation = (id: number) => tx(() => { qNationDropGuilds.run(id); qNationDrop.run(id); });
 const qNationNotice = db.prepare("UPDATE rpg_nations SET notice = ? WHERE id = ?");
 export const nationNotice = (id: number, text: string) => qNationNotice.run(text, id);
+const qAwake = db.prepare("UPDATE rpg_characters SET awakened = 1 WHERE id = ?");
+export const saveAwake = (id: number) => qAwake.run(id);

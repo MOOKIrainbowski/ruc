@@ -1,4 +1,4 @@
-import { Px, type C3 } from "./px";
+import { Px, hueShift, type C3 } from "./px";
 
 /**
  * 몹 32×32 · 8프레임 (§25 몹 규격). 오른쪽을 보는 그림만 그리고 왼쪽은 좌우 반전 (DECISIONS D14).
@@ -262,6 +262,34 @@ function wolf(f: number): Px {
   return p;
 }
 
+// ── P15 황혼 고원 몹: 기존 그림의 색조 변종 + 하피 · 비룡 날개 ──
+/** 서리 하피: 날개를 퍼덕이는 새 몸통 */
+function harpy(f: number): Px {
+  const p = new Px(32, 32);
+  const up = Math.round(Math.sin((f / 8) * Math.PI * 2) * 3);
+  const W: C3 = ["#e8faff", "#9ee7ff", "#4a9ac0"];
+  for (let i = 0; i < 9; i++) { p.rect(4 + i, 14 - up + Math.abs(4 - i) / 2, 1, 4, W[i % 2 ? 1 : 0]); p.rect(19 + i, 14 - up + Math.abs(4 - i) / 2, 1, 4, W[i % 2 ? 1 : 0]); }
+  p.ellipse(16, 18, 5, 6, W[2]);
+  p.ellipse(16, 17, 4, 5, W[1]);
+  p.ellipse(16, 11, 4, 4, "#f6e9c8");
+  p.set(14, 11, "#2b1d2e");
+  p.set(18, 11, "#2b1d2e");
+  p.rect(15, 13, 2, 1, "#F2C94C");
+  for (const x of [13, 18]) p.rect(x, 24, 1, 4, "#F2C94C");
+  p.outline();
+  return p;
+}
+/** 멧돼지 엄니 · 비룡 날개 덧그리기 */
+function tusks(p: Px): Px {
+  p.set(29, 17, "#fffaf0"); p.set(30, 18, "#fffaf0"); p.set(29, 18, "#fffaf0");
+  return p;
+}
+function drakeWings(p: Px, f: number): Px {
+  const up = Math.round(Math.sin((f / 8) * Math.PI * 2) * 3);
+  for (let i = 0; i < 8; i++) p.rect(10 + i, 4 + up + i, 1, Math.max(1, 8 - i), i % 2 ? "#fff4b0" : "#F2C94C");
+  return p;
+}
+
 // ── P9 소환수 · 설치물 (data/pets.ts) ──
 function spirit(f: number): Px {
   const p = new Px(32, 32);
@@ -315,6 +343,8 @@ function totem(f: number): Px {
 }
 
 const PAINT: Record<string, (f: number) => Px> = {
+  dusk_imp: (f) => hueShift(goblin(f), 150, 1.1, 0.85), stone_boar: (f) => tusks(hueShift(wolf(f), -80, 0.4, 0.95)), frost_harpy: harpy,
+  ember_golem: (f) => hueShift(mossGolem(f), -95, 1.4, 1.05), shade_knight: (f) => hueShift(treeKnight(f), 230, 0.7, 0.6), storm_drake: (f) => drakeWings(hueShift(wolf(f), -60, 1.6, 1.1), f),
   slime: (f) => slime(f), rabbit, goblin, wolf, pet_wolf: wolf, pet_spirit: spirit, turret, mend_station: mendStation, totem,
   sprout_slime: sproutSlime, shroom_shaman: shroomShaman, moss_golem: mossGolem, shadow_vine: shadowVine, tree_knight: treeKnight, twin_witch: twinWitch,
   purify_orb: purifyOrb, fern, eldra,
@@ -322,6 +352,7 @@ const PAINT: Record<string, (f: number) => Px> = {
 
 /** 네임 플레이트 높이 (발밑에서 머리 위 px) — 보스는 64px 그림 */
 export const MOB_PLATE: Record<string, number> = {
+  dusk_imp: 29, stone_boar: 23, frost_harpy: 26, ember_golem: 31, shade_knight: 33, storm_drake: 28,
   slime: 21, rabbit: 27, goblin: 29, wolf: 23, pet_wolf: 23, pet_spirit: 24, turret: 22, mend_station: 22, totem: 27, sprout_slime: 25, shroom_shaman: 27, moss_golem: 31, shadow_vine: 26, tree_knight: 33, twin_witch: 30, purify_orb: 24, fern: 60, eldra: 64,
 };
 

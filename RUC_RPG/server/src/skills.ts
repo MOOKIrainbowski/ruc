@@ -5,7 +5,7 @@ import { SKILLS, type SkillDef, type SkillFx } from "../../../web/rpg/shared/dat
 import { castMove, type MoveInput } from "../../../web/rpg/shared/movement.ts";
 import { MASTERY, skillNums } from "../../../web/rpg/shared/progress.ts";
 import { effectDef } from "../../../web/rpg/shared/data/effects.ts";
-import { JOBS, SPIRIT_BUFF } from "../../../web/rpg/shared/data/jobs.ts";
+import { AWAKEN, JOBS, SPIRIT_BUFF } from "../../../web/rpg/shared/data/jobs.ts";
 import { ENGINEER } from "../../../web/rpg/shared/data/pets.ts";
 import { addEffect, applyHeal, healPerTick, hit, rand, removeEffect, type HitSpec, type Unit } from "./combat.ts";
 import { summon } from "./pets.ts";
@@ -154,6 +154,12 @@ export function cast(room: Room, p: Player, inp: MoveInput): string | null {
   if (!Number.isFinite(ax) || !Number.isFinite(ay)) return "조준 오류";
   const n = skillNums(sk, learnedOf(p, sk.id), slot === "A" ? 0 : p.st.cdr);
   if (sk.summon && p.job === "engineer") n.cooldownMs *= ENGINEER.cd; // 엔지니어 「정비」
+  if (p.prog.awake && sk.slot === "R" && p.job && sk.job.includes(p.job)) {
+    // 3차 각성 (P15): 전용 궁극기 피해 · 치유 +50% · 쿨 −25%
+    n.gradeMul *= AWAKEN.ultPower;
+    n.power *= AWAKEN.ultPower;
+    n.cooldownMs *= AWAKEN.ultCd;
+  }
   const sim = p.steps * SIM_MS;
   if (sim < (p.cd[sk.id] ?? 0) - 1) return "재사용 대기 중입니다";
   if (p.mp < n.cost.mana) return "마나가 부족합니다";

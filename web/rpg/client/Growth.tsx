@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ELEMENTS, ELEMENT_IDS, type ElementId } from "../shared/data/elements";
-import { JOBS, JOB_LV, LINES, LINE_IDS, STAT_GRADE, jobName, type LineId, SPIRIT_BUFF } from "../shared/data/jobs";
+import { JOBS, JOB_LV, LINES, LINE_IDS, STAT_GRADE, jobName, type LineId, SPIRIT_BUFF, AWAKEN, AWAKEN_NAME } from "../shared/data/jobs";
 import { SKILLS, canLearn, type SkillDef, type Slot } from "../shared/data/skills";
 import { GRADE, needMastery, skillNums, type Learned } from "../shared/progress";
 import type { C2S, You } from "../shared/protocol";
@@ -130,7 +130,7 @@ export function JobDialog({ you, send, onClose }: { you: You; send: (m: C2S) => 
   const { prog } = you;
   const [pick, setPick] = useState<string | null>(null);
   const [sub, setSub] = useState<ElementId | null>(null);
-  const tier = !prog.line ? 1 : !prog.job ? 2 : 0;
+  const tier = !prog.line ? 1 : !prog.job ? 2 : !prog.awake ? 3 : 0;
   const need = tier === 1 ? JOB_LV.tier1 : JOB_LV.tier2;
   const lineCard = (id: LineId) => {
     const l = LINES[id];
@@ -159,7 +159,20 @@ export function JobDialog({ you, send, onClose }: { you: You; send: (m: C2S) => 
         <button className="rpg-x" onClick={onClose} aria-label={t("hud.close")}>✕</button>
         <h2 className="text-base font-bold">{t("job.title")}</h2>
         {tier === 0 ? (
-          <p className="mt-2">{t("job.done", { job: jobName(prog.line, prog.job) })}</p>
+          <p className="mt-2">{t("job.done", { job: `각성 ${jobName(prog.line, prog.job)}` })}</p>
+        ) : tier === 3 ? (
+          // 3차 각성 (P15): Lv60 · 고르는 것 없이 확인만
+          <div className="mt-2">
+            <p>{t("job.awakenLead", { job: jobName(prog.line, prog.job), name: AWAKEN_NAME[prog.line!] })}</p>
+            <ul className="mt-1 list-disc pl-5 text-[11px]">
+              <li>{t("job.awakenStat", { n: Math.round(AWAKEN.stat * 100) })}</li>
+              <li>{t("job.awakenUlt", { p: Math.round((AWAKEN.ultPower - 1) * 100), c: Math.round((1 - AWAKEN.ultCd) * 100) })}</li>
+              <li>{t("job.awakenLook")}</li>
+            </ul>
+            {you.level < JOB_LV.tier3 ? <p className="mt-2 font-bold">{t("job.notYet", { lv: you.level, need: JOB_LV.tier3 })}</p> : (
+              <div className="mt-3 flex justify-end"><button className="rpg-btn" onClick={() => send({ t: "job", awaken: true })}>{t("job.awaken")}</button></div>
+            )}
+          </div>
         ) : you.level < need ? (
           <>
             <p className="mt-2">{tier === 1 ? t("job.lead1") : t("job.lead2", { line: LINES[prog.line!].name })}</p>

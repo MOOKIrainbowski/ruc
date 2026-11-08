@@ -365,3 +365,32 @@ export const GATHER: Record<string, { item: string; respawnMs: number; w: number
 };
 /** 채집 지점 한 줄: [id, 종류, x, y, 캘 수 있음 1/0] */
 export type GatherRow = [number, string, number, number, number];
+
+// ── 고레벨 장비 단계 (P15 · D101): 황혼 35 · 서리 55 · 잿불 75 · 폭풍 95 — 무기 6 + 방어구 6, 수치는 고목 장비(Lv15) × 레벨/15 ──
+const TIERS: { key: string; name: string; lv: number; c: [string, string, string]; gem: string; desc: string }[] = [
+  { key: "dusk", name: "황혼", lv: 35, c: ["#c8a0f0", "#8a5dc8", "#5a3a8a"], gem: "#ff9a9e", desc: "황혼 고원의 저녁빛을 머금었다." },
+  { key: "frost", name: "서리", lv: 55, c: ["#e8faff", "#9ee7ff", "#4a9ac0"], gem: "#ffffff", desc: "만지면 손끝이 얼얼하다." },
+  { key: "ember", name: "잿불", lv: 75, c: ["#ffc8a0", "#ff6b3d", "#a8321a"], gem: "#ffe14d", desc: "꺼지지 않는 잿불이 속에서 타오른다." },
+  { key: "storm", name: "폭풍", lv: 95, c: ["#fff4b0", "#F2C94C", "#a87a10"], gem: "#8fd0ff", desc: "들고 있으면 머리카락이 곤두선다." },
+];
+const r1 = (v: number) => Math.round(v);
+for (const t of TIERS) {
+  const k = t.lv / 15;
+  const gear: Record<string, Template> = {
+    [`${t.key}_sword`]: { name: `${t.name} 검`, kind: "weapon", slot: "weapon", basic: "slash", icon: "sword", lv: t.lv, stats: { atk: r1(22 * k), crit: 0.03, hp: r1(30 * k) }, look: t.c, desc: t.desc },
+    [`${t.key}_dagger`]: { name: `${t.name} 단검`, kind: "weapon", slot: "weapon", basic: "slash", icon: "dagger", lv: t.lv, stats: { atk: r1(18 * k), atkSpeed: 15, crit: 0.04 }, look: t.c, desc: t.desc },
+    [`${t.key}_axe`]: { name: `${t.name} 도끼`, kind: "weapon", slot: "weapon", basic: "slash", icon: "axe", lv: t.lv, stats: { atk: r1(25 * k), critDmg: 0.12 }, look: t.c, desc: t.desc },
+    [`${t.key}_bow`]: { name: `${t.name} 장궁`, kind: "weapon", slot: "weapon", basic: "shot", icon: "bow", lv: t.lv, stats: { atk: r1(19 * k), crit: 0.05 }, look: t.c, desc: t.desc },
+    [`${t.key}_staff`]: { name: `${t.name} 지팡이`, kind: "weapon", slot: "weapon", basic: "bolt", icon: "staff", lv: t.lv, stats: { ap: r1(22 * k), mana: r1(40 * k), cdr: 0.03 }, look: t.c, gem: t.gem, desc: t.desc },
+    [`${t.key}_wand`]: { name: `${t.name} 완드`, kind: "weapon", slot: "weapon", basic: "bolt", icon: "wand", lv: t.lv, stats: { ap: r1(19 * k), mana: r1(25 * k), crit: 0.03 }, look: t.c, gem: t.gem, desc: t.desc },
+    [`${t.key}_helm`]: { name: `${t.name} 투구`, kind: "armor", slot: "helmet", icon: "helmet", lv: t.lv, stats: { pdef: r1(6 * k), mdef: r1(4 * k), hp: r1(25 * k) }, look: t.c, desc: t.desc },
+    [`${t.key}_mail`]: { name: `${t.name} 갑옷`, kind: "armor", slot: "chest", icon: "chest", lv: t.lv, stats: { pdef: r1(16 * k), mdef: r1(10 * k), hp: r1(70 * k) }, look: t.c, desc: t.desc },
+    [`${t.key}_greaves`]: { name: `${t.name} 각반`, kind: "armor", slot: "legs", icon: "legs", lv: t.lv, stats: { pdef: r1(12 * k), mdef: r1(8 * k), hp: r1(50 * k) }, look: [t.c[1], t.c[2], t.c[2]], desc: t.desc },
+    [`${t.key}_boots`]: { name: `${t.name} 장화`, kind: "armor", slot: "boots", icon: "boots", lv: t.lv, stats: { pdef: r1(4 * k), mdef: r1(3 * k), moveSpeed: 4 }, look: t.c[2], desc: t.desc },
+    [`${t.key}_gloves`]: { name: `${t.name} 장갑`, kind: "armor", slot: "gloves", icon: "gloves", lv: t.lv, stats: { pdef: r1(4 * k), mdef: r1(3 * k), atkSpeed: 8 }, look: t.c[1], desc: t.desc },
+    [`${t.key}_cape`]: { name: `${t.name} 망토`, kind: "armor", slot: "cape", icon: "cape", lv: t.lv, stats: { mdef: r1(8 * k), regen: r1(2 * k) }, look: t.c, desc: t.desc },
+  };
+  Object.assign(ITEMS, gear);
+}
+/** 고레벨 장비 템플릿 id (단계 · 부위) */
+export const tierGear = (key: string) => Object.keys(ITEMS).filter((id) => id.startsWith(`${key}_`) && ITEMS[id].slot);

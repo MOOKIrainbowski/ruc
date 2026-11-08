@@ -65,7 +65,8 @@ export const COMBAT = {
   ccImmuneMs: 500,
   /** 지연 보상 되감기 상한 (§2-2) */
   lagCompMaxMs: 150,
-  maxLevel: 40,
+  /** P15: 베타 40 → 정식 100 (D99) */
+  maxLevel: 100,
 };
 
 /** 구르기 (§5): 0.3초에 56px, 앞 0.2초 무적. 단위는 이동 스텝(1/60초) */

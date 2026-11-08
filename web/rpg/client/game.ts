@@ -302,7 +302,7 @@ export class Game {
     this.app.stage.addChild(this.world, this.screenLayer);
     this.realism = new Realism(this.app, this.world, this.app.stage, this.entityLayer, this.screenLayer);
     for (const s of this.staticSprites) this.realism.addStatic(s);
-    this.meSprite = this.makeEnt({ id: this.you.id, name: this.you.nickname, ap: this.you.appearance, look: lookOf(this.items), el: this.you.element, lv: this.you.level, jb: this.you.prog.job ?? this.you.prog.line ?? "", tt: this.you.tt, gd: this.you.gd, nt: this.you.nt }, true);
+    this.meSprite = this.makeEnt({ id: this.you.id, name: this.you.nickname, ap: this.you.appearance, look: lookOf(this.items), el: this.you.element, lv: this.you.level, jb: this.you.prog.job ?? this.you.prog.line ?? "", tt: this.you.tt, gd: this.you.gd, nt: this.you.nt, ...(this.you.prog.awake ? { aw: 1 as const } : {}) }, true);
     for (const e of ents) this.addEnt(e);
     for (const [id, rows] of fx) this.setFx(id, rows);
     for (const d of drops) this.addDrop(d);
@@ -613,7 +613,7 @@ export class Game {
   // ── 엔티티 ───────────────────────────────────────────────────────
   private makeEnt(info: EntityInfo, isMe = false): Ent {
     const mob = !!info.mob;
-    const frames = mob ? mobTextures(info.mob!) : sheetFrames(info.ap!, outfitOf(info.look, info.jb));
+    const frames = mob ? mobTextures(info.mob!) : sheetFrames(info.ap!, outfitOf(info.look, info.jb, !!info.aw));
     const sprite = new Sprite(frames[0][0]);
     const fh = frames[0][0].height;
     sprite.anchor.set(0.5, mob ? (fh - 3) / fh : CHAR_FEET / CHAR_H);
@@ -659,7 +659,7 @@ export class Game {
 
   /** 칭호 자리: 고른 칭호(「」), 없으면 직업 이름 */
   private titleText(info: EntityInfo) {
-    const t = info.tt && TITLES[info.tt] ? `「${TITLES[info.tt]}」` : this.jobTitle(info.jb);
+    const t = info.tt && TITLES[info.tt] ? `「${TITLES[info.tt]}」` : `${info.aw ? "각성 " : ""}${this.jobTitle(info.jb)}`;
     return `${info.nt ? `«${info.nt}» ` : ""}${info.gd ? `‹${info.gd}› ` : ""}${t}`; // 국가 (P14) · 길드 (P10)
   }
 
@@ -957,7 +957,17 @@ export class Game {
         const e = this.ent(ev[1] as number);
         if (!e || e.mob) return;
         e.info.look = ev[2] as string[];
-        e.frames = sheetFrames(e.info.ap!, outfitOf(e.info.look, e.info.jb));
+        e.frames = sheetFrames(e.info.ap!, outfitOf(e.info.look, e.info.jb, !!e.info.aw));
+        return;
+      }
+      case "aw": {
+        // 3차 각성 (P15): 칭호 "각성 …" · 금빛 망토 테두리 · 빛기둥
+        const e = this.ent(ev[1] as number);
+        if (!e || e.mob) return;
+        e.info.aw = 1;
+        if (e.title) e.title.text = this.titleText(e.info);
+        e.frames = sheetFrames(e.info.ap!, outfitOf(e.info.look, e.info.jb, true));
+        this.fx.pillar?.(e.x, e.y);
         return;
       }
       case "jb": {
@@ -966,7 +976,7 @@ export class Game {
         if (!e || e.mob) return;
         e.info.jb = ev[2] as string;
         if (e.title) e.title.text = this.titleText(e.info);
-        e.frames = sheetFrames(e.info.ap!, outfitOf(e.info.look, e.info.jb));
+        e.frames = sheetFrames(e.info.ap!, outfitOf(e.info.look, e.info.jb, !!e.info.aw));
         return;
       }
       case "lv": {

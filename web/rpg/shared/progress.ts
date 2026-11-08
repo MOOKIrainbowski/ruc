@@ -19,7 +19,7 @@ export const GRADE: Record<SkillGrade, { name: string; power: number; cost: numb
 
 export type Learned = { id: string; grade: SkillGrade; lv: number; mastery: number; slot: Slot | null };
 /** 캐릭터 성장 상태 — 계열 · 세부 직업 · 원소술사 보조 속성 · 잠재력 [물리, 마법] · 배운 스킬 */
-export type Progress = { line: LineId | null; job: string | null; sub: ElementId | null; pot: [number, number]; skills: Learned[] };
+export type Progress = { line: LineId | null; job: string | null; sub: ElementId | null; pot: [number, number]; skills: Learned[]; awake?: boolean };
 
 /** 숙련도 (§10-3): 사용 1 · 적중 대상당 2 · 처치 기여 5 · 힐 · 버프 대상당 2 */
 export const MASTERY = { use: 1, hit: 2, kill: 5, support: 2 };

@@ -23,8 +23,9 @@ export type Outfit = {
   gloves?: string;
   cape?: C3;
   weapon?: { kind: WeaponKind; c: C3; gem?: string };
-  /** 2차 전직 문장 (계열) */
+  /** 2차 전직 문장 (계열) · 3차 각성 (금빛 망토 테두리 · 문장 테두리) */
   emblem?: LineId;
+  awake?: boolean;
 };
 export const APPRENTICE: Outfit = {
   shirt: ["#a8db74", "#7bb24a", "#5a8a35"],
@@ -47,7 +48,7 @@ const EMBLEM: Record<LineId, string[]> = {
 };
 
 /** 입은 장비 템플릿(lookOf) + 직업(jb) → 외형 */
-export function outfitOf(look: string[] = [], jb = ""): Outfit {
+export function outfitOf(look: string[] = [], jb = "", awake = false): Outfit {
   const o: Outfit = { ...APPRENTICE };
   for (const id of look) {
     const t = ITEMS[id];
@@ -66,6 +67,7 @@ export function outfitOf(look: string[] = [], jb = ""): Outfit {
   if (j) {
     o.emblem = j.line;
     o.cape ??= shades(LINES[j.line].color);
+    o.awake = awake;
   }
   return o;
 }
@@ -202,8 +204,8 @@ function paint(view: number, action: Action, f: number, ap: Appearance, o: Outfi
     // 2차 전직 문장: 가슴 배지 (계열 색 + 금색)
     if (o.emblem && front) {
       const ex = three ? tx + 1 : CX - 1;
-      p.rect(ex, torsoTop + 3, 3, 3, LINES[o.emblem].color);
-      p.set(ex + 1, torsoTop + 4, GOLD[1]);
+      p.rect(ex, torsoTop + 3, 3, 3, o.awake ? GOLD[1] : LINES[o.emblem].color);
+      p.set(ex + 1, torsoTop + 4, o.awake ? LINES[o.emblem].color : GOLD[1]);
     }
     if (cape && front) { p.set(tx, torsoTop, GOLD[1]); p.set(tx + tw - 1, torsoTop, GOLD[1]); } // 망토 걸쇠
   };
@@ -231,6 +233,7 @@ function paint(view: number, action: Action, f: number, ap: Appearance, o: Outfi
     const cx0 = tx + (view === 3 ? 0 : 0);
     p.part(cx0, torsoTop, tw, 31 - torsoTop + Math.max(0, flutter), cape);
     for (let x = cx0; x < cx0 + tw; x += 2) p.set(x, 31 + Math.max(0, flutter), cape[2]); // 밑단 주름
+    if (o.awake) { p.rect(cx0, torsoTop, 1, 32 - torsoTop, GOLD[1]); p.rect(cx0 + tw - 1, torsoTop, 1, 32 - torsoTop, GOLD[1]); p.rect(cx0, 31 + Math.max(0, flutter), tw, 1, GOLD[0]); } // 각성 금테
     if (o.emblem) EMBLEM[o.emblem].forEach((row, dy) => [...row].forEach((ch, dx) => { if (ch === "#") p.set(cx0 + Math.floor((tw - 5) / 2) + dx, torsoTop + 4 + dy, GOLD[1]); }));
   }
 

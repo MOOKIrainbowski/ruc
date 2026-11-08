@@ -7,9 +7,10 @@ import { APPRENTICE_SLOTS, SKILLS, canLearn, type Slot } from "../../../web/rpg/
 import { MASTERY_MOB, POT_GAIN, addMastery, autoLearn, potOf, slotsOf, startLevel, type Learned, type Progress, type SkillGrade } from "../../../web/rpg/shared/progress.ts";
 import type { S2C } from "../../../web/rpg/shared/protocol.ts";
 import { recalc } from "./combat.ts";
-import { loadSkills, saveJob, saveProgress, saveSkill, type CharacterRow } from "./db.ts";
+import { loadSkills, saveJob, saveProgress, saveSkill, type CharacterRow, saveAwake } from "./db.ts";
 import { expToNext } from "../../../web/rpg/shared/character.ts";
 import { quest } from "./quests.ts";
+import { COMBAT } from "../../../web/rpg/shared/data/stats.ts";
 import type { Player } from "./room.ts";
 
 /**
@@ -20,12 +21,12 @@ import type { Player } from "./room.ts";
 export function loadProgress(c: CharacterRow): Progress {
   return {
     line: (c.job_tier1 as LineId) || null, job: c.job_tier2 || null, sub: (c.job_sub as ElementId) || null,
-    pot: [c.potential_phys ?? 10, c.potential_mag ?? 10], skills: loadSkills(c.id),
+    pot: [c.potential_phys ?? 10, c.potential_mag ?? 10], skills: loadSkills(c.id), awake: !!c.awakened,
   };
 }
 
 /** 레벨 · 계열 · 잠재력 → 기본 스탯 */
-export const charBase = (p: Player) => jobStats(p.char.level, p.prog.line, p.prog.pot, p.prog.job);
+export const charBase = (p: Player) => jobStats(p.char.level, p.prog.line, p.prog.pot, p.prog.job, !!p.prog.awake);
 
 const send = (p: Player, m: S2C) => p.ws.readyState === 1 && p.ws.send(JSON.stringify(m));
 export const learnedOf = (p: Player, id: string) => p.prog.skills.find((l) => l.id === id);
@@ -102,7 +103,7 @@ export function saveDirtySkills(p: Player) {
 /** 레벨 지정 (개발용 dev · GM /gm level): 경험치는 그 레벨 안으로, 스탯 · 스킬 다시 맞추고 완전 회복 */
 export function setLevel(p: Player, lv: number) {
   const c = p.char;
-  c.level = Math.max(1, Math.min(40, Math.round(lv) || 1));
+  c.level = Math.max(1, Math.min(COMBAT.maxLevel, Math.round(lv) || 1));
   c.exp = Math.min(c.exp, expToNext(c.level) - 1);
   saveProgress(c.id, c.level, c.exp);
   p.lv = c.level;
@@ -118,8 +119,21 @@ export function setLevel(p: Player, lv: number) {
 }
 
 /** 전직 (§9-1). 1차 = 계열(Lv10), 2차 = 그 계열의 세부 직업(Lv30). 마법형 · 혼합형은 잠재력 일부를 마법으로 (D80). 성공하면 null */
-export function changeJob(p: Player, m: { line?: unknown; job?: unknown; sub?: unknown }): string | null {
+export function changeJob(p: Player, m: { line?: unknown; job?: unknown; sub?: unknown; awaken?: unknown }): string | null {
   const pr = p.prog;
+  if (m.awaken === true) {
+    // 3차 각성 (P15, D100): 2차 전직 · Lv60
+    if (!pr.job) return "2차 전직을 먼저 하세요";
+    if (pr.awake) return "이미 각성했습니다";
+    if (p.char.level < JOB_LV.tier3) return `3차 각성은 Lv${JOB_LV.tier3} 부터입니다`;
+    pr.awake = true;
+    saveAwake(p.char.id);
+    p.base = charBase(p);
+    recalc(p);
+    p.room?.ev.push(["aw", p.id]);
+    sendProg(p);
+    return null;
+  }
   if (typeof m.line === "string") {
     if (!Object.hasOwn(LINES, m.line)) return "없는 계열입니다";
     if (pr.line) return "이미 1차 전직을 했습니다";

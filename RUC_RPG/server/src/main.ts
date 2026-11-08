@@ -9,7 +9,7 @@ import { ITEMS, RARITIES, type Rarity } from "../../../web/rpg/shared/data/items
 import { SLOTS, type Slot } from "../../../web/rpg/shared/data/skills.ts";
 import { USE_RANGE, distToObj, loadMap, prop, type GameMap, type TiledMap } from "../../../web/rpg/shared/map.ts";
 import { blocked } from "../../../web/rpg/shared/movement.ts";
-import type { C2S, S2C } from "../../../web/rpg/shared/protocol.ts";
+import type { C2S, ChannelInfo, S2C } from "../../../web/rpg/shared/protocol.ts";
 import { DEV_TICKET_SECRET, verifyTicket, type Ticket } from "../../../web/rpg/shared/ticket.ts";
 import { fxRows, recalc } from "./combat.ts";
 import { createCharacter, findCharacter, savePosition, saveSettings, type CharacterRow } from "./db.ts";
@@ -46,10 +46,12 @@ setGmDev(DEV);
 const ORIGINS = (process.env.RPG_ALLOWED_ORIGINS || "http://localhost:3000,https://ruc-server.vercel.app").split(",").map((s) => s.trim());
 
 const mapFile = (name: string) => loadMap(JSON.parse(readFileSync(new URL(`../../../web/rpg/shared/data/maps/${name}.json`, import.meta.url), "utf8")) as TiledMap);
-const maps: Record<RoomKind, GameMap> = { plaza: mapFile("plaza"), field: mapFile("field"), arena: mapFile("arena"), dungeon: mapFile("dungeon") };
+const maps: Record<RoomKind, GameMap> = { plaza: mapFile("plaza"), field: mapFile("field"), arena: mapFile("arena"), dungeon: mapFile("dungeon"), highland: mapFile("highland") };
 /** 채널로 나뉘는 맵 (던전은 파티마다 인스턴스 — dungeon.ts) */
 type Shared = Exclude<RoomKind, "dungeon">;
-const worlds: Record<Shared, Channels> = { plaza: new Channels("plaza", maps.plaza), field: new Channels("field", maps.field), arena: new Channels("arena", maps.arena) };
+const worlds: Record<Shared, Channels> = {
+  plaza: new Channels("plaza", maps.plaza), field: new Channels("field", maps.field), arena: new Channels("arena", maps.arena), highland: new Channels("highland", maps.highland),
+};
 const shared = (k: string): k is Shared => Object.hasOwn(worlds, k);
 setDungeonMap(maps.dungeon);
 
@@ -444,7 +446,7 @@ function loop() {
   if (++tickCount % 10 === 0) partyVitals();
   if (tickCount % 20 === 0) partyTick(now);
   if (tickCount % 40 === 0) {
-    const lists = { plaza: worlds.plaza.list(), field: worlds.field.list(), arena: worlds.arena.list() };
+    const lists = Object.fromEntries(Object.entries(worlds).map(([k, w]) => [k, w.list()])) as Record<Shared, ChannelInfo[]>;
     for (const p of online.values()) if (p.room && !p.room.inst) send(p, { t: "channels", list: lists[p.room.kind as Shared] });
   }
   if (tickCount % 600 === 0) {

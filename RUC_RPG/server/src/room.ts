@@ -110,7 +110,7 @@ export type Player = Unit & {
 /** 저장된 캐릭터로 플레이어를 만듦 (아이템 · 성장 · 장비 스탯 반영, HP 가득) — main · 테스트 공용 */
 export function buildPlayer(ws: WebSocket, discordId: string, char: CharacterRow, x: number, y: number): Player {
   const prog = loadProgress(char);
-  const s = jobStats(char.level, prog.line, prog.pot, prog.job);
+  const s = jobStats(char.level, prog.line, prog.pot, prog.job, !!prog.awake);
   const u = makeUnit({ id: newId(), kind: "p", name: char.nickname, el: char.element as ElementId, lv: char.level, x, y, r: 7, base: s, mover: newMover(x, y, s) });
   const p: Player = Object.assign(u, {
     kind: "p" as const, mover: u.mover!, ws, discordId, char, inputs: [], credits: 0, lastSeq: -1, steps: 0, rtt: 0,
@@ -161,7 +161,7 @@ const segDist = (w: Wall, x: number, y: number) => {
 export const send = (p: Player, m: S2C) => p.ws.readyState === 1 && p.ws.send(JSON.stringify(m));
 export const info = (u: Unit): EntityInfo =>
   u.kind === "p"
-    ? { id: u.id, name: u.name, ap: (u as Player).char.appearance, look: (u as Player).look, el: u.el, lv: u.lv, jb: (u as Player).prog.job ?? (u as Player).prog.line ?? "", ...((u as Player).title ? { tt: (u as Player).title! } : {}), ...((u as Player).guild ? { gd: (u as Player).guild!.name } : {}), ...((u as Player).nation ? { nt: (u as Player).nation!.name } : {}) }
+    ? { id: u.id, name: u.name, ap: (u as Player).char.appearance, look: (u as Player).look, el: u.el, lv: u.lv, jb: (u as Player).prog.job ?? (u as Player).prog.line ?? "", ...((u as Player).title ? { tt: (u as Player).title! } : {}), ...((u as Player).guild ? { gd: (u as Player).guild!.name } : {}), ...((u as Player).nation ? { nt: (u as Player).nation!.name } : {}), ...((u as Player).prog.awake ? { aw: 1 } : {}) }
     : { id: u.id, name: u.name, el: u.el, lv: u.lv, mob: (u as Mob).key, grade: (u as Mob).grade };
 
 /** 던전 인스턴스가 방에 거는 것 (dungeon.ts) */
@@ -220,7 +220,7 @@ export class Room implements World {
     }
     for (const z of this.zones) for (let i = 0; i < z.count; i++) this.addMob(z);
     // 채집 지점 (P13): 필드 구역마다 3곳 (구역 반지름 1.3배 안, 막힌 곳 제외)
-    if (kind === "field") {
+    if (kind === "field" || kind === "highland") {
       const total = Object.values(GATHER).reduce((a, g) => a + g.w, 0);
       for (const z of this.zones)
         for (let i = 0; i < 3; i++) {
