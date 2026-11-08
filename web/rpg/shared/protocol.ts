@@ -94,6 +94,8 @@ export type You = {
   /** 내 이름표: 칭호 · 길드 (P10) */
   tt?: string;
   gd?: string;
+  /** 창고 확장 장수 (P12) */
+  tabs?: number;
 };
 
 export type ChannelInfo = { ch: number; n: number; cap: number };
@@ -146,7 +148,7 @@ export type C2S =
   /** 채팅 (§5 Enter): 같은 방 · 파티 · 길드. "/p 말" = 파티, "/g 말" = 길드, "/w 닉 말" · "/r 말" = 귓속말, "/gm …" = GM 명령 */
   | { t: "chat"; ch?: "room" | "party" | "guild"; text: string }
   /** 친구 (P10): 신청(name) · 수락/거절/삭제(cid) · 차단(name 또는 cid) · 차단 해제(cid) */
-  | { t: "friend"; op: "request" | "accept" | "decline" | "remove" | "block" | "unblock"; name?: string; cid?: number }
+  | { t: "friend"; op: "request" | "accept" | "decline" | "remove" | "block" | "unblock" | "gift"; name?: string; cid?: number; a?: ItemPos; n?: number }
   /** 길드 (P10): 만들기(name) · 초대(name) · 초대 수락/거절(id) · 가입 신청(name = 길드 이름) · 승인/거절(cid) · 탈퇴 · 추방 · 위임(cid) · 공지(text) · 해산 */
   | { t: "guild"; op: "create" | "invite" | "accept" | "decline" | "apply" | "approve" | "reject" | "leave" | "kick" | "promote" | "notice" | "disband"; name?: string; id?: number; cid?: number; text?: string }
   /** 버그 제보 (§28): 설명 · 스크린샷(JPEG data URL) · 클라이언트 로그 */
@@ -192,6 +194,8 @@ export type S2C =
   | { t: "chat"; ch: ChatChannel; from: string; text: string; at: number; to?: string }
   /** 소셜 창 (P10): 친구 · 받은 신청 · 차단 · 길드 */
   | { t: "social"; s: SocialView }
+  /** 창고 확장 장수 (P12) */
+  | { t: "tabs"; n: number }
   /** GM 창 데이터 */
   | { t: "gm"; players?: { name: string; lv: number; where: string; ch: number; x: number; y: number; party: boolean; muted: boolean }[]; bugs?: { id: number; name: string; place: string; text: string; at: number; img: boolean }[]; bug?: { id: number; img: string | null; log: string[] } | null }
   /** 파티 (P7): 내 파티(없으면 null) · 파티원 상태(2Hz) · 모집 중인 파티 · 핑 */

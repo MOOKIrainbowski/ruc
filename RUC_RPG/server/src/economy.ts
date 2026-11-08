@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import { fmt } from "../../../web/rpg/shared/josa.ts";
 import {
-  ENCH_POWER, ENCH_SLOTS, ENHANCE, ENHANCE_MAX, ENHANCE_OPT, MAIL, MARKET, PREFIXES, cycleEnd, disassembleRuc, enchantCost, enhanceCost, meetsPrice,
+  ENCH_POWER, ENCH_SLOTS, ENHANCE, ENHANCE_MAX, ENHANCE_OPT, MAIL, MARKET, PREFIXES, SHOP_GOODS, cycleEnd, disassembleRuc, enchantCost, enhanceCost, meetsPrice,
   recombine as rollRecombine, repairCost, rollEnch, rollEnhance, rollShop, shopCycle, tenName, type Price, type ShopSlot,
 } from "../../../web/rpg/shared/data/economy.ts";
-import { ENCHANTS, ITEMS, LOCS, RARITIES, STACK, durMaxOf, stackable, type Item, type ItemPos, type Loc, type Rarity, type StoredItem } from "../../../web/rpg/shared/data/items.ts";
+import { ENCHANTS, ITEMS, LOCS, RARITIES, STACK, capOf, durMaxOf, stackable, type Item, type ItemPos, type Loc, type Rarity, type StoredItem } from "../../../web/rpg/shared/data/items.ts";
 import { USE_RANGE, distToObj, prop } from "../../../web/rpg/shared/map.ts";
 import { rand } from "./combat.ts";
 import {
@@ -131,7 +131,7 @@ function claimOne(p: Player, id: number) {
     if (!it.qty) { removed.push(it.id); continue; }
     let pos: ItemPos | null = null;
     for (const loc of ["hotbar", "inventory"] as Loc[])
-      for (let s = 0; s < LOCS[loc] && !pos; s++) if (!p.items.some((i) => i.loc === loc && i.slot === s) && !taken.some((i) => i.loc === loc && i.slot === s)) pos = [loc, s];
+      for (let s = 0; s < capOf(loc, p.tabs) && !pos; s++) if (!p.items.some((i) => i.loc === loc && i.slot === s) && !taken.some((i) => i.loc === loc && i.slot === s)) pos = [loc, s];
     if (!pos) fail("인벤토리에 빈 칸이 없습니다. 한 칸 이상 비우고 다시 시도하세요.");
     it.loc = pos![0];
     it.slot = pos![1];
@@ -177,8 +177,11 @@ export function shopView(p: Player) {
     saveShopRoll(p.char.id, cycle, items, {});
     roll = { items, purchased: {} };
   }
-  const slots = (roll.items as ShopSlot[]).map((s, i) => ({ ...s, left: s.stock - (roll!.purchased[i] ?? 0) }));
-  return { cycle, ends: cycleEnd(cycle), slots };
+  // 회차 진열 뒤에 늘 파는 잡화 (P12) — 저장은 회차 진열만
+  const rolled = roll.items as ShopSlot[];
+  const goods: ShopSlot[] = SHOP_GOODS.map((g) => ({ tpl: g.item, rarity: ITEMS[g.item].rarity ?? "common", price: g.price, stock: 99 }));
+  const slots = [...rolled, ...goods].map((s, i) => ({ ...s, left: s.stock - (roll!.purchased[i] ?? 0) }));
+  return { cycle, ends: cycleEnd(cycle), slots, rolled: rolled.length };
 }
 
 /** 사기: 이번 회차 · 남은 수량 안에서. 구매품은 우편으로 (§17-2) */
@@ -194,7 +197,7 @@ export function shopBuy(p: Player, cycle: unknown, idx: unknown, n: unknown, rid
     pay(p, -s.price * qty, "shop", s.tpl, keyOf(p, "shop", rid));
     const purchased = shopRoll(p.char.id, v.cycle)!.purchased;
     purchased[i] = (purchased[i] ?? 0) + qty;
-    saveShopRoll(p.char.id, v.cycle, v.slots.map(({ left: _l, ...x }) => x), purchased);
+    saveShopRoll(p.char.id, v.cycle, v.slots.slice(0, v.rolled).map(({ left: _l, ...x }) => x), purchased);
     const items = stackable(ITEMS[s.tpl]) ? [newItem(s.tpl, qty, s.rarity, "inventory", 0)] : Array.from({ length: qty }, () => newItem(s.tpl, 1, s.rarity, "inventory", 0));
     mail(p.char.id, { sender: "일반 상점", subject: `${ITEMS[s.tpl].name} 구매`, reason: "shop", items });
   });

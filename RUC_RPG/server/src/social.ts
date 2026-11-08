@@ -4,7 +4,9 @@ import {
   audit, charByName, createGuild, delRelation, dropGuild, findCharacterById, guildById, guildByName, guildChat, guildMembers, guildOf, incomingOf, joinGuild, leaveGuild,
   logChat, relation, relationsOf, ruc, setGuildMaster, setGuildNotice, setRelation, tx, whispers,
 } from "./db.ts";
-import { online, sendWallet } from "./economy.ts";
+import { atomic, mail, online, sendWallet, take } from "./economy.ts";
+import { sendInv } from "./items.ts";
+import { ITEMS } from "../../../web/rpg/shared/data/items.ts";
 import { notify } from "./quests.ts";
 import { send, type Player } from "./room.ts";
 
@@ -113,7 +115,8 @@ const target = (m: Op) => {
   return c ? { id: c.id, nickname: c.nickname } : null;
 };
 
-export function friendOp(p: Player, m: Op): string | null {
+export function friendOp(p: Player, m: Op & { a?: unknown; n?: unknown }): string | null {
+  if (m.op === "gift") return giftOp(p, m);
   const me = p.char.id;
   const o = target(m);
   if (!o) return "없는 모험가입니다";
@@ -163,6 +166,29 @@ export function friendOp(p: Player, m: Op): string | null {
       return "잘못된 요청입니다";
   }
   sendSocial(p);
+  return null;
+}
+
+/** 선물 (P12, 알림 gift): 친구에게 가방(인벤토리 · 핫바)의 아이템을 우편으로 */
+export function giftOp(p: Player, m: { cid?: unknown; a?: unknown; n?: unknown }): string | null {
+  const cid = Number(m.cid);
+  if (!Number.isInteger(cid) || relation(p.char.id, cid) !== "ok") return "친구에게만 선물할 수 있습니다";
+  const a = m.a as [string, number] | undefined;
+  if (!Array.isArray(a) || (a[0] !== "inventory" && a[0] !== "hotbar")) return "가방에 있는 아이템만 선물할 수 있습니다";
+  const it = p.items.find((i) => i.loc === a[0] && i.slot === a[1]);
+  if (!it) return "아이템이 없습니다";
+  const qty = m.n === undefined ? it.qty : Number(m.n);
+  if (!Number.isInteger(qty) || qty < 1 || qty > it.qty) return "수량이 올바르지 않습니다";
+  const to = findCharacterById(cid)!;
+  const name = ITEMS[it.tpl].name;
+  const err = atomic(p, "gift", () => {
+    const out = take(p, qty, (i) => i.id === it.id, "gift");
+    mail(cid, { sender: p.char.nickname, subject: `${p.char.nickname}님의 선물`, body: `${name} ×${qty}`, reason: "gift", items: out }, p.char.id);
+  });
+  sendInv(p);
+  if (err) return err;
+  notify(cid, "gift", `${p.char.nickname}님이 선물을 보냈어요: ${name} ×${qty} (우편함)`, { from: p.char.nickname });
+  tell(p, `${to.nickname}님에게 「${name}」 ×${qty} 을(를) 선물했어요`);
   return null;
 }
 

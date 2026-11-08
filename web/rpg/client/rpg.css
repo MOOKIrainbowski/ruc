@@ -190,17 +190,18 @@
 }
 .group:hover > .rpg-tip { display: block; }
 
-/* ── 아이템 (§15) — 마크 인벤토리 같은 회색 베벨 칸 ── */
+/* ── 아이템 칸 (§15, P12): 게임 UI 와 같은 금테 · 어두운 보라 칸 (예전 마크식 회색 베벨에서 바꿈) ── */
 .rpg-islot {
   position: relative;
   width: 36px;
   height: 36px;
-  background: #8b8b8b;
-  border: 2px solid;
-  border-color: #373737 #ffffff #ffffff #373737;
+  background: linear-gradient(#3a3050, #1d1528);
+  border: 2px solid #b08a4a;
+  border-radius: 6px;
+  box-shadow: inset 0 0 0 1px #0a0610, inset 0 2px 4px rgba(255, 255, 255, 0.1), 0 2px 0 rgba(58, 42, 30, 0.6);
   cursor: pointer;
 }
-.rpg-islot:hover { background: #a5a5a5; }
+.rpg-islot:hover { background: linear-gradient(#4d4068, #2a2038); border-color: #e3c06a; }
 .rpg-islot-label {
   position: absolute;
   inset: 0;
@@ -210,7 +211,7 @@
   text-align: center;
   font-size: 9px;
   line-height: 1;
-  color: #5e5e5e;
+  color: #9a88b0;
 }
 .rpg-hot {
   position: relative;

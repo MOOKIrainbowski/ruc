@@ -248,6 +248,14 @@ function loseHp(w: World, src: Unit | undefined, tgt: Unit, dmg: number) {
 
 export function die(w: World, u: Unit, by: Unit | undefined) {
   if (u.dead) return;
+  // 부활 깃털 (P12): 그 자리에서 HP 30% · 1.5초 무적
+  if (u.kind === "p" && has(u, "feather")) {
+    removeEffect(w, u, "feather");
+    u.hp = Math.max(1, Math.round(u.st.hp * 0.3));
+    addEffect(w, u, { id: "invuln", ms: 1500 }, u);
+    w.ev.push(["rv", u.id]);
+    return;
+  }
   // 흑마법사 「영혼 수확」: 디버프가 걸린 적을 처치하면 HP · 마나 5% 회복
   if (by?.job === "warlock" && by !== u && u.fx.some((e) => !effectDef(e.id)?.buff)) {
     applyHeal(w, by, by, by.st.hp * 0.05, true);
@@ -255,7 +263,7 @@ export function die(w: World, u: Unit, by: Unit | undefined) {
   }
   u.dead = true;
   u.hp = 0;
-  u.fx = [];
+  u.fx = u.fx.filter((e) => effectDef(e.id)?.keep); // 영약은 남음
   u.fxDirty = true;
   recalc(u);
   w.ev.push(["d", u.id]);

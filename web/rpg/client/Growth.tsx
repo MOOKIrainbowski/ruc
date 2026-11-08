@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { ELEMENTS, ELEMENT_IDS, type ElementId } from "../shared/data/elements";
-import { JOBS, JOB_LV, LINES, LINE_IDS, STAT_GRADE, jobName, type LineId } from "../shared/data/jobs";
+import { JOBS, JOB_LV, LINES, LINE_IDS, STAT_GRADE, jobName, type LineId, SPIRIT_BUFF } from "../shared/data/jobs";
 import { SKILLS, canLearn, type SkillDef, type Slot } from "../shared/data/skills";
 import { GRADE, needMastery, skillNums, type Learned } from "../shared/progress";
 import type { C2S, You } from "../shared/protocol";
@@ -85,6 +85,9 @@ export function SkillWindow({ you, send, onClose }: { you: You; send: (m: C2S) =
           <div className="mt-2 rounded bg-[#e8d3a9] px-2 py-1.5">
             <b>{t("sk.passive")} · {job.passive.name}</b>
             <p>{job.passive.desc}</p>
+            {prog.job === "spiritcaller" && SPIRIT_BUFF[you.element] && (
+              <p className="mt-0.5 text-[11px]">{t("sk.spirit", { el: ELEMENTS[you.element as ElementId].name, buff: SPIRIT_BUFF[you.element].desc })}</p>
+            )}
           </div>
         )}
         <div className="mt-2 max-h-[56vh] space-y-2 overflow-y-auto pr-1">

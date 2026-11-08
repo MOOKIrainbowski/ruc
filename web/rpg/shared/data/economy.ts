@@ -114,6 +114,11 @@ const SHOP_POOL: { item: string; w: number; stock: number }[] = [
   ...["old_dagger", "wood_sword", "apprentice_staff", "hunter_bow", "goblin_axe", "leather_cap", "leather_vest", "leather_pants", "leather_boots", "leather_gloves", "meadow_cape", "copper_ring", "rabbit_charm"]
     .map((item) => ({ item, w: 2, stock: 1 })),
 ];
+/** 늘 파는 잡화 (P12): 회차 진열과 따로, 한 회차에 99개까지 */
+export const SHOP_GOODS: { item: string; price: number }[] = [
+  { item: "return_scroll", price: 40 }, { item: "revive_feather", price: 300 }, { item: "elixir_power", price: 250 }, { item: "elixir_luck", price: 250 },
+  { item: "elixir_iron", price: 250 }, { item: "random_box", price: 400 }, { item: "storage_ticket", price: 2000 },
+];
 /** 하급 40 · 일반 35 · 희귀 25% (§17-2), 운이 높으면 위쪽으로 (운 × 0.05%p 를 하급 → 희귀로) */
 function shopRarity(r: number, luck: number): Rarity {
   const shift = Math.min(0.2, luck * 0.0005);

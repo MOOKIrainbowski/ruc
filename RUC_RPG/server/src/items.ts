@@ -1,10 +1,10 @@
 import { randomUUID } from "node:crypto";
 import {
-  EQUIP_SLOTS, ITEMS, LOCS, POTION_CD_MS, RARITIES, STACK, bookGrade, durMaxOf, fits, gearOf, lookOf, rollSpecials, stackable,
+  EQUIP_SLOTS, ITEMS, LOCS, POTION_CD_MS, RARITIES, RARITY, STACK, STORAGE, bookGrade, capOf, durMaxOf, fits, gearOf, lookOf, rollBox, rollSpecials, stackable,
   type Item, type ItemKind, type ItemPos, type Loc, type Rarity, type Template,
 } from "../../../web/rpg/shared/data/items.ts";
 import { addEffect, applyHeal, dotDamage, hit, rand, recalc, type HitSpec, type Unit, type World } from "./combat.ts";
-import { inTx, loadItems, saveDurability, saveItems } from "./db.ts";
+import { audit, inTx, loadItems, saveDurability, saveItems, saveTabs } from "./db.ts";
 import { bookError, readBook, refreshSlots } from "./progress.ts";
 import type { Player } from "./room.ts";
 
@@ -13,7 +13,7 @@ import type { Player } from "./room.ts";
  * 저장이 실패하면 DB 를 다시 읽어 메모리를 맞춥니다 — 메모리와 DB 가 어긋나 복사되는 일이 없게.
  */
 
-export type Owner = { char: { id: number; level: number }; items: Item[] };
+export type Owner = { char: { id: number; level: number }; items: Item[]; tabs?: number };
 type Ctx = { storage: boolean };
 
 const at = (o: Owner, loc: Loc, slot: number) => o.items.find((i) => i.loc === loc && i.slot === slot);
@@ -48,7 +48,7 @@ export function newItem(tpl: string, qty: number, rarity: Rarity, loc: Loc, slot
 /** 빈 칸 — 핫바 먼저 (마크처럼) */
 function freeSlot(o: Owner, locs: Loc[], taken: Item[] = []): ItemPos | null {
   for (const loc of locs)
-    for (let s = 0; s < LOCS[loc]; s++) if (!at(o, loc, s) && !taken.some((i) => i.loc === loc && i.slot === s)) return [loc, s];
+    for (let s = 0; s < capOf(loc, o.tabs); s++) if (!at(o, loc, s) && !taken.some((i) => i.loc === loc && i.slot === s)) return [loc, s];
   return null;
 }
 
@@ -114,6 +114,7 @@ export function move(o: Owner, a: unknown, b: unknown, n: unknown, ctx: Ctx): st
       to = pos;
     }
   }
+  if (to[0] === "storage" && to[1] >= capOf("storage", o.tabs)) return "잠긴 창고 칸입니다 (창고 확장권)";
   const dst = at(o, to[0], to[1]);
   if (dst === src) return null;
   if (to[0] === "equipped") {
@@ -179,6 +180,65 @@ export function sort(o: Owner, loc: unknown, ctx: Ctx): string | null {
   return commit(o, "sort", "", before, list);
 }
 
+// ── 소모품 (P12, §14 [추가]) ─────────────────────────────────────────
+const RECALL_MS = 3000;
+const recalls = new Map<number, { item: string; at: number; since: number }>();
+const sysLine = (p: Player, text: string) => p.ws.readyState === 1 && p.ws.send(JSON.stringify({ t: "chat", ch: "system", from: "", text, at: Date.now() }));
+
+/** 영약 · 부활 깃털(효과) · 귀환 주문서(3초 뒤) · 랜덤 상자 · 창고 확장권 */
+function useConsumable(p: Player, it: Item, t: Template): string | null {
+  const u = t.use!;
+  if (u.recall) {
+    if (!p.room || p.room.kind === "plaza") return "이미 광장에 있습니다";
+    if (p.room.inst) return "던전에서는 쓸 수 없습니다 (던전 나가기를 쓰세요)";
+    recalls.set(p.char.id, { item: it.id, at: p.room.now + RECALL_MS, since: p.room.now });
+    sysLine(p, "3초 뒤 햇살광장으로 돌아갑니다 — 움직이거나 공격받으면 취소");
+    return null;
+  }
+  if (u.tab && p.tabs >= STORAGE.maxTabs) return "창고를 더 넓힐 수 없습니다";
+  if (u.box && !freeSlot(p, ["hotbar", "inventory"]) && it.qty > 1) return "인벤토리에 빈 칸이 있어야 합니다";
+  if (u.fx && !p.room) return "지금은 쓸 수 없습니다";
+  const before = [clone(it)];
+  it.qty--;
+  const err = commit(p, "use", it.tpl, before, [it]);
+  if (err) return err;
+  if (u.fx) addEffect(p.room!, p, u.fx, p);
+  if (u.tab) {
+    p.tabs++;
+    saveTabs(p.char.id, p.tabs);
+    p.ws.readyState === 1 && p.ws.send(JSON.stringify({ t: "tabs", n: p.tabs }));
+    sysLine(p, `창고가 ${capOf("storage", p.tabs)}칸이 되었어요`);
+  }
+  if (u.box) {
+    const r = rollBox(rand, p.st.luck);
+    const e = give(p, r.tpl, r.qty, r.rarity, "box");
+    if (e) { give(p, it.tpl, 1, it.rarity, "box_refund"); return e; }
+    audit(p.char.id, "box_open", it.tpl, null, r);
+    sysLine(p, `랜덤 상자에서 「${ITEMS[r.tpl].name}」 ${RARITY[r.rarity].name}${r.qty > 1 ? ` ×${r.qty}` : ""}이(가) 나왔어요!`);
+  }
+  return null;
+}
+
+/** 귀환 주문서 진행 (main 의 틱): 시간이 되면 주문서를 쓰고 true → main 이 광장으로 옮김. 움직이거나 맞으면 취소 */
+export function recallTick(p: Player, now: number): boolean {
+  const r = recalls.get(p.char.id);
+  if (!r) return false;
+  if (p.dead || !p.room || p.room.inst || p.mover.moving || p.combat > r.since) {
+    recalls.delete(p.char.id);
+    sysLine(p, "귀환이 취소되었습니다");
+    return false;
+  }
+  if (now < r.at) return false;
+  recalls.delete(p.char.id);
+  const it = p.items.find((i) => i.id === r.item && i.qty > 0);
+  if (!it) return false;
+  const before = [clone(it)];
+  it.qty--;
+  if (commit(p, "use", it.tpl, before, [it])) return false;
+  sendInv(p);
+  return true;
+}
+
 /** 사용: 장비 = 장착 · 해제(맞바꿈), 포션 = 회복 (공유 쿨 8초) */
 export function use(p: Player, a: unknown): string | null {
   if (!validPos(a)) return "잘못된 칸입니다";
@@ -195,6 +255,11 @@ export function use(p: Player, a: unknown): string | null {
     const before = [clone(it)];
     it.qty--;
     return commit(p, "read", "", before, [it]) ?? readBook(p, t.skill, grade);
+  }
+  if (t.use) {
+    if (a[0] === "storage") return "창고에서 꺼낸 뒤 쓰세요";
+    if (p.dead) return "쓰러진 상태입니다";
+    return useConsumable(p, it, t);
   }
   if (!t.heal) return "사용할 수 없는 아이템입니다";
   if (a[0] === "storage") return "창고에서 꺼낸 뒤 쓰세요";

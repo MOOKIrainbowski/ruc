@@ -14,7 +14,8 @@ import { DEV_TICKET_SECRET, verifyTicket, type Ticket } from "../../../web/rpg/s
 import { fxRows, recalc } from "./combat.ts";
 import { createCharacter, findCharacter, savePosition, saveSettings, type CharacterRow } from "./db.ts";
 import { econOp, online as econOnline, sweep, welcome } from "./economy.ts";
-import { give, itemOp, sendInv } from "./items.ts";
+import { give, itemOp, recallTick, sendInv } from "./items.ts";
+import { effectDef } from "../../../web/rpg/shared/data/effects.ts";
 import { mailCount } from "./db.ts";
 import { changeJob, equip, saveDirtySkills } from "./progress.ts";
 import { loadQuestState, notify, notiOp, questOp, quest, sendNotis, sendQuests, sweepQuests } from "./quests.ts";
@@ -105,7 +106,7 @@ function enterRoom(p: Player, room: Room) {
     t: "joined",
     you: {
       id: p.id, nickname: p.char.nickname, level: p.char.level, exp: p.char.exp, element: p.char.element, appearance: p.char.appearance,
-      ruc: p.ruc, kda: p.kda, settings: p.char.settings, slots: p.slots, prog: p.prog, gm: isGM(p),
+      ruc: p.ruc, kda: p.kda, settings: p.char.settings, slots: p.slots, prog: p.prog, gm: isGM(p), tabs: p.tabs,
       ...(p.title ? { tt: p.title } : {}), ...(p.guild ? { gd: p.guild.name } : {}),
     },
     room: { kind: room.kind, ch: room.ch },
@@ -171,7 +172,7 @@ function respawn(p: Player, at?: { x: number; y: number }) {
   p.dead = false;
   p.respawnAt = 0;
   p.deadAt = 0;
-  p.fx = [];
+  p.fx = p.fx.filter((e) => effectDef(e.id)?.keep); // 영약은 남음 (P12)
   p.fxDirty = true;
   recalc(p);
   p.hp = p.st.hp;
@@ -426,7 +427,10 @@ function loop() {
   for (const w of Object.values(worlds)) for (const r of w.rooms) r.tick(now);
   for (const r of dungeonRooms()) r.tick(now);
   duelTick(now);
-  for (const p of online.values()) if (p.respawnAt && now >= p.respawnAt) respawn(p);
+  for (const p of online.values()) {
+    if (p.respawnAt && now >= p.respawnAt) respawn(p);
+    if (recallTick(p, now)) travel(p, "plaza", maps.plaza.spawn.x, maps.plaza.spawn.y); // 귀환 주문서 (P12)
+  }
   if (++tickCount % 10 === 0) partyVitals();
   if (tickCount % 20 === 0) partyTick(now);
   if (tickCount % 40 === 0) {

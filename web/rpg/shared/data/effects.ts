@@ -22,6 +22,8 @@ export type EffectDef = {
   icon: string;
   color: string;
   desc: string;
+  /** 쓰러져도 남음 (영약, P12) */
+  keep?: boolean;
 };
 
 const ALL: Block = { move: true, atk: true, skill: true };
@@ -56,6 +58,11 @@ export const EFFECTS = {
   counter: { name: "반격 태세", buff: true, cat: "special", icon: "thorn", color: "#9AA3AD", desc: "근접 공격을 막고 되돌려 주며 공격자를 기절시킵니다" },
   venom: { name: "독 바르기", buff: true, cat: "special", icon: "drop", color: "#9BE564", desc: "평타가 독을 겁니다" },
   shadow_step: { name: "그림자 걸음", buff: true, cat: "stat", mods: () => [{ k: "moveSpeed", mul: 0.25 }], icon: "ghost", color: "#6B3FA0", desc: "전투 밖에서 이동 속도 +25%" },
+  // P12 소모품: 영약(30분 · 쓰러져도 남음) · 부활 깃털
+  elixir_power: { name: "용맹의 영약", buff: true, cat: "stat", keep: true, mods: (v) => [{ k: "atk", mul: v }, { k: "ap", mul: v }], icon: "sword", color: "#ff6b3d", desc: "공격력 · 주문력 +{v}%" },
+  elixir_luck: { name: "행운의 영약", buff: true, cat: "stat", keep: true, mods: () => [{ k: "luck", add: 10 }], icon: "clover", color: "#2ECC71", desc: "경험치 +{v}% · 운 +10" },
+  elixir_iron: { name: "강철의 영약", buff: true, cat: "stat", keep: true, mods: (v) => [{ k: "pdef", add: v }, { k: "mdef", add: v }], icon: "shield", color: "#9aa3ad", desc: "물리 · 마법 방어력 +{v}" },
+  feather: { name: "부활 깃털", buff: true, cat: "special", icon: "wing", color: "#fff8e0", desc: "쓰러지면 HP 30%로 일어납니다 (한 번)" },
   // P9 세부 직업 패시브 (§9-3)
   blood_rage: { name: "피의 광기", buff: true, cat: "stat", max: 10, mods: (_v, s) => [{ k: "lifesteal", add: 0.02 * s }, { k: "atkSpeed", mul: 0.03 * s }], icon: "fang", color: "#E5484D", desc: "잃은 HP 10%마다 흡혈 +2% · 공속 +3%" },
   earth_root: { name: "대지의 뿌리", buff: true, cat: "stat", mods: () => [{ k: "pdef", mul: 0.2 }, { k: "mdef", mul: 0.2 }], icon: "seed", color: "#B08A5A", desc: "정지 중 방어 +20% · 넉백 면역" },

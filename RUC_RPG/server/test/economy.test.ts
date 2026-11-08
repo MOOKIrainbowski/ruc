@@ -84,8 +84,8 @@ test("일반 상점: 회차 고정 진열 · 수량 한도 · 우편으로 지�
   const v = E.shopView(p);
   assert.equal(v.cycle, shopCycle(Date.now()));
   assert.deepEqual(E.shopView(p).slots, v.slots, "같은 회차는 같은 진열");
-  assert.equal(v.slots.length, 8);
-  const i = v.slots.reduce((b, s, k) => (s.stock > v.slots[b].stock ? k : b), 0);
+  assert.equal(v.rolled, 8, "회차 진열 8칸 (뒤에 늘 파는 잡화, P12)");
+  const i = v.slots.slice(0, v.rolled).reduce((b, s, k) => (s.stock > v.slots[b].stock ? k : b), 0);
   ruc(p.char.id, 1_000_000, "test", null, `grant-shop-${p.char.id}`);
   p.ruc = wallet(p.char.id).balance;
   const s = v.slots[i];

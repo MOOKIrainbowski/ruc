@@ -5,9 +5,9 @@ import { SKILLS, type SkillDef, type SkillFx } from "../../../web/rpg/shared/dat
 import { castMove, type MoveInput } from "../../../web/rpg/shared/movement.ts";
 import { MASTERY, skillNums } from "../../../web/rpg/shared/progress.ts";
 import { effectDef } from "../../../web/rpg/shared/data/effects.ts";
-import { JOBS } from "../../../web/rpg/shared/data/jobs.ts";
+import { JOBS, SPIRIT_BUFF } from "../../../web/rpg/shared/data/jobs.ts";
 import { ENGINEER } from "../../../web/rpg/shared/data/pets.ts";
-import { addEffect, applyHeal, healPerTick, hit, rand, removeEffect, type FxSpec, type HitSpec, type Unit } from "./combat.ts";
+import { addEffect, applyHeal, healPerTick, hit, rand, removeEffect, type HitSpec, type Unit } from "./combat.ts";
 import { summon } from "./pets.ts";
 import type { Mob } from "./mobs.ts";
 import { gainMastery, learnedOf } from "./progress.ts";
@@ -83,13 +83,6 @@ function specOf(s: Shot): HitSpec {
   };
 }
 
-/** 정령사 「정령 친화」: 아군에게 거는 지원에 붙는 시전자 속성 버프 (4초) */
-const SPIRIT_BUFF: Partial<Record<ElementId, FxSpec>> = {
-  fire: { id: "power", ms: 4000, v: 0.08 }, water: { id: "dmgdown", ms: 4000, v: 0.08 }, earth: { id: "guard", ms: 4000, v: 10 },
-  grass: { id: "regen_hp", ms: 4000, dot: 4 }, wind: { id: "haste", ms: 4000, v: 0.1 }, electric: { id: "atkspd", ms: 4000, v: 10 },
-  ice: { id: "tenacity", ms: 4000, v: 0.15 }, light: { id: "shield", ms: 4000, v: 30 }, dark: { id: "vamp", ms: 4000, v: 0.06 },
-  poison: { id: "venom", ms: 4000 }, iron: { id: "guard", ms: 4000, v: 10 }, none: { id: "power", ms: 4000, v: 0.05 },
-};
 
 /** 디버프 해제. 주술사 「조상의 가호」: 하나라도 지웠으면 1.5초 보호막(최대 HP 8%) */
 export function cleanse(room: Room, src: Unit, a: Unit) {
@@ -140,7 +133,7 @@ function support(room: Room, s: Shot, a: Player, healIt = true) {
   for (const f of scaleFx(sk.allyFx, n.fx) ?? []) addEffect(room, a, f, p);
   if (sk.cleanse) cleanse(room, p, a);
   const sb = p.job === "spiritcaller" && (sk.allyFx || sk.heal || sk.shield) ? SPIRIT_BUFF[p.el] : undefined;
-  if (sb) addEffect(room, a, sb.dot ? { ...sb, dot: healPerTick(sb.dot + p.st.ap * 0.05, p, a) } : sb, p);
+  if (sb) addEffect(room, a, { id: sb.id, ms: sb.ms, v: sb.v, dot: sb.dot ? healPerTick(sb.dot + p.st.ap * 0.05, p, a) : undefined }, p);
   credit(s, a);
 }
 

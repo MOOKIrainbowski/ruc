@@ -101,6 +101,8 @@ export type Player = Unit & {
   ip: string;
   /** 길드 (P10, 이름표에 ‹이름›) */
   guild: { id: number; name: string } | null;
+  /** 창고 확장 장수 (P12) */
+  tabs: number;
 };
 
 /** 저장된 캐릭터로 플레이어를 만듦 (아이템 · 성장 · 장비 스탯 반영, HP 가득) — main · 테스트 공용 */
@@ -115,6 +117,7 @@ export function buildPlayer(ws: WebSocket, discordId: string, char: CharacterRow
   p.title = char.title_id ?? null;
   const g = guildOf(char.id); // 방에 들어가기 전에 — 다른 사람에게 가는 spawn 정보에 길드 이름 (P10)
   p.guild = g && { id: g.id, name: g.name };
+  p.tabs = char.storage_tabs ?? 0;
   syncSkills(p); // 견습 스킬 · 레벨 도달 스킬 (예전 캐릭터도) — 접속 때 안내는 안 띄움
   p.out = [];
   refreshGear(p);
@@ -131,7 +134,7 @@ export const playerState = (items: Item[], prog: Progress) => ({
   quests: new Map<string, QuestRow>(), takes: new Map<number, number>(), reach: 0,
   party: 0, kda: [0, 0, 0] as [number, number, number], title: null as string | null, hitBy: new Map<number, number>(), duel: 0, duelSide: 0, duelOn: false,
   potionLeft: null as number | null, deadAt: 0, respawnKind: "plaza" as RoomKind, sent: new Map<number, EntityRow>(), ip: "",
-  guild: null as { id: number; name: string } | null,
+  guild: null as { id: number; name: string } | null, tabs: 0,
 });
 
 /**
@@ -715,6 +718,8 @@ const dropRow = (d: Drop): DropRow => ["dr", d.id, d.tpl, d.rarity, d.qty, d.x, 
 /** 경험치 · 연속 레벨업 (§7). 레벨업하면 스탯 다시 계산 + 완전 회복. 연출은 P4 */
 export function gainExp(room: Room, p: Player, amount: number) {
   const c = p.char;
+  const lucky = find(p, "elixir_luck"); // 행운의 영약 (P12)
+  if (lucky && amount > 0) amount = Math.round(amount * (1 + lucky.v));
   c.exp += amount;
   let up = false;
   while (c.level < COMBAT.maxLevel && c.exp >= expToNext(c.level)) {

@@ -250,7 +250,7 @@ CREATE TABLE IF NOT EXISTS rpg_nations (id INTEGER PRIMARY KEY AUTOINCREMENT, na
 
 // 단계마다 늘어난 캐릭터 칸 — 이미 있는 DB 에도 붙임 (P4: 전직 · 잠재력, P7: 칭호)
 const charCols = new Set((db.prepare("PRAGMA table_info(rpg_characters)").all() as { name: string }[]).map((c) => c.name));
-for (const [col, def] of [["job_tier1", "TEXT"], ["job_tier2", "TEXT"], ["job_sub", "TEXT"], ["potential_phys", "REAL NOT NULL DEFAULT 10"], ["potential_mag", "REAL NOT NULL DEFAULT 10"], ["title_id", "TEXT"], ["last_ip", "TEXT"]])
+for (const [col, def] of [["job_tier1", "TEXT"], ["job_tier2", "TEXT"], ["job_sub", "TEXT"], ["potential_phys", "REAL NOT NULL DEFAULT 10"], ["potential_mag", "REAL NOT NULL DEFAULT 10"], ["title_id", "TEXT"], ["last_ip", "TEXT"], ["storage_tabs", "INTEGER NOT NULL DEFAULT 0"]])
   if (!charCols.has(col)) db.exec(`ALTER TABLE rpg_characters ADD COLUMN ${col} ${def}`);
 
 const guildCols = new Set((db.prepare("PRAGMA table_info(rpg_guilds)").all() as { name: string }[]).map((c) => c.name));
@@ -270,6 +270,8 @@ export type CharacterRow = {
   /** 1차 전직 계열 · 2차 세부 직업 · 원소술사 보조 속성 · 잠재력 */
   job_tier1: string | null;
   job_tier2: string | null;
+  /** 창고 확장 장수 (P12) */
+  storage_tabs?: number;
   job_sub: string | null;
   potential_phys: number;
   potential_mag: number;
@@ -635,3 +637,7 @@ export const logChat = (ch: string, from: number | null, to: number | null, guil
 export const guildChat = (guild: number, n: number) => (qChatGuild.all(guild, n) as ChatRow[]).reverse();
 export const whispers = (cid: number, n: number) => (qChatWhisper.all(cid, cid, n) as ChatRow[]).reverse();
 export const purgeChat = (before: number) => qChatPurge.run(before).changes;
+
+// ── 창고 확장 (P12) ──
+const qTabs = db.prepare("UPDATE rpg_characters SET storage_tabs = ? WHERE id = ?");
+export const saveTabs = (id: number, n: number) => qTabs.run(n, id);

@@ -35,7 +35,11 @@ export const EQUIP_NAME: Record<EquipSlot, string> = {
 };
 
 /** 보관 위치와 칸 수: 인벤토리 27 + 핫바 5 (§15-1 · §15-2), 창고 54 (§15-3) */
-export const LOCS = { inventory: 27, hotbar: 5, equipped: EQUIP_SLOTS.length, storage: 54 } as const;
+export const LOCS = { inventory: 27, hotbar: 5, equipped: EQUIP_SLOTS.length, storage: 108 } as const;
+/** 창고 (P12): 기본 54칸 + 창고 확장권 한 장에 27칸, 두 장까지 (LOCS.storage = 최대) */
+export const STORAGE = { base: 54, tab: 27, maxTabs: 2 };
+/** 이 사람이 쓸 수 있는 칸 수 */
+export const capOf = (loc: Loc, tabs = 0) => (loc === "storage" ? STORAGE.base + STORAGE.tab * Math.min(Math.max(0, tabs), STORAGE.maxTabs) : LOCS[loc]);
 export type Loc = keyof typeof LOCS;
 /** [위치, 칸]. 칸 −1 = 빈 곳에 알아서 */
 export type ItemPos = [Loc, number];
@@ -55,7 +59,7 @@ export type Item = {
 /** DB 의 아이템 행 — 우편 · 유저 상점 에스크로에 있는 것도 (플레이어 목록 inv 에는 안 옴) */
 export type StoredItem = Omit<Item, "loc"> & { loc: Loc | "mail" | "escrow" };
 
-export type ItemKind = "weapon" | "armor" | "accessory" | "potion" | "material" | "book";
+export type ItemKind = "weapon" | "armor" | "accessory" | "potion" | "material" | "book" | "consumable";
 export type Template = {
   name: string;
   kind: ItemKind;
@@ -79,6 +83,8 @@ export type Template = {
   /** 투구 모양 (cap = 모자 · 그 밖 = 투구) · 지팡이/완드 보석 색 */
   shape?: "cap" | "helm";
   gem?: string;
+  /** 소모품 (P12): fx = 효과(영약 30분 · 부활 깃털), recall = 3초 뒤 광장, box = 랜덤 상자, tab = 창고 확장 */
+  use?: { fx?: { id: string; ms: number; v?: number }; recall?: true; box?: true; tab?: true };
   /** 스킬북: 이 스킬을 배우거나 등급을 올림 */
   skill?: string;
   /** 부가석: 마법부여 종류 (data/economy.ts ENCHANTS) */
@@ -133,6 +139,14 @@ export const ITEMS: Record<string, Template> = {
   en_potion_s: potion("기력 포션 (소)", "potion_en", { en: 40 }, "귤 맛. 톡 쏜다."),
   en_potion_m: potion("기력 포션 (중)", "potion_en", { en: 100 }, "마시면 주먹이 불끈 쥐어진다."),
   en_potion_l: potion("기력 포션 (대)", "potion_en", { en: 220 }, "대장장이 볼트의 비밀 레시피."),
+  // ── 소모품 (P12, §14 [추가]) — 일반 상점에서 늘 팖 ──
+  elixir_power: { name: "용맹의 영약", kind: "consumable", icon: "elixir_power", lv: 1, rarity: "rare", use: { fx: { id: "elixir_power", ms: 1_800_000, v: 0.1 } }, value: 120, desc: "30분 동안 공격력 · 주문력 +10%. 쓰러져도 남습니다." },
+  elixir_luck: { name: "행운의 영약", kind: "consumable", icon: "elixir_luck", lv: 1, rarity: "rare", use: { fx: { id: "elixir_luck", ms: 1_800_000, v: 0.1 } }, value: 120, desc: "30분 동안 경험치 +10% · 운 +10. 쓰러져도 남습니다." },
+  elixir_iron: { name: "강철의 영약", kind: "consumable", icon: "elixir_iron", lv: 1, rarity: "rare", use: { fx: { id: "elixir_iron", ms: 1_800_000, v: 12 } }, value: 120, desc: "30분 동안 물리 · 마법 방어력 +12. 쓰러져도 남습니다." },
+  revive_feather: { name: "부활 깃털", kind: "consumable", icon: "feather", lv: 1, rarity: "advanced", use: { fx: { id: "feather", ms: 600_000 } }, value: 150, desc: "10분 안에 쓰러지면 그 자리에서 HP 30%로 일어납니다 (한 번)." },
+  return_scroll: { name: "귀환 주문서", kind: "consumable", icon: "scroll", lv: 1, rarity: "common", use: { recall: true }, value: 20, desc: "3초 뒤 햇살광장으로 돌아갑니다. 움직이거나 공격받으면 취소 (던전 안에서는 못 씀)." },
+  random_box: { name: "랜덤 상자", kind: "consumable", icon: "box", lv: 1, rarity: "rare", use: { box: true }, value: 200, desc: "열면 장비 · 강화 재료 · 부가석 · 포션 중 하나. 운이 높을수록 좋은 희귀도." },
+  storage_ticket: { name: "창고 확장권", kind: "consumable", icon: "ticket", lv: 1, rarity: "mythic", use: { tab: true }, value: 1000, desc: "창고를 27칸 늘립니다 (두 번까지, 54 → 108칸)." },
   // ── 재료 ──
   slime_jelly: mat("슬라임 젤리", "jelly", "poor", "말랑말랑. 강화 재료로 쓰인다는 소문이 있다.", 2),
   rabbit_fluff: mat("토끼 솜털", "fluff", "poor", "손바닥 위에서 바람도 없이 둥실 떠오른다.", 3),
@@ -322,4 +336,19 @@ export function rollSpecials(t: Template, r: Rarity, rand: () => number): Specia
     out.push({ id, v: pctSpecial(id) ? Math.round(v * 1000) / 1000 : Math.round(v) });
   }
   return out;
+}
+
+/** 랜덤 상자 (P12): 가중치 — 장비는 운으로 희귀도를 굴림 */
+export const BOX_POOL: { tpl: string; w: number; qty?: number }[] = [
+  ...["old_dagger", "wood_sword", "apprentice_staff", "hunter_bow", "goblin_axe", "fang_sword", "vine_wand", "leather_cap", "leather_vest", "leather_pants", "leather_boots", "leather_gloves", "meadow_cape", "copper_ring", "rabbit_charm"].map((tpl) => ({ tpl, w: 3 })),
+  { tpl: "enhance_stone", w: 10, qty: 3 }, { tpl: "protect_scroll", w: 4 }, { tpl: "blessed_stone", w: 2 },
+  ...["ench_atk", "ench_ap", "ench_def", "ench_hp", "ench_speed", "ench_crit"].map((tpl) => ({ tpl, w: 2 })),
+  { tpl: "hp_potion_m", w: 6, qty: 5 }, { tpl: "mp_potion_m", w: 4, qty: 5 }, { tpl: "en_potion_m", w: 4, qty: 5 }, { tpl: "revive_feather", w: 2 },
+];
+export function rollBox(rand: () => number, luck: number): { tpl: string; qty: number; rarity: Rarity } {
+  const total = BOX_POOL.reduce((a, x) => a + x.w, 0);
+  let r = rand() * total;
+  const pick = BOX_POOL.find((x) => (r -= x.w) < 0) ?? BOX_POOL[0];
+  const t = ITEMS[pick.tpl];
+  return { tpl: pick.tpl, qty: pick.qty ?? 1, rarity: t.rarity ?? rollRarity(rand, 0.1 + luck / 400) };
 }

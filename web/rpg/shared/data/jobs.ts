@@ -68,6 +68,16 @@ export const JOB_POTENTIAL = 30;
 /** 견습 · 1차 · 2차 이름 */
 export const jobName = (line: LineId | null, job: string | null) => (job ? JOBS[job].name : line ? LINES[line].name : "견습 모험가");
 
+/** 정령사 「정령 친화」(D82): 아군 지원에 붙는 시전자 속성 버프 (4초) · 툴팁 문구 */
+export const SPIRIT_BUFF: Record<string, { id: string; ms: number; v?: number; dot?: number; desc: string }> = {
+  fire: { id: "power", ms: 4000, v: 0.08, desc: "공격력 · 주문력 +8%" }, water: { id: "dmgdown", ms: 4000, v: 0.08, desc: "받는 피해 −8%" },
+  earth: { id: "guard", ms: 4000, v: 10, desc: "방어력 +10" }, grass: { id: "regen_hp", ms: 4000, dot: 4, desc: "지속 회복" },
+  wind: { id: "haste", ms: 4000, v: 0.1, desc: "이동 속도 +10%" }, electric: { id: "atkspd", ms: 4000, v: 10, desc: "공격 속도 +10" },
+  ice: { id: "tenacity", ms: 4000, v: 0.15, desc: "강인함 +15%" }, light: { id: "shield", ms: 4000, v: 30, desc: "보호막 30" },
+  dark: { id: "vamp", ms: 4000, v: 0.06, desc: "흡혈 6%" }, poison: { id: "venom", ms: 4000, desc: "평타 독" },
+  iron: { id: "guard", ms: 4000, v: 10, desc: "방어력 +10" }, none: { id: "power", ms: 4000, v: 0.05, desc: "공격력 · 주문력 +5%" },
+};
+
 /** 주 자원: 계열 기본 · 마법형 = 마나 · 혼합형 = 둘 다 (null = 견습, 둘 다) */
 export function jobRes(line: LineId | null, job: string | null): "energy" | "mana" | "both" | null {
   const k = job ? JOBS[job]?.kind : undefined;

@@ -2,10 +2,8 @@
 
 import { createContext, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { CHAR_H, CHAR_W } from "../shared/constants";
-import {
-  ENCHANTS, EQUIP_NAME, EQUIP_SLOTS, ITEMS, LOCS, POTION_CD_MS, RARITIES, RARITY, SETS, SPECIALS, bookGrade, gearOf, lookOf, pctSpecial, pctText, stackable, working,
-  type EquipSlot, type Item, type ItemPos, type Loc,
-} from "../shared/data/items";
+import { ENCHANTS, EQUIP_NAME, EQUIP_SLOTS, ITEMS, LOCS, POTION_CD_MS, RARITIES, RARITY, SETS, SPECIALS, bookGrade, gearOf, lookOf, pctSpecial, pctText, stackable, working, type EquipSlot, type Item, type ItemPos, type Loc, STORAGE, capOf } from "../shared/data/items";
+import type { FriendRow } from "../shared/data/social";
 import { SKILLS } from "../shared/data/skills";
 import { GRADE } from "../shared/progress";
 import type { C2S, You } from "../shared/protocol";
@@ -152,9 +150,10 @@ function Slot({ p, label }: { p: ItemPos; label?: string }) {
   );
 }
 
-const Grid = ({ loc, cols }: { loc: Loc; cols: number }) => (
+/** n = 쓸 수 있는 칸 (창고 확장 전 칸은 잠김, P12) */
+const Grid = ({ loc, cols, n = LOCS[loc] }: { loc: Loc; cols: number; n?: number }) => (
   <div className="grid gap-1" style={{ gridTemplateColumns: `repeat(${cols}, 36px)` }}>
-    {Array.from({ length: LOCS[loc] }, (_, i) => <Slot key={i} p={[loc, i]} />)}
+    {Array.from({ length: n }, (_, i) => <Slot key={i} p={[loc, i]} />)}
   </div>
 );
 const Eq = ({ s }: { s: EquipSlot }) => <Slot p={["equipped", EQUIP_SLOTS.indexOf(s)]} label={EQUIP_NAME[s]} />;
@@ -180,9 +179,11 @@ function Preview({ you, items }: { you: You; items: Item[] }) {
   );
 }
 
-export function ItemsWindow({ mode, items, you, zoom, send, toast, onClose }: {
-  mode: "inventory" | "storage"; items: Item[]; you: You; zoom: number; send: (m: C2S) => void; toast: (msg: string) => void; onClose: () => void;
+export function ItemsWindow({ mode, items, you, zoom, friends, send, toast, onClose }: {
+  mode: "inventory" | "storage"; items: Item[]; you: You; zoom: number; friends: FriendRow[]; send: (m: C2S) => void; toast: (msg: string) => void; onClose: () => void;
 }) {
+  /** 선물할 아이템 (P12) — 친구 고르기 창 */
+  const [gift, setGift] = useState<Item | null>(null);
   const [drag, setDrag] = useState<Item | null>(null);
   const [mouse, setMouse] = useState({ x: 0, y: 0 });
   /** 마우스가 올라간 칸 — 서버가 목록을 바꿔도 그 칸의 지금 아이템을 보여 줌 */
@@ -255,7 +256,8 @@ export function ItemsWindow({ mode, items, you, zoom, send, toast, onClose }: {
           ) : (
             <div>
               <div className="mb-1 flex items-center justify-between pr-8"><h2 className="text-base font-bold">{t("inv.storage")}</h2>{sortBtn("storage")}</div>
-              <Grid loc="storage" cols={9} />
+              <Grid loc="storage" cols={9} n={capOf("storage", you.tabs)} />
+              {(you.tabs ?? 0) < STORAGE.maxTabs && <p className="mt-1 text-[10px] text-[#8c6642]">{t("inv.tabsHint", { n: capOf("storage", you.tabs), max: LOCS.storage })}</p>}
               <div className="mb-1 mt-3 flex items-center justify-between"><b>{t("inv.title")}</b>{sortBtn("inventory")}</div>
               <Grid loc="inventory" cols={9} />
               <div className="mt-2"><Grid loc="hotbar" cols={5} /></div>
@@ -291,7 +293,8 @@ export function ItemsWindow({ mode, items, you, zoom, send, toast, onClose }: {
             {(() => {
               const tp = ITEMS[menu.it.tpl];
               const rows: [string, () => void][] = [];
-              if (tp.heal || tp.skill) rows.push([t("inv.use"), () => use(menu.it)]);
+              if (tp.heal || tp.skill || tp.use) rows.push([t("inv.use"), () => use(menu.it)]);
+              if (menu.it.loc === "inventory" || menu.it.loc === "hotbar") rows.push([t("inv.gift"), () => setGift(menu.it)]);
               if (tp.slot) rows.push([menu.it.loc === "equipped" ? t("inv.unequip") : t("inv.equip"), () => use(menu.it)]);
               if (stackable(tp) && menu.it.qty > 1) rows.push([t("inv.split"), () => split(menu.it)]);
               if (menu.it.loc !== "equipped") rows.push([t("ec.disassemble"), () => setConfirm({ it: menu.it, kind: "dis" })]);
@@ -300,6 +303,21 @@ export function ItemsWindow({ mode, items, you, zoom, send, toast, onClose }: {
                 <button key={label} className="rounded px-3 py-1 text-left hover:bg-[#e8d3a9]" onClick={() => { f(); setMenu(null); }}>{label}</button>
               ));
             })()}
+          </div>
+        )}
+        {gift && (
+          <div className="rpg-panel fixed left-1/2 top-1/3 z-50 w-[260px] -translate-x-1/2 p-3 text-[12px]" onMouseDown={(e) => e.stopPropagation()}>
+            <b>{t("inv.giftTo", { item: ITEMS[gift.tpl].name, n: gift.qty })}</b>
+            <div className="mt-2 max-h-[200px] overflow-y-auto">
+              {!friends.length && <p className="text-[#8c6642]">{t("inv.giftNone")}</p>}
+              {friends.map((f) => (
+                <button key={f.cid} className="block w-full rounded px-2 py-1 text-left hover:bg-[#e8d3a9]" onClick={() => { send({ t: "friend", op: "gift", cid: f.cid, a: pos(gift) }); setGift(null); }}>
+                  {f.on ? "🟢" : "⚪"} {f.name} <span className="text-[10px] text-[#8c6642]">Lv{f.lv}</span>
+                </button>
+              ))}
+            </div>
+            <p className="mt-1 text-[10px] text-[#8c6642]">{t("inv.giftHint")}</p>
+            <button className="rpg-btn mt-2" onClick={() => setGift(null)}>{t("hud.close")}</button>
           </div>
         )}
         {hovered && !drag && !menu && <Tip it={hovered} items={items} level={level} x={mouse.x} y={mouse.y} zoom={zoom} />}

@@ -129,6 +129,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
           if ((m.ch === "room" || m.ch === "party") && blockedNames.current.has(m.from)) return;
           addChat({ ch: m.ch, from: m.from, text: m.text, at: m.at, to: m.to });
           return;
+        case "tabs": setYou((y) => y && { ...y, tabs: m.n }); return;
         case "social":
           setSoc(m.s);
           blockedNames.current = new Set(m.s.blocked.map((b) => b.name));
@@ -454,7 +455,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
       )}
       {phase === "play" && you && (top === "inventory" || top === "storage") && (
         <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
-          <ItemsWindow mode={top} items={items} you={you} zoom={settings.uiScale / 100} send={(m) => net.current?.send(m)} toast={toast} onClose={() => toggle(top)} />
+          <ItemsWindow mode={top} items={items} you={you} zoom={settings.uiScale / 100} friends={soc.friends} send={(m) => net.current?.send(m)} toast={toast} onClose={() => toggle(top)} />
         </div>
       )}
       {phase === "play" && you && (top === "skills" || top === "job") && (
