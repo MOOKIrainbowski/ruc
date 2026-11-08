@@ -196,7 +196,7 @@ function StatWindow({ stats, you }: { stats: FullStats; you: You }) {
   );
 }
 
-export function CombatHud({ hud, stats, you, settings, items, onSelect }: { hud: HudState; stats: FullStats; you: You; settings: Settings; items: Item[]; onSelect: (i: number) => void }) {
+export function CombatHud({ hud, stats, you, settings, items, compact, onSelect }: { hud: HudState; stats: FullStats; you: You; settings: Settings; items: Item[]; compact?: boolean; onSelect: (i: number) => void }) {
   const [hp, hpMax, mp, mpMax, en, enMax, shield] = hud.v;
   const fx = hud.exhausted ? [...hud.fx, ["exhaust", 0, 1, 0, 0] as FxRow] : hud.fx;
   const buffs = fx.filter((r) => effectDef(r[0])?.buff);
@@ -222,7 +222,7 @@ export function CombatHud({ hud, stats, you, settings, items, onSelect }: { hud:
       <div className="rpg-hudbase" />
       <Hotbar items={items} sel={hud.sel} potion={hud.potion} onSelect={onSelect} />
       <div className="relative flex items-end gap-2.5">
-        <StatWindow stats={stats} you={you} />
+        {!compact && <StatWindow stats={stats} you={you} />}{/* 모바일 작은 화면은 이동 스틱 자리 (P16) */}
         <Orb cur={mp} max={mpMax} kind="mana" label={t("hud.mana")} unused={res === "energy"} />
         <div className="flex flex-col items-center gap-1">
           <div className="flex gap-1.5">

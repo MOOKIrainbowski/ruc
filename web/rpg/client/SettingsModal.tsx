@@ -88,6 +88,7 @@ export default function SettingsModal({ s, onChange, onClose, onCapture, onBug }
           {tab === "keys" && (
             <>
               {row("settings.castMode", choice("castMode", [["quick", t("settings.castMode.quick")], ["indicator", t("settings.castMode.indicator")]]))}
+              {row("settings.touch", choice("touch", [["auto", t("settings.touch.auto")], ["on", t("settings.touch.on")], ["off", t("settings.touch.off")]]))}
               {(Object.keys(ACTIONS_KEYS) as KeyAction[]).map((a) => (
                 <div key={a} className="flex items-center justify-between py-1">
                   <span>{ACTIONS_KEYS[a]}</span>

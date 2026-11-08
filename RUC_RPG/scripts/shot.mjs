@@ -34,7 +34,12 @@ ws.on("message", (m) => {
 const call = (method, params = {}) => new Promise((r) => { const i = ++id; pending.set(i, r); ws.send(JSON.stringify({ id: i, method, params })); });
 await call("Page.enable");
 await call("Runtime.enable");
-await call("Emulation.setDeviceMetricsOverride", { width: 1536, height: 800, deviceScaleFactor: 1, mobile: false });
+// MOBILE=1: 가로 휴대폰 (844×390, 터치) — 모바일 조작 확인 (P16)
+if (process.env.MOBILE) {
+  await call("Emulation.setDeviceMetricsOverride", { width: 844, height: 390, deviceScaleFactor: 2, mobile: true });
+  await call("Emulation.setTouchEmulationEnabled", { enabled: true, maxTouchPoints: 5 });
+  await call("Emulation.setEmulatedMedia", { features: [{ name: "pointer", value: "coarse" }, { name: "hover", value: "none" }] });
+} else await call("Emulation.setDeviceMetricsOverride", { width: 1536, height: 800, deviceScaleFactor: 1, mobile: false });
 await call("Page.navigate", { url });
 await sleep(Number(waitMs));
 if (js) { const r = await call("Runtime.evaluate", { expression: js, awaitPromise: true, returnByValue: true }); console.log("js:", JSON.stringify(r.result?.result?.value ?? r.result?.exceptionDetails?.text)); await sleep(2500); }

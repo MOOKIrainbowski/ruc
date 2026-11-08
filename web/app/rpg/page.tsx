@@ -3,6 +3,9 @@ import { rpgOpen } from "@/lib/rpg";
 import { getSession } from "@/lib/session";
 import RpgGame from "@/rpg/client/RpgGame";
 
+/** 모바일 (P16): 손가락으로 확대되지 않게 */
+export const viewport = { width: "device-width", initialScale: 1, maximumScale: 1, userScalable: false };
+
 export const metadata = {
   title: "RPG 베타",
   description: "러크 RPG 베타 — 브라우저에서 즐기는 2D 픽셀 액션 RPG.",

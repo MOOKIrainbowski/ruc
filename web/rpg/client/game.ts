@@ -1098,8 +1098,27 @@ export class Game {
     return code === k.skillQ ? "Q" : code === k.skillW ? "W" : code === k.skillE ? "E" : code === k.skillR || code === k.skillR2 ? "R" : null;
   }
 
+  /** 모바일 터치 (P16): 가장 가까운 적(260px 안, 없으면 바라보는 쪽 60px)을 마우스 조준점으로 */
+  touchAim() {
+    let best: Ent | undefined;
+    let bd = 260;
+    for (const e of this.ents.values()) {
+      if (e.info.pet || (!e.mob && !this.isFoe(e)) || e.deadMs > 0 || !e.sprite.visible) continue;
+      const d = Math.hypot(e.x - this.me.x, e.y - this.me.y);
+      if (d < bd) { bd = d; best = e; }
+    }
+    const V = [[0, 1], [1, 1], [1, 0], [1, -1], [0, -1], [-1, -1], [-1, 0], [-1, 1]][this.me.dir] ?? [0, 1];
+    const [tx, ty] = best ? [best.x, best.y] : [this.me.x + V[0] * 60, this.me.y + V[1] * 60];
+    this.mouse.sx = this.world.x + tx * this.zoom;
+    this.mouse.sy = this.world.y + ty * this.zoom;
+  }
+  /** 모바일 공격 단추 = 왼쪽 마우스 누르고 있기 */
+  setAttack(on: boolean) {
+    this.mouse.held = on && !this.inputBlocked;
+  }
+
   /** 핫바 고른 칸 우클릭 = 사용 (포션 · 장비는 장착) (§15-2 · D20) */
-  private useHotbar() {
+  useHotbar() {
     const it = this.items.find((i) => i.loc === "hotbar" && i.slot === this.sel);
     if (!it) return;
     if (ITEMS[it.tpl]?.heal && (this.v[12] ?? 0) > 0) return this.toast("포션 재사용 대기 중입니다");

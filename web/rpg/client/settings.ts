@@ -30,6 +30,8 @@ export type Settings = {
   minimapSize: number;
   nameplates: "all" | "party" | "me";
   castMode: "quick" | "indicator";
+  /** 터치 조작 (P16): auto = 손가락 화면이면 */
+  touch: "auto" | "on" | "off";
   volMaster: number;
   volBgm: number;
   volSfx: number;
@@ -38,7 +40,7 @@ export type Settings = {
 
 export const DEFAULT_SETTINGS: Settings = {
   fpsLimit: 60, quality: "medium", graphics: "classic", shadows: true, zoom: 0, shake: true, damageNumbers: true,
-  interfaceScale: 100, uiScale: 100, hudScale: 100, minimapSize: 160, nameplates: "all", castMode: "quick",
+  interfaceScale: 100, uiScale: 100, hudScale: 100, minimapSize: 160, nameplates: "all", castMode: "quick", touch: "auto",
   volMaster: 80, volBgm: 60, volSfx: 80, keys: DEFAULT_KEYS,
 };
 

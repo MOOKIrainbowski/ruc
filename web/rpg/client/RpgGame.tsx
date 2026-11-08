@@ -23,6 +23,7 @@ import { ROOM_NAME, type DungeonState } from "../shared/data/dungeons";
 import type { PartyAd, PartyVitals, PartyView } from "../shared/data/party";
 import { BugWindow, ChatBox, DebugOverlay, GmWindow, captureConsole, logLine, type ChatLine, type ChatMode, type GmData } from "./Ops";
 import { SocialWindow } from "./Social";
+import { RotateHint, TouchControls, useTouch } from "./Touch";
 import { terrAt } from "../shared/data/realm";
 import { TILE } from "../shared/constants";
 import type { SocialView } from "../shared/data/social";
@@ -313,6 +314,12 @@ export default function RpgGame({ dev }: { dev?: string }) {
     if (!hud?.ghost) deadAt.current = 0;
   }, [hud?.ghost]);
 
+  // 모바일 (P16): 터치 조작 · 작은 화면이면 HUD 를 줄임
+  const touch = useTouch(settings.touch);
+  const [vw, setVw] = useState(1920);
+  useEffect(() => { const on = () => setVw(window.innerWidth); on(); window.addEventListener("resize", on); return () => window.removeEventListener("resize", on); }, []);
+  const hudZoom = (settings.hudScale / 100) * (touch && vw < 1100 ? 0.7 : 1);
+
   // 영지 (P14): 초원에서 지금 있는 영지 · 영주 — 들어가면 배너
   const terrDef = hud && world && room.kind === "field" ? terrAt(hud.x, hud.y, world.map.w * TILE, world.map.h * TILE) : undefined;
   const terrHere = terrDef && { name: terrDef.name, owner: soc.realm.terr.find((x) => x.id === terrDef.id)?.owner ?? null };
@@ -406,9 +413,9 @@ export default function RpgGame({ dev }: { dev?: string }) {
         <div className="pointer-events-none absolute inset-0" style={{ zoom: settings.interfaceScale / 100 }}>
           <div className="absolute left-3 top-3">
             <div className="pointer-events-auto">
-              <Minimap map={world.map} overview={world.overview} hud={hud} size={settings.minimapSize} wide={you.prog.job === "scout"} onOpenFull={() => toggle("map")} />
+              <Minimap map={world.map} overview={world.overview} hud={hud} size={touch && vw < 1100 ? Math.min(settings.minimapSize, 110) : settings.minimapSize} wide={you.prog.job === "scout"} onOpenFull={() => toggle("map")} />
             </div>
-            <div style={{ zoom: settings.hudScale / 100 }}>
+            <div style={{ zoom: hudZoom }}>
               <Compass dir={hud.dir} />
               <br />
               {room.kind !== "dungeon" && <ChannelPicker room={room} channels={channels} onPick={(ch) => net.current?.send({ t: "channel", ch })} />}
@@ -417,15 +424,15 @@ export default function RpgGame({ dev }: { dev?: string }) {
             </div>
           </div>
           {dg && room.kind === "dungeon" && <DungeonHud dg={dg.s} hud={hud} at={dg.at} send={send} />}
-          <div className="absolute right-3 top-3" style={{ zoom: settings.hudScale / 100 }}>
+          <div className="absolute right-3 top-3" style={{ zoom: hudZoom }}>
             <TopRight
               fps={hud.fps} ping={ping} you={you} onSettings={() => toggle("settings")}
               bell={<Bell notis={notis} send={send} onRead={(id) => setNotis((l) => l.map((x) => (id === "all" || x.id === id ? { ...x, read: true } : x)))} />}
             />
             <div className="mt-2 flex justify-end"><Tracker states={qs} /></div>
           </div>
-          <div style={{ zoom: settings.hudScale / 100 }} className="absolute inset-0">
-            <CombatHud hud={hud} stats={stats} you={you} settings={settings} items={items} onSelect={(i) => { if (game.current) game.current.sel = i; }} />
+          <div style={{ zoom: hudZoom }} className="absolute inset-0">
+            <CombatHud hud={hud} stats={stats} you={you} settings={settings} items={items} compact={touch && vw < 1100} onSelect={(i) => { if (game.current) game.current.sel = i; }} />
           </div>
           {msg && <div className="rpg-chip absolute bottom-[200px] left-1/2 -translate-x-1/2 whitespace-nowrap">{msg}</div>}
           <ChatBox
@@ -456,6 +463,8 @@ export default function RpgGame({ dev }: { dev?: string }) {
           <BugWindow shot={() => game.current?.screenshot() ?? Promise.resolve(null)} send={send} onClose={() => toggle("bug")} />
         </div>
       )}
+      {phase === "play" && touch && !top && !chatOpen && <TouchControls keys={settings.keys} game={() => game.current} />}
+      {phase === "play" && touch && <RotateHint />}
       {phase === "play" && you && top === "social" && (
         <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
           <SocialWindow you={you} s={soc} send={send} onWhisper={(name) => { toggle("social"); whisperTo(name); }} onClose={() => toggle("social")} />
