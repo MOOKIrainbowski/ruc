@@ -1,5 +1,6 @@
 import { ITEMS, isGear, type Rarity } from "../../shared/data/items";
 import { OUTLINE, Px, refine32 } from "./px";
+import { overrides } from "../assets";
 
 /**
  * 아이템 아이콘 32×32 (§14-7, 16×16 그림 → refine32): 12×12 그림을 가운데에. 팔레트 + 문자열 격자 (§25-1).
@@ -115,6 +116,8 @@ const cache = new Map<string, HTMLCanvasElement>();
 
 /** 템플릿 · 희귀도 → 16×16 캔버스 (희귀도는 장비만 색이 바뀜) */
 export function itemIcon(tpl: string, rarity: Rarity): HTMLCanvasElement {
+  const o = overrides.items.get(tpl); // 진짜 그림 (P17)
+  if (o) return o;
   const t = ITEMS[tpl];
   const gear = !!t && isGear(t);
   const key = `${t?.icon}:${gear ? rarity : ""}`;

@@ -1,3 +1,4 @@
+import { overrides } from "./assets";
 /**
  * 사운드 (§25 · §24, P8): 8/16비트풍 효과음과 맵별 배경음을 파일 없이 WebAudio 로 합성 (DECISIONS D73).
  * 배경음 = 광장(따뜻한 루트) · 초원(경쾌) · 결투장(행진) · 유적(긴장) · 보스. 볼륨은 설정의 전체 × 배경음/효과음.
@@ -35,6 +36,7 @@ function applyVolume() {
 
 /** 설정 (0~100) */
 export function setVolume(master: number, bgmV: number, sfxV: number) {
+  if (music) music.volume = Math.min(1, master * bgmV);
   vol.master = master / 100;
   vol.bgm = bgmV / 100;
   vol.sfx = sfxV / 100;
@@ -119,8 +121,12 @@ export function sfx(name: Sfx) {
   if (now - burst.t > 100) burst = { t: now, n: 0 };
   if (++burst.n > 8) return;
   lastAt.set(name, now);
+  const file = overrides.sfx.get(name); // 진짜 효과음 파일 (P17)
+  if (file) { const a = new Audio(file); a.volume = Math.min(1, vol.master * vol.sfx); void a.play().catch(() => {}); return; }
   SFX[name](c.currentTime + 0.005);
 }
+/** 진짜 배경음 파일 재생기 (P17) */
+let music: HTMLAudioElement | null = null;
 
 // ── 배경음: 8분음표 32칸 패턴을 루프 (lead = 음계 칸 번호, −1 = 쉼) ──────────────
 type Track = { bpm: number; root: number; scale: number[]; lead: number[]; bass: number[]; leadType: OscillatorType; drums?: boolean };
@@ -155,9 +161,21 @@ let nextT = 0;
 /** 배경음 바꾸기 (null = 끔). 같은 곡이면 그대로 */
 export function bgm(name: string | null) {
   if (name === cur) return;
-  cur = name && TRACKS[name] ? name : null;
   clearInterval(timer);
   timer = 0;
+  music?.pause();
+  music = null;
+  const file = name ? overrides.bgm.get(name) : undefined;
+  if (file) {
+    // 파일이 있으면 합성 대신 (P17 에셋 교체)
+    cur = name;
+    music = new Audio(file);
+    music.loop = true;
+    music.volume = Math.min(1, vol.master * vol.bgm);
+    void music.play().catch(() => {});
+    return;
+  }
+  cur = name && TRACKS[name] ? name : null;
   if (cur && ctx?.state === "running") start();
 }
 

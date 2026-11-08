@@ -24,6 +24,7 @@ import type { PartyAd, PartyVitals, PartyView } from "../shared/data/party";
 import { BugWindow, ChatBox, DebugOverlay, GmWindow, captureConsole, logLine, type ChatLine, type ChatMode, type GmData } from "./Ops";
 import { SocialWindow } from "./Social";
 import { RotateHint, TouchControls, useTouch } from "./Touch";
+import { loadAssets } from "./assets";
 import { terrAt } from "../shared/data/realm";
 import { TILE } from "../shared/constants";
 import type { SocialView } from "../shared/data/social";
@@ -195,6 +196,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
             game.current = null;
             sfx("portal");
           }
+          await loadAssets(); // 진짜 그림 · 소리 파일이 있으면 먼저 (P17)
           const { Game, mapOverview } = await import("./game");
           let w = mapCache.get(m.room.kind);
           if (!w) {

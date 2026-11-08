@@ -274,7 +274,7 @@ export type CharacterRow = {
   element: string;
   appearance: Appearance;
   /** 마지막 위치 + HP · 마나 · 기력 (§26-2 실시간 상태) */
-  position: { map: string; x: number; y: number; hp?: number; mp?: number; en?: number } | null;
+  position: { map: string; x: number; y: number; hp?: number; mp?: number; en?: number; fx?: [string, number, number][] } | null;
   settings: Record<string, unknown> | null;
   /** 1차 전직 계열 · 2차 세부 직업 · 원소술사 보조 속성 · 잠재력 */
   job_tier1: string | null;

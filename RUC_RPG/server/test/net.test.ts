@@ -418,3 +418,24 @@ test("P8 핵심 루프 E2E (§4 · §30): 광장 퀘스트 → 우편 → 상점
   await b2.until((m) => m.t === "kicked" && m.reason === "banned");
   for (const c of [a, gm]) c.ws.close();
 });
+
+test("P17 실제 접속: 영약을 마시고 나갔다 다시 들어와도 남은 시간째 이어짐 (D103)", async () => {
+  const c = client("ELIXIR-A");
+  await c.open;
+  await c.until((m) => m.t === "needCreate");
+  c.send({ t: "create", nickname: "영약시험", appearance: ap, element: "fire" });
+  const j = await c.until<Extract<S2C, { t: "joined" }>>((m) => m.t === "joined");
+  c.send({ t: "dev", give: "elixir_power" });
+  const inv = await c.until<Extract<S2C, { t: "inv" }>>((m) => m.t === "inv" && m.items.some((i) => i.tpl === "elixir_power"));
+  const it = inv.items.find((i) => i.tpl === "elixir_power")!;
+  c.send({ t: "item", op: "use", a: [it.loc, it.slot] });
+  await c.until((m) => m.t === "s" && !!m.ev?.some((e) => e[0] === "f" && e[1] === j.you.id && (e[2] as unknown as [string][]).some((r) => r[0] === "elixir_power")));
+  c.ws.close();
+  await new Promise((r) => setTimeout(r, 400));
+  const d = client("ELIXIR-A");
+  await d.open;
+  await d.until((m) => m.t === "joined");
+  const back = await d.until((m) => m.t === "s" && !!m.ev?.some((e) => e[0] === "f" && (e[2] as unknown as [string, number][]).some((r) => r[0] === "elixir_power" && r[1] > 1_700_000)));
+  assert.ok(back, "다시 접속해도 30분 영약이 남아 있음");
+  d.ws.close();
+});

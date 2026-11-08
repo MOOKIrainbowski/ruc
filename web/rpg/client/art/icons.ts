@@ -1,4 +1,5 @@
 import { effectDef } from "../../shared/data/effects";
+import { overrides } from "../assets";
 import { darken, lighten, OUTLINE, Px, refine32 } from "./px";
 
 /**
@@ -129,6 +130,8 @@ const S: Record<string, { pal: Record<string, string>; rows: string[] }> = {
 
 /** 스킬 아이콘 — bg = 속성 · 계열 배경색. 12×12 그림이 없으면 7×7 글리프를 두 배로 (직업 스킬, §10-5) */
 export function skillIcon(id: string, bg = "#5a3b7a"): HTMLCanvasElement {
+  const o = overrides.icons.get(id); // 진짜 그림이 있으면 (P17 에셋 교체)
+  if (o) return o;
   return memo(`sk:${id}:${bg}`, () => {
     const p = new Px(16, 16);
     p.rect(0, 0, 16, 16, OUTLINE);

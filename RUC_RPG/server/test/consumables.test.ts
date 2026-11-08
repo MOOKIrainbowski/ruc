@@ -138,3 +138,21 @@ test("선물: 친구에게만 · 일부 수량 · 받는 사람 우편 + 알림"
   assert.match(S.giftOp(a, { cid: c.char.id, a: slotOf(a, "hp_potion_s") })!, /친구에게만/);
   assert.match(S.giftOp(a, { cid: b.char.id, a: slotOf(a, "hp_potion_s"), n: 99 })!, /수량/);
 });
+
+test("부활 깃털을 쓰러진 파티원 옆에서 쓰면 그 파티원이 HP 30%로 일어남 (P17 · D62)", async () => {
+  const { hooks } = await import("../src/room.ts");
+  const a = mk(field);
+  const b = mk(field);
+  const old = hooks.mates;
+  hooks.mates = (p) => ({ list: [a, b].includes(p) ? [a, b] : [p], leader: a.char.id });
+  b.x = a.x + 20; b.y = a.y;
+  const m = [...field.mobs.values()][0];
+  hit(field, m, b, { base: 1e7, atkRatio: 0, apRatio: 0, cat: "physical", el: null, threat: 0 });
+  assert.equal(b.dead, true);
+  give(a, "revive_feather", 1, "advanced", "test");
+  assert.equal(use(a, slotOf(a, "revive_feather")), null);
+  assert.equal(b.dead, false);
+  assert.equal(b.hp, Math.round(b.st.hp * 0.3));
+  assert.ok(!has(a, "feather"), "자기 버프로 쓰지 않음");
+  hooks.mates = old;
+});

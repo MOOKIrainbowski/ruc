@@ -6,7 +6,7 @@ import {
 import { addEffect, applyHeal, dotDamage, hit, rand, recalc, type HitSpec, type Unit, type World } from "./combat.ts";
 import { audit, inTx, loadItems, saveDurability, saveItems, saveTabs } from "./db.ts";
 import { bookError, readBook, refreshSlots } from "./progress.ts";
-import type { Player } from "./room.ts";
+import { hooks, type Player } from "./room.ts";
 
 /**
  * 아이템 조작 (§14 · §15). 전부 서버가 검증 → 메모리 반영 → 트랜잭션 저장 + 감사 로그 (§14-3).
@@ -198,6 +198,18 @@ function useConsumable(p: Player, it: Item, t: Template): string | null {
   if (u.tab && p.tabs >= STORAGE.maxTabs) return "창고를 더 넓힐 수 없습니다";
   if (u.box && !freeSlot(p, ["hotbar", "inventory"]) && it.qty > 1) return "인벤토리에 빈 칸이 있어야 합니다";
   if (u.fx && !p.room) return "지금은 쓸 수 없습니다";
+  // 부활 깃털 (P17, D62): 근처(6칸)에 쓰러진 파티원이 있으면 그 사람을 HP 30%로 일으킴 — 던전 관전 중인 파티원도
+  const fallen = u.fx?.id === "feather" ? hooks.mates(p).list.find((q) => q !== p && q.dead && q.room === p.room && Math.hypot(q.x - p.x, q.y - p.y) <= 96) : undefined;
+  if (fallen) {
+    const b = [clone(it)];
+    it.qty--;
+    const e = commit(p, "use", it.tpl, b, [it]);
+    if (e) return e;
+    p.room!.revive(fallen, 0.3);
+    sysLine(p, `부활 깃털로 ${fallen.char.nickname}님을 일으켰어요`);
+    sysLine(fallen, `${p.char.nickname}님이 부활 깃털로 일으켜 주었어요`);
+    return null;
+  }
   const before = [clone(it)];
   it.qty--;
   const err = commit(p, "use", it.tpl, before, [it]);

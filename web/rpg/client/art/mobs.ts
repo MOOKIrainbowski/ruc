@@ -1,4 +1,5 @@
 import { Px, hueShift, type C3 } from "./px";
+import { overrides } from "../assets";
 
 /**
  * 몹 32×32 · 8프레임 (§25 몹 규격). 오른쪽을 보는 그림만 그리고 왼쪽은 좌우 반전 (DECISIONS D14).
@@ -358,6 +359,20 @@ export const MOB_PLATE: Record<string, number> = {
 
 /** [오른쪽 4프레임, 왼쪽 4프레임] */
 export function mobFrames(key: string): [HTMLCanvasElement[], HTMLCanvasElement[]] {
+  // 진짜 그림 (P17): 가로 띠 — 프레임 크기 = 높이, 오른쪽을 보는 그림 → 왼쪽은 좌우 반전
+  const strip = overrides.mobs.get(key);
+  if (strip) {
+    const n = Math.max(1, Math.floor(strip.width / strip.height));
+    const cut = (flip: boolean) => Array.from({ length: 8 }, (_, f) => {
+      const c = document.createElement("canvas");
+      c.width = c.height = strip.height;
+      const g = c.getContext("2d")!;
+      if (flip) { g.translate(c.width, 0); g.scale(-1, 1); }
+      g.drawImage(strip, (f % n) * strip.height, 0, strip.height, strip.height, 0, 0, strip.height, strip.height);
+      return c;
+    });
+    return [cut(false), cut(true)];
+  }
   const paint = PAINT[key] ?? slime;
   const r: HTMLCanvasElement[] = [];
   const l: HTMLCanvasElement[] = [];

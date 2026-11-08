@@ -11,7 +11,7 @@ import { USE_RANGE, distToObj, loadMap, prop, type GameMap, type TiledMap } from
 import { blocked } from "../../../web/rpg/shared/movement.ts";
 import type { C2S, ChannelInfo, S2C } from "../../../web/rpg/shared/protocol.ts";
 import { DEV_TICKET_SECRET, verifyTicket, type Ticket } from "../../../web/rpg/shared/ticket.ts";
-import { fxRows, recalc } from "./combat.ts";
+import { fxRows, recalc, addEffect } from "./combat.ts";
 import { createCharacter, findCharacter, savePosition, saveSettings, type CharacterRow } from "./db.ts";
 import { econOp, online as econOnline, sweep, welcome } from "./economy.ts";
 import { give, itemOp, recallTick, sendInv } from "./items.ts";
@@ -157,9 +157,21 @@ dgHooks.toPlaza = (p) => {
 function save(p: Player) {
   saveDirtySkills(p);
   if (!p.room) return;
-  if (p.room.inst) savePosition(p.char.id, { map: "plaza", ...arrival("plaza", "dungeon") });
-  else if (p.dead) savePosition(p.char.id, { map: "plaza", ...maps.plaza.spawn });
-  else savePosition(p.char.id, { map: p.room.kind, x: p.x, y: p.y, hp: Math.round(p.hp), mp: Math.round(p.mp), en: Math.round(p.en) });
+  // 영약 · 부활 깃털처럼 쓰러져도 남는 효과는 남은 시간째 저장 → 다시 접속하면 이어서 (P17, D103)
+  const now = p.room.now;
+  const fx = p.fx.filter((e) => effectDef(e.id)?.keep && e.until - now > 1000).map((e): [string, number, number] => [e.id, Math.round(e.until - now), e.v]);
+  const keep = fx.length ? { fx } : {};
+  if (p.room.inst) savePosition(p.char.id, { map: "plaza", ...arrival("plaza", "dungeon"), ...keep });
+  else if (p.dead) savePosition(p.char.id, { map: "plaza", ...maps.plaza.spawn, ...keep });
+  else savePosition(p.char.id, { map: p.room.kind, x: p.x, y: p.y, hp: Math.round(p.hp), mp: Math.round(p.mp), en: Math.round(p.en), ...keep });
+}
+
+/** 저장해 둔 남는 효과 다시 걸기 (방에 들어간 뒤) */
+function restoreFx(p: Player) {
+  const saved = p.char.position?.fx;
+  if (!p.room || !saved?.length) return;
+  for (const [id, ms, v] of saved) if (effectDef(id)?.keep && ms > 0) addEffect(p.room, p, { id, ms, v }, p);
+  p.char.position = { ...p.char.position!, fx: [] };
 }
 
 function leave(p: Player) {
@@ -220,6 +232,7 @@ function enter(p: Player, kind: Shared) {
   }
   sendNotis(p);
   socialLogin(p);
+  restoreFx(p);
 }
 
 function use(p: Player, oid: number) {
