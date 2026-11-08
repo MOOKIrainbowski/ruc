@@ -20,6 +20,7 @@ const { bossMove } = await import("../src/mobs.ts");
 const { die, hit } = await import("../src/combat.ts");
 const { give, use } = await import("../src/items.ts");
 const { Room, buildPlayer } = await import("../src/room.ts");
+const { decodeSnapshot } = await import("../../../web/rpg/shared/snapshot.ts");
 test.after(() => {
   db.close();
   for (const ext of ["", "-wal", "-shm"]) rmSync(fileURLToPath(new URL(`../data/${process.env.RPG_DB_FILE}${ext}`, import.meta.url)), { force: true });
@@ -48,12 +49,12 @@ D.dgHooks.toPlaza = (p) => { if (p.dead) { p.dead = false; p.hp = p.st.hp; } mov
 
 const ap = { hair: 0, hairColor: 0, skin: 0, eyes: 0 };
 let n = 0;
-const sent = new Map<Player, string[]>();
+const sent = new Map<Player, (string | Buffer)[]>();
 function mk(lv = 1) {
   const c = createCharacter(`pt${++n}`, `파티원${n}`, "fire", ap)!;
   c.level = lv;
-  const out: string[] = [];
-  const p = buildPlayer({ readyState: 1, send: (s: string) => out.push(s) } as never, c.discord_id, c, maps.plaza.spawn.x, maps.plaza.spawn.y);
+  const out: (string | Buffer)[] = [];
+  const p = buildPlayer({ readyState: 1, send: (s: string | Buffer) => out.push(s) } as never, c.discord_id, c, maps.plaza.spawn.x, maps.plaza.spawn.y);
   plaza.add(p);
   players.push(p);
   sent.set(p, out);
@@ -61,9 +62,11 @@ function mk(lv = 1) {
   Q.loadQuestState(p);
   return p;
 }
+/** 보낸 메시지 풀기 — 스냅샷은 바이너리 프레임(D71) */
+const parse = (x: string | Buffer) => (typeof x === "string" ? JSON.parse(x) : decodeSnapshot(x, new Map()));
 /** i 번째 메시지부터 스냅샷에 실린 방 이벤트 */
-const evsSince = (p: Player, i: number): unknown[][] => sent.get(p)!.slice(i).map((x) => JSON.parse(x)).filter((m) => m.t === "s" && m.ev).flatMap((m) => m.ev);
-const msgs = (p: Player, t: string) => sent.get(p)!.map((s) => JSON.parse(s)).filter((m) => m.t === t);
+const evsSince = (p: Player, i: number): unknown[][] => sent.get(p)!.slice(i).map(parse).filter((m) => m.t === "s" && m.ev).flatMap((m) => m.ev);
+const msgs = (p: Player, t: string) => sent.get(p)!.map(parse).filter((m) => m.t === t);
 const lastParty = (p: Player) => msgs(p, "party").at(-1)?.party;
 const claimAll = (p: Player) => { for (const m of listMail(p.char.id, Date.now())) assert.equal(E.claimMail(p, m.id), null); };
 
@@ -246,6 +249,7 @@ test("던전 고목의 유적: 5인 파티 1~10 스테이지 — 정비 · 다�
       boss.hp = boss.st.hp * 0.3;
       mark = sent.get(team[0])!.length;
       step(50);
+      step(50); // 스냅샷은 틱 2번에 한 번
       assert.ok(evsSince(team[0], mark).some((e) => e[0] === "bp"), "HP 가 떨어지면 페이즈 전환");
       if (stage === 10) {
         // 전멸기: 구슬을 못 부수면 남은 구슬마다 최대 체력의 pct

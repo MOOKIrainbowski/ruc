@@ -8,7 +8,12 @@ export const SIM_MS = 1000 / 60;
 export const INPUT_CREDITS_PER_TICK = 3;
 export const INPUT_CREDITS_MAX = 9;
 export const INPUT_QUEUE_MAX = 30;
-export const INTERP_DELAY_MS = 100;
+/** 스냅샷은 틱 2번에 한 번 (10Hz) — 시뮬레이션은 20Hz 그대로 (§29 대역폭, D71). 보간은 스냅샷 1.5개만큼 뒤 */
+export const SNAP_EVERY = 2;
+export const SNAP_MS = TICK_MS * SNAP_EVERY;
+export const INTERP_DELAY_MS = 150;
+/** 관심 영역 (AOI, §29): 내 위치에서 가로 · 세로 이 거리 안의 엔티티만 받음 (4K 화면 · 확대 ×2 보다 넓게) */
+export const AOI = { w: 1000, h: 640 };
 
 /** 캐릭터 프레임 (3등신, 2026-11 개선): 32×40, 발밑 = 위에서 34px */
 export const CHAR_W = 32;

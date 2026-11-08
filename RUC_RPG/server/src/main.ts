@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import { createServer } from "node:http";
 import { WebSocketServer, type WebSocket } from "ws";
-import { expToNext, validNickname } from "../../../web/rpg/shared/character.ts";
+import { validNickname } from "../../../web/rpg/shared/character.ts";
 import { INPUT_QUEUE_MAX, TICK_MS, WS_PORT, type RoomKind } from "../../../web/rpg/shared/constants.ts";
 import { validAppearance } from "../../../web/rpg/shared/data/appearance.ts";
 import { ELEMENTS } from "../../../web/rpg/shared/data/elements.ts";
@@ -12,11 +12,11 @@ import { blocked } from "../../../web/rpg/shared/movement.ts";
 import type { C2S, S2C } from "../../../web/rpg/shared/protocol.ts";
 import { DEV_TICKET_SECRET, verifyTicket, type Ticket } from "../../../web/rpg/shared/ticket.ts";
 import { fxRows, recalc } from "./combat.ts";
-import { createCharacter, findCharacter, savePosition, saveProgress, saveSettings, type CharacterRow } from "./db.ts";
+import { createCharacter, findCharacter, savePosition, saveSettings, type CharacterRow } from "./db.ts";
 import { econOp, online as econOnline, sweep, welcome } from "./economy.ts";
 import { give, itemOp, sendInv } from "./items.ts";
 import { mailCount } from "./db.ts";
-import { changeJob, charBase, equip, saveDirtySkills, sendProg, syncSkills } from "./progress.ts";
+import { changeJob, equip, saveDirtySkills } from "./progress.ts";
 import { loadQuestState, notify, notiOp, questOp, quest, sendNotis, sendQuests, sweepQuests } from "./quests.ts";
 import { Channels, buildPlayer, info, send, type Player, type Room } from "./room.ts";
 import { RUINS } from "../../../web/rpg/shared/data/dungeons.ts";
@@ -25,6 +25,10 @@ import { loadKda } from "./db.ts";
 import { dgHooks, devStage, dungeonOp, dungeonPortal, dungeonRooms, sendTitles, setDungeonMap, titleOp, usePortal } from "./dungeon.ts";
 import { markOp, partyOp, partyTick, partyVitals, rejoin } from "./party.ts";
 import { duelOp, duelTick, who } from "./pvp.ts";
+import { chatOp } from "./chat.ts";
+import { bugOp, gmHooks, gmPanel, isGM, setGmDev } from "./gm.ts";
+import { activeSanction, audit, saveIp } from "./db.ts";
+import { setLevel } from "./progress.ts";
 
 const DEV = process.argv.includes("--dev");
 const SECRET = process.env.RPG_TICKET_SECRET?.trim() || (DEV ? DEV_TICKET_SECRET : "");
@@ -33,6 +37,7 @@ if (!SECRET) {
   process.exit(1);
 }
 const PORT = Number(process.env.PORT) || WS_PORT;
+setGmDev(DEV);
 const ORIGINS = (process.env.RPG_ALLOWED_ORIGINS || "http://localhost:3000,https://ruc-server.vercel.app").split(",").map((s) => s.trim());
 
 const mapFile = (name: string) => loadMap(JSON.parse(readFileSync(new URL(`../../../web/rpg/shared/data/maps/${name}.json`, import.meta.url), "utf8")) as TiledMap);
@@ -86,6 +91,7 @@ function join(p: Player, kind: Shared, ch?: number) {
 /** 방에 넣고 화면 전체(joined)를 보냄 */
 function enterRoom(p: Player, room: Room) {
   p.inputs = [];
+  p.sent.clear(); // 새 화면 — 다음 스냅샷은 시야 안 전부를 전체 줄로
   p.potionLeft = room.inst ? RUINS.potionsPerStage : null;
   room.add(p);
   const others = [...room.players.values(), ...room.mobs.values()].filter((u) => u !== p && !u.dead);
@@ -95,7 +101,7 @@ function enterRoom(p: Player, room: Room) {
     t: "joined",
     you: {
       id: p.id, nickname: p.char.nickname, level: p.char.level, exp: p.char.exp, element: p.char.element, appearance: p.char.appearance,
-      ruc: p.ruc, kda: p.kda, settings: p.char.settings, slots: p.slots, prog: p.prog,
+      ruc: p.ruc, kda: p.kda, settings: p.char.settings, slots: p.slots, prog: p.prog, gm: isGM(p),
     },
     room: { kind: room.kind, ch: room.ch },
     me: p.mover,
@@ -122,6 +128,8 @@ function travel(p: Player, kind: Shared, x: number, y: number) {
   join(p, kind);
 }
 
+gmHooks.travel = (p, kind, x, y) => travel(p, kind as Shared, x, y);
+gmHooks.place = (p, room, x, y) => dgHooks.place(p, room, x, y);
 dgHooks.place = (p, room, x, y) => {
   setPos(p, x, y);
   exit(p);
@@ -175,6 +183,13 @@ function arrival(to: RoomKind, from: string) {
   return { x: Number(prop(o, "ax") ?? o.x), y: Number(prop(o, "ay") ?? o.y + 24) };
 }
 
+/** 로그인 기록: 접속 IP 를 캐릭터 · 감사 로그에 (D46 같은 IP · 부계정 감지) */
+function login(p: Player, ip: string) {
+  p.ip = ip;
+  saveIp(p.char.id, ip);
+  audit(p.char.id, "login", ip, null, null);
+}
+
 /** 접속 직후: 지갑 · 퀘스트 · 알림을 맞추고 방에 들어감 */
 function enter(p: Player, kind: Shared) {
   welcome(p);
@@ -218,10 +233,18 @@ const http = createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "application/json" });
   res.end(JSON.stringify({ ok: true, online: online.size, plaza: worlds.plaza.list(), field: worlds.field.list(), arena: worlds.arena.list(), dungeons: dungeonRooms().length }));
 });
-const wss = new WebSocketServer({ server: http, maxPayload: 8 * 1024 });
+// 버그 제보(스크린샷)만 크게 받음 — 그 밖의 메시지는 8KB 넘으면 버림
+const wss = new WebSocketServer({ server: http, maxPayload: 256 * 1024 });
+/** 접속 IP (D46): 프록시(Caddy) 뒤면 X-Forwarded-For, 아니면 소켓 주소 */
+const ipOf = (req: import("node:http").IncomingMessage) => {
+  const sock = req.socket.remoteAddress ?? "";
+  const fwd = String(req.headers["x-forwarded-for"] ?? "").split(",")[0].trim();
+  return fwd && /^(::1|127\.|::ffff:127\.)/.test(sock) ? fwd : sock;
+};
 
 wss.on("connection", (ws, req) => {
   if (!DEV && !ORIGINS.includes(req.headers.origin || "")) return ws.close(4003, "origin");
+  const ip = ipOf(req);
   let ticket: Ticket | null = null;
   let player: Player | null = null;
   const reply = (m: S2C) => ws.readyState === 1 && ws.send(JSON.stringify(m));
@@ -237,8 +260,10 @@ wss.on("connection", (ws, req) => {
     if (now - windowStart > 1000) { windowStart = now; count = 0; }
     if (++count > 150) return kick("rate");
 
+    const text = String(raw);
+    if (text.length > 8192 && !text.startsWith('{"t":"bug"')) return;
     let m: C2S;
-    try { m = JSON.parse(String(raw)); } catch { return; }
+    try { m = JSON.parse(text); } catch { return; }
     if (!m || typeof m !== "object") return;
 
     if (m.t === "hello") {
@@ -246,6 +271,8 @@ wss.on("connection", (ws, req) => {
       ticket = verifyTicket(m.ticket, SECRET);
       if (!ticket) return kick("auth");
       clearTimeout(helloTimer);
+      // 차단된 계정 (§28 GM ban)
+      if (activeSanction(ticket.sub, "ban")) { reply({ t: "kicked", reason: "banned" }); return void ws.close(); }
       // 같은 계정이 다시 들어오면 기존 연결을 끊음 (§2-3)
       const old = online.get(ticket.sub);
       if (old) { send(old, { t: "kicked", reason: "dup" }); leave(old); old.ws.close(); }
@@ -253,6 +280,7 @@ wss.on("connection", (ws, req) => {
       if (!char) return reply({ t: "needCreate", defaultName: ticket.name.replace(/[^가-힣a-zA-Z0-9_]/g, "").slice(0, 12) });
       const made = makePlayer(ws, ticket, char);
       player = made.p;
+      login(player, ip);
       online.set(ticket.sub, player);
       enter(player, made.kind);
       return;
@@ -265,6 +293,7 @@ wss.on("connection", (ws, req) => {
       const char = findCharacter(ticket.sub) || createCharacter(ticket.sub, m.nickname, m.element, m.appearance);
       if (!char) return reply({ t: "createError", msg: "이미 쓰는 닉네임입니다" });
       player = makePlayer(ws, ticket, char).p;
+      login(player, ip);
       online.set(ticket.sub, player);
       enter(player, "plaza");
       return;
@@ -287,7 +316,7 @@ wss.on("connection", (ws, req) => {
       }
       case "ping":
         player.rtt = Math.max(0, Math.min(1000, Number(m.r) || 0));
-        return reply({ t: "pong", c: Number(m.c) || 0 });
+        return reply({ t: "pong", c: Number(m.c) || 0, tk: tickMs });
       case "settings":
         if (m.data && typeof m.data === "object" && JSON.stringify(m.data).length < 4000) {
           player.char.settings = m.data;
@@ -309,6 +338,13 @@ wss.on("connection", (ws, req) => {
       }
       case "who":
         return who(player);
+      case "chat":
+      case "bug":
+      case "gm": {
+        const err = m.t === "chat" ? chatOp(player, m) : m.t === "bug" ? bugOp(player, m) : gmPanel(player, m.bug);
+        if (err) reply({ t: "error", msg: err });
+        return;
+      }
       case "use":
         return use(player, Number(m.oid));
       case "job": {
@@ -341,23 +377,7 @@ wss.on("connection", (ws, req) => {
       }
       case "dev": {
         if (!DEV) return;
-        if (m.lv) {
-          // 개발용 레벨 지정 (GM 도구 /gm level 은 P8)
-          const c = player.char;
-          c.level = Math.max(1, Math.min(40, Math.round(Number(m.lv)) || 1));
-          c.exp = Math.min(c.exp, expToNext(c.level) - 1);
-          saveProgress(c.id, c.level, c.exp);
-          player.lv = c.level;
-          player.base = charBase(player);
-          syncSkills(player);
-          recalc(player);
-          player.hp = player.st.hp;
-          player.mp = player.st.mana;
-          player.en = player.st.energy;
-          player.room?.ev.push(["lv", player.id, c.level]);
-          player.out.push(["xp", 0, c.exp, c.level]);
-          return sendProg(player);
-        }
+        if (m.lv) return setLevel(player, Number(m.lv)); // 운영에서는 GM /gm level
         if (m.give && Object.hasOwn(ITEMS, m.give)) {
           const r: Rarity = RARITIES.includes(m.rarity as Rarity) ? (m.rarity as Rarity) : ITEMS[m.give].rarity ?? "common";
           const err = give(player, m.give, Math.max(1, Math.min(64, Number(m.n) || 1)), r, "dev");
@@ -383,8 +403,11 @@ wss.on("connection", (ws, req) => {
 // 20Hz 틱 (§2-2). setInterval 은 밀리면 따라잡지 않으므로 다음 목표 시각으로 맞춥니다.
 let next = performance.now();
 let tickCount = 0;
+/** 마지막 틱 처리 시간 (ms) — F3 오버레이 '틱 지연' */
+let tickMs = 0;
 function loop() {
   const now = Date.now();
+  const t0 = performance.now();
   for (const w of Object.values(worlds)) for (const r of w.rooms) r.tick(now);
   for (const r of dungeonRooms()) r.tick(now);
   duelTick(now);
@@ -397,6 +420,7 @@ function loop() {
   }
   if (tickCount % 600 === 0) for (const p of online.values()) save(p);
   if (tickCount % 1200 === 1) { sweep(now); sweepQuests(now); } // 1분마다: 유저 상점 만료 반환 · 30일 지난 우편 정리
+  tickMs = Math.round((performance.now() - t0) * 100) / 100;
   next += TICK_MS;
   setTimeout(loop, Math.max(0, next - performance.now()));
 }

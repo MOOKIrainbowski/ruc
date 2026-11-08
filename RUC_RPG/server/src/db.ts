@@ -211,6 +211,28 @@ CREATE TABLE IF NOT EXISTS rpg_character_titles (
   created_at   INTEGER NOT NULL,
   PRIMARY KEY (character_id, title_id)
 );
+-- P8 운영 (§28): 제재(차단 · 채팅 금지, until 0 = 영구) · 버그 제보(스크린샷은 작은 JPEG data URL)
+CREATE TABLE IF NOT EXISTS rpg_sanctions (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  discord_id TEXT NOT NULL,
+  kind       TEXT NOT NULL,
+  until      INTEGER NOT NULL,
+  reason     TEXT NOT NULL DEFAULT '',
+  by_id      INTEGER,
+  lifted     INTEGER NOT NULL DEFAULT 0,
+  created_at INTEGER NOT NULL
+);
+CREATE INDEX IF NOT EXISTS rpg_sanctions_who ON rpg_sanctions (discord_id, kind);
+CREATE TABLE IF NOT EXISTS rpg_bug_reports (
+  id         INTEGER PRIMARY KEY AUTOINCREMENT,
+  char_id    INTEGER NOT NULL,
+  name       TEXT NOT NULL,
+  place      TEXT NOT NULL,
+  text       TEXT NOT NULL,
+  log        TEXT NOT NULL,
+  img        TEXT,
+  created_at INTEGER NOT NULL
+);
 -- (예약 §21-4) 길드 · 영지 · 국가 — 베타에서는 비워 둠
 CREATE TABLE IF NOT EXISTS rpg_guilds (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL);
 CREATE TABLE IF NOT EXISTS rpg_territories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL);
@@ -219,7 +241,7 @@ CREATE TABLE IF NOT EXISTS rpg_nations (id INTEGER PRIMARY KEY AUTOINCREMENT, na
 
 // 단계마다 늘어난 캐릭터 칸 — 이미 있는 DB 에도 붙임 (P4: 전직 · 잠재력, P7: 칭호)
 const charCols = new Set((db.prepare("PRAGMA table_info(rpg_characters)").all() as { name: string }[]).map((c) => c.name));
-for (const [col, def] of [["job_tier1", "TEXT"], ["job_tier2", "TEXT"], ["job_sub", "TEXT"], ["potential_phys", "REAL NOT NULL DEFAULT 10"], ["potential_mag", "REAL NOT NULL DEFAULT 10"], ["title_id", "TEXT"]])
+for (const [col, def] of [["job_tier1", "TEXT"], ["job_tier2", "TEXT"], ["job_sub", "TEXT"], ["potential_phys", "REAL NOT NULL DEFAULT 10"], ["potential_mag", "REAL NOT NULL DEFAULT 10"], ["title_id", "TEXT"], ["last_ip", "TEXT"]])
   if (!charCols.has(col)) db.exec(`ALTER TABLE rpg_characters ADD COLUMN ${col} ${def}`);
 
 export type CharacterRow = {
@@ -241,6 +263,8 @@ export type CharacterRow = {
   potential_mag: number;
   /** 고른 칭호 (TITLES id) */
   title_id: string | null;
+  /** 마지막 접속 IP (D46 같은 IP 감지 — 감사 로그용) */
+  last_ip: string | null;
 };
 
 type Raw = Omit<CharacterRow, "appearance" | "position" | "settings"> & { appearance: string; position: string | null; settings: string | null };
@@ -519,3 +543,22 @@ export const setTitle = (char: number, id: string | null) => qTitleSet.run(id, c
 const qBroadcastKind = db.prepare("SELECT 1 AS x FROM rpg_broadcasts WHERE kind = ? LIMIT 1");
 export const broadcastExists = (kind: string) => !!qBroadcastKind.get(kind);
 
+
+// ── 운영 (P8, §28): 제재 · 버그 제보 · 접속 IP ─────────────────────────
+export type Sanction = { id: number; discord_id: string; kind: "ban" | "mute"; until: number; reason: string };
+const qSanction = db.prepare("SELECT * FROM rpg_sanctions WHERE discord_id = ? AND kind = ? AND lifted = 0 AND (until = 0 OR until > ?) ORDER BY id DESC LIMIT 1");
+const qSanctionAdd = db.prepare("INSERT INTO rpg_sanctions (discord_id, kind, until, reason, by_id, created_at) VALUES (?, ?, ?, ?, ?, ?)");
+const qSanctionLift = db.prepare("UPDATE rpg_sanctions SET lifted = 1 WHERE discord_id = ? AND kind = ? AND lifted = 0");
+/** 지금 걸려 있는 제재 (없으면 null) */
+export const activeSanction = (discordId: string, kind: "ban" | "mute", now = Date.now()) => (qSanction.get(discordId, kind, now) as Sanction | undefined) ?? null;
+export const addSanction = (discordId: string, kind: "ban" | "mute", until: number, reason: string, by: number | null) => qSanctionAdd.run(discordId, kind, until, reason, by, Date.now());
+export const liftSanction = (discordId: string, kind: "ban" | "mute") => qSanctionLift.run(discordId, kind).changes > 0;
+
+const qBugAdd = db.prepare("INSERT INTO rpg_bug_reports (char_id, name, place, text, log, img, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)");
+const qBugs = db.prepare("SELECT id, char_id, name, place, text, log, img, created_at FROM rpg_bug_reports ORDER BY id DESC LIMIT ?");
+export type BugRow = { id: number; char_id: number; name: string; place: string; text: string; log: string; img: string | null; created_at: number };
+export const addBug = (b: Omit<BugRow, "id" | "created_at">) => Number(qBugAdd.run(b.char_id, b.name, b.place, b.text, b.log, b.img, Date.now()).lastInsertRowid);
+export const listBugs = (n: number) => qBugs.all(n) as BugRow[];
+
+const qIp = db.prepare("UPDATE rpg_characters SET last_ip = ? WHERE id = ?");
+export const saveIp = (id: number, ip: string) => qIp.run(ip, id);

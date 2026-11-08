@@ -21,13 +21,16 @@ import { Bell, Dialogue, Journal, QuestPop, Toasts, Tracker, type BoardData, typ
 import { AskPrompt, Banner, DungeonHud, GhostOverlay, PartyFrames, PartyWindow, PingWheel, Scoreboard, type Ask, type Who } from "./Party";
 import { ROOM_NAME, type DungeonState } from "../shared/data/dungeons";
 import type { PartyAd, PartyVitals, PartyView } from "../shared/data/party";
+import { BugWindow, ChatBox, DebugOverlay, GmWindow, captureConsole, logLine, type ChatLine, type GmData } from "./Ops";
+import { CHAT } from "../shared/data/chat";
+import { bgm, setVolume, sfx, unlock } from "./sound";
 import SettingsModal from "./SettingsModal";
 import { loadLocal, mergeSettings, saveLocal, type Settings } from "./settings";
 
 type Phase = "loading" | "create" | "play" | "closed";
-type Popup = "settings" | "map" | "inventory" | "storage" | "journal" | "dialogue" | "party" | Place;
+type Popup = "settings" | "map" | "inventory" | "storage" | "journal" | "dialogue" | "party" | "gm" | "bug" | Place;
 /** 열려 있으면 게임 입력을 막는 팝업 */
-const BLOCKING: Popup[] = ["settings", "inventory", "storage", "skills", "job", "mail", "shop", "market", "forge", "alchemy", "journal", "dialogue", "party"];
+const BLOCKING: Popup[] = ["settings", "inventory", "storage", "skills", "job", "mail", "shop", "market", "forge", "alchemy", "journal", "dialogue", "party", "gm", "bug"];
 /** 창이 열릴 때 서버에서 받아 올 목록 */
 const FETCH: Partial<Record<Place, string>> = { mail: "mail", shop: "shop", market: "market" };
 
@@ -85,6 +88,14 @@ export default function RpgGame({ dev }: { dev?: string }) {
   const [banner, setBanner] = useState<{ text: string; at: number; ms: number } | null>(null);
   const [boardOpen, setBoardOpen] = useState(false);
   const deadAt = useRef(0);
+  // 채팅 · GM 창 · F3 (P8)
+  const [chat, setChat] = useState<ChatLine[]>([]);
+  const [chatOpen, setChatOpen] = useState(false);
+  const [chatParty, setChatParty] = useState(false);
+  const [gm, setGm] = useState<GmData>({});
+  const [debug, setDebug] = useState(false);
+  const chatKey = useRef(0);
+  const addChat = useCallback((l: Omit<ChatLine, "key" | "at"> & { at?: number }) => setChat((c) => [...c, { at: Date.now(), ...l, key: ++chatKey.current }].slice(-CHAT.keep)), []);
   /** 파티원 엔티티 id · 파티 여부 — 맵을 옮겨 새로 만든 Game 에도 바로 넣음 */
   const social = useRef<{ ids: number[]; inParty: boolean }>({ ids: [], inParty: false });
   const toast = useCallback((text: string) => {
@@ -106,7 +117,9 @@ export default function RpgGame({ dev }: { dev?: string }) {
         case "createError": setCreateErr(m.msg); return;
         case "kicked": setMsg(t(`kicked.${m.reason}` as StrKey)); setPhase("closed"); return;
         case "channels": setChannels(m.list); return;
-        case "error": toast(m.msg); return;
+        case "error": toast(m.msg); logLine(`[안내] ${m.msg}`); return;
+        case "chat": addChat({ ch: m.ch, from: m.from, text: m.text, at: m.at }); return;
+        case "gm": setGm((g) => ({ ...g, ...m })); return;
         case "stats": setStats(m.s); game.current?.onMessage(m); return;
         case "ruc":
           if (game.current) game.current.you.ruc = m.ruc;
@@ -119,7 +132,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
           marks.current = m.active.flatMap((a) => QUESTS[a.id]?.obj.flatMap((o, i) => (o.type === "talk" && (a.prog[i] ?? 0) < o.n && o.target ? [o.target] : [])) ?? []);
           game.current?.setNpcMarks(marks.current);
           return;
-        case "qpop": setQpop({ kind: m.kind, title: m.title, text: m.text, at: Date.now() }); return;
+        case "qpop": setQpop({ kind: m.kind, title: m.title, text: m.text, at: Date.now() }); if (m.kind === "done") sfx("quest"); return;
         case "quest": setBoard(m.data); return;
         case "uqp": setBoard((b) => b && { ...b, taken: b.taken.map((r) => (r.id === m.id ? { ...r, prog: m.prog } : r)) }); return;
         case "notis": setNotis(m.list.filter((x) => NOTI_KINDS.includes(x.kind))); return;
@@ -128,6 +141,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
           if (m.toast) {
             const key = m.n.id;
             setToasts((l) => [...l, { key, text: m.n.text }].slice(-4));
+            sfx("ui");
             setTimeout(() => setToasts((l) => l.filter((x) => x.key !== key)), 4000);
           }
           return;
@@ -143,6 +157,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
         case "dg": setDg(m.s ? { s: m.s, at: Date.now() } : null); if (game.current) game.current.bossId = m.s?.boss?.id ?? 0; return;
         case "mark": game.current?.addPing(m.k, m.x, m.y, m.from); return;
         case "econ":
+          if (m.view === "enhanced") { const r = (m.data as { result: string }).result; sfx(r === "ok" ? "ok" : r === "boom" ? "boom" : "fail"); }
           setEcon((e) => ({ ...e, [m.view]: m.view === "enhanced" || m.view === "recombined" ? { ...(m.data as object), at: Date.now() } : m.data }));
           return;
         case "joined": {
@@ -157,6 +172,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
           if (game.current) {
             game.current.destroy();
             game.current = null;
+            sfx("portal");
           }
           const { Game, mapOverview } = await import("./game");
           let w = mapCache.get(m.room.kind);
@@ -169,6 +185,8 @@ export default function RpgGame({ dev }: { dev?: string }) {
           setWorld(w);
           const g = new Game(w.map, m.room.kind, n, m.you, m.me, s, m.stats, m.items);
           g.onToast = toast;
+          g.onChat = (ch, text) => addChat({ ch, from: "", text });
+          g.debug = debugRef.current;
           g.onBanner = (text, ms) => setBanner({ text, at: Date.now(), ms });
           g.onXp = (_, exp, level) => setYou((y) => y && { ...y, exp, level });
           g.onItems = setItems;
@@ -239,6 +257,19 @@ export default function RpgGame({ dev }: { dev?: string }) {
     return () => clearInterval(id);
   }, [phase]);
 
+  // 소리 (P8): 볼륨 · 첫 입력 때 켜기 · 맵(보스)별 배경음 · 콘솔 오류를 버그 제보 로그로
+  useEffect(() => setVolume(settings.volMaster, settings.volBgm, settings.volSfx), [settings.volMaster, settings.volBgm, settings.volSfx]);
+  useEffect(() => {
+    captureConsole();
+    const on = () => unlock();
+    window.addEventListener("pointerdown", on);
+    window.addEventListener("keydown", on);
+    return () => { window.removeEventListener("pointerdown", on); window.removeEventListener("keydown", on); bgm(null); };
+  }, []);
+  useEffect(() => { bgm(phase === "play" ? (dg?.s.boss ? "boss" : room.kind) : null); }, [phase, room.kind, dg?.s.boss]);
+  const debugRef = useRef(false);
+  useEffect(() => { debugRef.current = debug; if (game.current) game.current.debug = debug; }, [debug]);
+
   // 설정 반영 · 저장 (서버는 0.5초 몰아서)
   useEffect(() => {
     game.current?.applySettings(settings);
@@ -277,6 +308,9 @@ export default function RpgGame({ dev }: { dev?: string }) {
     if (phase !== "play") return;
     const down = (e: KeyboardEvent) => {
       if (capturing || (e.target as HTMLElement)?.closest?.("input, textarea")) return;
+      if (e.code === settings.keys.debug) { e.preventDefault(); setDebug((d) => !d); return; }
+      if (e.code === settings.keys.chat && !popups.some((p) => BLOCKING.includes(p))) { e.preventDefault(); setChatOpen(true); return; }
+      if (e.code === settings.keys.gm && you?.gm) { e.preventDefault(); toggle("gm"); net.current?.send({ t: "gm" }); return; }
       if (e.code === "Escape") {
         e.preventDefault();
         setPopups((s) => (s.length ? s.slice(0, -1) : ["settings"]));
@@ -306,7 +340,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
     return () => { window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); };
-  }, [phase, capturing, settings.keys.map, settings.keys.inventory, settings.keys.storage, settings.keys.skills, settings.keys.journal, settings.keys.party, settings.keys.board, popups, toggle, room.kind, toast]);
+  }, [phase, capturing, settings.keys, popups, toggle, room.kind, toast, you?.gm]);
 
   const top = popups[popups.length - 1];
   const send = useCallback((m: Parameters<Net["send"]>[0]) => net.current?.send(m), []);
@@ -359,6 +393,8 @@ export default function RpgGame({ dev }: { dev?: string }) {
             <CombatHud hud={hud} stats={stats} you={you} settings={settings} items={items} onSelect={(i) => { if (game.current) game.current.sel = i; }} />
           </div>
           {msg && <div className="rpg-chip absolute bottom-[200px] left-1/2 -translate-x-1/2 whitespace-nowrap">{msg}</div>}
+          <ChatBox lines={chat} open={chatOpen} party={chatParty} onSend={(text) => send({ t: "chat", text })} onClose={() => setChatOpen(false)} onToggleParty={() => setChatParty((v) => !v)} />
+          {hud.dbg && <DebugOverlay d={hud.dbg} fps={hud.fps} />}
           {hud.dead > 0 && !hud.ghost && <DeathOverlay ms={hud.dead} arena={hud.deadKind === "arena"} />}
           {hud.ghost && <GhostOverlay dg={dg?.s ?? null} since={deadAt.current || Date.now()} send={send} />}
           {ask?.kind === "duel" && <AskPrompt ask={ask} send={send} onClose={() => setAsk(null)} />}
@@ -370,6 +406,16 @@ export default function RpgGame({ dev }: { dev?: string }) {
       {phase === "play" && ask?.kind === "dungeon" && (
         <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
           <AskPrompt ask={ask} send={send} onClose={() => setAsk(null)} />
+        </div>
+      )}
+      {phase === "play" && top === "gm" && (
+        <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
+          <GmWindow data={gm} send={send} onClose={() => toggle("gm")} />
+        </div>
+      )}
+      {phase === "play" && top === "bug" && (
+        <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
+          <BugWindow shot={() => game.current?.screenshot() ?? Promise.resolve(null)} send={send} onClose={() => toggle("bug")} />
         </div>
       )}
       {phase === "play" && you && top === "party" && (
@@ -434,7 +480,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
         <div key={notice.at} className="rpg-notice pointer-events-none absolute left-1/2 top-16 -translate-x-1/2 whitespace-nowrap text-[13px]">{notice.text}</div>
       )}
       {phase === "play" && top === "settings" && (
-        <SettingsModal s={settings} onChange={setSettings} onClose={() => toggle("settings")} onCapture={setCapturing} />
+        <SettingsModal s={settings} onChange={setSettings} onClose={() => toggle("settings")} onCapture={setCapturing} onBug={() => setPopups((s) => [...s.filter((x) => x !== "settings"), "bug"])} />
       )}
     </div>
   );

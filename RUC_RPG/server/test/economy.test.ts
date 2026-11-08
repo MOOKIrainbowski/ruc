@@ -253,7 +253,8 @@ test("복사 방지: 세 사람이 무작위 경제 조작 400번 (같은 요청
     { status: string; seller_id: number; buyer_id: number; owner_id: number; location: string }[];
   assert.ok(rows.length > 5, `거래 ${rows.length}`);
   for (const r of rows) {
-    if (r.status === "sold") assert.equal(r.owner_id, r.buyer_id);
+    // 팔린 물건은 에스크로를 떠남 — 산 사람이 그 묶음(같은 UUID)을 다른 거래의 대가로 다시 낼 수 있어서 주인이 바뀌는 건 정상
+    if (r.status === "sold") assert.ok(r.owner_id === r.buyer_id || r.location !== "escrow", JSON.stringify(r));
     else if (r.status === "open") assert.deepEqual([r.owner_id, r.location], [r.seller_id, "escrow"]);
     else assert.equal(r.owner_id, r.seller_id);
   }

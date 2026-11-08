@@ -7,7 +7,7 @@ import { ACTIONS_KEYS, DEFAULT_KEYS, keyLabel, type KeyAction, type Settings } f
 type Tab = "screen" | "ui" | "keys" | "sound";
 
 /** 설정 팝업 (§24). Esc · X 로 닫힘 — Esc 는 RpgGame 이 처리하고, 키 입력 대기 중이면 여기서 먼저 가로챕니다. */
-export default function SettingsModal({ s, onChange, onClose, onCapture }: { s: Settings; onChange: (s: Settings) => void; onClose: () => void; onCapture: (on: boolean) => void }) {
+export default function SettingsModal({ s, onChange, onClose, onCapture, onBug }: { s: Settings; onChange: (s: Settings) => void; onClose: () => void; onCapture: (on: boolean) => void; onBug: () => void }) {
   const [tab, setTab] = useState<Tab>("screen");
   const [wait, setWait] = useState<KeyAction | null>(null);
   const [note, setNote] = useState("");
@@ -107,8 +107,13 @@ export default function SettingsModal({ s, onChange, onClose, onCapture }: { s: 
               {row("settings.volMaster", slider("volMaster", 0, 100, 5))}
               {row("settings.volBgm", slider("volBgm", 0, 100, 5))}
               {row("settings.volSfx", slider("volSfx", 0, 100, 5))}
+              <p className="mt-1 text-[11px] text-[#8c6642]">{t("settings.soundNote")}</p>
             </>
           )}
+          <div className="mt-3 flex items-center justify-between border-t border-[#d8c19a] pt-2">
+            <span className="text-[11px] text-[#8c6642]">{t("bug.hint")}</span>
+            <button className="rpg-btn" onClick={onBug}>{t("bug.button")}</button>
+          </div>
         </div>
       </div>
     </div>

@@ -333,3 +333,47 @@ test("던전 데이터 (§20-3): 10스테이지 · 5 · 10 보스(페이즈 2 ·
     assert.ok(!blocked(m.collider, m.spawn.x, m.spawn.y), `${n} 시작 위치`);
   }
 });
+
+test("스냅샷 프레임 (D71): 델타 레코드 왕복 · 안 바뀐 줄은 0바이트 · 시야 밖 · mover 압축 왕복", async () => {
+  const { diffRows, frame, readFrame, decodeSnapshot } = await import("./snapshot.ts");
+  const { packMover, unpackMover } = await import("./movement.ts");
+  type Row = [number, number, number, number, number, number, number];
+  const sent = new Map<number, Row>();
+  const got = new Map<number, Row>();
+  const a: Row = [70001, 1700, 900, 3, 1, 1000, 500];
+  const b: Row = [5, 10, 20, 0, 0, 999, 0];
+  let recs = diffRows(sent, [a, b]);
+  assert.equal(recs.length, 30, "처음은 전체 줄 15바이트 × 2");
+  let f = readFrame(frame('{"t":"s"}', recs), got);
+  assert.deepEqual(f.rows, [a, b]);
+  assert.equal(diffRows(sent, [a, b]).length, 0, "안 바뀌면 아무것도 안 보냄");
+  const a2: Row = [70001, 1690, 905, 3, 1, 1000, 500];
+  recs = diffRows(sent, [a2, b]);
+  assert.equal(recs.length, 7, "위치만 바뀌면 7바이트");
+  f = readFrame(frame("{}", recs), got);
+  assert.deepEqual(f.rows, [a2]);
+  const a3: Row = [70001, 1400, 905, 4, 0, 800, 500];
+  f = readFrame(frame("{}", diffRows(sent, [a3])), got);
+  assert.deepEqual(f.rows, [a3], "크게 움직이거나 다른 칸이 바뀌면 전체 줄");
+  assert.deepEqual(f.gone, [5], "빠진 엔티티는 시야 밖 레코드");
+  assert.deepEqual([...got.keys()], [70001]);
+  const m = newMover(123.456789, 77.25, { stamina: 100, moveSpeed: 100, endurance: 10, atkSpeed: 100 });
+  m.exhausted = true;
+  m.mvx = 1 / 3;
+  assert.deepEqual(unpackMover(packMover(m)), m, "mover 왕복 — 실수 그대로 (D11)");
+  const s = decodeSnapshot(frame(JSON.stringify({ t: "s", st: 5, ack: { seq: 9, m: packMover(m) }, v: [1, 2] }), new Uint8Array()), new Map());
+  assert.equal(s.ack.seq, 9);
+  assert.deepEqual(s.ack.m, m);
+});
+
+test("채팅 (§28): 욕설은 길이 그대로 * — 띄어 쓰거나 기호를 끼워도 걸림, 평범한 말은 그대로", async () => {
+  const { cleanChat, filterChat, CHAT } = await import("./data/chat.ts");
+  assert.equal(filterChat("안녕 시발 반가워"), "안녕 ** 반가워");
+  assert.equal(filterChat("씨.발 ㅅ ㅂ"), "*** ***");
+  assert.equal(filterChat("Fuck you"), "**** you");
+  assert.equal(filterChat("시발점에서 출발"), "**점에서 출발", "기본 목록은 단순 일치 — 오탐은 목록으로 조정");
+  assert.equal(filterChat("던전 같이 가요"), "던전 같이 가요");
+  assert.equal(cleanChat("  a\n\nb   c "), "a b c");
+  assert.equal(cleanChat("x".repeat(500)).length, CHAT.maxLen);
+  assert.equal(cleanChat(42), "");
+});

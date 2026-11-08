@@ -1,5 +1,6 @@
 import { WS_PORT } from "../shared/constants";
-import type { C2S, S2C } from "../shared/protocol";
+import type { C2S, EntityRow, S2C } from "../shared/protocol";
+import { decodeSnapshot } from "../shared/snapshot";
 
 /** 게임 서버 연결. 티켓 발급 → WSS 접속 → hello. 핑은 2초마다, 최근 5회 평균 (§2-2). */
 export class Net {
@@ -8,6 +9,12 @@ export class Net {
   /** 입력 순번 — 맵 · 채널을 옮겨도 이어짐 (서버 lastSeq 와 맞춤, DECISIONS D12) */
   seq = 0;
   private samples: number[] = [];
+  /** 받은 엔티티 줄 (스냅샷 델타를 풀 때 기준, D71) — 방에 들어갈 때(joined) 비움 */
+  private rows = new Map<number, EntityRow>();
+  /** 받은 바이트 (F3 디버그 오버레이 — 하향 대역폭) */
+  bytes = 0;
+  /** 서버 틱 처리 시간(ms, 퐁에 실려 옴) */
+  tickMs = 0;
   private pingTimer = 0;
   onMessage: (m: S2C) => void = () => {};
   onClose: (code: number) => void = () => {};
@@ -18,14 +25,22 @@ export class Net {
     const { ticket } = await res.json();
     const url = process.env.NEXT_PUBLIC_RPG_WS_URL || `ws://${location.hostname}:${WS_PORT}`;
     const ws = new WebSocket(url);
+    ws.binaryType = "arraybuffer";
     this.ws = ws;
     await new Promise<void>((ok, fail) => {
       ws.onopen = () => ok();
       ws.onerror = () => fail(new Error("게임 서버에 연결하지 못했습니다"));
     });
     ws.onmessage = (e) => {
+      if (typeof e.data !== "string") {
+        this.bytes += (e.data as ArrayBuffer).byteLength;
+        return this.onMessage(decodeSnapshot(e.data as ArrayBuffer, this.rows));
+      }
+      this.bytes += e.data.length;
       const m = JSON.parse(e.data) as S2C;
+      if (m.t === "joined") this.rows.clear();
       if (m.t === "pong") {
+        this.tickMs = m.tk ?? 0;
         this.samples = [...this.samples.slice(-4), performance.now() - m.c];
         this.rtt = Math.round(this.samples.reduce((a, b) => a + b, 0) / this.samples.length);
         return;

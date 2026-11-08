@@ -1,6 +1,6 @@
-import { Application, Container, Graphics, Rectangle, Sprite, Text, Texture, TextureSource } from "pixi.js";
+import { Application, Container, CullerPlugin, Graphics, Rectangle, Sprite, Text, Texture, TextureSource, UPDATE_PRIORITY, extensions } from "pixi.js";
 import { castMs, type FullStats } from "../shared/combat";
-import { CHAR_FEET, CHAR_H, CHAR_W, INTERP_DELAY_MS, SIM_MS, TILE, type RoomKind } from "../shared/constants";
+import { CHAR_FEET, CHAR_H, CHAR_W, INTERP_DELAY_MS, SIM_MS, SNAP_MS, TILE, type RoomKind } from "../shared/constants";
 import type { Appearance } from "../shared/data/appearance";
 import { effectDef } from "../shared/data/effects";
 import { ITEMS, LOCS, RARITY, basicOf, lookOf, type Item, type Rarity } from "../shared/data/items";
@@ -30,8 +30,11 @@ import { Realism, type Light } from "./realistic";
 import type { Net } from "./net";
 import { NPC_LOOK, NPC_PLACE, type Place } from "./npcs";
 import type { Settings } from "./settings";
+import { sfx } from "./sound";
 
 TextureSource.defaultOptions.scaleMode = "nearest";
+// 화면 밖 컬링 (§29): cullable 인 것은 화면 밖이면 그리지 않음 — Pixi 기본 기능
+extensions.add(CullerPlugin);
 
 /** 네임 플레이트 높이 (발밑에서 머리 위까지 px) — 몹은 art/mobs.ts MOB_PLATE */
 const PLATE_H = MOB_PLATE;
@@ -99,6 +102,8 @@ export type HudState = {
   potion: number;
   /** 차지 스킬 모으는 정도 0~1 (없으면 −1) */
   charge: number;
+  /** F3 디버그 오버레이 (§29): 프레임 처리 ms · 프레임 간격 ms · 엔티티 · 화면에 그린 것 · RTT · 서버 틱 ms · 하향 KB/s */
+  dbg: { cpu: number; dt: number; ents: number; drawn: number; rtt: number; tick: number; kbps: number } | null;
   /** P7: 핑(미니맵) · 핑 휠(화면 좌표 · 고른 칸) · 던전 관전 · 부활할 곳 · 보스 HP 천분율(−1 = 없음) · 결투 시작까지 ms */
   marks: { x: number; y: number; k: PingKind }[];
   wheel: { sx: number; sy: number; sel: number } | null;
@@ -221,6 +226,12 @@ export class Game {
   sel = 0;
   drops = new Map<number, GroundItem>();
   private toasted = new Map<string, number>();
+  /** F3 디버그: 켜짐 · 프레임 처리 시간(이동 평균) · 프레임 간격 · 대역폭 측정 */
+  debug = false;
+  private cpuMs = 0;
+  private dtMs = 16;
+  private frameStart = 0;
+  private bw = { bytes: 0, at: 0, kbps: 0 };
   // P7: 파티원 · 결투 상대 (엔티티 id) · 핑 · 던전 관전 · 보스
   partyIds = new Set<number>();
   inParty = false;
@@ -233,6 +244,8 @@ export class Game {
   pings: { c: Container; x: number; y: number; k: PingKind; until: number }[] = [];
   /** 화면 가운데 큰 글씨 (보스 페이즈 · 던전 안내 · 결투) */
   onBanner: (text: string, ms: number) => void = () => {};
+  /** 채팅 창에 시스템 줄 (파티 드롭 분배 — §21-2 "파티 채팅에 결과 표시") */
+  onChat: (ch: "party" | "system", text: string) => void = () => {};
   private fpsAcc = { n: 0, t: 0 };
   private disposers: (() => void)[] = [];
 
@@ -321,7 +334,10 @@ export class Game {
     });
 
     this.applySettings(this.settings);
-    this.app.ticker.add((t) => this.frame(t.deltaMS));
+    this.app.ticker.add((t) => { this.frameStart = performance.now(); this.dtMs = this.dtMs * 0.9 + t.deltaMS * 0.1; this.frame(t.deltaMS); });
+    // 그리기까지 끝난 뒤 (렌더는 LOW, 이건 그보다 뒤) — 프레임 처리 시간
+    this.app.ticker.add(() => { this.cpuMs = this.cpuMs * 0.9 + (performance.now() - this.frameStart) * 0.1; }, undefined, UPDATE_PRIORITY.UTILITY);
+    for (const c of this.entityLayer.children) c.cullable = true;
   }
 
   destroy() {
@@ -368,6 +384,7 @@ export class Game {
       const frames = Array.from({ length: VARIANTS }, (_, v) => tileTex(g, v));
       const s = new Sprite(frames[0]);
       s.position.set((i % w) * TILE, Math.floor(i / w) * TILE);
+      s.cullable = true;
       waterLayer.addChild(s);
       this.water.push({ s, frames });
     }
@@ -587,6 +604,7 @@ export class Game {
       title.y = -19;
       plate.addChild(title);
     }
+    sprite.cullable = shadow.cullable = plate.cullable = true;
     this.entityLayer.addChild(shadow, sprite);
     this.screenLayer.addChild(plate);
     const x = isMe ? this.me.x : 0;
@@ -649,6 +667,7 @@ export class Game {
     c.addChild(ring, icon, name);
     this.screenLayer.addChild(c);
     this.pings.push({ c, x, y, k, until: performance.now() + PING.ms });
+    sfx("ping");
   }
 
   /** 핑 휠을 떼면: 휠 가운데에서 마우스 방향의 칸 (가까우면 '위험') */
@@ -750,8 +769,18 @@ export class Game {
       for (const [id, x, y, dir, flags, hp, res] of m.e) {
         const e = this.ents.get(id);
         if (!e) continue;
+        // 델타라 멈춰 있는 동안은 줄이 안 옴 — 다시 움직이면 직전 위치를 한 스냅샷 전 시각에 넣어 보간이 거기서 시작하게
+        const last = e.buf[e.buf.length - 1];
+        if (last && m.st - last.t > SNAP_MS * 1.5) e.buf.push({ ...last, t: m.st - SNAP_MS });
         e.buf.push({ t: m.st, x, y, dir, flags, hp, res });
         if (e.buf.length > 30) e.buf.shift();
+      }
+      // 시야(AOI) 밖으로 나감 → 숨김 (다시 들어오면 전체 줄이 옴)
+      for (const id of m.g ?? []) {
+        const e = this.ents.get(id);
+        if (!e) continue;
+        e.buf = [];
+        e.sprite.visible = e.shadow.visible = e.plate.visible = false;
       }
       if (m.ev) for (const ev of m.ev) this.event(ev);
       if (m.pe) for (const ev of m.pe) this.personal(ev);
@@ -775,6 +804,9 @@ export class Game {
         }
         if (label) return;
         if (flags & H_HEAL) { this.fx.burst(e.x, e.y - 16, "heal", 6); return; }
+        const src = ev[1] as number;
+        if (mine) sfx("hurt");
+        else if (src === this.you.id) sfx(flags & H_CRIT ? "crit" : "hit");
         e.flash = 120;
         this.fx.burst(e.x, e.y - 14, el || "hit", el ? 12 : 5);
         if (mine && this.settings.shake && amount > this.v[1] * 0.05) this.fx.shake = 160;
@@ -824,7 +856,7 @@ export class Game {
         const e = this.ent(ev[1] as number);
         if (!e) return;
         e.deadMs = 0;
-        if (e === this.meSprite) { this.deadUntil = 0; this.ghost = false; }
+        if (e === this.meSprite) { this.deadUntil = 0; this.ghost = false; sfx("level"); }
         this.fx.pillar(e.x, e.y);
         return;
       }
@@ -838,6 +870,7 @@ export class Game {
       case "bp": {
         // 보스 페이즈 전환 (§20-4)
         this.onBanner(`${ev[2]}`, 2600);
+        sfx("boss");
         if (this.settings.shake) this.fx.shake = 400;
         const e = this.ent(ev[1] as number);
         if (e) this.fx.burst(e.x, e.y - 30, e.info.el || "grass", 30);
@@ -893,7 +926,7 @@ export class Game {
         if (!e) return;
         e.info.lv = lv;
         if (e.mob) e.label.text = `Lv${lv} ${e.info.name}`;
-        if (id === this.you.id) this.you.level = lv;
+        if (id === this.you.id) { this.you.level = lv; sfx("level"); }
         this.fx.number(e.x, e.y - 56, "LEVEL UP!", "#FFD27A", true);
         this.fx.pillar(e.x, e.y);
         return;
@@ -923,6 +956,7 @@ export class Game {
         const [, tpl, qty, rarity] = ev as [string, string, number, Rarity];
         const t = ITEMS[tpl];
         if (t) this.fx.number(this.meSprite.x, this.meSprite.y - 50, `+${t.name}${qty > 1 ? ` ×${qty}` : ""}`, rarity === "common" ? "#fff4dc" : RARITY[rarity].color);
+        sfx("pickup");
         return;
       }
       case "sk": {
@@ -939,6 +973,7 @@ export class Game {
         const amount = ev[1] as number;
         this.you.ruc += amount;
         this.fx.number(this.meSprite.x + 10, this.meSprite.y - 40, `+${amount} RUC`, "#F2C94C");
+        sfx("coin");
         return;
       }
       case "du": {
@@ -957,13 +992,14 @@ export class Game {
         else this.deadUntil = performance.now() + ms;
         this.meSprite.deadMs = 1;
         this.mouse.held = false;
+        sfx("death");
         return;
       }
       case "pl": {
         // 파티 드롭 분배 결과 (§21-2)
         const [, tpl, rarity, who] = ev as [string, string, Rarity, string];
         const t = ITEMS[tpl];
-        if (t) this.onToast(`[파티] 「${t.name}」${rarity !== "common" && !t.rarity ? `(${RARITY[rarity].name})` : ""} → ${who}`);
+        if (t) this.onChat("party", `「${t.name}」${rarity !== "common" && !t.rarity ? `(${RARITY[rarity].name})` : ""} → ${who}`);
         return;
       }
       case "duel": {
@@ -1198,6 +1234,7 @@ export class Game {
           this.meSprite.x = sx;
           this.meSprite.y = sy;
           this.playCast(this.meSprite, sk, ax, ay, now);
+          if (slot !== "A") sfx("cast");
           if (sk.targeting === "skillshot" && !sk.count) {
             const dx = ax - sx;
             const dy = ay - sy;
@@ -1433,7 +1470,31 @@ export class Game {
       deadKind: this.deadKind,
       bossHp: this.bossId ? (this.ents.get(this.bossId)?.hp ?? 0) : -1,
       duelIn: this.duelFoes.size && now < this.duelAt ? this.duelAt - now : 0,
+      dbg: this.debug ? this.debugStats(now) : null,
     };
+  }
+
+  /** 버그 제보 스크린샷: 화면을 작게(가로 최대 960) JPEG 로 — 서버 한도(약 220KB) 안에 들도록 */
+  async screenshot(): Promise<string | null> {
+    // 지금 보이는 화면만 (전체 맵이 아니라 · 컬링된 것도 화면 밖이라 상관없음)
+    const src = this.app.renderer.extract.canvas({ target: this.app.stage, frame: new Rectangle(0, 0, this.app.screen.width, this.app.screen.height) }) as HTMLCanvasElement;
+    for (const [w, q] of [[960, 0.6], [720, 0.5], [480, 0.45]] as const) {
+      const k = Math.min(1, w / src.width);
+      const c = Object.assign(document.createElement("canvas"), { width: Math.round(src.width * k), height: Math.round(src.height * k) });
+      c.getContext("2d")!.drawImage(src, 0, 0, c.width, c.height);
+      const url = c.toDataURL("image/jpeg", q);
+      if (url.length <= 210_000) return url;
+    }
+    return null;
+  }
+
+  private debugStats(now: number) {
+    if (now - this.bw.at >= 1000) {
+      this.bw.kbps = this.bw.at ? ((this.net.bytes - this.bw.bytes) / 1024) / ((now - this.bw.at) / 1000) : 0;
+      this.bw = { bytes: this.net.bytes, at: now, kbps: this.bw.kbps };
+    }
+    const drawn = this.entityLayer.children.filter((c) => c.visible && !c.culled).length;
+    return { cpu: this.cpuMs, dt: this.dtMs, ents: this.ents.size + 1, drawn, rtt: this.net.rtt, tick: this.net.tickMs, kbps: this.bw.kbps };
   }
 }
 

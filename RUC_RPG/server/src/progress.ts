@@ -7,7 +7,8 @@ import { APPRENTICE_SLOTS, SKILLS, canLearn, type Slot } from "../../../web/rpg/
 import { MASTERY_MOB, POT_GAIN, addMastery, autoLearn, potOf, slotsOf, startLevel, type Learned, type Progress, type SkillGrade } from "../../../web/rpg/shared/progress.ts";
 import type { S2C } from "../../../web/rpg/shared/protocol.ts";
 import { recalc } from "./combat.ts";
-import { loadSkills, saveJob, saveSkill, type CharacterRow } from "./db.ts";
+import { loadSkills, saveJob, saveProgress, saveSkill, type CharacterRow } from "./db.ts";
+import { expToNext } from "../../../web/rpg/shared/character.ts";
 import { quest } from "./quests.ts";
 import type { Player } from "./room.ts";
 
@@ -96,6 +97,24 @@ export function saveDirtySkills(p: Player) {
     if (l) saveSkill(p.char.id, l);
   }
   p.skillsDirty.clear();
+}
+
+/** 레벨 지정 (개발용 dev · GM /gm level): 경험치는 그 레벨 안으로, 스탯 · 스킬 다시 맞추고 완전 회복 */
+export function setLevel(p: Player, lv: number) {
+  const c = p.char;
+  c.level = Math.max(1, Math.min(40, Math.round(lv) || 1));
+  c.exp = Math.min(c.exp, expToNext(c.level) - 1);
+  saveProgress(c.id, c.level, c.exp);
+  p.lv = c.level;
+  p.base = charBase(p);
+  syncSkills(p);
+  recalc(p);
+  p.hp = p.st.hp;
+  p.mp = p.st.mana;
+  p.en = p.st.energy;
+  p.room?.ev.push(["lv", p.id, c.level]);
+  p.out.push(["xp", 0, c.exp, c.level]);
+  sendProg(p);
 }
 
 /** 전직 (§9-1). 1차 = 계열(Lv10), 2차 = 그 계열의 ★ 세부 직업(Lv30). 성공하면 null */

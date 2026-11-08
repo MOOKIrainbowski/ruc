@@ -4,7 +4,7 @@ import {
   type Noti, type NotiKind, type QState, type QuestView, type UserKind, type UserQuestRow,
 } from "../../../web/rpg/shared/data/quests.ts";
 import {
-  activeTakes, activeUserQuestCount, audit, closeUserQuest, db, expiredUserQuests, hasTaken, insertNoti, insertTake, insertUserQuest, listNotis, loadItem,
+  activeTakes, activeUserQuestCount, audit, findCharacterById, closeUserQuest, db, expiredUserQuests, hasTaken, insertNoti, insertTake, insertUserQuest, listNotis, loadItem,
   loadQuests, markPaid, openUserQuests, ownUserQuests, readNotis, saveItems, saveQuest, saveTakeProg, setTakeState, takeSlot, takesFor, tx, userQuest,
   type NotiRow, type QuestRow, type UQRow,
 } from "./db.ts";
@@ -219,6 +219,9 @@ export function uqAccept(p: Player, id: unknown): string | null {
     return "처리 중 문제가 생겼습니다";
   }
   p.takes.set(r.id, 0);
+  // 같은 IP · 부계정 감지 로그 (§19-3 · D46): 등록자의 마지막 접속 IP 와 같으면 기록만 (막지는 않음 — 가족 · PC방)
+  const owner = findCharacterById(r.owner_id);
+  if (p.ip && owner?.last_ip === p.ip) audit(p.char.id, "uquest_same_ip", String(r.id), null, { owner: r.owner_id, ip: p.ip });
   notify(r.owner_id, "quest_accepted_by", `${p.char.nickname}님이 「${r.title}」을(를) 수락했습니다`, { id: r.id });
   audit(p.char.id, "uquest_accept", String(r.id), null, { owner: r.owner_id });
   return null;

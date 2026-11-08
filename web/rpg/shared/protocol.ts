@@ -86,6 +86,8 @@ export type You = {
   settings: Record<string, unknown> | null;
   slots: Partial<Record<Slot, string>>;
   prog: Progress;
+  /** GM (§28) — F8 GM 창 */
+  gm?: boolean;
 };
 
 export type ChannelInfo = { ch: number; n: number; cap: number };
@@ -135,6 +137,12 @@ export type C2S =
   /** 칭호 고르기 (null = 떼기) · 현황판(Tab) */
   | { t: "title"; id: string | null }
   | { t: "who" }
+  /** 채팅 (§5 Enter): 같은 방 · 파티. "/p 말" = 파티, "/gm …" = GM 명령 */
+  | { t: "chat"; ch?: "room" | "party"; text: string }
+  /** 버그 제보 (§28): 설명 · 스크린샷(JPEG data URL) · 클라이언트 로그 */
+  | { t: "bug"; text: string; img?: string; log?: string[] }
+  /** GM 창 (F8): 접속자 · 버그 제보 목록, bug = 그 제보의 스크린샷 */
+  | { t: "gm"; bug?: number }
   /** 개발 모드 전용: 순간이동 · 아이템 받기 · 레벨 · 던전 스테이지 건너뛰기(stage) */
   | { t: "dev"; map?: RoomKind; x?: number; y?: number; give?: string; rarity?: Rarity; n?: number; lv?: number; stage?: number };
 
@@ -147,7 +155,8 @@ export type S2C =
     }
   | { t: "spawn"; e: EntityInfo }
   | { t: "despawn"; id: number }
-  | { t: "s"; st: number; ack: { seq: number; m: Mover }; v: Vitals; e: EntityRow[]; ev?: Ev[]; pe?: Ev[] }
+  /** 스냅샷 (10Hz 바이너리 프레임을 snapshot.ts decodeSnapshot 으로 푼 모양): e = 바뀐 엔티티의 지금 줄, g = 시야 밖으로 나간 id */
+  | { t: "s"; st: number; ack: { seq: number; m: Mover }; v: Vitals; e: EntityRow[]; g?: number[]; ev?: Ev[]; pe?: Ev[] }
   | { t: "stats"; s: FullStats }
   | { t: "inv"; items: Item[] }
   /** 베타 지갑 잔액 · 서버 공지(+10 강화) · 알림(새 우편) · 경제 화면 데이터 */
@@ -165,9 +174,14 @@ export type S2C =
   | { t: "notis"; list: Noti[] }
   /** 성장 상태 (전직 · 스킬 · 숙련도) 바뀜 */
   | { t: "prog"; prog: Progress; slots: Partial<Record<Slot, string>> }
-  | { t: "pong"; c: number }
+  /** tk = 서버 틱 처리 시간 ms (F3 디버그 오버레이) */
+  | { t: "pong"; c: number; tk?: number }
   | { t: "channels"; list: ChannelInfo[] }
-  | { t: "kicked"; reason: "dup" | "rate" | "auth" | "server" }
+  | { t: "kicked"; reason: "dup" | "rate" | "auth" | "server" | "banned" | "gm" }
+  /** 채팅 한 줄 (ch: 방 · 파티 · 시스템 · 운영) */
+  | { t: "chat"; ch: "room" | "party" | "system" | "gm"; from: string; text: string; at: number }
+  /** GM 창 데이터 */
+  | { t: "gm"; players?: { name: string; lv: number; where: string; ch: number; x: number; y: number; party: boolean; muted: boolean }[]; bugs?: { id: number; name: string; place: string; text: string; at: number; img: boolean }[]; bug?: { id: number; img: string | null; log: string[] } | null }
   /** 파티 (P7): 내 파티(없으면 null) · 파티원 상태(2Hz) · 모집 중인 파티 · 핑 */
   | { t: "party"; party: PartyView | null }
   | { t: "pv"; v: PartyVitals[] }

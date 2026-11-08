@@ -6,6 +6,8 @@ import { readFileSync, rmSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { WebSocket } from "ws";
 import { DEV_TICKET_SECRET, signTicket } from "../../../web/rpg/shared/ticket.ts";
+import { decodeSnapshot } from "../../../web/rpg/shared/snapshot.ts";
+import type { EntityRow } from "../../../web/rpg/shared/protocol.ts";
 import type { S2C } from "../../../web/rpg/shared/protocol.ts";
 import { loadMap, prop, type TiledMap } from "../../../web/rpg/shared/map.ts";
 import { baseStats } from "../../../web/rpg/shared/character.ts";
@@ -32,8 +34,10 @@ function client(sub: string, secret = DEV_TICKET_SECRET) {
   const ws = new WebSocket(`ws://localhost:${PORT}`);
   const inbox: S2C[] = [];
   const waiters: [(m: S2C) => boolean, (m: S2C) => void][] = [];
-  ws.on("message", (d) => {
-    const m = JSON.parse(String(d)) as S2C;
+  const rows = new Map<number, EntityRow>(); // 스냅샷 델타 기준 (D71)
+  ws.on("message", (d, bin) => {
+    const m = (bin ? decodeSnapshot(d as Buffer, rows) : JSON.parse(String(d))) as S2C;
+    if (m.t === "joined") rows.clear();
     inbox.push(m);
     for (const w of [...waiters]) if (w[0](m)) { waiters.splice(waiters.indexOf(w), 1); w[1](m); }
   });
@@ -46,7 +50,7 @@ function client(sub: string, secret = DEV_TICKET_SECRET) {
     });
   const send = (m: object) => ws.send(JSON.stringify(m));
   const open = new Promise((ok) => ws.on("open", ok)).then(() => send({ t: "hello", ticket: signTicket({ sub, name: sub, avatar: null }, secret) }));
-  return { ws, until, send, open, inbox };
+  return { ws, until, send, open, inbox, rows };
 }
 
 const ap = { hair: 0, hairColor: 0, skin: 0, eyes: 0 };
@@ -299,4 +303,118 @@ test("P7 실제 접속: 파티 초대 알림 → 수락 → 핑 → 파티장이
   await b.until((m) => m.t === "who" && m.list.some((w) => w.name === "파티원"));
   a.ws.close();
   b.ws.close();
+});
+
+
+test("P8 핵심 루프 E2E (§4 · §30): 광장 퀘스트 → 우편 → 상점 → 초원 사냥 → 강화 → 파티 → 던전 정화 → 전직 + 채팅 · GM · 버그 제보 · 차단", async () => {
+  const plaza = loadMap(JSON.parse(readFileSync(new URL("../../../web/rpg/shared/data/maps/plaza.json", import.meta.url), "utf8")) as TiledMap);
+  const obj = (type: string, f: (o: (typeof plaza.objects)[number]) => boolean = () => true) => plaza.objects.find((o) => o.type === type && f(o))!;
+  const npc = (id: string) => obj("npc", (o) => prop(o, "npc") === id);
+  const join = async (sub: string, nick: string) => {
+    const c = client(sub);
+    await c.open;
+    await c.until((m) => m.t === "needCreate");
+    c.send({ t: "create", nickname: nick, appearance: ap, element: "fire" });
+    await c.until((m) => m.t === "joined");
+    return c;
+  };
+  type C = Awaited<ReturnType<typeof join>>;
+  const goTo = async (c: C, o: { x: number; y: number }, dy = 20) => {
+    const n = c.inbox.length;
+    c.send({ t: "dev", map: "plaza", x: o.x, y: o.y + dy });
+    await c.until((m) => c.inbox.indexOf(m) >= n && m.t === "joined");
+  };
+  const a = await join("LOOP-A", "루프");
+  // ① 광장: 루미에게 말 걸기 → 튜토리얼 다음 단계
+  await goTo(a, npc("lumi"));
+  a.send({ t: "use", oid: npc("lumi").id });
+  await a.until((m) => m.t === "qs" && m.active.some((q) => q.id === "tut_fountain"));
+  // ② 우편: 환영 선물(1,000 RUC)
+  await goTo(a, obj("mailbox"));
+  a.send({ t: "econ", op: "mail" });
+  const mail = await a.until<Extract<S2C, { t: "econ" }>>((m) => m.t === "econ" && m.view === "mail");
+  a.send({ t: "econ", op: "claim", id: (mail.data as { id: number }[])[0].id });
+  await a.until((m) => m.t === "ruc" && m.ruc === 1000);
+  // ③ 일반 상점에서 하나 사기 → RUC 줄고 우편으로
+  await goTo(a, obj("tent_shop"));
+  a.send({ t: "econ", op: "shop" });
+  const shop = await a.until<Extract<S2C, { t: "econ" }>>((m) => m.t === "econ" && m.view === "shop");
+  const sd = shop.data as { cycle: number; slots: { price: number; left: number }[] };
+  const cheap = sd.slots.map((x, i) => [x, i] as const).filter(([x]) => x.left > 0).sort((p, q) => p[0].price - q[0].price)[0];
+  a.send({ t: "econ", op: "buy", cycle: sd.cycle, id: cheap[1], n: 1, rid: "loop-buy-000001" });
+  await a.until((m) => m.t === "ruc" && m.ruc === 1000 - cheap[0].price);
+  // ④ 초원: 포털 → 슬라임을 실제 입력(평타)으로 잡아 경험치
+  const fieldGate = obj("portal", (o) => prop(o, "target") === "field");
+  await goTo(a, fieldGate, -8);
+  a.send({ t: "use", oid: fieldGate.id });
+  const jf = await a.until<Extract<S2C, { t: "joined" }>>((m) => m.t === "joined" && m.room.kind === "field");
+  const slime = jf.ents.find((e) => e.mob === "slime")!;
+  let seq = 10_000;
+  const n0 = a.inbox.length;
+  const died = () => a.inbox.slice(n0).some((m) => m.t === "s" && !!m.ev?.some((e) => e[0] === "d" && e[1] === slime.id));
+  for (let i = 0; i < 600 && !died(); i++) {
+    const r = a.rows.get(slime.id);
+    if (r && i % 20 === 0) { a.send({ t: "dev", map: "field", x: r[1] - 14, y: r[2] }); await a.until((m) => m.t === "joined" && a.inbox.indexOf(m) > n0); }
+    if (r) a.send({ t: "in", seq: seq++, mx: 0, my: 0, run: false, k: "A", ax: r[1], ay: r[2] });
+    await new Promise((ok) => setTimeout(ok, 30));
+  }
+  assert.ok(died(), "그 슬라임이 쓰러짐");
+  await a.until((m) => a.inbox.indexOf(m) > n0 && m.t === "s" && !!m.pe?.some((e) => e[0] === "xp" && (e[1] as number) > 0));
+  // ⑤ 광장 강화대: +1 강화
+  a.send({ t: "dev", give: "wood_sword", rarity: "common" });
+  a.send({ t: "dev", give: "enhance_stone", n: 10 });
+  const inv = await a.until<Extract<S2C, { t: "inv" }>>((m) => m.t === "inv" && m.items.some((x) => x.tpl === "enhance_stone"));
+  const sword = inv.items.find((x) => x.tpl === "wood_sword")!;
+  await goTo(a, obj("anvil"));
+  a.send({ t: "econ", op: "enhance", a: [sword.loc, sword.slot], rid: "loop-enh-0000001" });
+  await a.until((m) => m.t === "econ" && m.view === "enhanced");
+  // ⑥ 채팅: 같은 방 · 욕설은 가려짐 / GM 명령은 GM 만
+  const b = await join("LOOP-B", "루프동료");
+  await goTo(b, obj("anvil"));
+  a.send({ t: "chat", text: "안녕 시발 반가워" });
+  await b.until((m) => m.t === "chat" && m.from === "루프" && m.text === "안녕 ** 반가워");
+  a.send({ t: "chat", text: "/gm announce 해킹" });
+  await a.until((m) => m.t === "error" && m.msg.includes("GM 만"));
+  // ⑦ 파티 → 유적 1스테이지 정화(개발용 정리) → 정비
+  a.send({ t: "party", op: "invite", name: "루프동료" });
+  const inviteN = await b.until<Extract<S2C, { t: "noti" }>>((m) => m.t === "noti" && m.n.kind === "party_invite");
+  b.send({ t: "party", op: "accept", id: inviteN.n.data!.party as number });
+  await a.until((m) => m.t === "party" && m.party?.members.length === 2);
+  const gate = obj("portal", (o) => prop(o, "target") === "dungeon");
+  await goTo(a, gate, 12);
+  await goTo(b, gate, 12);
+  a.send({ t: "dungeon", op: "enter" });
+  await b.until((m) => m.t === "joined" && m.room.kind === "dungeon");
+  await a.until((m) => m.t === "dg" && m.s?.stage === 1);
+  a.send({ t: "dev", stage: 1 });
+  await a.until((m) => m.t === "dg" && m.s?.phase === "rest");
+  await a.until((m) => m.t === "chat" && m.ch === "party" || (m.t === "s" && !!m.ev?.some((e) => e[0] === "ann")), 2000).catch(() => null);
+  a.send({ t: "dungeon", op: "leave" });
+  await a.until((m) => m.t === "joined" && m.room.kind === "plaza" && a.inbox.indexOf(m) > a.inbox.findIndex((x) => x.t === "dg" && x.s?.phase === "rest"));
+  // ⑧ Lv10 → 세라에게 1차 전직
+  a.send({ t: "dev", lv: 10 });
+  await goTo(a, npc("sera"));
+  a.send({ t: "job", line: "warrior" });
+  await a.until((m) => m.t === "prog" && m.prog.line === "warrior");
+  // ⑨ GM(개발 모드 dev- 계정): 공지 · 채팅 금지 · 차단 → 다시 접속 못 함, 버그 제보는 DB 로
+  const gm = await join("dev-loopgm", "루프지엠");
+  const j = gm.inbox.find((m) => m.t === "joined") as Extract<S2C, { t: "joined" }>;
+  assert.equal(j.you.gm, true);
+  gm.send({ t: "chat", text: "/gm announce 곧 점검" });
+  await a.until((m) => m.t === "notice" && m.text.includes("곧 점검"));
+  gm.send({ t: "chat", text: "/gm mute 루프동료 5 도배" });
+  await b.until((m) => m.t === "chat" && m.ch === "system" && m.text.includes("금지"));
+  b.send({ t: "chat", text: "말해 볼까" });
+  await b.until((m) => m.t === "error" && m.msg.includes("채팅 금지"));
+  gm.send({ t: "bug", text: "테스트 제보입니다", log: ["[error] x"] });
+  await gm.until((m) => m.t === "chat" && m.text.includes("버그 제보 #"));
+  gm.send({ t: "gm" });
+  const panel = await gm.until<Extract<S2C, { t: "gm" }>>((m) => m.t === "gm" && !!m.players);
+  assert.ok(panel.players!.some((p) => p.name === "루프동료" && p.muted) && panel.bugs!.some((x) => x.text === "테스트 제보입니다"));
+  gm.send({ t: "chat", text: "/gm ban 루프동료 1 테스트" });
+  await b.until((m) => m.t === "kicked" && m.reason === "banned");
+  const b2 = client("LOOP-B");
+  await b2.open;
+  await b2.until((m) => m.t === "kicked" && m.reason === "banned");
+  for (const c of [a, gm]) c.ws.close();
 });

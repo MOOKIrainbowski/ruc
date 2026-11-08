@@ -1,6 +1,8 @@
 import type { WebSocket } from "ws";
 import { expToNext } from "../../../web/rpg/shared/character.ts";
-import { CHANNEL_CAP, INPUT_CREDITS_MAX, INPUT_CREDITS_PER_TICK, SIM_MS, TICK_MS, type RoomKind } from "../../../web/rpg/shared/constants.ts";
+import { AOI, CHANNEL_CAP, INPUT_CREDITS_MAX, INPUT_CREDITS_PER_TICK, SIM_MS, SNAP_EVERY, TICK_MS, type RoomKind } from "../../../web/rpg/shared/constants.ts";
+import { diffRows, frame } from "../../../web/rpg/shared/snapshot.ts";
+import { packMover } from "../../../web/rpg/shared/movement.ts";
 import { FOREVER_MS } from "../../../web/rpg/shared/data/effects.ts";
 import { rollDrops, type Item, type Rarity, type Special } from "../../../web/rpg/shared/data/items.ts";
 import { GRADES, mobExp } from "../../../web/rpg/shared/data/mobs.ts";
@@ -92,6 +94,10 @@ export type Player = Unit & {
   deadAt: number;
   /** 부활할 맵 (결투장에서 쓰러지면 결투장) */
   respawnKind: RoomKind;
+  /** 이 사람에게 마지막으로 보낸 엔티티 줄 (스냅샷 델타, D71) — 방에 들어갈 때 비움 */
+  sent: Map<number, EntityRow>;
+  /** 접속 IP (D46) */
+  ip: string;
 };
 
 /** 저장된 캐릭터로 플레이어를 만듦 (아이템 · 성장 · 장비 스탯 반영, HP 가득) — main · 테스트 공용 */
@@ -119,7 +125,7 @@ export const playerState = (items: Item[], prog: Progress) => ({
   prog, progDirty: false, progAt: 0, skillsDirty: new Set<string>(), charge: null, cd: {} as Record<string, number>, slots: {} as Partial<Record<Slot, string>>, ruc: 0,
   quests: new Map<string, QuestRow>(), takes: new Map<number, number>(), reach: 0,
   party: 0, kda: [0, 0, 0] as [number, number, number], title: null as string | null, hitBy: new Map<number, number>(), duel: 0, duelSide: 0, duelOn: false,
-  potionLeft: null as number | null, deadAt: 0, respawnKind: "plaza" as RoomKind,
+  potionLeft: null as number | null, deadAt: 0, respawnKind: "plaza" as RoomKind, sent: new Map<number, EntityRow>(), ip: "",
 });
 
 /**
@@ -614,8 +620,10 @@ export class Room implements World {
     this.snapshot(now);
   }
 
+  /** 스냅샷 (§2-2 · §29, D71): 10Hz · 받는 사람마다 시야(AOI) 안 엔티티를 지난번 보낸 것과의 델타로 · 바이너리 프레임 */
+  private snapN = 0;
   private snapshot(now: number) {
-    // ponytail: 방 전체를 매 틱 통째로 보냄 — §29 대역폭(10KB/s)은 P8 에서 AOI + 델타 + 바이너리로
+    if (++this.snapN % SNAP_EVERY) return; // 이벤트 · 개인 이벤트는 다음 스냅샷에 모아서
     const rows: EntityRow[] = [];
     for (const p of this.players.values()) {
       const m = p.mover;
@@ -630,7 +638,6 @@ export class Room implements World {
       u.fxDirty = false;
       this.ev.push(["f", u.id, fxRows(this, u)]);
     }
-    const e = JSON.stringify(rows);
     const ev = this.ev.length ? `,"ev":${JSON.stringify(this.ev)}` : "";
     this.ev = [];
     for (const p of this.players.values()) {
@@ -647,7 +654,9 @@ export class Room implements World {
       if (p.progDirty && now - p.progAt >= 1000) { p.progAt = now; sendProg(p); }
       const pe = p.out.length ? `,"pe":${JSON.stringify(p.out)}` : "";
       p.out = [];
-      p.ws.send(`{"t":"s","st":${now},"ack":${JSON.stringify({ seq: p.lastSeq, m: p.mover })},"v":${JSON.stringify(v)},"e":${e}${ev}${pe}}`);
+      const aoi = rows.filter((r) => r[0] !== p.id && Math.abs(r[1] - p.x) <= AOI.w && Math.abs(r[2] - p.y) <= AOI.h);
+      const f = frame(`{"t":"s","st":${now},"ack":{"seq":${p.lastSeq},"m":${JSON.stringify(packMover(p.mover))}},"v":${JSON.stringify(v)}${ev}${pe}}`, diffRows(p.sent, aoi));
+      p.ws.send(Buffer.from(f.buffer, f.byteOffset, f.byteLength));
     }
   }
 }

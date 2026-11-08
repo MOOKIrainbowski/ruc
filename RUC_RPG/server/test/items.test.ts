@@ -145,7 +145,7 @@ test("필드: 슬라임 처치 → 기여자에게만 드롭 → 자동 줍기 �
   assert.equal(drops.length, 3 + 6 * 2, "재료 · 포션 3묶음 + 장비 6종 × 2 (난수 0 이라 운 보너스 +1 이 늘 붙음)");
   p.mover.x = p.x = drops[0].x; // 떨어지는 자리에 서 있어도
   p.mover.y = p.y = drops[0].y;
-  tick();
+  tick(2); // 스냅샷은 틱 2번에 한 번 (D71)
   const mine = sent.filter((s) => s.includes('["dr",')).join();
   assert.equal(room.drops.size, drops.length, "떨어진 직후에는 아직 못 주움 (0.4초) — 생김 · 주움이 같은 스냅샷에 안 실림");
   tick(8);

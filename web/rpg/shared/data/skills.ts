@@ -272,7 +272,7 @@ const RAW: Record<string, Def> = {
   // 닌자
   triple_shuriken: {
     name: "삼연 표창", slot: "Q", category: "physical", targeting: "skillshot", range: 170, width: 6, speed: 340, count: 3, spread: 15, cooldownMs: 3500, cost: { energy: 12, stamina: 4 },
-    damage: { base: 15, atkRatio: 0.6, apRatio: 0 }, elementInherit: true, job: ["ninja"], learnLv: 30,
+    damage: { base: 14, atkRatio: 0.52, apRatio: 0 }, elementInherit: true, job: ["ninja"], learnLv: 30,
     icon: "shuriken", desc: "표창 세 개를 부채꼴로 던집니다.",
   },
   shunpo: {
@@ -282,7 +282,7 @@ const RAW: Record<string, Def> = {
   },
   leaf_cut: {
     name: "낙엽 베기", slot: "E", category: "physical", targeting: "dash", range: 96, width: 20, dashSteps: 8, cooldownMs: 8000, cost: { energy: 20, stamina: 6 },
-    damage: { base: 55, atkRatio: 1.5, apRatio: 0 }, effects: [{ id: "bleed", ms: 3000, dot: 0.15 }], elementInherit: true, job: ["ninja"], learnLv: 30,
+    damage: { base: 50, atkRatio: 1.3, apRatio: 0 }, effects: [{ id: "bleed", ms: 3000, dot: 0.15 }], elementInherit: true, job: ["ninja"], learnLv: 30,
     icon: "dash_slash", desc: "순식간에 6칸을 지나가며 벱니다. 맞은 적은 출혈.",
   },
   shadow_execute: {
@@ -323,7 +323,7 @@ const RAW: Record<string, Def> = {
   },
   // 원소술사
   sub_bolt: {
-    name: "보조 원소탄", slot: "Q", category: "magical", targeting: "skillshot", range: 220, width: 8, speed: 280, sub: true, cooldownMs: 2000, cost: { mana: 12, stamina: 2 },
+    name: "보조 원소탄", slot: "Q", category: "magical", targeting: "skillshot", range: 220, width: 8, speed: 280, sub: true, cooldownMs: 2000, cost: { mana: 8, stamina: 2 },
     damage: { base: 22, atkRatio: 0, apRatio: 1 }, job: ["elementalist"], learnLv: 30,
     icon: "star", desc: "보조 속성 마력탄 — 주 속성 상태이상과 원소 반응을 일으키기 좋습니다.",
   },
@@ -334,7 +334,7 @@ const RAW: Record<string, Def> = {
   },
   dual_storm: {
     name: "이중 원소 폭풍", slot: "E", category: "magical", targeting: "ground", range: 200, radius: 48, delayMs: 300, repeat: { n: 4, ms: 400 }, special: "alternate",
-    cooldownMs: 10_000, cost: { mana: 30, stamina: 2 }, damage: { base: 25, atkRatio: 0, apRatio: 0.7 }, elementInherit: true, job: ["elementalist"], learnLv: 30, difficulty: "mid",
+    cooldownMs: 10_000, cost: { mana: 22, stamina: 2 }, damage: { base: 25, atkRatio: 0, apRatio: 0.7 }, elementInherit: true, job: ["elementalist"], learnLv: 30, difficulty: "mid",
     icon: "swirl", desc: "주 속성과 보조 속성이 번갈아 4번 몰아쳐 스스로 원소 반응을 일으킵니다.",
   },
   cataclysm: {

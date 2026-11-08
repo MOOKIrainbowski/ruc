@@ -41,6 +41,16 @@ export type Mover = {
   aim: number;
 };
 
+/** ack 용 — 키 이름 없이 고정 순서 배열 (D71). 숫자는 그대로(예측 재생이 서버와 비트 단위로 같아야 함, D11), 참/거짓은 1/0 */
+const MOVER_KEYS = ["x", "y", "dir", "stamina", "staminaMax", "restMs", "exhausted", "moving", "running", "spd", "endu", "aspd", "root", "mv", "mvx", "mvy", "ifr", "rollCd", "lock", "aim"] as const satisfies readonly (keyof Mover)[];
+const MOVER_BOOL = new Set<string>(["exhausted", "moving", "running", "root"]);
+export const packMover = (m: Mover): number[] => MOVER_KEYS.map((k) => (MOVER_BOOL.has(k) ? (m[k] ? 1 : 0) : (m[k] as number)));
+export function unpackMover(a: number[]): Mover {
+  const m: Record<string, number | boolean> = {};
+  MOVER_KEYS.forEach((k, i) => (m[k] = MOVER_BOOL.has(k) ? a[i] === 1 : a[i]));
+  return m as Mover;
+}
+
 export type Collider = { w: number; h: number; solid: Uint8Array };
 
 export function newMover(x: number, y: number, s: { stamina: number; moveSpeed: number; endurance: number; atkSpeed: number }): Mover {
