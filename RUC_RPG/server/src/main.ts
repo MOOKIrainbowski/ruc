@@ -33,6 +33,8 @@ import { chatOp } from "./chat.ts";
 import { bugOp, gmHooks, gmPanel, isGM, setGmDev } from "./gm.ts";
 import { activeSanction, audit, purgeChat, saveIp } from "./db.ts";
 import { CHAT_LOG } from "../../../web/rpg/shared/data/social.ts";
+import { existsSync, rmSync } from "node:fs";
+import { backupDb } from "./db.ts";
 import { setLevel } from "./progress.ts";
 
 const DEV = process.argv.includes("--dev");
@@ -42,6 +44,7 @@ if (!SECRET) {
   process.exit(1);
 }
 const PORT = Number(process.env.PORT) || WS_PORT;
+const STOP_FILE = process.env.RPG_STOP_FILE?.trim() || "";
 setGmDev(DEV);
 const ORIGINS = (process.env.RPG_ALLOWED_ORIGINS || "http://localhost:3000,https://ruc-server.vercel.app").split(",").map((s) => s.trim());
 
@@ -260,7 +263,7 @@ function nearInstructor(p: Player) {
 
 const http = createServer((req, res) => {
   res.writeHead(200, { "Content-Type": "application/json" });
-  res.end(JSON.stringify({ ok: true, online: online.size, plaza: worlds.plaza.list(), field: worlds.field.list(), arena: worlds.arena.list(), dungeons: dungeonRooms().length }));
+  res.end(JSON.stringify({ ok: true, online: online.size, ...Object.fromEntries(Object.entries(worlds).map(([k, w]) => [k, w.list()])), dungeons: dungeonRooms().length }));
 });
 // 버그 제보(스크린샷)만 크게 받음 — 그 밖의 메시지는 8KB 넘으면 버림
 const wss = new WebSocketServer({ server: http, maxPayload: 256 * 1024 });
@@ -462,6 +465,9 @@ function loop() {
     const lists = Object.fromEntries(Object.entries(worlds).map(([k, w]) => [k, w.list()])) as Record<Shared, ChannelInfo[]>;
     for (const p of online.values()) if (p.room && !p.room.inst) send(p, { t: "channels", list: lists[p.room.kind as Shared] });
   }
+  // 이 PC 운영 (P18): "서버 끄기" 바로가기가 만든 파일을 보면 저장하고 정상 종료 · 6시간마다 백업
+  if (tickCount % 20 === 0 && STOP_FILE && existsSync(STOP_FILE)) { rmSync(STOP_FILE, { force: true }); console.log("끄기 요청 — 저장하고 종료합니다"); shutdown(); }
+  if (tickCount % (20 * 3600 * 6) === 0 && process.env.RPG_BACKUP_DIR) try { console.log("백업", backupDb(process.env.RPG_BACKUP_DIR)); } catch (e) { console.error("백업 실패", e); }
   if (tickCount % 600 === 0) {
     for (const p of online.values()) save(p);
     settleWeek(now); // 영지 주간 정산 (월요일 0시 KST) + 영향력 · 길드 경험치 저장 (P14)
@@ -477,6 +483,7 @@ loop();
 function shutdown() {
   for (const p of [...online.values()]) { send(p, { t: "kicked", reason: "server" }); leave(p); }
   flushRealm();
+  if (process.env.RPG_BACKUP_DIR) try { backupDb(process.env.RPG_BACKUP_DIR); } catch (e) { console.error("백업 실패", e); }
   process.exit(0);
 }
 process.on("SIGINT", shutdown);

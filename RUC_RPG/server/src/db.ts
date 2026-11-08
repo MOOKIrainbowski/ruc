@@ -3,6 +3,9 @@ import { DatabaseSync } from "node:sqlite";
 import { fileURLToPath } from "node:url";
 import type { Appearance } from "../../../web/rpg/shared/data/appearance.ts";
 import type { Item, StoredItem } from "../../../web/rpg/shared/data/items.ts";
+import { readdirSync, rmSync } from "node:fs";
+import { join as joinPath, resolve as resolvePath, sep } from "node:path";
+import { pathToFileURL } from "node:url";
 import type { Learned } from "../../../web/rpg/shared/progress.ts";
 
 /**
@@ -10,7 +13,10 @@ import type { Learned } from "../../../web/rpg/shared/progress.ts";
  * 실시간 상태(위치 등)는 메모리에 두고 30초마다 · 접속 종료 시 저장 (§26-2).
  */
 
-const dir = new URL("../data/", import.meta.url);
+// 운영(이 PC, P18): RPG_DATA_DIR = OneDrive 밖 폴더 (동기화가 SQLite 파일을 건드리지 않게)
+const dataDir = process.env.RPG_DATA_DIR?.trim();
+if (dataDir) mkdirSync(dataDir, { recursive: true });
+const dir = dataDir ? pathToFileURL(resolvePath(dataDir) + sep) : new URL("../data/", import.meta.url);
 mkdirSync(dir, { recursive: true });
 export const db = new DatabaseSync(fileURLToPath(new URL(process.env.RPG_DB_FILE || "rpg.sqlite", dir)));
 db.exec("PRAGMA journal_mode = WAL; PRAGMA foreign_keys = ON;");
@@ -700,3 +706,16 @@ const qNationNotice = db.prepare("UPDATE rpg_nations SET notice = ? WHERE id = ?
 export const nationNotice = (id: number, text: string) => qNationNotice.run(text, id);
 const qAwake = db.prepare("UPDATE rpg_characters SET awakened = 1 WHERE id = ?");
 export const saveAwake = (id: number) => qAwake.run(id);
+
+// ── 백업 (P18): VACUUM INTO 로 한 파일에 (쓰는 중에도 일관된 사본), 오래된 것부터 지움 ──
+export function backupDb(to: string, keep = 28): string {
+  mkdirSync(to, { recursive: true });
+  const d = new Date();
+  const p2 = (n: number) => String(n).padStart(2, "0");
+  const name = `rpg-${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}-${p2(d.getHours())}${p2(d.getMinutes())}.sqlite`;
+  const file = joinPath(to, name);
+  db.exec(`VACUUM INTO '${file.replaceAll("'", "''")}'`);
+  const old = readdirSync(to).filter((f) => /^rpg-\d{8}-\d{4}\.sqlite$/.test(f)).sort();
+  for (const f of old.slice(0, Math.max(0, old.length - keep))) rmSync(joinPath(to, f), { force: true });
+  return file;
+}
