@@ -21,7 +21,7 @@ import { charBase, gainMastery, loadProgress, sendProg, syncSkills } from "./pro
 import { jobStats } from "../../../web/rpg/shared/data/jobs.ts";
 import { newMover } from "../../../web/rpg/shared/movement.ts";
 import type { ElementId } from "../../../web/rpg/shared/data/elements.ts";
-import { guildOf, loadItems, type QuestRow } from "./db.ts";
+import { guildOf, loadItems, nationById, type QuestRow } from "./db.ts";
 import { quest, reachTick } from "./quests.ts";
 import { PARTY, partyExp, partyWeights, pickWeighted, splitWeighted } from "../../../web/rpg/shared/data/party.ts";
 import { makeUnit } from "./combat.ts";
@@ -101,6 +101,8 @@ export type Player = Unit & {
   ip: string;
   /** 길드 (P10, 이름표에 ‹이름›) */
   guild: { id: number; name: string } | null;
+  /** 국가 (P14, 이름표 «이름») */
+  nation: { id: number; name: string } | null;
   /** 창고 확장 장수 (P12) */
   tabs: number;
 };
@@ -117,6 +119,8 @@ export function buildPlayer(ws: WebSocket, discordId: string, char: CharacterRow
   p.title = char.title_id ?? null;
   const g = guildOf(char.id); // 방에 들어가기 전에 — 다른 사람에게 가는 spawn 정보에 길드 이름 (P10)
   p.guild = g && { id: g.id, name: g.name };
+  const n = g?.nation_id ? nationById(g.nation_id) : null;
+  p.nation = n && { id: n.id, name: n.name };
   p.tabs = char.storage_tabs ?? 0;
   syncSkills(p); // 견습 스킬 · 레벨 도달 스킬 (예전 캐릭터도) — 접속 때 안내는 안 띄움
   p.out = [];
@@ -134,7 +138,7 @@ export const playerState = (items: Item[], prog: Progress) => ({
   quests: new Map<string, QuestRow>(), takes: new Map<number, number>(), reach: 0,
   party: 0, kda: [0, 0, 0] as [number, number, number], title: null as string | null, hitBy: new Map<number, number>(), duel: 0, duelSide: 0, duelOn: false,
   potionLeft: null as number | null, deadAt: 0, respawnKind: "plaza" as RoomKind, sent: new Map<number, EntityRow>(), ip: "",
-  guild: null as { id: number; name: string } | null, tabs: 0,
+  guild: null as { id: number; name: string } | null, nation: null as { id: number; name: string } | null, tabs: 0,
 });
 
 /**
@@ -157,7 +161,7 @@ const segDist = (w: Wall, x: number, y: number) => {
 export const send = (p: Player, m: S2C) => p.ws.readyState === 1 && p.ws.send(JSON.stringify(m));
 export const info = (u: Unit): EntityInfo =>
   u.kind === "p"
-    ? { id: u.id, name: u.name, ap: (u as Player).char.appearance, look: (u as Player).look, el: u.el, lv: u.lv, jb: (u as Player).prog.job ?? (u as Player).prog.line ?? "", ...((u as Player).title ? { tt: (u as Player).title! } : {}), ...((u as Player).guild ? { gd: (u as Player).guild!.name } : {}) }
+    ? { id: u.id, name: u.name, ap: (u as Player).char.appearance, look: (u as Player).look, el: u.el, lv: u.lv, jb: (u as Player).prog.job ?? (u as Player).prog.line ?? "", ...((u as Player).title ? { tt: (u as Player).title! } : {}), ...((u as Player).guild ? { gd: (u as Player).guild!.name } : {}), ...((u as Player).nation ? { nt: (u as Player).nation!.name } : {}) }
     : { id: u.id, name: u.name, el: u.el, lv: u.lv, mob: (u as Mob).key, grade: (u as Mob).grade };
 
 /** 던전 인스턴스가 방에 거는 것 (dungeon.ts) */
@@ -175,6 +179,9 @@ export const hooks = {
   defeat: (_room: Room, _p: Player, _by: Player | undefined) => {},
   pvpKill: (_room: Room, _p: Player, _by: Player) => {},
   left: (_room: Room, _p: Player) => {},
+  /** 몹 처치 뒤 (P14 영지 · 길드 경험치) · 매초 (영지의 가호) */
+  kill: (_room: Room, _m: Mob, _best: Player | undefined) => {},
+  sec: (_room: Room) => {},
 };
 
 const dist = (a: { x: number; y: number }, b: { x: number; y: number }) => Math.sqrt((a.x - b.x) ** 2 + (a.y - b.y) ** 2);
@@ -422,6 +429,7 @@ export class Room implements World {
       const s = m.lastShot;
       if (s && s.sk.slot !== "A") gainMastery(s.p, s.mid, MASTERY.kill, m.grade);
       this.loot(m, best, party);
+      hooks.kill(this, m, best);
       this.inst?.killed(u, by);
       return;
     }
@@ -654,6 +662,7 @@ export class Room implements World {
       if (m.hist.length > 6) m.hist.shift();
     }
     if (this.pets.length) petTick(this, dt);
+    if (Math.floor(now / 1000) !== Math.floor((now - TICK_MS) / 1000)) hooks.sec(this);
     for (const u of [...this.players.values(), ...this.mobs.values(), ...this.pets]) {
       tickEffects(this, u);
       regen(this, u, dt);
@@ -771,6 +780,7 @@ export function gainExp(room: Room, p: Player, amount: number) {
   const c = p.char;
   const lucky = find(p, "elixir_luck"); // 행운의 영약 (P12)
   if (lucky && amount > 0) amount = Math.round(amount * (1 + lucky.v));
+  if (amount > 0 && has(p, "terr_bless")) amount = Math.round(amount * 1.1); // 영지의 가호 (P14)
   c.exp += amount;
   let up = false;
   while (c.level < COMBAT.maxLevel && c.exp >= expToNext(c.level)) {

@@ -245,6 +245,8 @@ CREATE TABLE IF NOT EXISTS rpg_chat_log (id INTEGER PRIMARY KEY AUTOINCREMENT, c
 CREATE INDEX IF NOT EXISTS rpg_chat_time ON rpg_chat_log (created_at);
 CREATE INDEX IF NOT EXISTS rpg_chat_guild ON rpg_chat_log (guild_id, id);
 CREATE TABLE IF NOT EXISTS rpg_territories (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL);
+-- 영지 영향력 (P14): 주마다 길드별
+CREATE TABLE IF NOT EXISTS rpg_territory_influence (territory_id INTEGER NOT NULL, guild_id INTEGER NOT NULL, week INTEGER NOT NULL, points INTEGER NOT NULL, PRIMARY KEY (territory_id, guild_id, week));
 CREATE TABLE IF NOT EXISTS rpg_nations (id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL UNIQUE, created_at INTEGER NOT NULL);
 `);
 
@@ -254,7 +256,14 @@ for (const [col, def] of [["job_tier1", "TEXT"], ["job_tier2", "TEXT"], ["job_su
   if (!charCols.has(col)) db.exec(`ALTER TABLE rpg_characters ADD COLUMN ${col} ${def}`);
 
 const guildCols = new Set((db.prepare("PRAGMA table_info(rpg_guilds)").all() as { name: string }[]).map((c) => c.name));
-for (const [col, def] of [["master_id", "INTEGER"], ["notice", "TEXT NOT NULL DEFAULT ''"]]) if (!guildCols.has(col)) db.exec(`ALTER TABLE rpg_guilds ADD COLUMN ${col} ${def}`);
+for (const [col, def] of [["master_id", "INTEGER"], ["notice", "TEXT NOT NULL DEFAULT ''"], ["xp", "INTEGER NOT NULL DEFAULT 0"], ["nation_id", "INTEGER"]]) if (!guildCols.has(col)) db.exec(`ALTER TABLE rpg_guilds ADD COLUMN ${col} ${def}`);
+// 영지 · 국가 (P14)
+const addCols = (table: string, cols: [string, string][]) => {
+  const have = new Set((db.prepare(`PRAGMA table_info(${table})`).all() as { name: string }[]).map((c) => c.name));
+  for (const [col, def] of cols) if (!have.has(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`);
+};
+addCols("rpg_territories", [["owner_guild", "INTEGER"], ["week", "INTEGER NOT NULL DEFAULT 0"]]);
+addCols("rpg_nations", [["ruler_guild", "INTEGER"], ["notice", "TEXT NOT NULL DEFAULT ''"]]);
 
 export type CharacterRow = {
   id: number;
@@ -596,11 +605,11 @@ export const setRelation = (a: number, b: number, state: "pending" | "ok" | "blo
 /** state 를 주면 그 상태일 때만 지움 */
 export const delRelation = (a: number, b: number, state = "") => qRelDel.run(a, b, state, state).changes > 0;
 
-export type GuildRow = { id: number; name: string; notice: string; master_id: number };
+export type GuildRow = { id: number; name: string; notice: string; master_id: number; xp: number; nation_id: number | null };
 const qGuildNew = db.prepare("INSERT INTO rpg_guilds (name, created_at, master_id, notice) VALUES (?, ?, ?, '')");
-const qGuildOf = db.prepare("SELECT g.id, g.name, g.notice, g.master_id FROM rpg_guild_members m JOIN rpg_guilds g ON g.id = m.guild_id WHERE m.char_id = ?");
-const qGuild = db.prepare("SELECT id, name, notice, master_id FROM rpg_guilds WHERE id = ?");
-const qGuildName = db.prepare("SELECT id, name, notice, master_id FROM rpg_guilds WHERE name = ? COLLATE NOCASE");
+const qGuildOf = db.prepare("SELECT g.id, g.name, g.notice, g.master_id, g.xp, g.nation_id FROM rpg_guild_members m JOIN rpg_guilds g ON g.id = m.guild_id WHERE m.char_id = ?");
+const qGuild = db.prepare("SELECT id, name, notice, master_id, xp, nation_id FROM rpg_guilds WHERE id = ?");
+const qGuildName = db.prepare("SELECT id, name, notice, master_id, xp, nation_id FROM rpg_guilds WHERE name = ? COLLATE NOCASE");
 const qGuildMembers = db.prepare(`SELECT m.char_id AS cid, c.nickname AS name, c.level AS lv, ${JB} AS jb FROM rpg_guild_members m JOIN rpg_characters c ON c.id = m.char_id WHERE m.guild_id = ? ORDER BY m.joined_at`);
 const qGuildJoin = db.prepare("INSERT INTO rpg_guild_members (char_id, guild_id, joined_at) VALUES (?, ?, ?)");
 const qGuildLeave = db.prepare("DELETE FROM rpg_guild_members WHERE char_id = ?");
@@ -641,3 +650,50 @@ export const purgeChat = (before: number) => qChatPurge.run(before).changes;
 // ── 창고 확장 (P12) ──
 const qTabs = db.prepare("UPDATE rpg_characters SET storage_tabs = ? WHERE id = ?");
 export const saveTabs = (id: number, n: number) => qTabs.run(n, id);
+
+// ── 영지 · 국가 · 길드 경험치 · 길드 창고 (P14) ─────────────────────────
+const qGuildXp = db.prepare("UPDATE rpg_guilds SET xp = xp + ? WHERE id = ?");
+export const addGuildXp = (id: number, n: number) => qGuildXp.run(n, id);
+/** 길드 창고: 길드장 소유 · 위치 gbank (FK 때문에 길드 id 로 못 가짐) — 길드장이 바뀌면 같이 넘김 */
+const qGbank = db.prepare("SELECT * FROM rpg_items WHERE owner_id = ? AND location = 'gbank' ORDER BY slot");
+const qGbankMove = db.prepare("UPDATE rpg_items SET owner_id = ? WHERE owner_id = ? AND location = 'gbank'");
+export const gbankItems = (master: number) => (qGbank.all(master) as ItemRaw[]).map(itemOf) as Item[];
+export const moveGbank = (from: number, to: number) => qGbankMove.run(to, from);
+
+export type TerrRow = { id: number; name: string; owner_guild: number | null; week: number };
+const qTerrSeed = db.prepare("INSERT OR IGNORE INTO rpg_territories (id, name, created_at) VALUES (?, ?, ?)");
+const qTerrs = db.prepare("SELECT id, name, owner_guild, week FROM rpg_territories ORDER BY id");
+const qTerrSet = db.prepare("UPDATE rpg_territories SET owner_guild = ?, week = ? WHERE id = ?");
+const qInfl = db.prepare(`INSERT INTO rpg_territory_influence (territory_id, guild_id, week, points) VALUES (?, ?, ?, ?)
+  ON CONFLICT(territory_id, guild_id, week) DO UPDATE SET points = points + excluded.points`);
+const qInflTop = db.prepare(`SELECT i.guild_id AS gid, g.name, i.points FROM rpg_territory_influence i JOIN rpg_guilds g ON g.id = i.guild_id
+  WHERE i.territory_id = ? AND i.week = ? ORDER BY i.points DESC, i.guild_id LIMIT ?`);
+export const seedTerritory = (id: number, name: string) => qTerrSeed.run(id, name, Date.now());
+export const territories = () => qTerrs.all() as TerrRow[];
+export const setTerritory = (id: number, owner: number | null, week: number) => qTerrSet.run(owner, week, id);
+export const addInfluence = (terr: number, guild: number, week: number, n: number) => qInfl.run(terr, guild, week, n);
+export const influenceTop = (terr: number, week: number, n: number) => qInflTop.all(terr, week, n) as { gid: number; name: string; points: number }[];
+
+export type NationRow = { id: number; name: string; ruler_guild: number; notice: string };
+const qNationNew = db.prepare("INSERT INTO rpg_nations (name, created_at, ruler_guild, notice) VALUES (?, ?, ?, '')");
+const qNation = db.prepare("SELECT id, name, ruler_guild, notice FROM rpg_nations WHERE id = ?");
+const qNationName = db.prepare("SELECT id FROM rpg_nations WHERE name = ? COLLATE NOCASE");
+const qNationGuilds = db.prepare("SELECT id, name, master_id FROM rpg_guilds WHERE nation_id = ? ORDER BY id");
+const qGuildNation = db.prepare("UPDATE rpg_guilds SET nation_id = ? WHERE id = ?");
+const qNationDropGuilds = db.prepare("UPDATE rpg_guilds SET nation_id = NULL WHERE nation_id = ?");
+const qNationDrop = db.prepare("DELETE FROM rpg_nations WHERE id = ?");
+const qNationRuler = db.prepare("UPDATE rpg_nations SET ruler_guild = ? WHERE id = ?");
+/** 국가 만들기 (부르는 쪽 트랜잭션 안). 이름이 겹치면 null */
+export function createNation(name: string, ruler: number): number | null {
+  if (qNationName.get(name)) return null;
+  const id = Number(qNationNew.run(name, Date.now(), ruler).lastInsertRowid);
+  qGuildNation.run(id, ruler);
+  return id;
+}
+export const nationById = (id: number) => (qNation.get(id) as NationRow | undefined) ?? null;
+export const nationGuilds = (id: number) => qNationGuilds.all(id) as { id: number; name: string; master_id: number }[];
+export const setGuildNation = (gid: number, nid: number | null) => qGuildNation.run(nid, gid);
+export const setNationRuler = (nid: number, gid: number) => qNationRuler.run(gid, nid);
+export const dropNation = (id: number) => tx(() => { qNationDropGuilds.run(id); qNationDrop.run(id); });
+const qNationNotice = db.prepare("UPDATE rpg_nations SET notice = ? WHERE id = ?");
+export const nationNotice = (id: number, text: string) => qNationNotice.run(text, id);

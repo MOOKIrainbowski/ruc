@@ -1,3 +1,4 @@
+import type { Item } from "./items.ts";
 /**
  * 소셜 (P10, D86~D89): 친구 · 차단 · 귓속말 · 접속 알림 · 길드 기초 · 채팅 저장.
  * 길드 등급은 길드장 · 길드원 둘뿐 (§21-4 의 영지 · 국가는 아직 자리만).
@@ -12,6 +13,16 @@ export const validGuildName = (s: unknown): s is string => typeof s === "string"
 
 export type FriendRow = { cid: number; name: string; lv: number; jb: string; on: boolean; where: string };
 export type GuildMember = { cid: number; name: string; lv: number; jb: string; master: boolean; on: boolean };
-export type GuildView = { id: number; name: string; notice: string; members: GuildMember[] };
-/** 소셜 창 데이터: 친구 · 받은 친구 신청 · 차단 목록 · 내 길드 */
-export type SocialView = { friends: FriendRow[]; pending: { cid: number; name: string }[]; blocked: { cid: number; name: string }[]; guild: GuildView | null };
+/** 길드 (P14: 레벨 · 경험치 · 정원 · 길드 창고 · 국가 · 영지) */
+export type GuildView = {
+  id: number; name: string; notice: string; members: GuildMember[];
+  level: number; xp: number; next: number | null; cap: number; bankCap: number; bank: Item[]; nation: string | null; lands: string[];
+};
+/** 영지 · 국가 (P14) */
+export type RealmView = {
+  week: number; ends: number;
+  terr: { id: number; name: string; owner: string | null; top: { name: string; points: number }[]; mine: number }[];
+  nation: { id: number; name: string; notice: string; ruler: string; guilds: { name: string; lands: number; ruler: boolean }[] } | null;
+};
+/** 소셜 창 데이터: 친구 · 받은 친구 신청 · 차단 목록 · 내 길드 · 영지 · 국가 */
+export type SocialView = { friends: FriendRow[]; pending: { cid: number; name: string }[]; blocked: { cid: number; name: string }[]; guild: GuildView | null; realm: RealmView };

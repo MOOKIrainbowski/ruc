@@ -8,6 +8,7 @@ import { online, pay, sendWallet } from "./economy.ts";
 import { give, refreshGear, sendInv } from "./items.ts";
 import { partyOf } from "./party.ts";
 import { setLevel } from "./progress.ts";
+import { settleWeek } from "./realm.ts";
 import { send, type Player, type Room } from "./room.ts";
 
 /**
@@ -94,6 +95,11 @@ export function gmCommand(p: Player, text: string): string | null {
       if (!need(q) || !q.room) return "접속 중인 닉네임이 아닙니다";
       gmHooks.place(p, q.room, q.x, q.y);
       return ok(`${q.char.nickname} 옆으로`, q.char.nickname);
+    }
+    case "settle": {
+      // 영지 주간 정산을 지금 (이번 주 영향력으로, P14)
+      settleWeek(Date.now(), true);
+      return ok("영지 정산 완료");
     }
     case "spawn": {
       const key = a[0] ?? "";

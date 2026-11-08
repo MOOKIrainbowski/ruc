@@ -62,6 +62,7 @@ export const EFFECTS = {
   elixir_power: { name: "용맹의 영약", buff: true, cat: "stat", keep: true, mods: (v) => [{ k: "atk", mul: v }, { k: "ap", mul: v }], icon: "sword", color: "#ff6b3d", desc: "공격력 · 주문력 +{v}%" },
   elixir_luck: { name: "행운의 영약", buff: true, cat: "stat", keep: true, mods: () => [{ k: "luck", add: 10 }], icon: "clover", color: "#2ECC71", desc: "경험치 +{v}% · 운 +10" },
   elixir_iron: { name: "강철의 영약", buff: true, cat: "stat", keep: true, mods: (v) => [{ k: "pdef", add: v }, { k: "mdef", add: v }], icon: "shield", color: "#9aa3ad", desc: "물리 · 마법 방어력 +{v}" },
+  terr_bless: { name: "영지의 가호", buff: true, cat: "stat", mods: () => [{ k: "moveSpeed", mul: 0.05 }], icon: "crown", color: "#F2C94C", desc: "내 길드 · 국가의 영지: 경험치 +10% · 이동 속도 +5%" },
   feather: { name: "부활 깃털", buff: true, cat: "special", icon: "wing", color: "#fff8e0", desc: "쓰러지면 HP 30%로 일어납니다 (한 번)" },
   // P9 세부 직업 패시브 (§9-3)
   blood_rage: { name: "피의 광기", buff: true, cat: "stat", max: 10, mods: (_v, s) => [{ k: "lifesteal", add: 0.02 * s }, { k: "atkSpeed", mul: 0.03 * s }], icon: "fang", color: "#E5484D", desc: "잃은 HP 10%마다 흡혈 +2% · 공속 +3%" },

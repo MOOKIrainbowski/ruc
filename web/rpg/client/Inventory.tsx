@@ -179,8 +179,8 @@ function Preview({ you, items }: { you: You; items: Item[] }) {
   );
 }
 
-export function ItemsWindow({ mode, items, you, zoom, friends, send, toast, onClose }: {
-  mode: "inventory" | "storage"; items: Item[]; you: You; zoom: number; friends: FriendRow[]; send: (m: C2S) => void; toast: (msg: string) => void; onClose: () => void;
+export function ItemsWindow({ mode, items, you, zoom, friends, guild, send, toast, onClose }: {
+  mode: "inventory" | "storage"; items: Item[]; you: You; zoom: number; friends: FriendRow[]; guild: boolean; send: (m: C2S) => void; toast: (msg: string) => void; onClose: () => void;
 }) {
   /** 선물할 아이템 (P12) — 친구 고르기 창 */
   const [gift, setGift] = useState<Item | null>(null);
@@ -295,6 +295,7 @@ export function ItemsWindow({ mode, items, you, zoom, friends, send, toast, onCl
               const rows: [string, () => void][] = [];
               if (tp.heal || tp.skill || tp.use) rows.push([t("inv.use"), () => use(menu.it)]);
               if (menu.it.loc === "inventory" || menu.it.loc === "hotbar") rows.push([t("inv.gift"), () => setGift(menu.it)]);
+              if (guild && (menu.it.loc === "inventory" || menu.it.loc === "hotbar")) rows.push([t("inv.gbank"), () => send({ t: "guild", op: "deposit", a: pos(menu.it) })]);
               if (tp.slot) rows.push([menu.it.loc === "equipped" ? t("inv.unequip") : t("inv.equip"), () => use(menu.it)]);
               if (stackable(tp) && menu.it.qty > 1) rows.push([t("inv.split"), () => split(menu.it)]);
               if (menu.it.loc !== "equipped") rows.push([t("ec.disassemble"), () => setConfirm({ it: menu.it, kind: "dis" })]);

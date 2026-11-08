@@ -19,7 +19,7 @@ import type { MoveInput, Mover } from "./movement.ts";
 
 /** 플레이어는 ap(외형) · look(옷 색을 바꾸는 장비 템플릿 id) · tt(칭호 id), 몹은 mob(종류) · grade */
 /** pet = 소환수 · 설치물의 주인 id (P9) — 몹 그림(mob) 또는 주인 모습(ap, 잔상) */
-export type EntityInfo = { id: number; name: string; el: string; lv: number; ap?: Appearance; look?: string[]; jb?: string; tt?: string; mob?: string; grade?: Grade; pet?: number; gd?: string };
+export type EntityInfo = { id: number; name: string; el: string; lv: number; ap?: Appearance; look?: string[]; jb?: string; tt?: string; mob?: string; grade?: Grade; pet?: number; gd?: string; nt?: string };
 /** 스냅샷 한 줄: [id, x, y, dir, flags, HP 천분율, 마나 또는 기력 천분율] */
 export type EntityRow = [number, number, number, number, number, number, number];
 export const F_MOVING = 1;
@@ -94,6 +94,7 @@ export type You = {
   /** 내 이름표: 칭호 · 길드 (P10) */
   tt?: string;
   gd?: string;
+  nt?: string;
   /** 창고 확장 장수 (P12) */
   tabs?: number;
 };
@@ -148,11 +149,13 @@ export type C2S =
   /** 채집 (P13): 채집 지점 id */
   | { t: "gather"; id: number }
   /** 채팅 (§5 Enter): 같은 방 · 파티 · 길드. "/p 말" = 파티, "/g 말" = 길드, "/w 닉 말" · "/r 말" = 귓속말, "/gm …" = GM 명령 */
-  | { t: "chat"; ch?: "room" | "party" | "guild"; text: string }
+  | { t: "chat"; ch?: "room" | "party" | "guild" | "nation"; text: string }
   /** 친구 (P10): 신청(name) · 수락/거절/삭제(cid) · 차단(name 또는 cid) · 차단 해제(cid) */
-  | { t: "friend"; op: "request" | "accept" | "decline" | "remove" | "block" | "unblock" | "gift"; name?: string; cid?: number; a?: ItemPos; n?: number }
+  | { t: "friend"; op: "request" | "accept" | "decline" | "remove" | "block" | "unblock" | "gift" | "view"; name?: string; cid?: number; a?: ItemPos; n?: number }
   /** 길드 (P10): 만들기(name) · 초대(name) · 초대 수락/거절(id) · 가입 신청(name = 길드 이름) · 승인/거절(cid) · 탈퇴 · 추방 · 위임(cid) · 공지(text) · 해산 */
-  | { t: "guild"; op: "create" | "invite" | "accept" | "decline" | "apply" | "approve" | "reject" | "leave" | "kick" | "promote" | "notice" | "disband"; name?: string; id?: number; cid?: number; text?: string }
+  | { t: "guild"; op: "create" | "invite" | "accept" | "decline" | "apply" | "approve" | "reject" | "leave" | "kick" | "promote" | "notice" | "disband" | "deposit" | "withdraw"; name?: string; id?: number | string; cid?: number; text?: string; a?: ItemPos; n?: number }
+  /** 국가 (P14): 세우기(name) · 길드 초대(name = 길드 이름) · 초대 수락/거절(id) · 탈퇴 · 추방(name) · 공지 · 해산 */
+  | { t: "nation"; op: "found" | "invite" | "accept" | "decline" | "leave" | "expel" | "notice" | "disband"; name?: string; id?: number; text?: string }
   /** 버그 제보 (§28): 설명 · 스크린샷(JPEG data URL) · 클라이언트 로그 */
   | { t: "bug"; text: string; img?: string; log?: string[] }
   /** GM 창 (F8): 접속자 · 버그 제보 목록, bug = 그 제보의 스크린샷 */

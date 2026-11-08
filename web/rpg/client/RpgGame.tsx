@@ -23,6 +23,8 @@ import { ROOM_NAME, type DungeonState } from "../shared/data/dungeons";
 import type { PartyAd, PartyVitals, PartyView } from "../shared/data/party";
 import { BugWindow, ChatBox, DebugOverlay, GmWindow, captureConsole, logLine, type ChatLine, type ChatMode, type GmData } from "./Ops";
 import { SocialWindow } from "./Social";
+import { terrAt } from "../shared/data/realm";
+import { TILE } from "../shared/constants";
 import type { SocialView } from "../shared/data/social";
 import { CHAT } from "../shared/data/chat";
 import { bgm, setVolume, sfx, unlock } from "./sound";
@@ -96,7 +98,9 @@ export default function RpgGame({ dev }: { dev?: string }) {
   const [chatMode, setChatMode] = useState<ChatMode>("room");
   const [chatSeed, setChatSeed] = useState({ text: "", n: 0 });
   // 소셜 (P10): 친구 · 차단 · 길드 — 차단한 사람의 채팅은 숨김
-  const [soc, setSoc] = useState<SocialView>({ friends: [], pending: [], blocked: [], guild: null });
+  const [soc, setSoc] = useState<SocialView>({ friends: [], pending: [], blocked: [], guild: null, realm: { week: 0, ends: 0, terr: [], nation: null } });
+  /** 지금 있는 영지 (P14) — 바뀌면 배너 */
+  const lastTerr = useRef(0);
   const blockedNames = useRef(new Set<string>());
   const whisperTo = useCallback((name: string) => { setChatSeed((s) => ({ text: `/w ${name} `, n: s.n + 1 })); setChatOpen(true); }, []);
   const [gm, setGm] = useState<GmData>({});
@@ -308,6 +312,16 @@ export default function RpgGame({ dev }: { dev?: string }) {
     if (!hud?.ghost) deadAt.current = 0;
   }, [hud?.ghost]);
 
+  // 영지 (P14): 초원에서 지금 있는 영지 · 영주 — 들어가면 배너
+  const terrDef = hud && world && room.kind === "field" ? terrAt(hud.x, hud.y, world.map.w * TILE, world.map.h * TILE) : undefined;
+  const terrHere = terrDef && { name: terrDef.name, owner: soc.realm.terr.find((x) => x.id === terrDef.id)?.owner ?? null };
+  useEffect(() => {
+    const id = terrDef?.id ?? 0;
+    if (id === lastTerr.current) return;
+    lastTerr.current = id;
+    if (terrHere) setBanner({ text: `${terrHere.name}${terrHere.owner ? ` — ‹${terrHere.owner}›의 영지` : ""}`, at: Date.now(), ms: 2200 });
+  }, [terrDef?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // 창고는 광장에서만 (§15-3) — 광장을 떠나면 닫음
   useEffect(() => {
     if (room.kind !== "plaza") setPopups((s) => s.filter((p) => p !== "storage"));
@@ -338,7 +352,10 @@ export default function RpgGame({ dev }: { dev?: string }) {
         toggle("journal");
         if (!popups.includes("journal")) net.current?.send({ t: "quest", op: "board" });
       }
-      else if (e.code === settings.keys.social) toggle("social");
+      else if (e.code === settings.keys.social) {
+        toggle("social");
+        if (!popups.includes("social")) net.current?.send({ t: "friend", op: "view" });
+      }
       else if (e.code === settings.keys.party) {
         toggle("party");
         if (!popups.includes("party")) net.current?.send({ t: "who" });
@@ -394,6 +411,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
               <Compass dir={hud.dir} />
               <br />
               {room.kind !== "dungeon" && <ChannelPicker room={room} channels={channels} onPick={(ch) => net.current?.send({ t: "channel", ch })} />}
+              {terrHere && <div className="rpg-chip mt-1.5 block w-fit">📍 {terrHere.name} · {terrHere.owner ? t("rl.ownedBy", { g: terrHere.owner }) : t("rl.noOwner")}</div>}
               <PartyFrames party={party} pv={pv} you={you} here={room} />
             </div>
           </div>
@@ -411,7 +429,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
           {msg && <div className="rpg-chip absolute bottom-[200px] left-1/2 -translate-x-1/2 whitespace-nowrap">{msg}</div>}
           <ChatBox
             lines={chat} open={chatOpen} mode={chatMode} seed={chatSeed} onSend={(text) => send({ t: "chat", text })} onClose={() => setChatOpen(false)}
-            onMode={() => setChatMode((v) => (v === "room" ? "party" : v === "party" ? "guild" : "room"))}
+            onMode={() => setChatMode((v) => (v === "room" ? "party" : v === "party" ? "guild" : v === "guild" ? "nation" : "room"))}
           />
           {hud.dbg && <DebugOverlay d={hud.dbg} fps={hud.fps} />}
           {hud.dead > 0 && !hud.ghost && <DeathOverlay ms={hud.dead} arena={hud.deadKind === "arena"} />}
@@ -455,7 +473,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
       )}
       {phase === "play" && you && (top === "inventory" || top === "storage") && (
         <div style={{ zoom: settings.uiScale / 100 }} className="absolute inset-0">
-          <ItemsWindow mode={top} items={items} you={you} zoom={settings.uiScale / 100} friends={soc.friends} send={(m) => net.current?.send(m)} toast={toast} onClose={() => toggle(top)} />
+          <ItemsWindow mode={top} items={items} you={you} zoom={settings.uiScale / 100} friends={soc.friends} guild={!!soc.guild} send={(m) => net.current?.send(m)} toast={toast} onClose={() => toggle(top)} />
         </div>
       )}
       {phase === "play" && you && (top === "skills" || top === "job") && (

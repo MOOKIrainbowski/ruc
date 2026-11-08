@@ -57,7 +57,7 @@ export type Item = {
   opt?: Ench[]; ench?: Ench[]; name?: string;
 };
 /** DB 의 아이템 행 — 우편 · 유저 상점 에스크로에 있는 것도 (플레이어 목록 inv 에는 안 옴) */
-export type StoredItem = Omit<Item, "loc"> & { loc: Loc | "mail" | "escrow" };
+export type StoredItem = Omit<Item, "loc"> & { loc: Loc | "mail" | "escrow" | "gbank" };
 
 export type ItemKind = "weapon" | "armor" | "accessory" | "potion" | "material" | "book" | "consumable";
 export type Template = {

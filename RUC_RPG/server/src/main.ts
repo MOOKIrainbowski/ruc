@@ -19,9 +19,10 @@ import { effectDef } from "../../../web/rpg/shared/data/effects.ts";
 import { mailCount } from "./db.ts";
 import { changeJob, equip, saveDirtySkills } from "./progress.ts";
 import { loadQuestState, notify, notiOp, questOp, quest, sendNotis, sendQuests, sweepQuests } from "./quests.ts";
-import { Channels, buildPlayer, info, send, type Player, type Room } from "./room.ts";
+import { Channels, buildPlayer, hooks as roomHooks, info, send, type Player, type Room } from "./room.ts";
 import { petInfo } from "./pets.ts";
 import { friendOp, guildOp, socialLogin, socialLogout } from "./social.ts";
+import { flushRealm, nationOp, realmKill, realmSec, settleWeek } from "./realm.ts";
 import { RUINS } from "../../../web/rpg/shared/data/dungeons.ts";
 import { KDA } from "../../../web/rpg/shared/data/party.ts";
 import { loadKda } from "./db.ts";
@@ -55,6 +56,8 @@ setDungeonMap(maps.dungeon);
 const online = new Map<string, Player>(); // 디스코드 ID → 접속 중인 플레이어
 econOnline.byChar = (id) => [...online.values()].find((p) => p.char.id === id);
 econOnline.all = () => [...online.values()];
+roomHooks.kill = realmKill; // 영지 영향력 · 길드 경험치 (P14)
+roomHooks.sec = realmSec; // 영지의 가호
 
 /** 저장된 맵 · 위치 · HP 로 플레이어를 만듦. kind = 들어갈 맵 */
 function makePlayer(ws: WebSocket, t: Ticket, char: CharacterRow): { p: Player; kind: Shared } {
@@ -107,7 +110,7 @@ function enterRoom(p: Player, room: Room) {
     you: {
       id: p.id, nickname: p.char.nickname, level: p.char.level, exp: p.char.exp, element: p.char.element, appearance: p.char.appearance,
       ruc: p.ruc, kda: p.kda, settings: p.char.settings, slots: p.slots, prog: p.prog, gm: isGM(p), tabs: p.tabs,
-      ...(p.title ? { tt: p.title } : {}), ...(p.guild ? { gd: p.guild.name } : {}),
+      ...(p.title ? { tt: p.title } : {}), ...(p.guild ? { gd: p.guild.name } : {}), ...(p.nation ? { nt: p.nation.name } : {}),
     },
     room: { kind: room.kind, ch: room.ch },
     me: p.mover,
@@ -338,8 +341,9 @@ wss.on("connection", (ws, req) => {
         if (player.room && !player.room.inst && player.room.ch !== m.ch && !player.dead) join(player, player.room.kind as Shared, Number(m.ch));
         return;
       case "friend":
-      case "guild": {
-        const err = m.t === "friend" ? friendOp(player, m) : guildOp(player, m);
+      case "guild":
+      case "nation": {
+        const err = m.t === "friend" ? friendOp(player, m) : m.t === "guild" ? guildOp(player, m) : nationOp(player, m);
         if (err) reply({ t: "error", msg: err });
         return;
       }
@@ -443,7 +447,10 @@ function loop() {
     const lists = { plaza: worlds.plaza.list(), field: worlds.field.list(), arena: worlds.arena.list() };
     for (const p of online.values()) if (p.room && !p.room.inst) send(p, { t: "channels", list: lists[p.room.kind as Shared] });
   }
-  if (tickCount % 600 === 0) for (const p of online.values()) save(p);
+  if (tickCount % 600 === 0) {
+    for (const p of online.values()) save(p);
+    settleWeek(now); // 영지 주간 정산 (월요일 0시 KST) + 영향력 · 길드 경험치 저장 (P14)
+  }
   if (tickCount % 72_000 === 0) purgeChat(Date.now() - CHAT_LOG.keepDays * 86_400_000); // 채팅 저장 7일 (1시간마다 정리)
   if (tickCount % 1200 === 1) { sweep(now); sweepQuests(now); } // 1분마다: 유저 상점 만료 반환 · 30일 지난 우편 정리
   tickMs = Math.round((performance.now() - t0) * 100) / 100;
@@ -454,6 +461,7 @@ loop();
 
 function shutdown() {
   for (const p of [...online.values()]) { send(p, { t: "kicked", reason: "server" }); leave(p); }
+  flushRealm();
   process.exit(0);
 }
 process.on("SIGINT", shutdown);

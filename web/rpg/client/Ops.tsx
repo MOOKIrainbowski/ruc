@@ -13,7 +13,7 @@ import { t } from "./i18n";
 type Send = (m: Parameters<import("./net").Net["send"]>[0]) => void;
 export type ChatLine = { ch: ChatChannel; from: string; text: string; at: number; key: number; to?: string };
 /** 채팅 보낼 곳 (Tab 버튼으로 돌아가며) */
-export type ChatMode = "room" | "party" | "guild";
+export type ChatMode = "room" | "party" | "guild" | "nation";
 export type GmData = Omit<Extract<S2C, { t: "gm" }>, "t">;
 
 // ── 클라이언트 로그 (버그 제보에 붙임): 콘솔 오류 · 경고 · 안내 문구 최근 60줄 ────────────────
@@ -35,8 +35,8 @@ export function captureConsole() {
 }
 
 // ── 채팅 (Enter, §5) ─────────────────────────────────────────────────
-const CH_COLOR: Record<ChatChannel, string> = { room: "#ffffff", party: "#9be36b", system: "#F2C94C", gm: "#ff9a9e", guild: "#7fe3e3", whisper: "#e7a3ff" };
-const PREFIX: Record<ChatMode, string> = { room: "", party: "/p ", guild: "/g " };
+const CH_COLOR: Record<ChatChannel, string> = { room: "#ffffff", party: "#9be36b", system: "#F2C94C", gm: "#ff9a9e", guild: "#7fe3e3", whisper: "#e7a3ff", nation: "#ffb86b" };
+const PREFIX: Record<ChatMode, string> = { room: "", party: "/p ", guild: "/g ", nation: "/n " };
 /** seed = 채팅을 열면서 미리 넣을 글 (귓속말 버튼: "/w 닉 ") */
 export function ChatBox({ lines, open, mode, seed, onSend, onClose, onMode }: {
   lines: ChatLine[]; open: boolean; mode: ChatMode; seed: { text: string; n: number }; onSend: (text: string) => void; onClose: () => void; onMode: () => void;
@@ -58,7 +58,7 @@ export function ChatBox({ lines, open, mode, seed, onSend, onClose, onMode }: {
       <div ref={list} className={`${open ? "max-h-[220px] overflow-y-auto" : ""} flex flex-col gap-px text-[12px] leading-snug [text-shadow:0_1px_0_#000,0_0_3px_#000]`}>
         {shown.map((l) => (
           <div key={l.key} style={{ color: CH_COLOR[l.ch] }} className="whitespace-pre-wrap break-words">
-            {l.ch === "party" ? t("chat.tagParty") : l.ch === "gm" ? t("chat.tagGm") : l.ch === "guild" ? t("chat.tagGuild") : ""}
+            {l.ch === "party" ? t("chat.tagParty") : l.ch === "gm" ? t("chat.tagGm") : l.ch === "guild" ? t("chat.tagGuild") : l.ch === "nation" ? t("chat.tagNation") : ""}
             {l.ch === "whisper" ? <b>{t("chat.tagWhisper")}{l.from} → {l.to}: </b> : l.from && <b>{l.from}: </b>}{l.text}
           </div>
         ))}

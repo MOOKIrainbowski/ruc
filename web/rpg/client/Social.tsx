@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import { JOBS, LINES, type LineId } from "../shared/data/jobs";
 import { GUILD, type SocialView } from "../shared/data/social";
+import { REALM } from "../shared/data/realm";
+import { ITEMS } from "../shared/data/items";
+import { ItemImg } from "./Inventory";
 import type { You } from "../shared/protocol";
 import { t } from "./i18n";
 
@@ -18,7 +21,8 @@ const Btn = ({ onClick, children, on }: { onClick: () => void; children: React.R
 const Dot = ({ on }: { on: boolean }) => <span className={`inline-block h-2 w-2 rounded-full ${on ? "bg-[#4CC764]" : "bg-[#9a8a78]"}`} title={on ? t("so.on") : t("so.off")} />;
 
 export function SocialWindow({ you, s, send, onWhisper, onClose }: { you: You; s: SocialView; send: Send; onWhisper: (name: string) => void; onClose: () => void }) {
-  const [tab, setTab] = useState<"friends" | "guild">("friends");
+  const [tab, setTab] = useState<"friends" | "guild" | "realm">("friends");
+  const [nname, setNname] = useState("");
   const [name, setName] = useState("");
   const [gname, setGname] = useState("");
   const [notice, setNotice] = useState(s.guild?.notice ?? "");
@@ -36,6 +40,7 @@ export function SocialWindow({ you, s, send, onWhisper, onClose }: { you: You; s
         <div className="mb-2 flex gap-1.5">
           <button className="rpg-btn" data-on={tab === "friends"} onClick={() => setTab("friends")}>{t("so.friends")} ({onN(s.friends)}/{s.friends.length})</button>
           <button className="rpg-btn" data-on={tab === "guild"} onClick={() => setTab("guild")}>{t("so.guild")}{g ? ` ‹${g.name}›` : ""}</button>
+          <button className="rpg-btn" data-on={tab === "realm"} onClick={() => setTab("realm")}>{t("rl.tab")}</button>
         </div>
         <div className="max-h-[440px] overflow-y-auto pr-1">
           {tab === "friends" && (
@@ -74,6 +79,57 @@ export function SocialWindow({ you, s, send, onWhisper, onClose }: { you: You; s
               ))}
             </>
           )}
+          {tab === "realm" && (
+            <>
+              <p className="mb-1 text-[11px] text-[#8c6642]">{t("rl.lead", { d: Math.max(0, Math.ceil((s.realm.ends - Date.now()) / 86_400_000)) })}</p>
+              {s.realm.terr.map((tr) => (
+                <Row key={tr.id}>
+                  <b className="w-20">{tr.name}</b>
+                  <span className="w-28 text-[11px]">{tr.owner ? `👑 ‹${tr.owner}›` : t("rl.noOwner")}</span>
+                  <span className="flex-1 text-[10px] text-[#8c6642]">{tr.top.length ? tr.top.map((x, i) => `${i + 1}. ${x.name} ${x.points}`).join(" · ") : t("rl.noInfl")}{g ? ` — ${t("rl.mine", { n: tr.mine })}` : ""}</span>
+                </Row>
+              ))}
+              <h3 className="mb-1 mt-3 font-bold">{t("rl.nation")}</h3>
+              {!s.realm.nation ? (
+                <>
+                  <p className="mb-1 text-[11px]">{t("rl.noNation", { ruc: REALM.nationRuc.toLocaleString() })}</p>
+                  {meMaster && (
+                    <div className="flex gap-1">
+                      <input className="rpg-input flex-1" maxLength={10} value={nname} placeholder={t("rl.nnamePh")} onChange={(e) => setNname(e.target.value)} />
+                      <button className="rpg-btn" disabled={!nname.trim()} onClick={() => send({ t: "nation", op: "found", name: nname.trim() })}>{t("rl.found")}</button>
+                    </div>
+                  )}
+                </>
+              ) : (
+                <div className="rounded border border-[#c9a97a] bg-[#fff6dd] p-2">
+                  <b>«{s.realm.nation.name}»</b> <span className="text-[11px]">{t("rl.ruler", { g: s.realm.nation.ruler })}</span>
+                  {s.realm.nation.notice && <p className="mt-1">📢 {s.realm.nation.notice}</p>}
+                  <ul className="mt-1 space-y-0.5">
+                    {s.realm.nation.guilds.map((x) => (
+                      <li key={x.name} className="flex items-center gap-2">
+                        <span className="flex-1">{x.ruler ? "👑 " : ""}‹{x.name}› <span className="text-[10px] text-[#8c6642]">{t("rl.lands", { n: x.lands })}</span></span>
+                        {meMaster && s.realm.nation!.ruler === g?.name && !x.ruler && <Btn onClick={() => send({ t: "nation", op: "expel", name: x.name })}>{t("so.kick")}</Btn>}
+                      </li>
+                    ))}
+                  </ul>
+                  {meMaster && s.realm.nation.ruler === g?.name ? (
+                    <>
+                      <div className="mt-2 flex gap-1">
+                        <input className="rpg-input flex-1" maxLength={10} value={nname} placeholder={t("rl.ginvitePh")} onChange={(e) => setNname(e.target.value)} />
+                        <button className="rpg-btn" disabled={!nname.trim()} onClick={() => send({ t: "nation", op: "invite", name: nname.trim() })}>{t("rl.ginvite")}</button>
+                      </div>
+                      <div className="mt-1 flex gap-1">
+                        <input className="rpg-input flex-1" maxLength={REALM.nationNoticeMax} value={notice} onChange={(e) => setNotice(e.target.value)} placeholder={t("so.notice")} />
+                        <button className="rpg-btn" onClick={() => send({ t: "nation", op: "notice", text: notice })}>{t("so.save")}</button>
+                        <button className="rpg-btn" data-on={sure} onClick={() => { if (sure) send({ t: "nation", op: "disband" }); setSure(!sure); }}>{sure ? t("so.disbandQ") : t("rl.disband")}</button>
+                      </div>
+                    </>
+                  ) : meMaster && <div className="mt-2 flex justify-end"><button className="rpg-btn" onClick={() => send({ t: "nation", op: "leave" })}>{t("rl.leave")}</button></div>}
+                </div>
+              )}
+              <p className="mt-2 text-[10px] text-[#8c6642]">{t("rl.help")}</p>
+            </>
+          )}
           {tab === "guild" && !g && (
             <div className="py-2">
               <p className="mb-2">{t("so.noGuild")}</p>
@@ -102,7 +158,12 @@ export function SocialWindow({ you, s, send, onWhisper, onClose }: { you: You; s
                   <button className="rpg-btn">{t("so.ginvite")}</button>
                 </form>
               )}
-              <h3 className="mb-1 font-bold">{t("so.members")} ({onN(g.members)}/{g.members.length} · {t("so.max", { n: GUILD.max })})</h3>
+              <div className="mb-2 rounded border border-[#c9a97a] bg-[#fff6dd] p-2">
+                <b>{t("rl.glevel", { lv: g.level })}</b>{g.nation && <span className="ml-2">«{g.nation}»</span>}{g.lands.length > 0 && <span className="ml-2 text-[11px]">📍 {g.lands.join(" · ")}</span>}
+                <div className="mt-1 h-2 rounded bg-[#d8c19a]"><div className="h-2 rounded bg-[#4CC764]" style={{ width: `${g.next ? Math.min(100, (g.xp / g.next) * 100) : 100}%` }} /></div>
+                <p className="mt-0.5 text-[10px] text-[#8c6642]">{g.next ? t("rl.gxp", { xp: g.xp, next: g.next }) : t("rl.gmax")} · {t("rl.ghelp")}</p>
+              </div>
+              <h3 className="mb-1 font-bold">{t("so.members")} ({onN(g.members)}/{g.members.length} · {t("so.max", { n: g.cap })})</h3>
               {g.members.map((m) => (
                 <Row key={m.cid}>
                   <Dot on={m.on} />
@@ -114,6 +175,15 @@ export function SocialWindow({ you, s, send, onWhisper, onClose }: { you: You; s
                   {meMaster && !m.master && <Btn onClick={() => send({ t: "guild", op: "kick", cid: m.cid })}>{t("so.kick")}</Btn>}
                 </Row>
               ))}
+              <h3 className="mb-1 mt-2 font-bold">{t("rl.bank", { n: g.bank.length, cap: g.bankCap })}</h3>
+              <p className="mb-1 text-[10px] text-[#8c6642]">{t("rl.bankHelp")}</p>
+              <div className="flex flex-wrap gap-1">
+                {g.bank.map((it) => (
+                  <button key={it.id} className="rpg-islot" title={`${ITEMS[it.tpl]?.name ?? it.tpl} ×${it.qty}${meMaster ? ` — ${t("rl.withdraw")}` : ""}`} onClick={() => meMaster && send({ t: "guild", op: "withdraw", id: it.id })}>
+                    <ItemImg it={it} />
+                  </button>
+                ))}
+              </div>
               <div className="mt-2 flex justify-end gap-1.5">
                 {meMaster ? (
                   <button className="rpg-btn" data-on={sure} onClick={() => { if (sure) send({ t: "guild", op: "disband" }); setSure(!sure); }}>{sure ? t("so.disbandQ") : t("so.disband")}</button>
@@ -135,6 +205,7 @@ export function socialAction(kind: string, data: Record<string, unknown> | undef
   if (kind === "friend_request" && typeof data?.cid === "number") return { t: "friend", op: yes ? "accept" : "decline", cid: data.cid };
   if (kind === "guild_invite" && typeof data?.gid === "number") return { t: "guild", op: yes ? "accept" : "decline", id: data.gid };
   if (kind === "guild_request" && typeof data?.cid === "number") return { t: "guild", op: yes ? "approve" : "reject", cid: data.cid };
+  if (kind === "nation_invite" && typeof data?.nid === "number") return { t: "nation", op: yes ? "accept" : "decline", id: data.nid };
   return null;
 }
-export const SOCIAL_ICON: Record<string, string> = { friend_request: "🤝", friend_accepted: "🤝", guild_invite: "🛡", guild_request: "🛡", guild_joined: "🛡", guild_kicked: "🛡" };
+export const SOCIAL_ICON: Record<string, string> = { friend_request: "🤝", friend_accepted: "🤝", guild_invite: "🛡", guild_request: "🛡", guild_joined: "🛡", guild_kicked: "🛡", nation_invite: "👑" };

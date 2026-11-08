@@ -5,6 +5,7 @@ import { gmCommand } from "./gm.ts";
 import { partyOf } from "./party.ts";
 import { send, type Player } from "./room.ts";
 import { guildSay, whisper } from "./social.ts";
+import { nationSay } from "./realm.ts";
 import { logChat } from "./db.ts";
 
 /**
@@ -14,7 +15,7 @@ import { logChat } from "./db.ts";
 
 const logs = new Map<number, number[]>();
 
-export function chatTo(to: Iterable<Player>, ch: Exclude<ChatChannel, "whisper">, from: string, text: string) {
+export function chatTo(to: Iterable<Player>, ch: Exclude<ChatChannel, "whisper" | "nation">, from: string, text: string) {
   const m = { t: "chat" as const, ch, from, text, at: Date.now() };
   for (const q of to) send(q, m);
 }
@@ -25,14 +26,15 @@ export function chatOp(p: Player, m: { ch?: unknown; text?: unknown }): string |
   if (text === "/gm" || text.startsWith("/gm ")) return gmCommand(p, text);
   if (text.startsWith("/p ")) return say(p, "party", text.slice(3));
   if (text.startsWith("/g ")) return say(p, "guild", text.slice(3));
+  if (text.startsWith("/n ")) return say(p, "nation", text.slice(3));
   const w = /^\/(?:w|귓)\s+(\S+)\s+(.+)$/.exec(text);
   if (w) return say(p, "whisper", w[2], w[1]);
   if (text.startsWith("/r ")) return say(p, "whisper", text.slice(3), null);
   if (/^\/(w|귓|r)\b/.test(text)) return "귓속말: /w 닉네임 할 말 · 답장: /r 할 말";
-  return say(p, m.ch === "party" ? "party" : m.ch === "guild" ? "guild" : "room", text);
+  return say(p, m.ch === "party" ? "party" : m.ch === "guild" ? "guild" : m.ch === "nation" ? "nation" : "room", text);
 }
 
-function say(p: Player, ch: "room" | "party" | "guild" | "whisper", raw: string, to?: string | null): string | null {
+function say(p: Player, ch: "room" | "party" | "guild" | "nation" | "whisper", raw: string, to?: string | null): string | null {
   const mute = activeSanction(p.discordId, "mute");
   if (mute) return `채팅 금지 중입니다 (${mute.until ? `${Math.ceil((mute.until - Date.now()) / 60_000)}분 남음` : "영구"})`;
   const now = Date.now();
@@ -44,6 +46,7 @@ function say(p: Player, ch: "room" | "party" | "guild" | "whisper", raw: string,
   const text = filterChat(raw.trim());
   if (!text) return null;
   if (ch === "guild") return guildSay(p, text);
+  if (ch === "nation") return nationSay(p, text);
   if (ch === "party") {
     const pt = partyOf(p);
     if (!pt) return "파티에 있지 않습니다 (P 파티창)";
