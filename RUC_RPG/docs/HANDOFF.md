@@ -1,11 +1,15 @@
 # 러크 RPG 베타 — 인수인계 (다음에 이어서 할 때 가장 먼저 읽을 문서)
 
 > 작성: 2026-11-09 · **개발 단계 P0~P18 모두 끝 · 웹사이트 배포 끝(마지막 커밋 `c7de2c2`) · 게임 서버를 이 PC 에서 돌릴 준비 끝.**
-> **아직 일반 사용자에게 공개되지 않았음** — 사용자가 직접 해야 하는 단계(Tailscale 로그인 · Vercel 환경 변수 2개)만 남음.
+> **2026-11-10 공개 완료** — `https://ruc-server.vercel.app/rpg` ↔ 게임 서버 `wss://seojun-desktop.tail7d94d5.ts.net`(이 PC, Tailscale Funnel). 사용자가 실제 디스코드 계정으로 입장 확인. 서버는 바탕화면 바로가기로 켤 때만 열림.
 > 지시서 원본 `RUC_RPG/RUC_RPG_PROMPT.md`, 결정 기록 `docs/DECISIONS.md`(D1~D105), 단계 기록 `docs/PLAN.md`, 서버 운영 안내 `RUC_RPG/deploy/README.md`.
 
-> **Claude 에게: 다음 대화를 시작하면, 다른 일보다 먼저 아래 "0. RPG 를 공개하려면" 을 사용자에게 한국어로 설명하세요.**
-> 먼저 0-2 의 "현재 상태 확인"을 해서 이미 끝난 단계는 빼고, 남은 단계만 순서대로 안내합니다. 비밀값은 절대 화면에 출력하지 않습니다.
+> 0장은 공개 절차 기록 · 문제 해결용으로 남겨 둠. 공개 중 겪은 것(2026-11-10):
+> - 이 PC 는 `.ps1` 실행 연결이 없음 → `setup-pc.cmd` 더블클릭
+> - `/rpg` 가 "게임 서버가 꺼져 있어요" — Vercel 함수(iad1)에서 상태 확인 2.5초가 모자람 → 5초로 (`web/app/rpg/page.tsx`)
+> - "입장 확인에 실패했습니다" = Vercel `RPG_TICKET_SECRET` 이 `live.env` 와 다름(클립보드가 wss 주소로 덮였음) → 다시 붙여 넣고 Redeploy
+> - Vercel 빌드 로그의 `npm warn Unknown env config "cache-dir"` 은 무시해도 됨
+> - Vercel 에서 `NEXT_PUBLIC_RPG_WS_URL` 은 Config(공개 값), `RPG_TICKET_SECRET` 은 Sensitive
 
 ---
 
@@ -81,11 +85,11 @@
 
 | 항목 | 상태 |
 |---|---|
-| 개발 단계 | **P0~P18 완료 · 웹사이트에 배포됨.** 남은 것은 공개(0장) — 사용자의 Tailscale 로그인 · Vercel 환경 변수 |
+| 개발 단계 | **P0~P18 완료 · 웹사이트에 배포됨 · 2026-11-10 공개 완료.** 다음은 베타 피드백 반영(9장) |
 | 그래픽 | 3등신 캐릭터(8프레임) · 세밀한 16×16 타일 · 32×32 아이콘 · 사실적 그래픽 모드 · 메이플풍 + 디아블로풍 + 고급(금테 양피지) UI · 사실적 맵(경계 · 데칼 · 접촉 그림자 · 장식) |
 | 테스트 | node 기준 112개 전부 통과 (직업마다 "모든 스킬 시전" 30 + P9 + P10 소셜 3 + P12 소모품 4 + P13 채집 · 소환수 3) |
-| 운영 사이트 | `https://ruc-server.vercel.app` — `/rpg` 는 **"오픈 준비 중"** (Vercel 환경 변수가 아직 없어서 — 0장) |
-| 게임 서버 호스팅 | **이 PC** (2026-11-09 결정, D105) — 바탕화면 "러크 RPG 서버 켜기 / 끄기", Tailscale Funnel 로 공개. 준비 끝, 사용자의 Tailscale 로그인 · Vercel 환경 변수만 남음 (`RUC_RPG/deploy/README.md`) |
+| 운영 사이트 | `https://ruc-server.vercel.app/rpg` — **공개됨**. 서버가 꺼져 있으면 "게임 서버가 꺼져 있어요" |
+| 게임 서버 호스팅 | **이 PC** (D105) — 바탕화면 "러크 RPG 서버 켜기 / 끄기", Tailscale Funnel `https://seojun-desktop.tail7d94d5.ts.net` → 127.0.0.1:2580 |
 | RUC | **베타 격리 지갑**만 (`RUC_MODE=beta`). 마크 서버 실제 RUC 와 연동하는 코드는 만들지 않기로 사용자가 정함 (D1) |
 | 배포 규칙 | 사용자가 "각 단계가 끝나고 버그 · 오류가 없음을 확인하면 묻지 말고 바로 배포"라고 상시 허락 (2026-11-07) |
 
@@ -225,7 +229,8 @@ cd RUC_RPG/server && npm run dev      # 게임 서버 ws://localhost:2567 (node 
 
 ## 8. 알려진 한계 · 미룬 것
 
-- **아직 공개 안 됨** — 0장(사용자의 Tailscale 로그인 · Vercel 환경 변수)만 남음. 게임 서버는 운영자 PC 가 켜져 있을 때만(사용자가 원한 방식)
+- 게임 서버는 운영자 PC 가 켜져 있을 때만(사용자가 원한 방식) · 게임 서버를 다시 켜면 파티 · 던전 · 초대 대기 목록이 풀림
+- 몹은 길찾기 없이 직진 + 벽 미끄러짐(`mobs.ts` ponytail) — 던전에서 끼인다는 제보가 오면 A*
 - 실제 RUC 연동(`RUC_MODE=live`)은 만들지 않음 — 사용자가 두 번 거절(D1 · D105), 베타 격리 지갑
 - 그림 · 소리는 코드로 그린 것 · 합성 — 실제 아티스트 그림 · 음원은 파일만 넣으면 쓰이게 해 둠(`web/public/rpg/assets/`, D104)
 - §29 "50명 + 몹 30마리 한 화면 60fps"는 실제 내장 그래픽 노트북에서 재지 않음(헤드리스 수치만)
@@ -271,7 +276,7 @@ cd RUC_RPG/server && npm run dev      # 게임 서버 ws://localhost:2567 (node 
 - `server/src/realm.ts`(영향력 · 정산 · 가호 · 국가 · 국가 채팅) · `shared/data/realm.ts`(영지 구역 · 주 번호 · 길드 레벨 표). room `hooks.kill` · `hooks.sec` 로 연결(main)
 
 ### 다음 할 일 (PLAN.md "베타 제외 → 베타 편입")
-1. **운영 오픈 마무리(사용자)**: `RUC_RPG/deploy/README.md` "소유자가 할 일" — Tailscale 로그인 · Funnel 허용 → Vercel 환경 변수 2개 → Redeploy → 바탕화면 "러크 RPG 서버 켜기"
+1. ~~운영 오픈~~ — **2026-11-10 완료**. (선택) GM 권한: `live.env` 에 `RPG_GM_IDS` · 버그 제보 디스코드: `RPG_BUG_WEBHOOK` → 서버 껐다 켜기
 - P18: 운영 서버는 이 PC(`deploy/pc/server-start.ps1` · `server-stop.ps1` · `setup-pc.ps1`), 데이터 `C:\RucRpg`
 - P17: 진짜 그림 · 음원은 `web/public/rpg/assets/` + `manifest.json` (README 참고)
 - P16: 모바일은 `client/Touch.tsx`. 휴대폰 화면 캡처 = `MOBILE=1 node RUC_RPG/scripts/shot.mjs <url> <png> …`
@@ -285,7 +290,6 @@ cd RUC_RPG/server && npm run dev      # 게임 서버 ws://localhost:2567 (node 
 ---
 
 ## 10. 새 대화를 시작할 때 이렇게 말하면 됩니다
-> "RUC_RPG/docs/HANDOFF.md 읽고 RPG 공개하려면 뭘 해야 하는지 알려줘." (Claude 는 0장을 설명)
-> 공개 단계를 끝낸 뒤: "공개 단계 끝냈어, 확인해줘." (Claude 는 0-4 확인) · 그 뒤: "베타 피드백 반영해줘."
+> "RUC_RPG/docs/HANDOFF.md 읽고 베타 피드백 반영해줘." (공개는 끝남 — 문제가 생기면 0-6 표)
 
 (자동 메모리에도 진행 상태 · 배포 규칙 · 함정이 저장돼 있어 같은 PC · 같은 프로젝트에서는 이어집니다.)
