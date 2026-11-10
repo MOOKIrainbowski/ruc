@@ -6,6 +6,9 @@ import RpgGame from "@/rpg/client/RpgGame";
 /** 모바일 (P16): 손가락으로 확대되지 않게 */
 export const viewport = { width: "device-width", initialScale: 1, maximumScale: 1, userScalable: false };
 
+/** 게임 서버(운영자 PC)가 한국이라 상태 확인을 서울 리전에서 — 미국(iad1)에서는 Funnel 왕복이 2.5초를 넘김 */
+export const preferredRegion = "icn1";
+
 export const metadata = {
   title: "RPG 베타",
   description: "러크 RPG 베타 — 브라우저에서 즐기는 2D 픽셀 액션 RPG.",
@@ -14,13 +17,13 @@ export const metadata = {
 
 /**
  * 게임 서버가 켜져 있는가 (P18): 운영 게임 서버는 운영자 PC 에서 돌아서 PC 가 꺼져 있으면 꺼져 있음.
- * 게임 서버 주소(wss → https)의 상태 응답을 2.5초 안에 받으면 켜진 것. 개발 모드는 확인하지 않음.
+ * 게임 서버 주소(wss → https)의 상태 응답을 5초 안에 받으면 켜진 것. 개발 모드는 확인하지 않음.
  */
 async function serverUp(): Promise<boolean> {
   const ws = process.env.NEXT_PUBLIC_RPG_WS_URL?.trim();
   if (!ws || process.env.NODE_ENV === "development") return true;
   try {
-    const r = await fetch(ws.replace(/^ws/, "http"), { cache: "no-store", signal: AbortSignal.timeout(2500) });
+    const r = await fetch(ws.replace(/^ws/, "http"), { cache: "no-store", signal: AbortSignal.timeout(5000) });
     return r.ok;
   } catch {
     return false;

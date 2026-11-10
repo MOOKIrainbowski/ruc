@@ -33,8 +33,8 @@
 `/rpg` 화면 규칙(`web/app/rpg/page.tsx` · `web/lib/rpg.ts`): 환경 변수 2개 중 하나라도 없으면 "오픈 준비 중" → 둘 다 있으면 "디스코드로 로그인" → 로그인한 사람에게는 게임 서버 상태를 2.5초 확인해서 켜져 있으면 게임, 꺼져 있으면 "게임 서버가 꺼져 있어요".
 
 ### 0-3. 사용자가 할 일 (계정 · 비밀값이라 Claude 가 대신하면 안 됨)
-1. **Tailscale 로그인 + Funnel 허용** — `RUC_RPG\deploy\pc\setup-pc.ps1` 을 우클릭 → "PowerShell에서 실행"
-   (또는 `powershell -ExecutionPolicy Bypass -File RUC_RPG\deploy\pc\setup-pc.ps1`)
+1. **Tailscale 로그인 + Funnel 허용** — `RUC_RPG\deploy\pc\setup-pc.cmd` 를 더블클릭
+   (이 PC 는 `.ps1` 연결이 깨져 "PowerShell에서 실행" 메뉴가 없음 — 2026-11-10 확인. `.cmd` 가 `powershell -ExecutionPolicy Bypass -File setup-pc.ps1` 을 대신 실행)
    - 브라우저가 열리면 Tailscale 에 로그인(구글 · 마이크로소프트 · 깃허브 계정, 무료)
    - "Funnel 을 허용하세요" 또는 HTTPS 인증서 사용 링크가 나오면 열어서 허용 → **스크립트를 한 번 더 실행**
    - 끝나면 화면에 `NEXT_PUBLIC_RPG_WS_URL = wss://<PC이름>.<tailnet>.ts.net` 이 나오고, 비밀값은 **클립보드에 복사**됨(화면에 안 나옴)
