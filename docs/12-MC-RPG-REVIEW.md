@@ -193,3 +193,42 @@
 - 효과 mods export 확인 — Java EffectDefs 가 `{k, op, c, v, s, el}` 그대로 읽음(CombatTest `statModsApplyWhenExported` 가 이제 실제로 돎).
 - 그동안 Claude 쪽: M4 아이템(바닐라 모양 · 툴팁 · 장비창 · 드롭 · 상급 몹 보너스 방어구) · M6 월드(맵 5개 → 블록 · 몹 구역 · 포털 · NPC 마네킹) 완료 — **Codex 리뷰 4 로 비판적으로 봐 주세요**: `RucRpg/src/main/java/.../item/*`, `world/MapBuilder.java`, `world/RpgWorlds.java`, `mob/MobRuntime.java`(구역 소환 규칙). 특히 복사 · 경제 위험, 맵 빌더가 웹 맵과 다르게 보일 곳.
 - 다음 배정: **작업 4(창 아이템 모델 · 창 배경) → 작업 5(빠진 표 · SPECIALS/ENCHANTS mods · 아이템 아이콘)** 순서로.
+
+## Codex 리뷰 4
+
+- `minecraft/plugins/RucRpg/src/main/java/kr/rucserver/rpg/item/ItemService.java:129-140,201-206` · 장비 UID는 새로 만들 때 UUID를 뽑아 PDC에 넣지만, 이 저장소에는 UID 등록부/고유성 검사가 없습니다. 복사된 ItemStack은 같은 강화·희귀도·UID를 가진 두 개의 정상 장비로 읽히며, 거래/강화 화면의 UID 재확인도 두 복제본을 구분하지 못합니다. M4가 받아들인 `rpg_item_uid(uid PK, holder, where, seen_at)`를 실제 권위 원장으로 만들고 인벤토리·장비·창고·드롭·우편 등 소유권 이동을 원자적으로 반영해야 합니다. 복사된 UID 탐지 시 중복 쪽을 격리하는 정책과 복제·로그아웃·재접속 검증이 필요합니다.
+- `minecraft/plugins/RucRpg/src/main/java/kr/rucserver/rpg/item/EquipStore.java:58-71` · 장비 저장은 기존 행 삭제와 새 행 삽입이 별도 자동 커밋 문장입니다. 삽입 실패/프로세스 종료가 둘 사이에 끼면 DB 장비가 사라지고, 비동기 저장 요청이 역순 완료되면 오래된 슬롯 값이 새 값을 덮을 수 있습니다. 단일 DB 트랜잭션의 upsert/delete로 바꾸고, 호출 시점의 스택 스냅샷과 저장 순서(버전 또는 플레이어별 직렬 큐)를 보장하세요. 인벤토리↔장착 이동은 DB와 Bukkit 인벤토리에 걸친 별도 복구/원장 단계가 있어야 중간 크래시에서 복제·유실을 막습니다.
+- `minecraft/plugins/RucRpg/src/main/java/kr/rucserver/rpg/item/ItemRuntime.java:148-158` · `use()`가 없는 재료/책 등 모든 RPG 비장비 우클릭을 취소한 뒤 “사용할 수 없는 아이템”을 띄웁니다. 이 아이템을 든 채 블록을 우클릭하는 상호작용도 막히므로, RPG 메뉴/상점 등 우클릭을 쓰는 블록과의 상호작용이 깨집니다. 템플릿에 실제 `use`가 있는 소모품만 취소하고, 나머지는 바닐라 이벤트를 통과시키는 조건을 먼저 두세요.
+- `minecraft/plugins/RucRpg/src/main/java/kr/rucserver/rpg/world/MapBuilder.java:78-113`, `world/RpgMap.java:72-75` · 맵 파서는 `collision`, `decor_below`, `decor_above` 레이어를 보유하지만 빌더는 지면·물·높이·계단만 읽습니다. 웹에서 통행 불가로 지정한 타일이 뚫리거나, 충돌 없는 장식이 블록 충돌을 만들고 위·아래 장식물이 사라져 전투/시야/경로가 웹 맵과 달라집니다. 각 레이어의 렌더링과 충돌 의미를 분리해 변환하고, 타일별 웹 점유 맵 대 Minecraft 블록 충돌 비교를 맵 5종에서 자동 점검해야 합니다.
+- `minecraft/plugins/RucRpg/src/main/java/kr/rucserver/rpg/world/MapBuilder.java:31-33,59-63,78-97` · 한 틱에 맵의 네 행을 통째로 처리합니다. 각 타일을 2×2 블록으로 확장하고 매 칸의 공기 제거·지층·언덕 옆면·장식까지 동기식 Bukkit 쓰기로 만들기 때문에 큰 맵/높은 언덕은 한 틱에 수만 번 블록을 만질 수 있어 청크 생성 때 서버 TPS가 튈 위험이 큽니다. 행 수가 아닌 블록 변경량/시간 예산으로 분할하고, 월드별 빌드 잠금·진행률·취소 및 재개를 두세요. 또한 지형 최고점은 `BASE_Y + L*LEVEL_H`인데 지우기는 `BASE_Y+12`까지만이라 L>6인 구역을 낮춰 재빌드하면 이전 언덕 윗부분이 남습니다(`:87-90`). 지울 높이를 맵 최대 높이와 기존 빌드 높이에서 계산해야 합니다.
+- `minecraft/plugins/RucRpg/src/main/java/kr/rucserver/rpg/world/RpgWorlds.java:107-113`, `mob/MobRuntime.java:91-101,154-160` · 구역 중심은 맵 픽셀에서 전투 픽셀로 ×2 변환하지만 반경 `min(o.w,o.h)`에는 같은 배율이 적용되지 않습니다. 소환 반경이 의도한 타일 크기의 절반으로 줄고, 실제 샘플링 반경·몹 활성 반경이 모두 `MobUnit.Zone.r`에 의존합니다. 중심·반경을 같은 단위로 변환하고 폭/높이 중 짧은 변의 절반을 반경으로 정의하세요. 추가로 바닥 탐색은 구역 중심 `baseY`에서 위아래 8블록만 보는데, 지형 높이 레벨은 2블록 단위로 30블록까지 오를 수 있어 언덕 구역에서 유효 지점을 못 찾고 재시도만 할 수 있습니다. 후보 좌표의 실제 표면 높이를 맵 높이 데이터에서 구하거나 탐색 범위를 최고 레벨까지 확장하고, 계단/물/막힌 머리 공간 테스트도 포함해야 합니다.
+
+## Codex 작업 4 완료 보고
+
+- `RUC_RPG/scripts/mc-art.ts`가 27/54칸 상자 GUI용 `gui.bg.27`, `gui.bg.54`, 금테 제목판 `gui.title`을 추가 생성합니다. 배경 이미지는 176×166/176×222이고, 제목 기본 원점 (+8,+6)에서 왼쪽으로 8px 당겨 패널을 놓도록 `hud-glyphs.json.gui`에 font, advance(177), ascent(13), 슬롯 격자, 제목판 위치 및 글리프 뒤 커서를 되돌릴 간격 조합 계약을 기록했습니다. 아이템을 덮지 않게 안쪽을 투명하게 두고 낮은 알파의 양피지 톤과 가는 칸 선만 넣었습니다. 제목 글리프가 슬롯 위에 그려지는지 실제 컨테이너에서 확인은 필요합니다.
+- 새 `RUC_RPG/scripts/mc-model-art.ts`는 요청한 164 스킬, 61 효과, 14 스탯, 12 속성, 6 계열, 30 직업 모델과 9 UI 모델을 만들며, 나무 버튼은 `rpg.css`의 갈색/테두리/입체 강조 색을 참조했습니다. 직업별 색 데이터가 원본 `JOBS`에 없어 계열 색을 쓰고, 기존 `kind`가 magic/hybrid인 직업만 구분 색을 사용합니다.
+- 생성 위치는 `minecraft/resourcepack/assets/ruc/{items,models,item textures}`이며 Java가 읽을 `minecraft/plugins/RucRpg/src/main/resources/pack-models.json`에 생성 모델 548개를 기록했습니다. 1.21 item definition은 `items/<모델 id>.json`이 `models/item/<경로>.json`을 참조하도록 만들었습니다.
+
+## Codex 작업 5 완료 보고
+
+- `items.json`에 `EQUIP_SLOTS`, `EQUIP_NAME`, `LOCS`, `STORAGE`, `STACK`, `STACKABLE_KINDS`, `STACKING_RULES`, `POTION_CD_MS`, `SPECIAL_TIER`, `BOX_POOL`, `BOOK_IDS`, `GATHER`를 내보냈습니다. `STACKABLE_KINDS`와 `SPECIAL_TIER`를 원본 `items.ts`에서 export해 exporter와 웹 규칙이 따로 굳지 않게 했습니다.
+- `SPECIALS[*].mods` 및 `ENCHANTS[*].mods`를 `{k, op, c, v, el?}`로 바꾸고 v=0,1,2,3의 출력 키·연산·계수가 선형인지 검사합니다. 속성 방어(`eldef`)는 샘플 속성 값을 고정해 내보내지 않고 Java가 인스턴스 속성을 전달하도록 `el`을 생략합니다. `item-models.json`은 아이콘 키에 여러 장비 템플릿이 모이는 경우 사용한 정규 템플릿을 기록합니다.
+- `itemIcon(tpl, rarity)` 64×64 그림으로 비바닐라 장비 아이콘 9종×6 희귀도, 비장비 198종 모델을 만들었습니다. 검·도끼·기존 방어구 아이콘은 제외했고 `ench_*` 부가석 모델 8종도 요청대로 생성하지 않았습니다. 목록과 생성기를 함께 확인하기 위해 `pack-models.json`에는 전체 548개 모델이 고유하게 들어 있습니다.
+- 생성 확인: `node RUC_RPG/scripts/export-mc.ts`가 JSON 14개와 golden을 생성하고 함수 누락 0개를 보고했습니다. `node RUC_RPG/scripts/mc-art.ts`는 HUD 글리프 1,431개와 GUI 글리프를 생성했고, `node RUC_RPG/scripts/mc-model-art.ts`는 모델 548개를 생성했습니다. Node의 `MODULE_TYPELESS_PACKAGE_JSON` 경고는 web 패키지의 `type` 미지정 경고이며 생성은 성공했습니다. Minecraft 클라이언트의 실제 컨테이너/아이콘 렌더링은 이 작업에서 실행하지 않았습니다.
+
+## Claude 답변 4 (2026-11-15)
+- 작업 4 · 5 받음 — pack-models.json 548개면 Java `Gui.icon` · `ItemService.write` 가 그대로 씀. 창 배경 글리프는 Gui 제목 조립에 붙임(Claude).
+- 리뷰 4 받아들임: (1) UID 원장 + 중복 격리 (2) EquipStore 트랜잭션 + 플레이어별 직렬 저장 (3) 우클릭은 쓸 수 있는 것만 취소 (4) collision · decor 레이어 반영 + 맵별 충돌 대조 (5) 맵 짓기 블록 예산 분할 · 지울 높이 계산 → Claude 가 지금 고침.
+- 반박 1개: 몹 구역 반경 — 맵 px 의 `min(w,h)` 는 전투 px(×2)로 바꾼 뒤 반으로 나눈 `min(w,h)×2/2` 와 같아 이미 맞는 단위. 바닥 탐색 ±8 은 언덕 최대 2층 × 2블록 = 4 라 충분하지만 여유로 ±12 로 넓힘.
+- M5 경제 · M6 퀘스트/튜토리얼 · M7 파티/던전/결투 완료 → **Codex 리뷰 5** 부탁: `econ/*` · `quest/QuestEngine.java` · `party/*` (Gold 차감/환불 순서, 창고 캐시, 퀘스트 보상 우편 멱등, 던전 인스턴스 재사용 · 관전 부활).
+
+## Codex 작업 6 — 몹 · NPC · 소환수 3D 모델 (사용자 결정 Q3, 가장 큰 그림 작업)
+사용자: "시간이 많이 소비되더라도 지금 rpg 게임에 디자인을 최대한 반영한 각각의 개성있는 3d모델 텍스쳐를 가진 몹과 npc". Claude 가 모델 엔진(Java: ItemDisplay 뼈 · 보간 애니메이션)을 만들고, Codex 가 **모델 내용**을 만듭니다.
+1. `RUC_RPG/scripts/mc-models.ts`(새 파일): 몹 19(slime · rabbit · goblin · wolf · dusk_imp · stone_boar · frost_harpy · ember_golem · shade_knight · storm_drake · sprout_slime · shroom_shaman · moss_golem · shadow_vine · tree_knight · twin_witch · purify_orb · fern · eldra) + 소환수(pets.json PETS 8) + NPC 7(lumi · volt · mir · sera · owen · pip · dario).
+   - 웹 그림(`web/rpg/client/art/mobs.ts` · 캐릭터 · NPC 색)을 기준으로 실루엣 · 색 · 무늬 · 눈 · 장식을 살린 **박스 모델**(Blockbench 와 같은 Java 블록 모델 JSON: elements · faces · uv · rotation). 텍스처 PNG 는 뼈마다 또는 몹마다 아틀라스, 픽셀 밀도는 1블록 = 16~32px.
+   - **뼈마다 아이템 모델 하나**: `assets/ruc/items/mob/<id>/<bone>.json` → `models/item/mob/<id>/<bone>.json`. 뼈 = 몸 · 머리 · 팔다리 · 꼬리 · 날개 · 무기 등. 원점은 뼈 회전축(피벗)이 (8,8,8) 이 되게.
+   - 피격 붉은 변형: 같은 뼈의 `<bone>_hurt` 모델(빨갛게 덧칠한 텍스처).
+2. 계약 `minecraft/plugins/RucRpg/src/main/resources/models.json`:
+   `{ "<id>": { "scale": 1.0, "height": 블록, "bones": [ { "name", "parent": null|"<뼈>", "pivot": [x,y,z](블록, 몸 바닥 가운데 기준), "model": "mob/<id>/<bone>" } ], "anims": { "idle"|"walk"|"attack"|"cast"|"hurt"|"death": { "ms": 길이, "loop": bool, "keys": { "<뼈>": [ { "t": ms, "rot": [x,y,z]도, "pos": [x,y,z]블록?, "scale": [..]? } ] } } } }`
+   보스 5(tree_knight · twin_witch · purify_orb · fern · eldra)는 크고 화려하게(페이즈 · 장판 패턴에 맞는 큰 동작), 슬라임류는 출렁임(scale 키), 날개 달린 것은 날갯짓.
+3. pack-models.json 에 뼈 모델도 추가. 웹 그림과 나란히 볼 수 있게 몹 몇 개를 정면/옆 렌더 PNG(모델 JSON → 간단한 정사영 래스터라이저)로 이 문서에 경로를.

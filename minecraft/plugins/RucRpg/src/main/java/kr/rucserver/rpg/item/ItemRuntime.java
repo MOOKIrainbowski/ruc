@@ -152,6 +152,8 @@ public final class ItemRuntime implements Listener {
         ItemStack it = p.getInventory().getItemInMainHand();
         ItemService.Inst i = items.read(it);
         if (i == null || ItemService.isGear(items.tpl(i.tpl()))) return;
+        JsonObject t = items.tpl(i.tpl());
+        if (!t.has("use") && !t.has("heal") && !t.has("skill")) return;   // 재료 · 부가석 등: 바닐라 상호작용 그대로 (Codex 리뷰 4)
         PlayerUnit u = plugin.runtime().unit(p);
         if (u == null) return;
         e.setCancelled(true);

@@ -46,6 +46,7 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.econ.Economy economy;
     private kr.rucserver.rpg.econ.EconGui econGui;
     private kr.rucserver.rpg.quest.QuestEngine quests;
+    private kr.rucserver.rpg.item.ItemGuard itemGuard;
     private kr.rucserver.rpg.party.PartyService parties;
     private kr.rucserver.rpg.party.DuelService duels;
     private kr.rucserver.rpg.party.DungeonService dungeons;
@@ -116,7 +117,7 @@ public final class RucRpg extends JavaPlugin {
             java.util.UUID id = p.getUniqueId();
             getServer().getScheduler().runTaskAsynchronously(this, () -> {
                 try { itemRuntime.equip().load(id); } catch (Exception e) { getLogger().warning("장비 불러오기 실패: " + e.getMessage()); }
-                getServer().getScheduler().runTask(this, () -> { if (p.isOnline()) itemRuntime.refresh(p); });
+                getServer().getScheduler().runTask(this, () -> { if (p.isOnline()) { itemRuntime.refresh(p); if (itemGuard != null) itemGuard.scan(p); } });
             });
         });
         getServer().getPluginManager().registerEvents(chars, this);
@@ -148,6 +149,9 @@ public final class RucRpg extends JavaPlugin {
             economy.createSchema();
         } catch (Exception e) { getLogger().log(Level.SEVERE, "경제 테이블 만들기 실패", e); }
         econGui = new kr.rucserver.rpg.econ.EconGui(this, economy, items);
+        itemGuard = new kr.rucserver.rpg.item.ItemGuard(this, items, itemRuntime.equip(), core.getDatabase());
+        try { itemGuard.createSchema(); } catch (Exception e) { getLogger().log(Level.SEVERE, "UID 원장 만들기 실패", e); }
+        getServer().getPluginManager().registerEvents(itemGuard, this);
         parties = new kr.rucserver.rpg.party.PartyService(this);
         duels = new kr.rucserver.rpg.party.DuelService(this);
         dungeons = new kr.rucserver.rpg.party.DungeonService(this);

@@ -84,9 +84,6 @@ public final class EquipMenu {
     }
 
     private void persist(Player p, String slot) {
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-            try { plugin.itemRuntime().equip().save(p.getUniqueId(), slot); }
-            catch (Exception e) { plugin.getLogger().warning("장비 저장 실패: " + e.getMessage()); }
-        });
+        plugin.itemRuntime().equip().saveQueued(p.getUniqueId(), slot, plugin.getLogger());
     }
 }

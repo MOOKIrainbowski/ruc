@@ -30,7 +30,9 @@ public final class MapBuilder {
 
     public static final int BASE_Y = 64;
     public static final int LEVEL_H = 2;
-    private static final int ROWS_PER_TICK = 4;
+    /** 한 틱에 지을 타일 줄 (줄 하나 ≈ 맵 폭 × 4 기둥 — Codex 리뷰 4: 틱마다 수만 블록이면 TPS 가 튐) */
+    private static final int ROWS_PER_TICK = 1;
+    private final int clearTop;
 
     private final Plugin plugin;
     private final RpgMap map;
@@ -42,6 +44,9 @@ public final class MapBuilder {
         this.map = map;
         this.w = w;
         this.rnd = new Random(map.kind.hashCode());
+        int maxL = 0;
+        for (int y = 0; y < map.h; y++) for (int x = 0; x < map.w; x++) maxL = Math.max(maxL, map.level(x, y));
+        clearTop = BASE_Y + maxL * LEVEL_H + 16;   // 다시 지을 때 비울 높이 (언덕 · 나무 · 집 지붕까지)
     }
 
     /** 타일 (tx, ty) 바닥 높이 (블록 y, 서 있는 블록) */
@@ -65,6 +70,7 @@ public final class MapBuilder {
                 task[0].cancel();
                 border();
                 objects();
+                collision();
                 done.run();
             }
         }, 1L, 1L);
@@ -78,22 +84,25 @@ public final class MapBuilder {
     private void terrainRow(int ty) {
         for (int tx = 0; tx < map.w; tx++) {
             String g = map.tile(map.ground, tx, ty);
-            boolean water = map.tile(map.water, tx, ty) != null || "water".equals(g) || "fountain_water".equals(g);
+            String deco = map.tile(map.decorBelow, tx, ty);   // hedge · bridge · flowers (웹 decor_below)
+            boolean bridge = "bridge".equals(g) || "bridge".equals(deco);
+            boolean water = !bridge && (map.tile(map.water, tx, ty) != null || "water".equals(g) || "fountain_water".equals(g));
             int L = map.level(tx, ty);
             boolean stairs = map.stairs(tx, ty);
             for (int bx = 0; bx < 2; bx++)
                 for (int bz = 0; bz < 2; bz++) {
                     int x = tx * 2 + bx, z = ty * 2 + bz;
-                    for (int y = BASE_Y + 12; y > BASE_Y; y--) set(x, y, z, Material.AIR);   // 다시 지을 때 위를 비움
+                    for (int y = clearTop; y > BASE_Y; y--) set(x, y, z, Material.AIR);   // 다시 지을 때 위를 비움
                     int top = BASE_Y + (L > 0 && !stairs ? L * LEVEL_H : 0);
                     if (stairs) top = BASE_Y + stairRise(tx, ty, bz, L);
                     for (int y = BASE_Y - 4; y < top; y++) set(x, y, z, y < top - 3 ? Material.STONE : Material.DIRT);
                     if (L > 0 && !stairs && top > BASE_Y) for (int y = BASE_Y; y < top; y++) set(x, y, z, cliff());   // 언덕 옆면
                     if (water) {
                         set(x, top - 1, z, Material.SAND);
-                        set(x, top, z, "bridge".equals(g) ? Material.SPRUCE_PLANKS : Material.WATER);
+                        set(x, top, z, Material.WATER);
                         continue;
                     }
+                    if (bridge) { set(x, top - 1, z, Material.WATER); set(x, top, z, Material.SPRUCE_PLANKS); continue; }
                     if (stairs) {
                         Stairs s = (Stairs) Material.STONE_BRICK_STAIRS.createBlockData();
                         s.setFacing(BlockFace.NORTH);
@@ -102,7 +111,7 @@ public final class MapBuilder {
                         continue;
                     }
                     set(x, top, z, surface(g));
-                    decorate(g, x, top + 1, z);
+                    decorate(deco != null ? deco : g, x, top + 1, z);
                 }
         }
     }
@@ -161,6 +170,27 @@ public final class MapBuilder {
         Leaves l = (Leaves) m.createBlockData();
         l.setPersistent(true);
         set(x, y, z, l);
+    }
+
+    /**
+     * 웹 collision(solid) 칸 중 오브젝트가 막지 않은 곳: 던전 = 이끼 낀 돌벽 4칸(웹의 벽 그림), 그 밖 = 보이지 않는 벽 2칸
+     * (나무 밑동 · 바위 · 건물 테두리처럼 웹에서 못 지나가는 곳이 마크에서 뚫리지 않게 — Codex 리뷰 4).
+     */
+    private void collision() {
+        for (int ty = 0; ty < map.h; ty++)
+            for (int tx = 0; tx < map.w; tx++) {
+                if (!"solid".equals(map.tile(map.collision, tx, ty))) continue;
+                if (map.tile(map.water, tx, ty) != null || map.stairs(tx, ty)) continue;
+                for (int bx = 0; bx < 2; bx++)
+                    for (int bz = 0; bz < 2; bz++) {
+                        int x = tx * 2 + bx, z = ty * 2 + bz, top = surfaceY(tx, ty);
+                        Block head = w.getBlockAt(x, top + 1, z);
+                        if (!head.isPassable() || head.getType().name().endsWith("_LEAVES")) continue;
+                        if (map.kind.equals("dungeon")) {
+                            for (int k = 1; k <= 4; k++) set(x, top + k, z, k == 4 ? Material.MOSSY_STONE_BRICKS : rnd.nextInt(4) == 0 ? Material.CRACKED_STONE_BRICKS : Material.STONE_BRICKS);
+                        } else if (head.getType().isAir()) { set(x, top + 1, z, Material.BARRIER); set(x, top + 2, z, Material.BARRIER); }
+                    }
+            }
     }
 
     /** 맵 가장자리: 보이지 않는 벽 4칸 (웹 맵 밖으로 못 나감) */

@@ -1,0 +1,31 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/atlas_gui_bg_176x166_00.png",
+      "height": 166,
+      "ascent": 13,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/atlas_gui_bg_176x222_00.png",
+      "height": 222,
+      "ascent": 13,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/atlas_gui_bg_96x16_00.png",
+      "height": 16,
+      "ascent": 13,
+      "chars": [
+        ""
+      ]
+    }
+  ]
+}

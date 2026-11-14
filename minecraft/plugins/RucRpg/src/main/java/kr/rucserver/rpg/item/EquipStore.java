@@ -55,21 +55,31 @@ public final class EquipStore {
         if (it == null || it.getType().isAir()) m.remove(slot); else m.put(slot, it.clone());
     }
 
-    public void save(UUID id, String slot) throws SQLException {
+    /** 저장은 한 줄로 세운 스레드에서 차례대로 — 늦게 끝난 옛 저장이 새 값을 덮지 않게 (Codex 리뷰 4) */
+    private final java.util.concurrent.ExecutorService writer = java.util.concurrent.Executors.newSingleThreadExecutor(r -> { Thread t = new Thread(r, "RucRpg-equip"); t.setDaemon(true); return t; });
+
+    /** 지금 메모리 값을 찍어 두고(주 스레드) 순서대로 한 트랜잭션에 씀 */
+    public void saveQueued(UUID id, String slot, java.util.logging.Logger log) {
         ItemStack it = of(id).get(slot);
-        try (Connection c = db.getConnection()) {
-            try (PreparedStatement del = c.prepareStatement("DELETE FROM rpg_equip WHERE uuid = ? AND slot = ?")) {
-                del.setString(1, id.toString());
-                del.setString(2, slot);
-                del.executeUpdate();
-            }
-            if (it == null) return;
-            try (PreparedStatement ins = c.prepareStatement("INSERT INTO rpg_equip (uuid, slot, item) VALUES (?, ?, ?)")) {
-                ins.setString(1, id.toString());
-                ins.setString(2, slot);
-                ins.setBytes(3, it.serializeAsBytes());
-                ins.executeUpdate();
-            }
-        }
+        byte[] bytes = it == null ? null : it.serializeAsBytes();
+        writer.execute(() -> {
+            try (Connection c = db.getConnection()) {
+                c.setAutoCommit(false);
+                try {
+                    try (PreparedStatement del = c.prepareStatement("DELETE FROM rpg_equip WHERE uuid = ? AND slot = ?")) {
+                        del.setString(1, id.toString());
+                        del.setString(2, slot);
+                        del.executeUpdate();
+                    }
+                    if (bytes != null) try (PreparedStatement ins = c.prepareStatement("INSERT INTO rpg_equip (uuid, slot, item) VALUES (?, ?, ?)")) {
+                        ins.setString(1, id.toString());
+                        ins.setString(2, slot);
+                        ins.setBytes(3, bytes);
+                        ins.executeUpdate();
+                    }
+                    c.commit();
+                } catch (SQLException e) { c.rollback(); throw e; }
+            } catch (SQLException e) { log.warning("장비 저장 실패 (" + id + " " + slot + "): " + e.getMessage()); }
+        });
     }
 }

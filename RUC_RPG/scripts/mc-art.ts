@@ -112,6 +112,7 @@ function groupFor(name:string):string {
   if(name.startsWith("stats.bg.")) return "stats_bg";
   if(name.startsWith("stats.icon.")) return `stats_icon_${name.split(".")[2]}`;
   if(name.startsWith("minimap.")) return "minimap";
+  if(name.startsWith("gui.")) return "gui_bg";
   return "hud";
 }
 function inkWidth(w:number,h:number,pixels:Uint8Array):number {
@@ -281,6 +282,34 @@ for(let y=4;y<80;y+=4) for(let x=4;x<94;x+=8) if((x+y)%3===0) set(panel,98,84,x,
 for(let i=0;i<8;i++){set(panel,98,84,4+i,4,[245,220,165,255]);set(panel,98,84,93-i,79,[111,77,49,255]);}
 add("stats.bg.panel",98,84,panel);
 
+// Chest-screen overlays are rendered with title text after slot contents. Keep
+// the surface transparent except for fine frame/grid strokes so stacks remain legible.
+function guiBackdrop(height:number,chestRows:number) {
+  const w=176,p=RGBA(w,height),gold:Pixel=[190,145,73,230],light:Pixel=[239,211,157,225],dark:Pixel=[104,72,43,220];
+  rect(p,w,height,2,2,w-4,height-4,[205,171,120,18]); // faint parchment wash; readable item stacks remain visible below it.
+  rect(p,w,height,0,0,w,2,gold); rect(p,w,height,0,height-2,w,2,dark);
+  rect(p,w,height,0,0,2,height,gold); rect(p,w,height,w-2,0,2,height,dark);
+  rect(p,w,height,3,3,w-6,1,light); rect(p,w,height,3,height-4,w-6,1,light);
+  rect(p,w,height,3,3,1,height-6,light); rect(p,w,height,w-4,3,1,height-6,light);
+  for(const x of [5,w-6]) for(const y of [5,height-6]) { set(p,w,height,x,y,[255,224,151,255]); set(p,w,height,x+1,y,[155,111,48,255]); }
+  const rows=[...Array(chestRows)].map((_,i)=>18+i*18).concat([18+chestRows*18+12,18+chestRows*18+30,18+chestRows*18+48,18+chestRows*18+66]);
+  for(const y of rows) if(y>=18&&y+18<height-3) { rect(p,w,height,8,y,160,1,[139,105,65,64]); rect(p,w,height,8,y+17,160,1,[247,223,176,68]); }
+  for(let col=0;col<=9;col++) { const x=8+col*18; if(x<w-7) rect(p,w,height,x,18,1,Math.min(height-24,chestRows*18+84),[139,105,65,52]); }
+  return p;
+}
+function guiTitlePlate() {
+  const w=96,h=16,p=RGBA(w,h);
+  rect(p,w,h,1,1,w-2,h-2,[76,52,32,245]);
+  rect(p,w,h,0,0,w,2,[235,195,105,255]); rect(p,w,h,0,h-2,w,2,[142,96,40,255]);
+  rect(p,w,h,0,0,2,h,[235,195,105,255]); rect(p,w,h,w-2,0,2,h,[142,96,40,255]);
+  rect(p,w,h,5,4,w-10,1,[255,225,163,180]);
+  for(const x of [3,w-4]) { set(p,w,h,x,3,[255,232,169,255]); set(p,w,h,x,h-4,[103,69,35,255]); }
+  return p;
+}
+add("gui.bg.27",176,166,guiBackdrop(166,3));
+add("gui.bg.54",176,222,guiBackdrop(222,6));
+add("gui.title",96,16,guiTitlePlate());
+
 // Small 3x5 dot digits for effect-duration badges.
 const digits=["111101101101111","010110010010111","111001111100111","111001111001111","101101111001001","111100111001111","111100111101111","111001001001001","111101111101111","111101111001111"];
 for(let d=0;d<10;d++) {
@@ -298,6 +327,7 @@ for(const g of glyphs) saveImage(join(perGlyph,`${g.name.replaceAll(".","_")}.pn
 // top while the provider's image cell remains as short as its ink permits.
 const charCodeByName:Record<string,string>={};
 const ascentForGroup=(group:string)=>{
+  if(group==="gui_bg") return 13;
   if(group==="bar") return -25;
   if(group==="skill_slot") return -2;
   if(group==="skill_icon"||group==="skill_overlay") return -4;
@@ -334,12 +364,12 @@ for(const group of groups) {
       providers.push({type:"bitmap",file:`ruc:hud/${basename}`,height:h,ascent:ascentForGroup(group),chars:lines});
     }
   }
-  writeFileSync(join(fontDir,`hud_${group}.json`),JSON.stringify({providers},null,2)+"\n","utf8");
+  writeFileSync(join(fontDir,`${group==="gui_bg"?"gui":`hud_${group}`}.json`),JSON.stringify({providers},null,2)+"\n","utf8");
 }
 for(const old of readdirSync(fontDir)) if(/^hud_row\d+\.json$/.test(old)) unlinkSync(join(fontDir,old));
 writeFileSync(join(fontDir,"hud.json"),JSON.stringify({providers:[]},null,2)+"\n","utf8");
 for(let row=0;row<8;row++) writeFileSync(join(fontDir,`stats_${statRows[row][0]}.json`),JSON.stringify({providers:[{type:"ttf",file:"ruc:Galmuri11.ttf",shift:[0,0],size:11,oversample:1.0}]},null,2)+"\n","utf8");
-const groupFont=(group:string)=>`ruc:hud_${group}`;
+const groupFont=(group:string)=>group==="gui_bg"?"ruc:gui":`ruc:hud_${group}`;
 const glyphContract:any={version:2,fonts:{hud:"ruc:hud",families:Object.fromEntries(groups.map(g=>[g,groupFont(g)])),stats:Object.fromEntries(statRows.map(([id])=>[id,`ruc:stats_${id}`]))},glyphs:{},spaces:{},spaceFont:"ruc:space",spacing:{},layout:{},statsFonts:{},notes:{coordinateOrigin:"bottom-center GUI px; x right+, y up+",defaultActionbarTextTopFromBottom:65,bitmapTopFromBottom:"65 + ascent",ascentFormula:"For target bottom-origin top Y: ascent = Y - 65. Vanilla actionbar drawString baseline gives text top at screenHeight-72; BitmapProvider ink top = drawY + (7-ascent).",actionbarOrigin:"centered; append -sum(advances) space to place cursor at x=0",bitmapAdvance:"1.21.11 rounded ink width + 1; emitted advance = rightmost nontransparent pixel + 1",atlasMax:256,barCells:30,barPitch:3,barWidth:89,orbStages:33,cooldownStages:8,skillCount:skills.length,effectCount:Object.keys(EFFECTS).length,contextualOverlayCaveat:"Coordinates assume default/no contextual left-right GUI overlays; vanilla actionbar y shifts when those overlays occupy more height."}};
 for(const g of glyphs) glyphContract.glyphs[g.name]={font:groupFont(g.group),char:g.char,advance:g.advance,inkWidth:inkWidth(g.w,g.h,g.pixels),width:g.w,height:g.h};
 const entry=(x:number,y:number,w:number,h:number,font:string,extra:Record<string,unknown>={})=>({x,y,w,h,font,...extra});
@@ -364,6 +394,18 @@ for(let row=0;row<8;row++) {
   glyphContract.layout[`stats.text.${id}`]=entry(-221,y-1,86,10,`ruc:stats_${id}`,{labelX:-221,valueX:-169,name:`stats.font.${id}`,valueFont:`ruc:stats_${id}`});
   glyphContract.statsFonts[id]=`ruc:stats_${id}`;
 }
+glyphContract.gui={
+  font:"ruc:gui",
+  coordinateOrigin:"container top-left GUI px",
+  vanillaTitleDrawOrigin:{x:8,y:6},
+  backdrop:{
+    "27":{name:"gui.bg.27",width:176,height:166,advance:glyphs.find(g=>g.name==="gui.bg.27")!.advance,ascent:13,offset:{x:-8,y:0},titleOriginOffset:{x:-8,y:0},slotGrid:{x:8,y:18,columns:9,rows:3,pitch:18},playerInventoryRows:[84,102,120,138]},
+    "54":{name:"gui.bg.54",width:176,height:222,advance:glyphs.find(g=>g.name==="gui.bg.54")!.advance,ascent:13,offset:{x:-8,y:0},titleOriginOffset:{x:-8,y:0},slotGrid:{x:8,y:18,columns:9,rows:6,pitch:18},playerInventoryRows:[138,156,174,192]},
+  },
+  titlePlate:{name:"gui.title",x:40,y:2,width:96,height:16,advance:glyphs.find(g=>g.name==="gui.title")!.advance,ascent:13,anchor:"centered on 176px panel",fontBaselineOffsetY:2},
+  renderSequence:{backdrop:"prepend space(-8), then gui.bg.<27|54>",restoreTitleCursor:"append spaces whose total is -(backdrop.advance-8), then vanilla title",titlePlate:"render gui.title at x=40 with y offset +2 relative to vanilla title baseline, then its caption",spaces:"compose non-power-of-two advances from hud-glyphs.json spacing entries"},
+  layering:"Backdrop interior is transparent; only thin frame and slot rules plus the title plaque are opaque/semitransparent. Verify on an actual container because title glyphs are rendered over slots.",
+};
 for(const [name,value] of Object.entries(byName)) glyphContract.glyphs[name]={...glyphContract.glyphs[name],char:charCodeByName[name]??value.char};
 for(let n=1;n<=1024;n*=2) for(const sign of [-1,1]) { const key=sign<0?`-${n}`:`+${n}`; const char=priv(nextChar++); glyphContract.spaces[key]=char; glyphContract.spacing[key]={font:"ruc:space",char,advance:sign*n,width:sign*n}; }
 const spaceProviders=Object.entries(glyphContract.spacing).map(([key,entry]:any)=>({type:"space",advances:{[entry.char]:entry.width}}));

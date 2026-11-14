@@ -11,7 +11,7 @@ import { castMs, computeDamage, elementMul, finalStats, healAmount, mentalResist
 import { CAPS, BASE_STATS, COMBAT, LEVEL_GROWTH, MOVE, ROLL, SECONDARY, STAMINA } from "../../web/rpg/shared/data/stats.ts";
 import { ELEMENTS, ELEMENT_IDS, ELEMENT_PROC, REACTIONS } from "../../web/rpg/shared/data/elements.ts";
 import { EFFECTS, FOREVER_MS } from "../../web/rpg/shared/data/effects.ts";
-import { ITEMS, RARITIES, RARITY, SETS, SPECIALS, ENCHANTS, durMaxOf } from "../../web/rpg/shared/data/items.ts";
+import { ITEMS, RARITIES, RARITY, SETS, SPECIALS, ENCHANTS, EQUIP_SLOTS, EQUIP_NAME, LOCS, STORAGE, STACK, STACKABLE_KINDS, POTION_CD_MS, SPECIAL_TIER, BOOK_IDS, BOX_POOL, GATHER, stackable, durMaxOf } from "../../web/rpg/shared/data/items.ts";
 import { ENHANCE, ENHANCE_MAX, ENHANCE_OPT, PREFIXES, ENCH_SLOTS, ENCH_POWER, ENCH_COST_MUL, RARITY_VALUE, SHOP, SHOP_GOODS, BREW, MAIL, MARKET, rollShop, enhanceCost, enchantCost, repairCost, disassembleRuc, itemValue, rollEnhance } from "../../web/rpg/shared/data/economy.ts";
 import { SKILLS, SLOTS, APPRENTICE_SLOTS } from "../../web/rpg/shared/data/skills.ts";
 import { LINES, JOBS, STAT_GRADE, AWAKEN, AWAKEN_NAME, SPIRIT_BUFF, JOB_LV, JOB_POTENTIAL, JOB_POT_SHIFT, jobStats } from "../../web/rpg/shared/data/jobs.ts";
@@ -106,15 +106,59 @@ const tiers = Object.keys(ITEMS).filter((id) => id.endsWith("_sword") && !!ITEMS
   return { key, name: sword.name.replace(/ 검$/, ""), lv: sword.lv, c: sword.look, gem: staff?.gem, desc: sword.desc };
 });
 
+type ItemMod = { k: string; op: "add" | "mul"; c: number; v: boolean; el?: string };
+function exportItemMods(where: string, raw: unknown, elementSample?: string): ItemMod[] {
+  if (typeof raw !== "function") throw new Error(`${where} must be a function`);
+  const evaluate = (v: number, el?: string): any[] => {
+    const result = (raw as (v: number, el?: string) => unknown)(v, el);
+    if (!Array.isArray(result)) throw new Error(`${where}(${v},${el ?? "none"}) must return an array`);
+    return result;
+  };
+  const base = evaluate(1, elementSample), zero = evaluate(0, elementSample), doubled = evaluate(2, elementSample), tripled = evaluate(3, elementSample);
+  if (base.length !== zero.length || base.length !== doubled.length || base.length !== tripled.length) throw new Error(`${where} changes result length with v`);
+  if (elementSample) {
+    const noElement = evaluate(1, undefined);
+    if (noElement.length !== 0) throw new Error(`${where} must return no mods without its element argument`);
+  }
+  return base.map((entry, index) => {
+    if (!entry || typeof entry !== "object" || typeof entry.k !== "string") throw new Error(`${where}[${index}] has invalid shape`);
+    const op = Object.hasOwn(entry, "add") ? "add" : Object.hasOwn(entry, "mul") ? "mul" : undefined;
+    const c = op ? entry[op] : undefined, next = doubled[index], atZero=zero[index], atThree=tripled[index];
+    if (!op || Object.hasOwn(entry, op === "add" ? "mul" : "add") || typeof c !== "number" || !Number.isFinite(c)) throw new Error(`${where}[${index}] must have one finite add/mul coefficient`);
+    if (!next || !atZero || !atThree || next.k !== entry.k || atZero.k !== entry.k || atThree.k !== entry.k || next[op] === undefined || atZero[op] === undefined || atThree[op] === undefined || Math.abs(atZero[op]) >= 1e-9 || Math.abs(next[op] - 2 * c) >= 1e-9 || Math.abs(atThree[op] - 3 * c) >= 1e-9) throw new Error(`${where}[${index}] is not linear in v`);
+    if (elementSample && entry.el !== elementSample) throw new Error(`${where}[${index}] changed its element argument`);
+    const result: ItemMod = { k: entry.k, op, c, v: true };
+    // Omitting `el` means the Java consumer forwards the stored item's element argument.
+    if (entry.el !== undefined && entry.el !== elementSample) result.el = entry.el;
+    return result;
+  });
+}
+
+const SPECIALS_EXPORT = Object.fromEntries(Object.entries(SPECIALS).map(([id, def]) => {
+  const { mods, ...fields } = def;
+  return [id, { ...fields, ...(mods ? { mods: exportItemMods(`SPECIALS.${id}.mods`, mods) } : {}) }];
+}));
+const ENCHANTS_EXPORT = Object.fromEntries(Object.entries(ENCHANTS).map(([id, def]) => {
+  const { mods, ...fields } = def;
+  const elementSample = id === "eldef" ? "fire" : undefined;
+  return [id, { ...fields, mods: exportItemMods(`ENCHANTS.${id}.mods`, mods, elementSample) }];
+}));
+const STACKING_RULES = { max: STACK, stackableKinds: STACKABLE_KINDS, consumableWhen: "use.food is present" };
+for (const [id, template] of Object.entries(ITEMS)) {
+  const expected = STACKING_RULES.stackableKinds.includes(template.kind) || (template.kind === "consumable" && !!template.use?.food);
+  if (stackable(template) !== expected) throw new Error(`STACKING_RULES does not match stackable(${id})`);
+}
+
 const tables: Record<string, unknown> = {
-  "items.json": { ITEMS, RARITIES, RARITY, SETS, SPECIALS, ENCHANTS, TIERS: tiers },
+  "items.json": { ITEMS, RARITIES, RARITY, SETS, SPECIALS: SPECIALS_EXPORT, ENCHANTS: ENCHANTS_EXPORT, TIERS: tiers,
+    EQUIP_SLOTS, EQUIP_NAME, LOCS, STORAGE, STACK, STACKABLE_KINDS, STACKING_RULES, POTION_CD_MS, SPECIAL_TIER, BOX_POOL, BOOK_IDS, GATHER },
   "skills.json": { SKILLS, SLOTS, APPRENTICE_SLOTS },
   "jobs.json": { LINES, JOBS, STAT_GRADE, AWAKEN, AWAKEN_NAME, SPIRIT_BUFF, JOB_LV, JOB_POTENTIAL, JOB_POT_SHIFT },
   "mobs.json": { MOBS, GRADES },
   "effects.json": { EFFECTS: EFFECTS_EXPORT, FOREVER_MS },
   "elements.json": { ELEMENTS, ELEMENT_IDS, ELEMENT_PROC, REACTIONS },
   "stats.json": { BASE_STATS, LEVEL_GROWTH, MOVE, STAMINA, SECONDARY, CAPS, COMBAT, ROLL },
-  "economy.json": { ENHANCE, ENHANCE_MAX, ENHANCE_OPT, PREFIXES, ENCHANTS, ENCH_SLOTS, ENCH_POWER, ENCH_COST_MUL, RARITY_VALUE, SHOP, SHOP_GOODS, BREW, MAIL, MARKET },
+  "economy.json": { ENHANCE, ENHANCE_MAX, ENHANCE_OPT, PREFIXES, ENCHANTS: ENCHANTS_EXPORT, ENCH_SLOTS, ENCH_POWER, ENCH_COST_MUL, RARITY_VALUE, SHOP, SHOP_GOODS, BREW, MAIL, MARKET },
   "quests.json": { TUTORIAL, QUESTS, FIRST_QUEST, NPCS, FOUNTAIN_SPOTS, FOUNTAIN_R, USER_QUEST, COLLECT_CHOICES, NOTI_KINDS, NOTI_TOAST },
   "dungeons.json": { ROOM_NAME, RUINS },
   "party.json": { PARTY, PINGS, PING_WHEEL, PING, DUEL, KDA, TITLES },

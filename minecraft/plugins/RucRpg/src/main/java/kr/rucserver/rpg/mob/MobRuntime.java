@@ -152,7 +152,7 @@ public final class MobRuntime implements Listener {
 
     /** (x, z) 의 서 있을 수 있는 땅 높이 — baseY 근처 위아래 8칸에서 */
     private static Location ground(org.bukkit.World world, double x, double baseY, double z) {
-        for (int dy = 8; dy >= -8; dy--) {
+        for (int dy = 12; dy >= -12; dy--) {
             Location l = new Location(world, x, Math.floor(baseY) + dy, z);
             if (!l.getBlock().isPassable() && l.clone().add(0, 1, 0).getBlock().isPassable() && l.clone().add(0, 2, 0).getBlock().isPassable())
                 return l.add(0, 1, 0);
