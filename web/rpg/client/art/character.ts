@@ -72,12 +72,25 @@ export function outfitOf(look: string[] = [], jb = "", awake = false): Outfit {
   return o;
 }
 
-/** 구르기 · 사망 · 피격은 시트 없이 스프라이트 회전 · 색으로 (game.ts) */
-export const ACTIONS = ["idle", "walk", "run", "attack", "cast"] as const;
+/** 사망 · 피격은 시트 없이 스프라이트 회전 · 색으로 (game.ts). 대시(구르기)는 2026-11-14 부터 전용 동작 — 예전엔 스프라이트를 90° 씩 돌려서 "그냥 구르는 느낌" */
+export const ACTIONS = ["idle", "walk", "run", "attack", "cast", "dash"] as const;
 export type Action = (typeof ACTIONS)[number];
 export const FRAMES = 8;
-/** 동작별 재생 속도 — 프레임이 8장이라 예전(4장)의 두 배 (공격은 공속 비례 — game.ts 가 배속) */
-export const ACTION_FPS: Record<Action, number> = { idle: 5, walk: 14, run: 20, attack: 20, cast: 12 };
+/** 동작별 재생 속도 — 걷기 · 달리기 · 대기만 씀 (공격 · 시전 · 대시는 동작 길이에 8프레임을 맞춤 — game.ts) */
+export const ACTION_FPS: Record<Action, number> = { idle: 5, walk: 14, run: 20, attack: 20, cast: 12, dash: 16 };
+/**
+ * 공격 8프레임 (2026-11-14 타격감 개선): 0 준비 → 1 뒤로 크게 젖힘 → 2 휘두름(잔상) → 3 타격(앞으로 뻗음 · 잔상) → 4 끝까지 베어 내림 → 5 버팀 → 6~7 회수.
+ * ARM = 어깨에서 손 방향(도, 화면 좌표 · 0 = 앞, 90 = 아래), BLADE = 무기 방향, LUNGE = 상체가 앞으로 나감(px), STEP = 앞발 내딛기
+ */
+const ATK_ARM = [70, -115, -45, 5, 40, 50, 65, 80];
+const ATK_BLADE = [-80, -150, -75, -8, 32, 42, -15, -70];
+const ATK_LUNGE = [0, -1, 1, 2, 2, 1, 1, 0];
+const ATK_STEP = [0, 0, 1, 2, 2, 2, 1, 0];
+const ATK_DIP = [0, 1, 0, 0, 1, 1, 0, 0];
+/** 대시 8프레임: 0~1 몸을 낮춰 박차고 → 2~5 앞으로 기울인 채 미끄러지듯 → 6~7 몸을 세움 */
+const DASH_LEAN = [1, 2, 3, 3, 3, 3, 2, 1];
+const DASH_DIP = [2, 2, 1, 1, 1, 1, 1, 0];
+const DASH_STRIDE = [2, 3, 4, 4, 4, 4, 3, 2];
 export { FRAMES as CHAR_FRAMES };
 
 const BLUSH = "#f4a3a3";
@@ -110,39 +123,49 @@ function paint(view: number, action: Action, f: number, ap: Appearance, o: Outfi
   const three = view === 1 || view === 3; // 남동 · 북동(그리고 반전된 남서 · 북서)
   const ph = (f / FRAMES) * Math.PI * 2;
   const walking = action === "walk" || action === "run";
+  const atk = action === "attack";
+  const dash = action === "dash";
   const amp = action === "run" ? 3 : 2;
-  const sw = walking ? Math.round(Math.sin(ph) * amp) : 0; // 다리 앞뒤 (px)
+  // 다리 앞뒤 (px): 걷기 · 달리기 = 흔들기, 공격 = 앞발 내딛기, 대시 = 크게 벌린 보폭
+  const sw = walking ? Math.round(Math.sin(ph) * amp) : atk ? ATK_STEP[f] : dash ? DASH_STRIDE[f] : 0;
   const up = walking ? (Math.abs(Math.sin(ph)) > 0.62 ? (action === "run" ? 2 : 1) : 0) : 0;
   const breathe = action === "idle" ? [0, 0, 0, 1, 1, 1, 0, 0][f] : 0;
-  const b = breathe - up; // 위쪽 몸 오르내림 (+ = 아래)
-  const lean = action === "run" && side ? 1 : 0;
-  const hop = (v: number) => Math.max(0, v); // 들리는 다리
+  const b = breathe - up + (atk ? ATK_DIP[f] : dash ? DASH_DIP[f] : 0); // 위쪽 몸 오르내림 (+ = 아래)
+  // 상체가 앞으로 (옆모습만 — 앞 · 뒤에서는 몸을 낮추는 것으로)
+  const lean = side ? (action === "run" ? 1 : atk ? ATK_LUNGE[f] : dash ? DASH_LEAN[f] : 0) : 0;
+  const hop = (v: number) => (atk ? 0 : Math.max(0, v)); // 들리는 다리 (공격은 두 발로 버팀)
 
   // 몸통 · 손 위치 (망토 · 무기가 같이 씀)
   const tw = side ? 6 : three ? 7 : 8;
   const tx = side ? CX - 3 + lean : three ? CX - 3 : CX - tw / 2;
   const torsoTop = 15 + b;
   const armPose = (side2: -1 | 1) => {
-    // 걷기 · 달리기: 반대쪽 다리와 반대로 흔듦 / 공격 · 시전: 아래에서 오버라이드
+    // 걷기 · 달리기: 반대쪽 다리와 반대로 흔듦 / 대시: 두 팔을 뒤로 젖힘 / 공격 · 시전: 아래에서 오버라이드
+    if (dash) return side ? (side2 === 1 ? -3 : 3) : 2;
     const swing = walking ? Math.round(Math.sin(ph + (side2 === 1 ? 0 : Math.PI)) * (action === "run" ? 3 : 2)) : 0;
     return swing;
   };
   const pose = armsFor(action, f, side);
   const armLen = (s: number) => (action === "cast" ? Math.max(3, 6 - pose.raise) : 6 - Math.max(0, s));
-  const hand = side
-    ? { x: CX + 1 + armPose(1) + pose.dx + lean, y: torsoTop + 1 + pose.dy + pose.len }
-    : three
-      ? { x: tx - 2, y: torsoTop + 1 + (action === "cast" || action === "attack" ? pose.dyL : 0) + armLen(armPose(-1)) }
-      : { x: tx + tw, y: torsoTop + 1 + (action === "attack" ? pose.dy : action === "cast" ? pose.dyL : 0) + armLen(armPose(1)) };
-  const swingNow = action === "attack" && f >= 2 && f <= 4;
-  const flutter = walking ? Math.round(Math.sin(ph * 2)) : 0;
+  // 옆모습 공격: 어깨에서 원을 그리며 휘두르는 팔 (ATK_ARM 각도)
+  const shoulder = { x: CX + 1 + lean, y: torsoTop + 2 };
+  const armA = (ATK_ARM[f] * Math.PI) / 180;
+  const hand = side && atk
+    ? { x: shoulder.x + Math.round(Math.cos(armA) * 5), y: shoulder.y + Math.round(Math.sin(armA) * 5) }
+    : side
+      ? { x: CX + 1 + armPose(1) + pose.dx + lean, y: torsoTop + 1 + pose.dy + pose.len }
+      : three
+        ? { x: tx - 2, y: torsoTop + 1 + (action === "cast" || action === "attack" ? pose.dyL : 0) + armLen(armPose(-1)) }
+        : { x: tx + tw, y: torsoTop + 1 + (action === "attack" ? pose.dy : action === "cast" ? pose.dyL : 0) + armLen(armPose(1)) };
+  const bladeAng = atk ? ATK_BLADE[f] : -90;
+  const flutter = walking ? Math.round(Math.sin(ph * 2)) : dash ? 2 : 0;
   const cape = o.cape;
   // ── 망토 (몸 뒤) — 앞 · 옆에서 볼 때 ──
   if (cape && !back) {
     const top = torsoTop + 1;
     if (side) {
       for (let y = top; y <= 31; y++) {
-        const x1 = CX - 3 + lean - Math.round(((y - top) / (31 - top)) * 3) - (y > 27 ? flutter + (action === "run" ? 1 : 0) : 0);
+        const x1 = CX - 3 + lean - Math.round(((y - top) / (31 - top)) * (dash ? 6 : 3)) - (y > 27 ? flutter + (action === "run" ? 1 : 0) : 0);
         p.rect(x1, y, CX + 1 + lean - x1, 1, cape[1]);
         p.set(x1, y, cape[2]);
       }
@@ -210,12 +233,23 @@ function paint(view: number, action: Action, f: number, ap: Appearance, o: Outfi
     if (cape && front) { p.set(tx, torsoTop, GOLD[1]); p.set(tx + tw - 1, torsoTop, GOLD[1]); } // 망토 걸쇠
   };
   // 뒤를 볼 때 무기는 몸 뒤
-  if (o.weapon && back) weapon(p, o.weapon, hand.x, hand.y, 0, swingNow, false);
+  if (o.weapon && back) weapon(p, o.weapon, hand.x, hand.y, 0, bladeAng, atk ? f : -1, false);
   if (side) arm(CX - 1 - armPose(-1) + lean, torsoTop + 1, 6, [sh[1], sh[2], sh[2]]); // 뒤팔
   if (three) arm(tx + tw - 1, torsoTop + 2 + Math.max(0, armPose(1)), 5, [sh[1], sh[2], sh[2]]); // 먼 팔: 몸통에 반쯤 가림
   drawTorso();
 
-  if (side) {
+  if (side && atk) {
+    // 휘두르는 팔: 어깨 → 손 2px 굵기 선 + 손(장갑)
+    for (let i = 0; i <= 4; i++) {
+      const x = shoulder.x + Math.round(Math.cos(armA) * i);
+      const y = shoulder.y + Math.round(Math.sin(armA) * i);
+      p.rect(x, y, 2, 2, i < 2 ? sh[0] : sh[1]);
+    }
+    p.rect(hand.x, hand.y, 2, 2, o.gloves ?? skin[1]);
+    p.set(hand.x, hand.y, o.gloves ? lighten(o.gloves, 0.25) : skin[0]);
+    // 맨손: 주먹을 뻗을 때 뒤로 남는 속도선
+    if (!o.weapon && (f === 3 || f === 4)) for (let i = 2; i <= 6; i += 2) p.rect(hand.x - i - 2, hand.y + (i % 4 === 0 ? 0 : 1), 2, 1, "#ffffff77");
+  } else if (side) {
     const y = torsoTop + 1 + pose.dy;
     arm(CX + 1 + armPose(1) + pose.dx + lean, y, pose.len, sh);
   } else if (three) {
@@ -310,68 +344,90 @@ function paint(view: number, action: Action, f: number, ap: Appearance, o: Outfi
     }
   }
 
-  // 시전 · 공격 이펙트 손끝 반짝
-  if (action === "cast" && f >= 3 && f <= 5 && !back) {
-    p.set(tx - 1, torsoTop - 3, "#ffffff");
-    p.set(tx + tw + 1, torsoTop - 3, "#ffffff");
+  // 시전: 두 손 사이에 빛 구슬이 모였다가(2~5) 터짐(6) — 손끝 반짝 + 퍼지는 빛 알갱이
+  if (action === "cast" && !back) {
+    const gx = side ? CX + 4 + lean : CX;
+    const gy = torsoTop - 4;
+    if (f >= 2 && f <= 5) {
+      const r = f - 1;
+      p.ellipse(gx, gy, r, r, "#ffffff55");
+      p.ellipse(gx, gy, Math.max(1, r - 1), Math.max(1, r - 1), "#fff4b0cc");
+      p.set(gx, gy, "#ffffff");
+    }
+    if (f === 6) for (const [dx, dy] of [[-4, -2], [4, -2], [0, -5], [-3, 3], [3, 3]]) p.set(gx + dx, gy + dy, "#fff4b0aa");
+    if (f >= 3 && f <= 5) { p.set(tx - 1, torsoTop - 3, "#ffffff"); p.set(tx + tw + 1, torsoTop - 3, "#ffffff"); }
   }
   // ── 무기 (맨 앞) ──
-  if (o.weapon && !back) weapon(p, o.weapon, hand.x, hand.y, side ? 1 : 0, swingNow, action === "cast" && f >= 3 && f <= 5);
+  if (o.weapon && !back) weapon(p, o.weapon, hand.x, hand.y, side ? 1 : 0, bladeAng, atk ? f : -1, action === "cast" && f >= 3 && f <= 5);
   p.outline();
   return p;
 }
 
 /**
  * 손(x, y = 손 왼쪽 위)에 든 무기. dir 1 = 오른쪽을 봄(옆), 0 = 앞 · 뒤.
- * swing = 공격 휘두름 프레임 (칼 · 도끼는 앞으로 뻗음), glow = 시전 (지팡이 · 완드 보석이 빛남)
+ * ang = 칼날 방향(도, -90 = 위로 세움 · 0 = 앞), f = 공격 프레임(-1 = 공격 아님), glow = 시전 (지팡이 · 완드 보석이 빛남)
+ * 공격 2~3 프레임에는 지난 프레임 각도에서 지금 각도까지 반투명 잔상(스미어)을 그려 빠르게 베는 느낌을 줌
  */
-function weapon(p: Px, w: NonNullable<Outfit["weapon"]>, x: number, y: number, dir: 0 | 1, swing: boolean, glow: boolean) {
+function weapon(p: Px, w: NonNullable<Outfit["weapon"]>, x: number, y: number, dir: 0 | 1, ang: number, f: number, glow: boolean) {
   const c = w.c;
+  const blade = (len: number, a: number) => {
+    const r = (a * Math.PI) / 180;
+    const cx = Math.cos(r);
+    const cy = Math.sin(r);
+    const ox = x;
+    const oy = y;
+    p.set(Math.round(ox - cx * 2), Math.round(oy - cy * 2), WOOD[2]); // 손잡이 끝
+    for (let k = -2; k <= 2; k++) p.set(Math.round(ox + cx - cy * k * 0.8), Math.round(oy + cy + cx * k * 0.8), GOLD[2]); // 가드
+    for (let i = 2; i <= len + 1; i++) {
+      const bx = ox + cx * i;
+      const by = oy + cy * i;
+      p.set(Math.round(bx), Math.round(by), c[0]);
+      p.set(Math.round(bx - cy), Math.round(by + cx), c[1]);
+    }
+    p.set(Math.round(ox + cx * (len + 2)), Math.round(oy + cy * (len + 2)), c[0]);
+  };
+  const smear = (len: number) => {
+    if (f !== 2 && f !== 3) return;
+    const a0 = ATK_BLADE[f - 1];
+    for (let a = Math.min(a0, ang); a <= Math.max(a0, ang); a += 6)
+      for (let i = Math.round(len * 0.45); i <= len + 2; i++) {
+        const r = (a * Math.PI) / 180;
+        p.set(Math.round(x + Math.cos(r) * i), Math.round(y + Math.sin(r) * i), i > len - 1 ? "#ffffff77" : "#ffffff44");
+      }
+  };
   switch (w.kind) {
     case "sword":
     case "dagger": {
-      const len = w.kind === "sword" ? 9 : 4;
-      if (swing && dir) {
-        p.rect(x + 2, y, len, 1, c[0]);
-        p.rect(x + 2, y + 1, len, 1, c[1]);
-        p.set(x + len + 2, y + 1, c[0]);
-        p.rect(x + 1, y - 1, 1, 4, GOLD[2]); // 가드
-      } else if (swing) {
-        for (let i = 1; i <= len; i++) { p.set(x + 1 + i, y - i, c[0]); p.set(x + 2 + i, y - i, c[1]); }
-        p.rect(x + 1, y, 2, 1, GOLD[2]);
-      } else {
-        p.rect(x, y - len - 1, 1, len, c[0]);
-        p.rect(x + 1, y - len - 1, 1, len, c[1]);
-        p.set(x, y - len - 2, c[0]);
-        p.rect(x - 1, y - 1, 4, 1, GOLD[2]); // 가드
-        p.rect(x, y + 2, 2, 1, WOOD[2]); // 손잡이 끝
-      }
+      const len = w.kind === "sword" ? 9 : 5;
+      smear(len);
+      blade(len, ang);
       return;
     }
     case "axe": {
-      if (swing && dir) {
-        p.rect(x + 2, y + 1, 8, 1, WOOD[1]);
-        p.part(x + 8, y - 2, 3, 4, c);
-      } else if (swing) {
-        for (let i = 1; i <= 6; i++) p.set(x + 1 + i, y - i, WOOD[1]);
-        p.part(x + 6, y - 9, 3, 3, c);
-      } else {
-        p.rect(x, y - 7, 1, 10, WOOD[1]);
-        p.part(x + 1, y - 8, 3, 4, c);
-        p.rect(x + 3, y - 8, 1, 4, c[0]); // 날
-      }
+      smear(9);
+      const r = (ang * Math.PI) / 180;
+      const cx = Math.cos(r);
+      const cy = Math.sin(r);
+      for (let i = -2; i <= 8; i++) p.set(Math.round(x + cx * i), Math.round(y + cy * i), WOOD[1]); // 자루
+      // 도끼날: 자루 끝에서 앞쪽(자루에 수직)으로 3칸 · 폭 4
+      for (let i = 5; i <= 9; i++)
+        for (let k = 1; k <= 3; k++) p.set(Math.round(x + cx * i - cy * k), Math.round(y + cy * i + cx * k), k === 3 ? c[0] : i === 5 || i === 9 ? c[2] : c[1]);
       return;
     }
     case "bow": {
-      const s = dir ? 1 : 1;
-      p.rect(x + 1 + (swing ? -2 : 0), y - 6, 1, 13, "#efe6d2"); // 시위 (당기면 몸 쪽)
-      for (let i = -6; i <= 6; i++) p.set(x + 2 + s * Math.round(2.5 * Math.cos((i / 6) * (Math.PI / 2))), y + i, i % 3 === 0 ? c[0] : c[1]);
+      // 당기기(1~3) → 놓기(4): 시위가 몸 쪽으로 · 화살을 메김
+      const pull = f >= 1 && f <= 3 ? f : 0;
+      p.rect(x + 1 - pull, y - 6, 1, 13, "#efe6d2");
+      for (let i = -6; i <= 6; i++) p.set(x + 2 + Math.round(2.5 * Math.cos((i / 6) * (Math.PI / 2))), y + i, i % 3 === 0 ? c[0] : c[1]);
+      if (pull) { p.rect(x + 1 - pull, y, 8 + pull, 1, WOOD[0]); p.set(x + 8, y, "#efe6d2"); p.set(x + 9, y, "#efe6d2"); }
+      if (f === 4 || f === 5) for (let i = 0; i < 4; i++) p.set(x + 10 + i * 2, y, "#ffffff77"); // 날아간 화살 잔상
       return;
     }
     case "staff":
     case "wand": {
       const long = w.kind === "staff";
       const gem = w.gem ?? (long ? "#7fd3ff" : "#ffe14d");
+      if (f >= 0) { x += dir ? [0, -1, 1, 2, 2, 1, 0, 0][f] : 0; glow ||= f >= 2 && f <= 4; } // 평타: 앞으로 찌르며 보석이 빛남
       const top = long ? y - 13 : y - 6;
       p.rect(x, top, 1, long ? 18 : 7, c[1]);
       p.rect(x + 1, top + 1, 1, long ? 16 : 5, c[2]);
@@ -389,7 +445,7 @@ function armsFor(action: Action, f: number, side: boolean) {
   if (action === "attack") {
     const s = [0, -1, 1, 3, 4, 3, 1, 0][f];
     if (side) { out.dx = s; out.dy = f >= 2 && f <= 4 ? 0 : 1; out.len = f >= 2 && f <= 4 ? 4 : 6; }
-    else { out.dy = f >= 2 && f <= 4 ? -2 : 0; }
+    else out.dy = [0, -3, -3, -1, 1, 1, 0, 0][f]; // 앞 · 뒤: 들어 올렸다가 내려침
   }
   if (action === "cast") {
     out.raise = [0, 1, 2, 3, 3, 3, 2, 1][f];

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CHAR_H, CHAR_W } from "../shared/constants";
+import { CHAR_H, CHAR_W, DIR_KO } from "../shared/constants";
 import { ITEMS, type Item } from "../shared/data/items";
 import {
   COLLECT_CHOICES, MOB_CHOICES, NPCS, QUESTS, USER_QUEST, objText, userQuestFee,
@@ -14,7 +14,7 @@ import { SOCIAL_ICON, socialAction } from "./Social";
 import { NPC_LOOK, NPC_PLACE, type Place } from "./npcs";
 
 type Send = (m: Parameters<import("./net").Net["send"]>[0]) => void;
-export type QStates = { active: QState[]; done: string[] };
+export type QStates = { active: QState[]; done: string[]; reach?: number };
 export type BoardData = Pick<QuestView, "board" | "mine" | "taken">;
 
 const won = (n: number) => n.toLocaleString("ko-KR");
@@ -239,17 +239,49 @@ function Register({ items, ruc, send, done }: { items: Item[]; ruc: number; send
 }
 
 // ── 오른쪽 추적 창 (최대 3개) ─────────────────────────────────────────────
-export function Tracker({ states }: { states: QStates }) {
+// 2026-11-14 베타 피드백 "안내문이 너무 작다 · 어디서 해야 하는지 모르겠다": 크게 · 금테 강조, 첫 번째 퀘스트는 설명 · 갈 곳(방향 · 거리) · 팁까지,
+// 새로 받은 퀘스트는 몇 초 동안 반짝임. 화면의 금색 화살표 줄 · 목표 테두리(game.ts drawQuest)와 같은 목표.
+const SPOT = ["북", "동", "남", "서"];
+export function Tracker({ states, goal }: { states: QStates; goal?: { label: string; tiles: number; dir: number } | null }) {
   const list = states.active.filter((s) => s.tracked && QUESTS[s.id]).slice(0, 3);
+  const seen = useRef(new Map<string, number>());
+  const now = Date.now();
+  for (const s of list) if (!seen.current.has(s.id)) seen.current.set(s.id, seen.current.size ? now : 0); // 처음 그릴 때(접속)는 반짝이지 않음
   if (!list.length) return null;
   return (
-    <div className="pointer-events-none flex w-[220px] flex-col gap-1.5">
-      {list.map((s) => {
+    <div className="pointer-events-none flex w-[300px] flex-col gap-2">
+      {list.map((s, qi) => {
         const def = QUESTS[s.id];
+        const fresh = now - (seen.current.get(s.id) ?? 0) < 5000;
+        const main = qi === 0;
         return (
-          <div key={s.id} className="rpg-chip !block !whitespace-normal !text-left !text-[11px] leading-snug">
-            <b className="text-[#F2C94C]">{def.title}</b>
-            {def.obj.map((o, i) => <div key={i} className={s.prog[i] >= o.n ? "text-[#9be36b]" : ""}>{objText(o, s.prog[i] ?? 0)}</div>)}
+          <div key={s.id} className={`rpg-qtrack ${main ? "rpg-qtrack-main" : ""} ${fresh ? "rpg-qtrack-new" : ""}`}>
+            <div className="flex items-center gap-1.5">
+              <span className="rpg-qtrack-badge">{t(fresh ? "qt.new" : "qt.quest")}</span>
+              <b className="text-[15px] text-[#FFE14D] [text-shadow:0_1px_0_#1b1420]">{def.title}</b>
+            </div>
+            {main && <p className="mt-1 text-[12px] leading-snug text-white/85">{def.desc}</p>}
+            <ul className="mt-1 space-y-0.5 text-[13px]">
+              {def.obj.map((o, i) => {
+                const ok = (s.prog[i] ?? 0) >= o.n;
+                return <li key={i} className={ok ? "text-[#9be36b]" : "text-white"}>{ok ? "☑" : "☐"} {objText(o, s.prog[i] ?? 0)}</li>;
+              })}
+            </ul>
+            {main && s.id === "tut_fountain" && (
+              <div className="mt-1 flex gap-1 text-[12px]">
+                {SPOT.map((n, k) => <span key={n} className={`rounded px-1.5 ${(states.reach ?? 0) & (1 << k) ? "bg-[#2f6b1f] text-[#c8ffb0]" : "bg-[#4a3a18] text-[#FFE14D]"}`}>{n} {(states.reach ?? 0) & (1 << k) ? "✔" : "·"}</span>)}
+              </div>
+            )}
+            {main && goal && (
+              <div className="rpg-qtrack-goal mt-1.5">
+                <span className="text-[16px] leading-none">{"⬇↘➡↗⬆↖⬅↙"[goal.dir]}</span>
+                <span>
+                  <b>{goal.label}</b>
+                  <span className="block text-[11px] text-white/75">{t("qt.follow", { dir: DIR_KO[goal.dir], d: goal.tiles <= 1 ? t("qt.here") : t("qt.tiles", { n: goal.tiles }) })}</span>
+                </span>
+              </div>
+            )}
+            {main && <p className="mt-1 text-[11px] leading-snug text-[#e9d9a8]">💡 {def.hint}</p>}
           </div>
         );
       })}
@@ -325,10 +357,11 @@ export function Toasts({ list }: { list: { key: number; text: string }[] }) {
 
 export function QuestPop({ pop }: { pop: { kind: "start" | "done"; title: string; text: string; at: number } }) {
   return (
-    <div key={pop.at} className="rpg-questpop pointer-events-none absolute left-1/2 top-24 -translate-x-1/2 text-center">
-      <div className="text-[11px] text-[#F2C94C]">{pop.kind === "start" ? t("qp.start") : t("qp.done")}</div>
-      <div className="text-lg font-bold">{pop.title}</div>
-      {pop.text && <div className="mt-0.5 max-w-[360px] text-[12px] text-white/90">{pop.text}</div>}
+    <div key={pop.at} className="rpg-questpop pointer-events-none absolute left-1/2 top-24 w-[min(520px,90vw)] -translate-x-1/2 px-6 py-3 text-center" style={{ animationDuration: pop.kind === "start" ? "6.5s" : undefined }}>
+      <div className="text-[13px] font-bold text-[#F2C94C]">{pop.kind === "start" ? `📜 ${t("qp.start")}` : `✨ ${t("qp.done")}`}</div>
+      <div className="mt-0.5 text-2xl font-bold [text-shadow:0_2px_0_#1b1420]">{pop.title}</div>
+      {pop.text && <div className="mt-1 text-[14px] leading-snug text-white/90">{pop.text}</div>}
+      {pop.kind === "start" && <div className="mt-1.5 text-[11px] text-[#e9d9a8]">{t("qp.guide")}</div>}
     </div>
   );
 }

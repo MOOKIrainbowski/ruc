@@ -391,3 +391,16 @@ test("채팅 (§28): 욕설은 길이 그대로 * — 띄어 쓰거나 기호를
   assert.equal(cleanChat("x".repeat(500)).length, CHAT.maxLen);
   assert.equal(cleanChat(42), "");
 });
+
+test("광장(안전지대)에서는 달리기 · 구르기에 스태미나를 쓰지 않음 (2026-11-14), 밖에서는 씀", () => {
+  const safe = mover();
+  for (let i = 0; i < 40; i++) step(safe, { seq: i, mx: 1, my: 0, run: true }, open, true);
+  assert.equal(safe.stamina, safe.staminaMax);
+  assert.ok(safe.running, "달리기 속도는 그대로");
+  tryRoll(safe, { seq: 99, mx: 1, my: 0, run: false }, true);
+  assert.ok(safe.mv > 0, "구르기는 됨");
+  assert.equal(safe.stamina, safe.staminaMax);
+  const field = mover();
+  for (let i = 0; i < 40; i++) step(field, { seq: i, mx: 1, my: 0, run: true }, open);
+  assert.ok(field.stamina < field.staminaMax);
+});

@@ -564,7 +564,7 @@ export class Room implements World {
     if (!p.dead) {
       if (mv.dg) {
         const rolling = m.mv > 0;
-        tryRoll(m, mv);
+        tryRoll(m, mv, this.kind === "plaza"); // 광장 = 안전지대: 스태미나를 쓰지 않음
         if (!rolling && m.mv > 0) {
           quest(p, "roll");
           // 환영자객 「잔상」: 구르면 2초 동안 분신이 남고 몹이 나를 놓침
@@ -578,10 +578,10 @@ export class Room implements World {
         else quest(p, "cast", mv.k);
       }
     }
-    step(m, mv, this.map.collider);
+    step(m, mv, this.map.collider, this.kind === "plaza");
     p.x = m.x;
     p.y = m.y;
-    if (p.steps % 10 === 0) reachTick(p);
+    reachTick(p); // 매 스텝 (0.5초마다 보면 달릴 때 지점을 지나쳐 버림 — 베타 제보 "분수 퀘스트가 안 깨져요")
   }
 
   /** 힐 위협: 그 아군과 싸우는 몹들이 치유한 쪽을 노림 (§13-2 힐량 × 0.5 — 스킬 threat 로 반영) */

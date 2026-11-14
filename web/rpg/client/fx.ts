@@ -8,7 +8,7 @@ import { Px } from "./art/px";
  */
 
 /** 속성별 파티클: 색 2개 · 중력(px/s², 음수면 위로) · 속력 · 수명 ms */
-const STYLE: Record<ElementId | "hit" | "heal", { c: [string, string]; g: number; v: number; life: number }> = {
+const STYLE: Record<ElementId | "hit" | "heal" | "dust", { c: [string, string]; g: number; v: number; life: number }> = {
   water: { c: [ELEMENTS.water.color, "#9ee0fa"], g: 260, v: 70, life: 420 },
   fire: { c: [ELEMENTS.fire.color, "#FFD27A"], g: -120, v: 50, life: 480 },
   earth: { c: [ELEMENTS.earth.color, "#8c6642"], g: 420, v: 80, life: 380 },
@@ -23,6 +23,7 @@ const STYLE: Record<ElementId | "hit" | "heal", { c: [string, string]; g: number
   iron: { c: [ELEMENTS.iron.color, "#ffb347"], g: 380, v: 120, life: 320 },
   hit: { c: ["#ffffff", "#ffe3cf"], g: 200, v: 70, life: 250 },
   heal: { c: ["#4CC764", "#b5f07a"], g: -60, v: 25, life: 700 },
+  dust: { c: ["#d8cbb0", "#b3a385"], g: -25, v: 28, life: 420 },
 };
 export const elColor = (el: string) => (ELEMENTS as Record<string, { color: string }>)[el]?.color ?? "#ffffff";
 
@@ -30,6 +31,7 @@ type Particle = { s: Sprite; x: number; y: number; vx: number; vy: number; g: nu
 type Num = { t: BitmapText; x: number; y: number; age: number; life: number; crit: boolean };
 type Proj = { s: Sprite; x: number; y: number; vx: number; vy: number; left: number; el: string; trail: number };
 type Warn = { g: Graphics; age: number; ms: number; draw: (k: number) => void };
+type Ghost = { s: Sprite; age: number; ms: number };
 
 const NUM_STYLE = { fontFamily: "Galmuri11", fontSize: 14, fill: "#ffffff", stroke: { color: "#1b1420", width: 3 } };
 
@@ -57,6 +59,7 @@ export class Fx {
   private freeNums: BitmapText[] = [];
   projs = new Map<number, Proj>();
   private warns: Warn[] = [];
+  private ghosts: Ghost[] = [];
   shake = 0;
 
   setQuality(q: "low" | "medium" | "high") {
@@ -176,13 +179,97 @@ export class Fx {
     for (let i = 0; i < 4; i++) this.burst(x, y - 20 - i * 30, "light", 8);
   }
 
-  /** 근접 휘두르기 호 (월드) */
+  /**
+   * 근접 베기 (2026-11-14 타격감): 칼끝이 지나가는 자리를 따라 자라나는 굵은 초승달(가운데 흰 심 · 바깥 색 테두리) → 사라짐.
+   * 예전엔 얇은 호 하나가 160ms 깜빡이고 끝나서 "공격 모션이 없다"는 제보.
+   */
   swing(x: number, y: number, ang: number, range: number, color: string) {
     const g = new Graphics();
     g.position.set(x, y - 12);
-    g.arc(0, 0, range * 0.8, ang - 0.8, ang + 0.8).stroke({ color, width: 2, alpha: 0.85 });
+    g.blendMode = "add";
     this.world.addChild(g);
-    this.warns.push({ g, age: 0, ms: 160, draw: (k) => (g.alpha = 1 - k) });
+    const r = Math.max(14, range * 0.85);
+    const from = ang - 1.15;
+    const span = 2.3;
+    this.warns.push({
+      g, age: 0, ms: 230,
+      draw: (k) => {
+        const grow = Math.min(1, k / 0.45); // 앞 45% 동안 휘둘러 나감
+        const fade = k < 0.45 ? 1 : 1 - (k - 0.45) / 0.55;
+        const end = from + span * grow;
+        const start = Math.max(from, end - span * 0.85);
+        g.clear();
+        // 바깥 색 → 안쪽 흰 심 (굵기 차이로 초승달 모양)
+        g.arc(0, 0, r, start, end).stroke({ color, width: 5, alpha: 0.35 * fade });
+        g.arc(0, 0, r - 1, start + 0.15, end).stroke({ color, width: 3, alpha: 0.7 * fade });
+        g.arc(0, 0, r - 1, start + 0.45, end).stroke({ color: 0xffffff, width: 1.5, alpha: fade });
+        g.arc(0, 0, r * 0.62, start + 0.6, end - 0.1).stroke({ color, width: 1, alpha: 0.4 * fade });
+      },
+    });
+  }
+
+  /** 타격 불꽃: 맞은 곳에서 퍼지는 빛살 + 고리 (치명타는 크고 금색) */
+  spark(x: number, y: number, color: string, crit = false) {
+    const g = new Graphics();
+    g.position.set(x, y);
+    g.blendMode = "add";
+    this.world.addChild(g);
+    const n = crit ? 8 : 6;
+    const R = crit ? 16 : 11;
+    const rot = Math.random() * Math.PI;
+    this.warns.push({
+      g, age: 0, ms: crit ? 260 : 190,
+      draw: (k) => {
+        g.clear();
+        const a = 1 - k;
+        for (let i = 0; i < n; i++) {
+          const ang = rot + (i / n) * Math.PI * 2;
+          const len = (i % 2 ? 0.55 : 1) * R * (0.4 + k * 0.8);
+          const r0 = R * k * 0.35;
+          g.moveTo(Math.cos(ang) * r0, Math.sin(ang) * r0).lineTo(Math.cos(ang) * len, Math.sin(ang) * len).stroke({ color: i % 2 ? color : 0xffffff, width: crit ? 2 : 1.5, alpha: a });
+        }
+        g.circle(0, 0, R * (0.3 + k * 0.9)).stroke({ color: crit ? 0xffd27a : color, width: 1, alpha: a * 0.8 });
+        if (k < 0.35) g.circle(0, 0, 4 * (1 - k)).fill({ color: 0xffffff, alpha: 0.9 });
+      },
+    });
+  }
+
+  /** 시전 마법진: 발밑에서 돌며 커지는 이중 고리 + 룬 점 (ms 동안) */
+  circle(x: number, y: number, color: string, ms: number) {
+    const g = new Graphics();
+    g.position.set(x, y);
+    g.blendMode = "add";
+    this.ground.addChild(g);
+    this.warns.push({
+      g, age: 0, ms,
+      draw: (k) => {
+        const open = Math.min(1, k / 0.25);
+        const a = k > 0.8 ? (1 - k) / 0.2 : 1;
+        const r = 14 * open;
+        g.clear();
+        g.scale.set(1, 0.5); // 바닥에 누운 원
+        g.circle(0, 0, r).stroke({ color, width: 1.5, alpha: 0.85 * a });
+        g.circle(0, 0, r * 0.7).stroke({ color: 0xffffff, width: 1, alpha: 0.5 * a });
+        for (let i = 0; i < 6; i++) {
+          const ang = k * 4 + (i / 6) * Math.PI * 2;
+          g.rect(Math.cos(ang) * r * 0.85 - 1, Math.sin(ang) * r * 0.85 - 1, 2, 2).fill({ color, alpha: a });
+        }
+        g.circle(0, 0, r).fill({ color, alpha: 0.12 * a });
+      },
+    });
+  }
+
+  /** 잔상 (대시): 지금 그림을 색만 입혀 그 자리에 남기고 ms 동안 흐려짐 */
+  ghost(src: Sprite, tint: number, ms = 260) {
+    const s = new Sprite(src.texture);
+    s.anchor.copyFrom(src.anchor);
+    s.position.copyFrom(src.position);
+    s.scale.copyFrom(src.scale);
+    s.tint = tint;
+    s.alpha = 0.55;
+    s.blendMode = "add";
+    this.ground.addChild(s);
+    this.ghosts.push({ s, age: 0, ms });
   }
 
   update(dt: number, toScreen: (x: number, y: number) => [number, number]) {
@@ -216,6 +303,8 @@ export class Fx {
       const [sx, sy] = toScreen(n.x, n.y);
       const jitter = n.crit && n.age < 200 ? Math.round((Math.random() - 0.5) * 4) : 0;
       n.t.position.set(sx + jitter, Math.round(sy - 26 * Math.sqrt(k)));
+      const base = n.crit ? 1.5 : 1;
+      n.t.scale.set(n.age < 110 ? base * (1.7 - (0.7 * n.age) / 110) : base); // 맞는 순간 크게 튀어나옴
       n.t.alpha = k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1;
     }
     for (const [id, p] of this.projs) {
@@ -234,6 +323,12 @@ export class Fx {
       w.age += dt;
       if (w.age >= w.ms) { w.g.destroy(); this.warns.splice(i, 1); continue; }
       w.draw(w.age / w.ms);
+    }
+    for (let i = this.ghosts.length - 1; i >= 0; i--) {
+      const g = this.ghosts[i];
+      g.age += dt;
+      if (g.age >= g.ms) { g.s.destroy(); this.ghosts.splice(i, 1); continue; }
+      g.s.alpha = 0.55 * (1 - g.age / g.ms);
     }
     this.shake = Math.max(0, this.shake - dt);
   }

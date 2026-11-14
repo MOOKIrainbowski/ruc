@@ -103,14 +103,14 @@ export function spend(m: Mover, base: number) {
 
 export const canRoll = (m: Mover) => !m.root && !m.exhausted && m.stamina > 0 && m.mv === 0 && m.lock === 0 && m.rollCd === 0;
 
-/** 구르기: 누르고 있는 방향, 없으면 바라보는 방향으로 */
-export function tryRoll(m: Mover, input: MoveInput) {
+/** 구르기: 누르고 있는 방향, 없으면 바라보는 방향으로. safe = 광장(안전지대) — 스태미나를 쓰지 않음 */
+export function tryRoll(m: Mover, input: MoveInput, safe = false) {
   if (!canRoll(m)) return;
   const mx = Math.sign(input.mx);
   const my = Math.sign(input.my);
   const d = mx || my ? dir8(mx, my) : m.dir;
   const [vx, vy] = DIR_VEC[d];
-  spend(m, STAMINA.dodge);
+  if (!safe) spend(m, STAMINA.dodge);
   m.dir = d;
   m.mv = ROLL.steps;
   m.mvx = (vx * ROLL.dist) / ROLL.steps;
@@ -167,7 +167,8 @@ export function castMove(m: Mover, sk: SkillDef, ax: number, ay: number, c: Coll
   }
 }
 
-export function step(m: Mover, input: MoveInput, c: Collider): void {
+/** safe = 광장(안전지대): 달려도 스태미나가 줄지 않음 (2026-11-14 베타 피드백) */
+export function step(m: Mover, input: MoveInput, c: Collider, safe = false): void {
   if (m.rollCd > 0) m.rollCd--;
   if (m.ifr > 0) m.ifr--;
   if (m.aim > 0) m.aim--;
@@ -180,7 +181,7 @@ export function step(m: Mover, input: MoveInput, c: Collider): void {
   const running = moving && input.run && !m.exhausted && m.stamina > 0;
 
   // 스태미나 (§6-3)
-  if (running) {
+  if (running && !safe) {
     m.stamina = Math.max(0, m.stamina - (STAMINA.runPerSec * (SIM_MS / 1000) * 100) / (100 + m.endu));
     m.restMs = 0;
     if (m.stamina === 0) m.exhausted = true;

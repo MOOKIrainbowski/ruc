@@ -9,13 +9,14 @@ import { GRADES } from "../shared/data/mobs";
 import { SKILLS, SLOTS, type SkillDef, type Slot } from "../shared/data/skills";
 import { ROLL } from "../shared/data/stats";
 import { USE_RANGE, distToObj, prop, type GameMap, type TiledObject } from "../shared/map";
-import { castMove, step, tryRoll, type MoveInput, type Mover } from "../shared/movement";
+import { castMove, dir8, step, tryRoll, type MoveInput, type Mover } from "../shared/movement";
 import { skillNums } from "../shared/progress";
 import {
   F_CAST, F_DEAD, F_MOVING, F_ROLL, F_RUNNING, H_COUNTER, H_CRIT, H_DOT, H_HEAL, H_IMMUNE, H_MISS, H_RESIST,
   type DropRow, type EntityInfo, type Ev, type FxRow, type S2C, type You,
 } from "../shared/protocol";
 import { josa } from "../shared/josa";
+import { FOUNTAIN_R, FOUNTAIN_SPOTS, QUESTS, type QState } from "../shared/data/quests";
 import { ANIMATED, TILE_NAMES, gid } from "../shared/tiles";
 import { ACTIONS, ACTION_FPS, APPRENTICE, FRAMES, characterSheet, outfitOf, shadowCanvas, type Action, type Outfit } from "./art/character";
 import { effectIcon } from "./art/icons";
@@ -74,7 +75,12 @@ type Ent = {
   fxAt: number;
   flash: number;
   lunge: { ms: number; dx: number; dy: number } | null;
-  act: { kind: Action; until: number } | null;
+  /** 공격 · 시전 동작: 시작 시각 ~ 끝 시각에 8프레임을 맞춰 끝까지 재생 (예전엔 공속 fps 로 돌려 회수 동작이 잘렸음) */
+  act: { kind: Action; until: number; from: number } | null;
+  /** 타격감 (2026-11-14): 맞으면 뒤로 밀림 · 히트스톱(이 시간 동안 동작이 멈춤) · 대시 잔상 간격 */
+  knock: { ms: number; dx: number; dy: number } | null;
+  stop: number;
+  trail: number;
   deadMs: number;
   face: number; // 몹: 0 오른쪽 · 1 왼쪽
 };
@@ -88,7 +94,7 @@ export type HudState = {
   stamina: number;
   staminaMax: number;
   exhausted: boolean;
-  others: { x: number; y: number; mob: boolean; party: boolean; foe: boolean }[];
+  others: { x: number; y: number; mob: boolean; party: boolean; foe: boolean; name: string; lv: number; boss: boolean }[];
   /** [HP, 최대, 마나, 최대, 기력, 최대, 보호막] — 예측 비용 반영 */
   v: number[];
   /** 슬롯별 [남은 ms, 전체 ms, 자원 충분] */
@@ -113,7 +119,13 @@ export type HudState = {
   deadKind: string;
   bossHp: number;
   duelIn: number;
+  /** 퀘스트 안내: 갈 곳 이름 · 거리(칸) · 방향(8방향) — 추적 창에 표시 */
+  goal: { label: string; tiles: number; dir: number; x: number; y: number } | null;
 };
+
+/** 퀘스트 목표 지점 (월드 px) · 강조할 오브젝트 · 엔티티 */
+type Goal = { x: number; y: number; label: string; r: number; obj?: TiledObject; ent?: Ent };
+const SPOT_NAME = ["북", "동", "남", "서"];
 
 /** 바닥 아이템: 아이콘 + (희귀 이상) 빛 · 주우면 주운 사람 쪽으로 날아감 */
 type GroundItem = { c: Container; x: number; y: number; t: number; fly: { to: number; ms: number } | null };
@@ -176,6 +188,12 @@ export class Game {
   screenLayer = new Container();
   fx = new Fx();
   indicator = new Graphics();
+  /** 퀘스트 안내: 바닥 화살표 줄(엔티티 아래) · 목표 테두리 강조 + 머리 위 화살표(엔티티 위) */
+  questLine = new Graphics();
+  questMark = new Graphics();
+  private quests: { active: QState[]; reach: number } = { active: [], reach: 0 };
+  private spotLabels: Text[] = [];
+  private goal: Goal | null = null;
   map: GameMap;
   kind: RoomKind;
   net: Net;
@@ -387,6 +405,7 @@ export class Game {
 
   // ── 맵 ──────────────────────────────────────────────────────────
   private buildMap() {
+    if (this.kind === "plaza") this.spotLabels = FOUNTAIN_SPOTS.map((sp) => { const t = this.label("", sp.x, sp.y + 14, "#FFE14D"); t.style.fontSize = 13; t.visible = false; return t; });
     const { w, h, layers } = this.map;
     const atlas = tileAtlas();
     const atlasTex = Texture.from(atlas);
@@ -419,7 +438,7 @@ export class Game {
       waterLayer.addChild(s);
       this.water.push({ s, frames });
     }
-    this.world.addChild(waterLayer, bake(layers.decor_below), this.fx.ground, this.indicator, this.entityLayer, this.fx.world);
+    this.world.addChild(waterLayer, bake(layers.decor_below), this.fx.ground, this.indicator, this.questLine, this.entityLayer, this.fx.world, this.questMark);
     if (layers.decor_above.some((g) => g)) this.world.addChild(bake(layers.decor_above));
     this.screenLayer.addChild(this.fx.screen);
 
@@ -450,7 +469,7 @@ export class Game {
       this.entityLayer.addChild(s);
       if (frames.length > 1) this.animated.push({ s, frames });
       const CONTACT: Record<string, [number, number]> = {
-        tree: [0.95, 9], building: [1.0, 8], tent_shop: [1.0, 7], tent_market: [1.0, 7], bench: [1.0, 5], lamp: [0.8, 5], statue: [1.0, 7], well: [1.0, 6],
+        tree: [0.95, 9], building: [1.0, 8], tent_shop: [1.0, 7], tent_market: [1.0, 7], bench: [1.0, 5], lamp: [0.8, 5], statue: [1.0, 7], fountain: [1.04, 12], well: [1.0, 6],
         barrel: [1.0, 5], crate: [1.0, 5], crate_stack: [1.0, 6], flowerpot: [0.9, 4], haystack: [1.0, 6], sack: [0.9, 4], log: [1.0, 5], fence: [1.0, 4],
         rock: [1.0, 5], stump: [1.0, 5], bush: [1.1, 5], board: [1.0, 5], workbench: [1.0, 5], anvil: [1.0, 5], mailbox: [0.9, 4], mushroom: [0.8, 4], pillar: [1.2, 5],
       };
@@ -464,7 +483,7 @@ export class Game {
         sh.zIndex = -1e6;
         this.entityLayer.addChild(sh);
       }
-      if (["tree", "barrel", "crate", "crate_stack", "flowerpot", "banner", "well", "haystack", "sack", "log", "fence", "mushroom", "lamp", "building", "tent_shop", "tent_market", "statue", "bench", "board", "mailbox", "workbench", "anvil", "rock", "stump", "bush", "sign", "pillar"].includes(o.type)) this.staticSprites.push(s);
+      if (["tree", "barrel", "crate", "crate_stack", "flowerpot", "banner", "well", "haystack", "sack", "log", "fence", "mushroom", "lamp", "building", "tent_shop", "tent_market", "statue", "fountain", "bench", "board", "mailbox", "workbench", "anvil", "rock", "stump", "bush", "sign", "pillar"].includes(o.type)) this.staticSprites.push(s);
       if (o.type === "lamp") this.lightSrc.push({ x: o.x, y: o.y - 26, r: 70, color: 0xffd27a, flicker: 0.02 });
       if (o.type === "campfire") this.lightSrc.push({ x: o.x, y: o.y - 6, r: 80, color: 0xff9a4a, flicker: 0.07 });
       if (o.type === "portal") this.lightSrc.push({ x: o.x, y: o.y - o.height / 2, r: 56, color: o.properties?.find((x) => x.name === "target")?.value === "dungeon" ? 0xb07aff : o.properties?.find((x) => x.name === "target")?.value === "arena" ? 0xff6a6a : 0x6aff8a, flicker: 0.04 });
@@ -610,6 +629,143 @@ export class Game {
     for (const [id, t] of this.marks) t.visible = npcs.includes(id);
   }
 
+  /** 진행 중 퀘스트 · 분수 둘레 지난 지점(비트) — RpgGame 이 qs 를 받을 때마다 */
+  setQuests(active: QState[], reach: number) {
+    this.quests = { active, reach };
+  }
+
+  /**
+   * 퀘스트 안내 (2026-11-14 베타 피드백 "어디서 해야 하는지 모르겠다"): 추적 중인 튜토리얼 퀘스트의 첫 미완료 목표 → 갈 곳.
+   * 다른 맵에서 해야 하면 그 맵으로 가는 포털. 위치가 없는 목표(구르기 · 파티 · 레벨)는 null.
+   */
+  private questGoal(): Goal | null {
+    if (this.kind === "dungeon" || this.ghost) return null;
+    const q = this.quests.active.find((a) => a.tracked && QUESTS[a.id]);
+    if (!q) return null;
+    const def = QUESTS[q.id];
+    const o = def.obj.find((x, k) => (q.prog[k] ?? 0) < x.n);
+    if (!o) return null;
+    const NEED: Partial<Record<string, RoomKind>> = { talk: "plaza", reach: "plaza", claim: "plaza", buy: "plaza", enhance: "plaza", equip: "plaza", stage: "plaza", cast: "field", kill: "field" };
+    const where = NEED[o.type];
+    if (!where) return null;
+    const near = (pred: (x: TiledObject) => boolean) => {
+      let best: TiledObject | null = null;
+      let bd = Infinity;
+      for (const x of this.map.objects) {
+        if (!pred(x)) continue;
+        const d = distToObj(x, this.me.x, this.me.y);
+        if (d < bd) { bd = d; best = x; }
+      }
+      return best;
+    };
+    const objGoal = (t: TiledObject, label: string): Goal => ({ x: t.x, y: t.y - Math.min(t.height, 24) / 2, label, r: Math.max(t.width, 16) / 2, obj: t });
+    if (this.kind !== where) {
+      const portal = near((x) => x.type === "portal" && prop(x, "target") === where) ?? near((x) => x.type === "portal" && prop(x, "target") === (this.kind === "highland" ? "field" : "plaza"));
+      return portal ? objGoal(portal, `${portal.name} 포털`) : null;
+    }
+    let t: TiledObject | null = null;
+    switch (o.type) {
+      case "talk": t = near((x) => x.type === "npc" && prop(x, "npc") === o.target); break;
+      case "equip": t = near((x) => x.type === "npc" && prop(x, "npc") === "owen"); break;
+      case "claim": t = near((x) => x.type === "mailbox"); break;
+      case "buy": t = near((x) => x.type === "tent_shop"); break;
+      case "enhance": t = near((x) => x.type === "anvil"); break;
+      case "stage": t = near((x) => x.type === "portal" && prop(x, "target") === "dungeon"); break;
+      case "reach": {
+        // 분수 둘레: 아직 안 지난 지점 중 가장 가까운 곳
+        let best = -1;
+        let bd = Infinity;
+        FOUNTAIN_SPOTS.forEach((sp, k) => {
+          if (this.quests.reach & (1 << k)) return;
+          const d = Math.hypot(sp.x - this.me.x, sp.y - this.me.y);
+          if (d < bd) { bd = d; best = k; }
+        });
+        return best < 0 ? null : { x: FOUNTAIN_SPOTS[best].x, y: FOUNTAIN_SPOTS[best].y, label: `분수 ${SPOT_NAME[best]}쪽 지점`, r: 16 };
+      }
+      case "cast":
+      case "kill": {
+        // 가까이 보이는 그 몹 → 없으면 서식지
+        const want = o.type === "kill" && o.target !== "*" ? o.target : "slime";
+        let best: Ent | null = null;
+        let bd = 220;
+        for (const e of this.ents.values()) {
+          if (!e.mob || e.info.pet || !e.sprite.visible || e.flags & F_DEAD || e.deadMs > 0 || (o.type === "kill" && o.target !== "*" && e.info.mob !== want)) continue;
+          const d = Math.hypot(e.x - this.me.x, e.y - this.me.y);
+          if (d < bd) { bd = d; best = e; }
+        }
+        if (best) return { x: best.x, y: best.y - 8, label: best.info.name, r: 12, ent: best };
+        const z = near((x) => x.type === "spawn_zone" && prop(x, "mob") === want);
+        return z ? { x: z.x, y: z.y - z.height / 2, label: `${z.name} (서식지)`, r: Math.min(80, z.width / 2) } : null;
+      }
+    }
+    return t ? objGoal(t, t.type === "npc" ? `${t.name} (${prop(t, "role")})` : t.name) : null;
+  }
+
+  /** 바닥 화살표 줄(흐르는 점선 + 화살촉) · 목표 테두리 강조 · 머리 위 통통 튀는 화살표 · 분수 둘레 지점 표시 */
+  private drawQuest(now: number) {
+    const line = this.questLine.clear();
+    const mark = this.questMark.clear();
+    const me = this.meSprite;
+    const g = (this.goal = this.questGoal());
+    const pulse = 0.55 + 0.45 * Math.sin(now / 180);
+    // 분수 퀘스트: 네 지점 + 한 바퀴 도는 길 (지난 곳 초록 ✔ · 남은 곳 금색)
+    const fq = this.kind === "plaza" && this.quests.active.find((a) => a.id === "tut_fountain");
+    this.spotLabels.forEach((t, k) => {
+      t.visible = !!fq;
+      if (fq) { const done = !!(this.quests.reach & (1 << k)); t.text = `${SPOT_NAME[k]} ${done ? "✔" : "◇"}`; t.style.fill = done ? "#7CFC6A" : "#FFE14D"; }
+    });
+    if (fq) {
+      const cx = 768;
+      const cy = 768;
+      const R = 112;
+      const off = (now / 600) % 1;
+      for (let i = 0; i < 48; i++) {
+        const a0 = ((i + off) / 48) * Math.PI * 2;
+        const a1 = a0 + (Math.PI * 2) / 96;
+        line.moveTo(cx + Math.cos(a0) * R, cy + Math.sin(a0) * R).lineTo(cx + Math.cos(a1) * R, cy + Math.sin(a1) * R);
+      }
+      line.stroke({ color: 0xffe14d, width: 1.5, alpha: 0.45 });
+      FOUNTAIN_SPOTS.forEach((sp, k) => {
+        const done = !!(this.quests.reach & (1 << k));
+        const col = done ? 0x7cfc6a : 0xffe14d;
+        line.ellipse(sp.x, sp.y, FOUNTAIN_R * 0.75, FOUNTAIN_R * 0.45).fill({ color: col, alpha: done ? 0.18 : 0.12 + 0.12 * pulse }).stroke({ color: col, width: 2, alpha: done ? 0.7 : 0.5 + 0.5 * pulse });
+      });
+    }
+    if (!g) return;
+    const tx = g.ent ? g.ent.x : g.x;
+    const ty = g.ent ? g.ent.y - 8 : g.y;
+    const dx = tx - me.x;
+    const dy = ty - (me.y - 6);
+    const dist = Math.sqrt(dx * dx + dy * dy);
+    // 화살표 줄: 발밑에서 목표 쪽으로 흐르는 점선 + 끝 화살촉 (목표 가까이 오면 사라짐)
+    if (dist > g.r + 26) {
+      const ux = dx / dist;
+      const uy = dy / dist;
+      const end = Math.min(dist - g.r - 6, 220); // 화면 밖 먼 곳이면 220px 까지만 그리고 화살촉
+      const flow = (now / 30) % 14;
+      for (let d = 12 + flow; d < end - 10; d += 14) {
+        const d1 = Math.min(d + 7, end - 10);
+        line.moveTo(me.x + ux * d, me.y - 6 + uy * d).lineTo(me.x + ux * d1, me.y - 6 + uy * d1);
+      }
+      line.stroke({ color: 0xffe14d, width: 3, alpha: 0.9, cap: "round" });
+      const hx = me.x + ux * end;
+      const hy = me.y - 6 + uy * end;
+      line.poly([hx + ux * 8, hy + uy * 8, hx - uy * 6, hy + ux * 6, hx + uy * 6, hy - ux * 6]).fill({ color: 0xffe14d, alpha: 0.95 }).stroke({ color: 0x5a4214, width: 1 });
+    }
+    // 목표 테두리 강조 (오브젝트는 그림 영역 사각형, 몹 · 지점은 원)
+    const glow = { color: 0xffe14d, width: 2, alpha: 0.55 + 0.45 * pulse };
+    if (g.obj && g.obj.type !== "spawn_zone") {
+      const o = g.obj;
+      const pad = 3 + pulse * 2;
+      mark.roundRect(o.x - o.width / 2 - pad, o.y - o.height - pad, o.width + pad * 2, o.height + pad * 2, 4).stroke(glow);
+      mark.roundRect(o.x - o.width / 2 - pad - 2, o.y - o.height - pad - 2, o.width + pad * 2 + 4, o.height + pad * 2 + 4, 6).stroke({ color: 0xffffff, width: 1, alpha: 0.35 * pulse });
+    } else mark.circle(tx, ty, g.r + pulse * 3).stroke(glow);
+    // 머리 위 통통 튀는 화살표
+    const top = g.obj ? g.obj.y - g.obj.height : ty - g.r;
+    const by = top - 10 - Math.abs(Math.sin(now / 220)) * 6;
+    mark.poly([tx, by + 7, tx - 6, by, tx - 2, by, tx - 2, by - 6, tx + 2, by - 6, tx + 2, by, tx + 6, by]).fill({ color: 0xffe14d }).stroke({ color: 0x5a4214, width: 1 });
+  }
+
   // ── 엔티티 ───────────────────────────────────────────────────────
   private makeEnt(info: EntityInfo, isMe = false): Ent {
     const mob = !!info.mob;
@@ -642,7 +798,7 @@ export class Game {
     const y = isMe ? this.me.y : 0;
     return {
       info, mob, sprite, shadow, plate, label, title, bars, icons, frames, buf: [], x, y, dir: 0, shown: 0, turnMs: 0, action: "idle", animMs: 0,
-      flags: 0, hp: 1000, res: 1000, drawn: "", fx: [], fxAt: 0, flash: 0, lunge: null, act: null, deadMs: 0, face: 0,
+      flags: 0, hp: 1000, res: 1000, drawn: "", fx: [], fxAt: 0, flash: 0, lunge: null, act: null, deadMs: 0, face: 0, knock: null, stop: 0, trail: 0,
     };
   }
 
@@ -841,6 +997,22 @@ export class Game {
         else if (src === this.you.id) sfx(flags & H_CRIT ? "crit" : "hit");
         e.flash = 120;
         this.fx.burst(e.x, e.y - 14, el || "hit", el ? 12 : 5);
+        // 타격감 (2026-11-14 베타 피드백 "타격감이 없다"): 불꽃 · 맞은 쪽 넉백 · 내가 때리면 히트스톱
+        if (!(flags & H_DOT)) {
+          const crit = !!(flags & H_CRIT);
+          this.fx.spark(e.x, e.y - 14, el ? elColor(el) : "#fff4dc", crit);
+          const s = this.ent(src);
+          if (s && s !== e) {
+            const dx = e.x - s.x;
+            const dy = e.y - s.y;
+            const len = Math.sqrt(dx * dx + dy * dy) || 1;
+            e.knock = { ms: 0, dx: dx / len, dy: dy / len };
+          }
+          if (src === this.you.id) {
+            this.meSprite.stop = e.stop = crit ? 90 : 50;
+            if (crit && this.settings.shake) this.fx.shake = Math.max(this.fx.shake, 90);
+          }
+        }
         if (mine && this.settings.shake && amount > this.v[1] * 0.05) this.fx.shake = 160;
         return;
       }
@@ -1255,22 +1427,28 @@ export class Game {
 
   /** 재생: 서버 room.input 과 같은 순서 (구르기 → 시전 → 이동) */
   private replay(m: Mover, i: MoveInput) {
-    if (i.dg) tryRoll(m, i);
+    if (i.dg) tryRoll(m, i, this.kind === "plaza");
     if (i.k) {
       const sk = this.skill(i.k);
       if (sk) castMove(m, sk, i.ax!, i.ay!, this.map.collider, this.nums(i.k).range, this.castLog.find((c) => c.seq === i.seq)?.to);
     }
-    step(m, i, this.map.collider);
+    step(m, i, this.map.collider, this.kind === "plaza");
   }
 
   private playCast(e: Ent, sk: SkillDef | undefined, ax: number, ay: number, now: number) {
     if (!sk) return;
     const kind: Action = sk.targeting === "melee" || sk.targeting === "dash" || (sk.targeting === "self" && sk.category === "physical") ? "attack" : "cast";
-    e.act = { kind, until: now + Math.max(280, castMs(sk.castMs || 300, this.stats.atkSpeed)) };
+    const ms = castMs(sk.castMs || 300, this.stats.atkSpeed);
+    // 공격: 0.3~0.48초에 8프레임(준비 · 휘두름 · 타격 · 회수) 전부 / 시전: 시전 시간(최소 0.36초)
+    const dur = kind === "attack" ? Math.max(300, Math.min(480, ms)) : Math.max(360, ms);
+    e.act = { kind, until: now + dur, from: now };
     e.animMs = 0;
+    e.action = kind;
     const ang = Math.atan2(ay - e.y, ax - e.x);
     const el = sk.elementInherit ? e.info.el : "none";
-    if (sk.targeting === "melee") this.fx.swing(e.x, e.y, ang, sk.range, "#ffffff");
+    const col = el && el !== "none" ? elColor(el) : "#fff4dc";
+    if (kind === "cast") this.fx.circle(e.x, e.y, sk.targeting === "ally" ? "#4CC764" : col, dur + 120);
+    if (sk.targeting === "melee") this.fx.swing(e.x, e.y, ang, sk.range, col);
     if (sk.targeting === "dash") this.fx.burst(e.x, e.y - 12, el, 10);
     if (sk.targeting === "ally" || sk.targeting === "skillshot" || sk.targeting === "target") this.fx.burst(e.x, e.y - 30, sk.targeting === "ally" ? "heal" : el, 6);
     if (sk.targeting === "blink") this.fx.burst(e.x, e.y - 12, el === "none" ? "dark" : el, 14);
@@ -1300,7 +1478,7 @@ export class Game {
       if (this.queued.dodge) {
         input.dg = 1;
         this.queued.dodge = false;
-        tryRoll(this.me, input);
+        tryRoll(this.me, input, this.kind === "plaza");
       }
       if (this.queued.cs) { input.cs = this.queued.cs; this.queued.cs = null; }
       const slot = this.queued.k ?? (this.mouse.held && !this.inputBlocked ? "A" : null);
@@ -1332,7 +1510,7 @@ export class Game {
           }
         } else if (fromKey) this.toast(why);
       }
-      step(this.me, input, this.map.collider);
+      step(this.me, input, this.map.collider, this.kind === "plaza");
       this.pending.push(input);
       this.net.send({ t: "in", ...input });
     }
@@ -1456,6 +1634,7 @@ export class Game {
       const k = Math.min(1, (performance.now() - this.charging.at) / (this.skill(this.charging.slot)?.charge?.ms ?? 1000));
       this.indicator.circle(me.x, me.y - 14, 10 + 10 * k).stroke({ color: k >= 1 ? 0xffd27a : 0xffffff, width: 2, alpha: 0.5 + 0.5 * k });
     }
+    this.drawQuest(now);
   }
 
   private drawBars(e: Ent) {
@@ -1470,8 +1649,18 @@ export class Game {
   }
 
   private animate(e: Ent, base: Action, dt: number, now: number) {
-    e.animMs += dt;
+    e.animMs += e.stop > 0 ? 0 : dt; // 히트스톱: 잠깐 멈춤
+    e.stop = Math.max(0, e.stop - dt);
     e.flash = Math.max(0, e.flash - dt);
+    let kx = 0;
+    let ky = 0;
+    if (e.knock) {
+      e.knock.ms += dt;
+      const k = Math.max(0, 1 - e.knock.ms / 160) ** 2;
+      kx = Math.round(e.knock.dx * 4 * k);
+      ky = Math.round(e.knock.dy * 3 * k);
+      if (e.knock.ms >= 160) e.knock = null;
+    }
     const dead = !!(e.flags & F_DEAD) || e.deadMs > 0;
     if (dead) e.deadMs += dt;
     // 몹: 좌우 2방향 + 이동/대기 4프레임 · 공격 시 앞으로 튀어나감 · 쓰러지면 가라앉으며 사라짐
@@ -1490,7 +1679,7 @@ export class Game {
         if (e.lunge.ms >= 250) e.lunge = null;
       }
       if (e.flags & F_CAST && !e.lunge) ox = Math.round(Math.sin(now / 30));
-      e.sprite.position.set(Math.round(e.x + ox), Math.round(e.y + oy + (dead ? Math.min(6, e.deadMs / 100) : 0)));
+      e.sprite.position.set(Math.round(e.x + ox + kx), Math.round(e.y + oy + ky + (dead ? Math.min(6, e.deadMs / 100) : 0)));
       e.sprite.alpha = dead ? Math.max(0, 1 - e.deadMs / 800) : 1;
       e.sprite.tint = e.flash > 0 ? 0xff9090 : 0xffffff;
       e.sprite.zIndex = e.y;
@@ -1498,11 +1687,17 @@ export class Game {
       e.plate.alpha = dead ? 0 : 1;
       return;
     }
-    // 플레이어: 공격 · 시전 동작이 끝날 때까지 우선
+    // 플레이어: 대시 > 공격 · 시전(끝날 때까지) > 이동
+    const rolling = !!(e.flags & F_ROLL);
     let action = base;
     if (e.act && now < e.act.until) action = e.act.kind;
     else e.act = null;
-    if (action !== e.action) { e.action = action; e.animMs = 0; }
+    if (rolling) action = "dash";
+    if (action !== e.action) {
+      e.action = action;
+      e.animMs = 0;
+      if (action === "dash") { this.fx.burst(e.x, e.y - 1, "dust", 8); e.trail = 99; } // 박차는 흙먼지
+    }
     // 회전: 2단계 이상 바뀌면 중간 방향을 거쳐 돎 (§8-2)
     e.turnMs += dt;
     if (e.shown !== e.dir && e.turnMs >= 40) {
@@ -1510,14 +1705,22 @@ export class Game {
       const diff = (e.dir - e.shown + 8) % 8;
       e.shown = (e.shown + (diff <= 4 ? 1 : 7)) % 8;
     }
-    const fps = ACTION_FPS[action] * (action === "attack" ? Math.max(1, this.stats.atkSpeed / 100) : 1);
-    const f = action === "attack" || action === "cast" ? Math.min(FRAMES - 1, Math.floor((e.animMs / 1000) * fps)) : Math.floor((e.animMs / 1000) * fps) % FRAMES;
-    const rolling = !!(e.flags & F_ROLL);
-    e.sprite.texture = e.frames[e.shown][ACTIONS.indexOf(rolling || dead ? "idle" : action) * FRAMES + (rolling || dead ? 0 : f)];
-    // 구르기: 몸을 한 바퀴 (90° 단위라 픽셀이 깨지지 않음) · 사망: 옆으로 누움
-    e.sprite.rotation = dead ? -Math.PI / 2 : rolling ? (Math.floor(e.animMs / 75) % 4) * (Math.PI / 2) * (e.dir >= 5 ? -1 : 1) : 0;
-    e.sprite.anchor.set(0.5, rolling ? 0.6 : dead ? 0.75 : CHAR_FEET / CHAR_H);
-    e.sprite.position.set(e.x, e.y - (rolling ? 9 : dead ? 3 : 0));
+    // 공격 · 시전 · 대시는 동작 길이에 8프레임을 맞춤 (끝까지 다 보임), 나머지는 fps 로 반복
+    const span = action === "dash" ? ROLL.steps * SIM_MS : (action === "attack" || action === "cast") && e.act ? e.act.until - e.act.from : 0;
+    const f = span ? Math.min(FRAMES - 1, Math.floor((e.animMs / span) * FRAMES)) : Math.floor((e.animMs / 1000) * ACTION_FPS[action]) % FRAMES;
+    e.sprite.texture = e.frames[e.shown][ACTIONS.indexOf(dead ? "idle" : action) * FRAMES + (dead ? 0 : f)];
+    // 사망: 옆으로 누움. 대시는 전용 동작(몸을 낮추고 앞으로 기울인 질주) + 잔상 · 흙먼지 (예전 90° 회전 구르기를 바꿈)
+    e.sprite.rotation = dead ? -Math.PI / 2 : 0;
+    e.sprite.anchor.set(0.5, dead ? 0.75 : CHAR_FEET / CHAR_H);
+    e.sprite.position.set(e.x + kx, e.y - (dead ? 3 : 0) + ky);
+    if (rolling && !dead) {
+      e.trail += dt;
+      if (e.trail >= 45) {
+        e.trail = 0;
+        this.fx.ghost(e.sprite, Number.parseInt(elColor(e.info.el ?? "none").slice(1), 16) || 0x9fd8ff);
+        if (e.animMs < ROLL.steps * SIM_MS * 0.6) this.fx.burst(e.x, e.y - 1, "dust", 2);
+      }
+    }
     e.sprite.alpha = dead ? 0.75 : e.info.pet ? 0.5 : e.fx.some((r) => r[0] === "stealth") ? 0.4 : 1;
     e.sprite.tint = e.flash > 0 ? 0xff9090 : dead ? 0xb0a8c0 : 0xffffff;
     e.sprite.zIndex = e.y;
@@ -1544,7 +1747,7 @@ export class Game {
       stamina: this.me.stamina,
       staminaMax: this.me.staminaMax,
       exhausted: this.me.exhausted,
-      others: [...this.ents.values()].filter((e) => e.sprite.visible && !e.info.pet && !(e.flags & F_DEAD)).map((e) => ({ x: e.x, y: e.y, mob: e.mob, party: this.partyIds.has(e.info.id), foe: this.isFoe(e) })),
+      others: [...this.ents.values()].filter((e) => e.sprite.visible && !e.info.pet && !(e.flags & F_DEAD)).map((e) => ({ x: e.x, y: e.y, mob: e.mob, party: this.partyIds.has(e.info.id), foe: this.isFoe(e), name: e.info.name, lv: e.info.lv, boss: !!e.info.grade && e.info.grade !== "normal" })),
       v: [this.v[0], this.v[1], mp, this.v[3], en, this.v[5], this.v[6]],
       cds,
       fx: this.myFx.map((r) => [r[0], Math.max(0, r[1] - age), r[2], r[3], r[4]] as FxRow).filter((r) => r[1] > 0 || r[3] === 0),
@@ -1561,6 +1764,7 @@ export class Game {
       bossHp: this.bossId ? (this.ents.get(this.bossId)?.hp ?? 0) : -1,
       duelIn: this.duelFoes.size && now < this.duelAt ? this.duelAt - now : 0,
       dbg: this.debug ? this.debugStats(now) : null,
+      goal: this.goal ? { x: this.goal.ent?.x ?? this.goal.x, y: this.goal.ent?.y ?? this.goal.y, label: this.goal.label, tiles: Math.round(Math.hypot(this.goal.x - this.me.x, this.goal.y - this.me.y) / TILE), dir: dir8(this.goal.x - this.me.x, this.goal.y - this.me.y) } : null,
     };
   }
 

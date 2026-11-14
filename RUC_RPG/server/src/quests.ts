@@ -42,15 +42,18 @@ export function notiOp(p: Player, op: unknown, id: unknown) {
 export function loadQuestState(p: Player) {
   p.quests = new Map(loadQuests(p.char.id).map((r) => [r.quest_id, r]));
   p.takes = new Map(activeTakes(p.char.id).map((r) => [r.quest_id, r.prog]));
-  p.reach = 0;
+  // 분수 둘레 지점(비트)은 메모리라 다시 접속하면 사라짐 → 저장된 개수만큼 앞 지점을 지난 것으로 (안 그러면 2/4 에서 다시 들어오면 3곳을 새로 돌아야 숫자가 오름)
+  const fq = p.quests.get("tut_fountain");
+  p.reach = fq?.state === "active" ? (1 << Math.min(4, fq.prog[0] ?? 0)) - 1 : 0;
   // 새 캐릭터(또는 퀘스트 기록이 없는 예전 캐릭터)는 튜토리얼부터
   if (!p.quests.size) start(p, FIRST_QUEST, false);
   else for (const q of p.quests.values()) if (q.state === "active" && QUESTS[q.quest_id]?.obj.some((o) => o.type === "level")) syncLevel(p, q);
 }
 
-export function questStates(p: Player): { active: QState[]; done: string[] } {
+export function questStates(p: Player): { active: QState[]; done: string[]; reach: number } {
   const all = [...p.quests.values()];
   return {
+    reach: p.reach,
     active: all.filter((q) => q.state === "active").map((q): QState => ({ id: q.quest_id, prog: q.prog, tracked: q.tracked })),
     done: all.filter((q) => q.state === "done").map((q) => q.quest_id),
   };
@@ -129,9 +132,13 @@ function check(p: Player, q: QuestRow) {
 export function reachTick(p: Player) {
   const q = p.quests.get("tut_fountain");
   if (!q || q.state !== "active" || p.room?.kind !== "plaza") return;
+  const was = p.reach;
   FOUNTAIN_SPOTS.forEach((s, i) => { if (Math.hypot(p.x - s.x, p.y - s.y) <= FOUNTAIN_R) p.reach |= 1 << i; });
+  if (p.reach === was) return;
   const count = [0, 1, 2, 3].filter((i) => p.reach & (1 << i)).length;
-  if (count > q.prog[0]) { q.prog[0] = count; saveQuest(p.char.id, q); check(p, q); sendQuests(p); }
+  if (count > q.prog[0]) { q.prog[0] = count; saveQuest(p.char.id, q); check(p, q); }
+  sendQuests(p); // 어느 지점을 지났는지(reach 비트)를 클라가 바닥 표시 · 화살표로 보여 줌
+
 }
 
 export function setTracked(p: Player, id: unknown, on: unknown) {

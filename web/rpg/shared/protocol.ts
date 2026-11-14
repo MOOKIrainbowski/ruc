@@ -182,7 +182,7 @@ export type S2C =
   | { t: "notify"; kind: "mail"; n: number }
   | { t: "econ"; view: "mail" | "shop" | "market" | "enhanced" | "recombined"; data: unknown }
   /** 퀘스트 (P6): 진행 중 · 끝난 NPC 퀘스트 / 시작·완료 팝업 / 유저 퀘스트 게시판 */
-  | { t: "qs"; active: QState[]; done: string[] }
+  | { t: "qs"; active: QState[]; done: string[]; reach?: number }
   | { t: "qpop"; kind: "start" | "done"; title: string; text: string }
   | { t: "quest"; view: "board"; data: Pick<QuestView, "board" | "mine" | "taken"> }
   | { t: "uqp"; id: number; prog: number }

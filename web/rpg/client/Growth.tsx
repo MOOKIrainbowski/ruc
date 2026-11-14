@@ -74,7 +74,7 @@ export function SkillWindow({ you, send, onClose }: { you: You; send: (m: C2S) =
     (canLearn(sk, prog.line, prog.job) || (prog.line && !prog.job && sk.job.some((j) => JOBS[j]?.line === prog.line && JOBS[j].star))));
   return (
     <div className="rpg-modal-bg">
-      <div className="rpg-panel relative w-[560px] max-w-[96vw] p-4 text-[12px]">
+      <div className="rpg-panel rpg-noclip relative w-[560px] max-w-[96vw] p-4 text-[12px]">
         <button className="rpg-x" onClick={onClose} aria-label={t("hud.close")}>✕</button>
         <h2 className="text-base font-bold">{t("sk.title")}</h2>
         <p className="mt-0.5 text-[#8c6642]">
@@ -90,7 +90,7 @@ export function SkillWindow({ you, send, onClose }: { you: You; send: (m: C2S) =
             )}
           </div>
         )}
-        <div className="mt-2 max-h-[56vh] space-y-2 overflow-y-auto pr-1">
+        <div className="mt-2 max-h-[min(56vh,calc(100vh_-_260px))] space-y-2 overflow-y-auto pr-1">
           {(["Q", "W", "E", "R"] as Slot[]).map((slot) => {
             const learned = prog.skills.filter((l) => SKILLS[l.id]?.slot === slot);
             const later = future.filter((sk) => sk.slot === slot);

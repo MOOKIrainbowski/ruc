@@ -5,7 +5,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { FullStats } from "../shared/combat";
 import type { RoomKind } from "../shared/constants";
 import type { Item } from "../shared/data/items";
-import { QUESTS, NOTI_KINDS, type Noti } from "../shared/data/quests";
+import { FIRST_QUEST, QUESTS, NOTI_KINDS, type Noti } from "../shared/data/quests";
 import { loadMap, type GameMap, type TiledMap } from "../shared/map";
 import type { ChannelInfo, S2C, You } from "../shared/protocol";
 import { CombatHud, DeathOverlay } from "./CombatHud";
@@ -72,7 +72,10 @@ export default function RpgGame({ dev }: { dev?: string }) {
   const [notice, setNotice] = useState<{ text: string; at: number } | null>(null);
   const toastTimer = useRef(0);
   // 퀘스트 · 알림 (P6)
-  const [qs, setQs] = useState<QStates>({ active: [], done: [] });
+  const [qs, setQs] = useState<QStates>({ active: [], done: [], reach: 0 });
+  /** 새 캐릭터의 첫 퀘스트는 서버가 알림 없이 시작함 → 게임 화면이 뜬 뒤 알림 (2026-11-14 "퀘스트를 받았는지 모르겠다") */
+  const firstPop = useRef<string | null>(null);
+  const qsSeen = useRef(false);
   const [board, setBoard] = useState<BoardData | null>(null);
   const [notis, setNotis] = useState<Noti[]>([]);
   const [toasts, setToasts] = useState<{ key: number; text: string }[]>([]);
@@ -80,6 +83,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
   const [npc, setNpc] = useState("");
   const [journalTab, setJournalTab] = useState<"active" | "done" | "board">("active");
   const marks = useRef<string[]>([]);
+  const qsRef = useRef<QStates>({ active: [], done: [], reach: 0 });
   // 레벨업 연출 (메이플풍): 레벨이 오르면 2.6초 동안 금빛 광선 + "LEVEL UP!"
   const lastLv = useRef(0);
   const [levelUp, setLevelUp] = useState(0);
@@ -149,12 +153,19 @@ export default function RpgGame({ dev }: { dev?: string }) {
           return;
         case "notice": setNotice({ text: m.text, at: Date.now() }); return;
         case "qs":
-          setQs({ active: m.active, done: m.done });
+          qsRef.current = { active: m.active, done: m.done, reach: m.reach ?? 0 };
+          setQs(qsRef.current);
+          game.current?.setQuests(m.active, m.reach ?? 0);
+          if (!qsSeen.current) {
+            qsSeen.current = true;
+            const first = m.active.find((a) => a.id === FIRST_QUEST && a.prog.every((v) => v === 0));
+            if (first && !m.done.length) firstPop.current = first.id;
+          }
           // 머리 위 ! : 지금 퀘스트가 말을 걸라고 하는 NPC
           marks.current = m.active.flatMap((a) => QUESTS[a.id]?.obj.flatMap((o, i) => (o.type === "talk" && (a.prog[i] ?? 0) < o.n && o.target ? [o.target] : [])) ?? []);
           game.current?.setNpcMarks(marks.current);
           return;
-        case "qpop": setQpop({ kind: m.kind, title: m.title, text: m.text, at: Date.now() }); if (m.kind === "done") sfx("quest"); return;
+        case "qpop": setQpop({ kind: m.kind, title: m.title, text: m.text, at: Date.now() }); sfx(m.kind === "done" ? "quest" : "ui"); return;
         case "quest": setBoard(m.data); return;
         case "uqp": setBoard((b) => b && { ...b, taken: b.taken.map((r) => (r.id === m.id ? { ...r, prog: m.prog } : r)) }); return;
         case "notis": setNotis(m.list.filter((x) => NOTI_KINDS.includes(x.kind))); return;
@@ -240,6 +251,13 @@ export default function RpgGame({ dev }: { dev?: string }) {
           if (!alive) return g.destroy();
           game.current = g;
           g.setNpcMarks(marks.current);
+          g.setQuests(qsRef.current.active, qsRef.current.reach ?? 0);
+          if (firstPop.current && QUESTS[firstPop.current]) {
+            const d = QUESTS[firstPop.current];
+            firstPop.current = null;
+            setQpop({ kind: "start", title: d.title, text: d.hint, at: Date.now() });
+            sfx("ui");
+          }
           g.setParty(social.current.ids, social.current.inParty);
           n.send({ t: "quest", op: "board" });
           if (process.env.NODE_ENV === "development") (window as unknown as { __rpg: Game }).__rpg = g; // 디버그 · E2E 용
@@ -431,7 +449,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
               fps={hud.fps} ping={ping} you={you} onSettings={() => toggle("settings")}
               bell={<Bell notis={notis} send={send} onRead={(id) => setNotis((l) => l.map((x) => (id === "all" || x.id === id ? { ...x, read: true } : x)))} />}
             />
-            <div className="mt-2 flex justify-end"><Tracker states={qs} /></div>
+            <div className="mt-2 flex justify-end"><Tracker states={qs} goal={hud.goal} /></div>
           </div>
           <div style={{ zoom: hudZoom }} className="absolute inset-0">
             <CombatHud hud={hud} stats={stats} you={you} settings={settings} items={items} compact={touch && vw < 1100} onSelect={(i) => { if (game.current) game.current.sel = i; }} />
@@ -522,7 +540,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
         </div>
       )}
       {phase === "play" && toasts.length > 0 && <div style={{ zoom: settings.uiScale / 100 }}><Toasts list={toasts} /></div>}
-      {phase === "play" && qpop && Date.now() - qpop.at < 4500 && <QuestPop pop={qpop} />}
+      {phase === "play" && qpop && Date.now() - qpop.at < (qpop.kind === "start" ? 6500 : 4500) && <QuestPop pop={qpop} />}
       {phase === "play" && levelUp > 0 && (
         <div key={levelUp} className="rpg-levelup pointer-events-none absolute left-1/2 top-[34%] -translate-x-1/2 -translate-y-1/2">
           <div className="rpg-levelup-rays" />

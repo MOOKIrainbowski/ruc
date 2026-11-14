@@ -530,7 +530,14 @@
 .rpg-btn:disabled { filter: none; opacity: 0.5; }
 
 /* 창: 상아빛 양피지 + 금 그라데이션 테두리 + 안쪽 가는 선 + 모서리 장식 */
-.rpg-panel:not(.absolute):not(.fixed) { position: relative; }
+/* 툴팁(.rpg-tip 도 .rpg-panel)은 빼야 함 — 이 규칙이 absolute 를 덮어써서 툴팁이 흐름에 끼어들어 HUD 가 밀렸음 (2026-11-14 베타 제보) */
+.rpg-panel:not(.absolute):not(.fixed):not(.rpg-tip) { position: relative; }
+/* 팝업 창: 내용이 많으면 창 높이는 화면 안에 고정하고 안에서 스크롤 (2026-11-14 베타 제보 — 위아래가 화면 밖으로 잘림).
+   창 밖으로 띄우는 설명(스킬창)은 .rpg-noclip 으로 빼고 안쪽 목록이 따로 스크롤 */
+.rpg-modal-bg { padding: 12px; }
+.rpg-modal-bg > .rpg-panel:not(.rpg-noclip), .rpg-modal-bg > div > .rpg-panel:not(.rpg-noclip) { max-height: calc(100% - 8px); overflow-y: auto; overscroll-behavior: contain; }
+/* 닫기 버튼은 스크롤해도 오른쪽 위에 붙어 있게 (float + 음수 아래 여백 = 다른 내용을 밀지 않음) */
+.rpg-modal-bg > .rpg-panel > .rpg-x { position: sticky; float: right; top: 0; margin: -10px -10px -32px 0; }
 .rpg-panel {
   background:
     radial-gradient(ellipse at 22% -10%, rgba(255, 255, 255, 0.7), transparent 55%),
@@ -603,3 +610,19 @@
 .rpg-orb2-wrap::after { content: ""; position: absolute; left: 50%; top: -12px; width: 10px; height: 10px; margin-left: -5px; background: radial-gradient(circle at 35% 30%, #fff, #ff8a7a 40%, #8a1a20); border: 1px solid #5a4214; border-radius: 50%; }
 .rpg-exp-fill { background: linear-gradient(#fff6b8, #ffd23a 50%, #d98f00); }
 .rpg-levelup-text { text-shadow: 0 4px 0 #6d4a0e, 3px 0 0 #6d4a0e, -3px 0 0 #6d4a0e, 0 -3px 0 #6d4a0e, 0 0 26px #ffd23a; }
+
+/* ── 퀘스트 추적 창 (2026-11-14 베타 피드백: 너무 작고 눈에 안 띔) — 크게 · 금테 · 새 퀘스트는 반짝 ── */
+.rpg-qtrack {
+  background: linear-gradient(rgba(44, 33, 20, 0.92), rgba(22, 16, 10, 0.92));
+  border: 1px solid #c9a24a;
+  border-radius: 6px;
+  padding: 7px 10px 8px;
+  color: #f6ecd2;
+  box-shadow: inset 0 1px 0 rgba(255, 235, 170, 0.22), 0 3px 8px rgba(0, 0, 0, 0.45);
+  text-align: left;
+}
+.rpg-qtrack-main { border: 2px solid #e8c25a; box-shadow: 0 0 0 1px #5a4214, 0 0 14px rgba(255, 210, 90, 0.35), 0 4px 10px rgba(0, 0, 0, 0.5); }
+.rpg-qtrack-new { animation: rpg-qtrack-glow 0.9s ease-in-out 5 alternate, rpg-pop 0.3s cubic-bezier(0.2, 1.4, 0.4, 1); }
+@keyframes rpg-qtrack-glow { from { box-shadow: 0 0 0 1px #5a4214, 0 0 6px rgba(255, 210, 90, 0.3); } to { box-shadow: 0 0 0 2px #ffe14d, 0 0 26px rgba(255, 220, 100, 0.85); } }
+.rpg-qtrack-badge { font-size: 10px; line-height: 14px; padding: 0 5px; border-radius: 3px; background: linear-gradient(#ffe68a, #d9a520); color: #3a2a08; font-weight: bold; }
+.rpg-qtrack-goal { display: flex; gap: 8px; align-items: center; padding: 4px 7px; border-radius: 4px; background: rgba(255, 225, 77, 0.14); border: 1px dashed rgba(255, 225, 77, 0.6); font-size: 13px; color: #fff4c4; }

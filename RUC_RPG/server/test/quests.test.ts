@@ -218,3 +218,21 @@ test("알림: 저장 · 접속 중이면 바로 푸시 · 읽음 처리 · uniqu
   Q.notify(gone.char.id, "system", "오프라인 알림");
   assert.ok(listNotis(gone.char.id).some((x) => x.text === "오프라인 알림"));
 });
+
+test("분수 퀘스트 (2026-11-14 베타 제보): 지난 지점 비트를 클라에 보내고, 다시 접속해도 저장된 개수만큼 이어서 · 지도에서 네 지점이 막혀 있지 않음", () => {
+  const { p, sent } = mk();
+  Q.quest(p, "talk", "lumi");
+  p.room = room;
+  for (const s of FOUNTAIN_SPOTS.slice(0, 2)) { p.x = s.x; p.y = s.y; Q.reachTick(p); }
+  const last = sent.filter((s) => s.includes('"t":"qs"')).at(-1)!;
+  assert.equal(JSON.parse(last).reach, 0b11, "지난 두 곳이 비트로 감");
+  // 다시 접속: 메모리 비트는 사라지지만 저장된 2/4 가 이어짐 → 남은 두 곳만 지나면 완료
+  Q.loadQuestState(p);
+  assert.equal(p.reach, 0b11);
+  for (const s of FOUNTAIN_SPOTS.slice(2)) { p.x = s.x; p.y = s.y; Q.reachTick(p); }
+  assert.deepEqual(active(p), ["tut_roll"]);
+  // 지점마다 반경 안에 서 있을 수 있는 칸이 있어야 함 (화분 · 분수 충돌에 막히지 않게)
+  const blocked = (x: number, y: number) => map.collider.solid[Math.floor(y / 16) * map.w + Math.floor(x / 16)] === 1;
+  for (const s of FOUNTAIN_SPOTS) assert.ok(!blocked(s.x, s.y) && !blocked(s.x - 8, s.y) && !blocked(s.x, s.y - 8), `지점 (${s.x}, ${s.y}) 이 막힘`);
+  assert.ok(map.objects.some((o) => o.type === "fountain"), "광장 가운데 분수 오브젝트");
+});

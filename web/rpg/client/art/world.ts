@@ -546,26 +546,10 @@ export function objectFrames(o: TiledObject): HTMLCanvasElement[] {
       }
       return frames;
     }
-    case "portal": {
-      const col = o.properties?.find((x) => x.name === "target")?.value;
-      const c: C3 = col === "dungeon" ? ["#e6ccff", "#9B5DE5", "#5a2f99"] : col === "arena" ? ["#ffc4c4", "#E5484D", "#99262a"] : col === "next" ? ["#fff4b0", "#F2C94C", "#a8842a"] : ["#d4ffc4", "#4CC764", "#2a7a3a"];
-      const frames: HTMLCanvasElement[] = [];
-      for (let f = 0; f < 8; f++) {
-        const q = new Px(w, h);
-        q.part(4, h - 10, w - 8, 10, STONE);
-        q.rect(4, h - 6, w - 8, 1, STONE[2]);
-        ball(q, w / 2, h / 2 - 2, w / 2 - 6, h / 2 - 8, [c[1], c[2], c[2]]);
-        for (let i = 0; i < 28; i++) {
-          const a = (i / 28) * Math.PI * 2 + f * 0.26;
-          const r = (i % 3) * 5 + 6;
-          q.rect(Math.round(w / 2 + Math.cos(a) * r), Math.round(h / 2 - 2 + Math.sin(a) * r * 0.9), 2, 2, i % 2 ? c[0] : c[1]);
-        }
-        q.ellipse(w / 2, h / 2 - 2, 3 + (f % 4 < 2 ? 0 : 1), 3, c[0]);
-        q.outline();
-        frames.push(q.toCanvas());
-      }
-      return frames;
-    }
+    case "portal":
+      return portalFrames(o);
+    case "fountain":
+      return fountainFrames();
   }
   // 외곽선이 그림 가장자리에서 잘리지 않게 좌우 6 · 위 8 여백을 둠 (발밑 기준 · anchor 는 그대로 가운데 아래)
   const padded = new Px(w + PAD_X * 2, h + PAD_TOP);
@@ -665,4 +649,259 @@ export function contactShadow(): HTMLCanvasElement {
   g.fillRect(0, 0, 64, 64);
   g.restore();
   return c;
+}
+
+// ── 분수 (2026-11-14 베타 피드백: "물도 없고 분수인지 모르겠다") ──────────────────────
+// 서양식(이탈리아 · 신고전) 3단 분수: 장식 테두리의 둥근 수반 → 발루스터(배 모양) 기둥 → 가운데 · 위 접시(타차) 두 단 →
+// 도토리 모양 꼭지 장식. 꼭지에서 물이 솟아 위 접시 → 가운데 접시 → 수반으로 단마다 넘쳐 떨어짐. 8프레임.
+// 바닥 발자국 = 가로 반지름 60 · 세로 48 타원 (plaza.json 충돌과 같음), 테두리 높이 12. 그림 아래 끝 = 오브젝트 y.
+
+const FW = 136;
+const FH = 192;
+const FCX = 68;
+/** 바닥 타원 중심 (그림 좌표) */
+const FGY = FH - 52;
+const ST = { hi: "#fbf5e8", lt: "#eadfca", md: "#d3c4a8", dk: "#a99878", dd: "#7c6c54", mortar: "#b9aa8e" };
+const WT = { deep: "#1d5f99", dk: "#2f86c2", md: "#4cb0e3", lt: "#8fd8f6", hi: "#d4f4ff" };
+
+/** 돌 명암: 왼쪽 위 빛 — k = -1(그늘) .. 1(빛) */
+const stoneAt = (k: number) => (k > 0.55 ? ST.hi : k > 0.15 ? ST.lt : k > -0.3 ? ST.md : k > -0.7 ? ST.dk : ST.dd);
+
+/** 타원 접시(타차): 아래로 오목한 몸통 + 앞 가장자리 가리비 장식 + 테두리 윗면 + 물낯 */
+function tazza(p: Px, cx: number, cy: number, rx: number, ry: number, depth: number, water: (x: number, y: number) => string) {
+  for (let y = 0; y <= depth; y++) {
+    const half = Math.round(rx * Math.sqrt(Math.max(0, 1 - (y / (depth + 1)) ** 2)) * (1 - y / (depth * 3)));
+    for (let x = -half; x <= half; x++) p.set(cx + x, cy + ry + y, stoneAt((-x / (half + 1)) * 0.7 - (y / depth) * 0.6 - 0.1));
+  }
+  for (let x = -rx + 2; x <= rx - 2; x++) if ((x + rx) % 6 < 3) p.set(cx + x, cy + Math.round(ry * Math.sqrt(1 - (x / rx) ** 2)) + 1, ST.lt);
+  for (let y = -ry; y <= ry; y++)
+    for (let x = -rx; x <= rx; x++) {
+      if ((x / rx) ** 2 + (y / ry) ** 2 > 1) continue;
+      if ((x / (rx - 3)) ** 2 + (y / (ry - 1.5)) ** 2 <= 1) {
+        // 안쪽: 물 (위쪽 가장자리는 안벽 그늘)
+        const wallShade = y < 0 && (x / (rx - 3)) ** 2 + ((y + 1.5) / (ry - 1.5)) ** 2 > 1;
+        p.set(cx + x, cy + y, wallShade ? ST.dk : water(x, y));
+      } else p.set(cx + x, cy + y, stoneAt(-(x / rx) * 0.6 - (y / ry) * 0.9 + 0.2));
+    }
+}
+
+/** 기둥 (발루스터): 아래에서부터 높이별 반폭 */
+function column(p: Px, cx: number, yBottom: number, profile: number[]) {
+  profile.forEach((half, i) => {
+    const y = yBottom - i;
+    for (let x = -half; x <= half; x++) p.set(cx + x, y, stoneAt((-x / (half + 0.5)) * 0.9 + 0.15));
+    if (half >= 2) p.set(cx - half, y, ST.hi);
+  });
+}
+
+/** 물줄기 한 가닥: (x, y0) → (x, y1) 반투명 + 아래로 흐르는 밝은 마디 + 떨어진 곳 물보라 */
+function stream(p: Px, x: number, y0: number, y1: number, f: number, seed: number) {
+  for (let y = y0; y <= y1; y++) {
+    const band = (((y - y0 - f * 2 + seed * 3) % 6) + 6) % 6;
+    p.set(x, y, band > 1 ? "#8fd8f6cc" : "#e8fbffee");
+  }
+  const sp = (f + seed) % 4;
+  p.set(x - 1, y1 - (sp < 2 ? 1 : 0), "#ffffffcc");
+  p.set(x + 1, y1 - (sp >= 2 ? 1 : 0), "#ffffffcc");
+}
+
+function fountainFrames(): HTMLCanvasElement[] {
+  const frames: HTMLCanvasElement[] = [];
+  const RX = 60;
+  const RY = 48;
+  const RIM = 12;
+  const top = FGY - RIM; // 테두리 윗면 타원 중심 y
+  for (let f = 0; f < 8; f++) {
+    const p = new Px(FW, FH);
+    const ph = (f / 8) * Math.PI * 2;
+    // ① 수반 앞벽: 돌 블록 · 엇갈린 줄눈 · 위 몰딩 빛 · 바닥 그늘
+    for (let x = -RX; x <= RX; x++) {
+      const yEdge = top + Math.round(RY * Math.sqrt(1 - (x / RX) ** 2));
+      for (let d = 0; d <= RIM; d++) {
+        let c = stoneAt(-(x / RX) * 0.9 - 0.15 - (d > RIM - 3 ? 0.35 : 0));
+        if (d === Math.floor(RIM / 2)) c = ST.mortar;
+        else if ((x + RX + (d > RIM / 2 ? 7 : 0)) % 14 === 0) c = ST.mortar;
+        if (d === 1) c = ST.hi;
+        if (d === RIM) c = ST.dd;
+        p.set(FCX + x, yEdge + d, c);
+      }
+    }
+    // ② 수반 테두리 윗면 (바깥 몰딩 · 장식 홈) + 안벽 + 물낯 (퍼지는 물결 고리 · 가장자리 깊은 색 · 반짝임)
+    const wRX = RX - 6;
+    const wRY = RY - 5;
+    for (let y = -RY; y <= RY; y++)
+      for (let x = -RX; x <= RX; x++) {
+        if ((x / RX) ** 2 + (y / RY) ** 2 > 1) continue;
+        if ((x / wRX) ** 2 + (y / wRY) ** 2 > 1) {
+          const a = Math.atan2(y / RY, x / RX);
+          const outer = (x / (RX - 1.2)) ** 2 + (y / (RY - 1.2)) ** 2 > 1;
+          const notch = !outer && Math.round(((a + Math.PI) / (Math.PI * 2)) * 32) % 2 === 0 && (x / (RX - 3)) ** 2 + (y / (RY - 3)) ** 2 > 1;
+          let c = stoneAt(-(x / RX) * 0.55 - (y / RY) * 0.85 + 0.25);
+          if (outer) c = y < 0 ? ST.hi : ST.lt;
+          if (notch) c = ST.dk;
+          p.set(FCX + x, top + y, c);
+          continue;
+        }
+        if (y < 0 && (x / wRX) ** 2 + ((y - 4) / wRY) ** 2 > 1) { p.set(FCX + x, top + y, y < -wRY + 2 ? ST.dd : ST.dk); continue; }
+        const r = Math.sqrt((x / wRX) ** 2 + ((y - 2) / wRY) ** 2);
+        const ring = Math.sin(r * 22 - ph * 2);
+        let c = r > 0.86 ? WT.dk : WT.md;
+        if (ring > 0.82 && r > 0.18) c = r > 0.8 ? WT.md : WT.lt;
+        if (r > 0.93) c = WT.deep;
+        if (y > wRY * 0.55 && ring > 0.5) c = WT.lt;
+        if (hash(x, y, f) > 0.992) c = "#ffffff";
+        p.set(FCX + x, top + y, c);
+      }
+    // 가운데 접시에서 떨어진 물이 닿는 고리 — 물거품 (뒤쪽은 기둥에 가림)
+    for (let i = 0; i < 40; i++) {
+      const a = (i / 40) * Math.PI * 2 + ph * 0.25;
+      if (Math.sin(a) < -0.1) continue;
+      const r = 31 + Math.round(Math.sin(ph * 2 + i) * 1.2);
+      if ((i + f) % 3 === 0) p.set(FCX + Math.round(Math.cos(a) * r), top + 4 + Math.round(Math.sin(a) * r * 0.4), "#ffffff");
+    }
+    // ③ 아래 기둥 (발루스터: 받침 → 배 → 목 → 접시 받침)
+    const midY = top - 34;
+    column(p, FCX, top + 4, [7, 7, 6, 5, 5, 5, 6, 6, 7, 7, 7, 6, 6, 5, 4, 4, 3, 3, 3, 3, 3, 4, 4, 5, 6, 7]);
+    // ④ 가운데 접시
+    tazza(p, FCX, midY, 30, 10, 9, (x, y) => {
+      const r = Math.sqrt((x / 27) ** 2 + (y / 8.5) ** 2);
+      return Math.sin(r * 9 - ph * 2) > 0.7 ? WT.lt : r > 0.85 ? WT.dk : WT.md;
+    });
+    // ⑤ 위 기둥 + 위 접시
+    const upY = midY - 26;
+    column(p, FCX, midY - 1, [5, 4, 3, 3, 2, 2, 2, 3, 3, 2, 2, 2, 2, 3, 3, 3, 4, 4, 5, 5, 5, 4, 4, 4, 4]);
+    tazza(p, FCX, upY, 16, 6, 6, (x, y) => (Math.sin(Math.sqrt(x * x + y * y * 4) * 1.2 - ph * 2) > 0.6 ? WT.lt : WT.md));
+    // ⑥ 꼭지 장식 (도토리)
+    column(p, FCX, upY - 1, [2, 2, 3]);
+    ball(p, FCX, upY - 7, 3, 4, [ST.hi, ST.md, ST.dk]);
+    p.rect(FCX - 3, upY - 9, 7, 1, ST.dk);
+    p.set(FCX, upY - 12, ST.lt);
+    p.outline();
+
+    // ⑦ 넘쳐 떨어지는 물줄기 (외곽선 없이): 위 접시 → 가운데 접시, 가운데 접시 → 수반
+    [-13, -8, -3, 3, 8, 13].forEach((x, i) => {
+      const y0 = upY + Math.round(6 * Math.sqrt(1 - (x / 16) ** 2)) + 3;
+      stream(p, FCX + x, y0, midY + Math.round(9 * Math.sqrt(Math.max(0, 1 - (x / 27) ** 2))) - 1, f, i);
+    });
+    [-29, -24, -17, -9, 0, 9, 17, 24, 29].forEach((x, i) => {
+      const y0 = midY + Math.round(10 * Math.sqrt(Math.max(0, 1 - (x / 30) ** 2))) + (Math.abs(x) > 26 ? 2 : 6);
+      stream(p, FCX + x, y0, top + 4 + Math.round(13 * Math.sqrt(Math.max(0, 1 - (x / 32) ** 2))), f, i + 2);
+    });
+    // ⑧ 꼭지에서 솟는 물기둥 + 네 갈래 포물선 물방울 (프레임마다 흘러감)
+    const jetTop = upY - 34 + Math.round(Math.sin(ph) * 1.5);
+    for (let y = jetTop; y <= upY - 12; y++) {
+      p.set(FCX, y, (y + f * 2) % 5 < 2 ? "#ffffffee" : "#bfeeffdd");
+      if (y > jetTop + 3) p.set(FCX - 1 + ((y + f) % 2) * 2, y, "#8fd8f699");
+    }
+    p.set(FCX - 1, jetTop, "#ffffffcc");
+    p.set(FCX + 1, jetTop, "#ffffffcc");
+    for (const [dx, dy] of [[-1, 0], [1, 0], [-0.55, 0.45], [0.55, 0.45]] as const) {
+      for (let k = 0; k < 7; k++) {
+        const t = (k / 7 + f / 16) % 1;
+        const x = FCX + dx * 15 * t;
+        const y = jetTop + (upY + 2 + dy * 4 - jetTop) * (t * t) - 10 * t * (1 - t) + dy * 3 * t;
+        p.set(Math.round(x), Math.round(y), k % 2 ? "#e8fbffee" : "#8fd8f6dd");
+      }
+    }
+    for (let i = 0; i < 6; i++) {
+      const a = hash(i, f, 9) * Math.PI * 2;
+      const r = 8 + hash(i, f, 10) * 40;
+      p.set(FCX + Math.round(Math.cos(a) * r), top - 40 + Math.round(hash(i, f, 11) * 60), "#ffffffaa");
+    }
+    frames.push(p.toCanvas());
+  }
+  return frames;
+}
+
+// ── 포털 (2026-11-14: 단색 평면 → 돌 아치 + 깊이 있는 소용돌이) ──────────────────────
+// 돌 아치(쐐기돌 · 줄눈 · 왼쪽 위 빛) 안에, 가장자리는 어둡고 가운데로 갈수록 밝아지는 나선 소용돌이(터널처럼 깊어 보이게),
+// 입구 테두리 · 위쪽 그늘, 기둥의 차례로 빛나는 룬, 계단에 비친 빛, 안으로 빨려 드는 빛 알갱이. 8프레임.
+function portalFrames(o: TiledObject): HTMLCanvasElement[] {
+  const w = o.width;
+  const h = o.height;
+  const col = o.properties?.find((x) => x.name === "target")?.value;
+  const c: C3 = col === "dungeon" ? ["#e6ccff", "#9B5DE5", "#5a2f99"] : col === "arena" ? ["#ffc4c4", "#E5484D", "#99262a"] : col === "next" ? ["#fff4b0", "#F2C94C", "#a8842a"] : ["#d4ffc4", "#4CC764", "#2a7a3a"];
+  const deep = lerpHex(c[2], "#0b0614", 0.65);
+  const pal = [deep, lerpHex(c[2], deep, 0.4), c[2], c[1], lerpHex(c[1], c[0], 0.5), c[0], "#ffffff"];
+  const cx = w / 2;
+  const archCy = 30;
+  const Ro = 27;
+  const Ri = 19;
+  const baseY = h - 9;
+  const SP: C3 = ["#d9d2c6", "#a79d8e", "#6f675c"];
+  const inside = (x: number, y: number) => y < baseY && (y >= archCy ? Math.abs(x - cx + 0.5) <= Ri : (x - cx + 0.5) ** 2 + (y - archCy) ** 2 <= Ri * Ri);
+  const frames: HTMLCanvasElement[] = [];
+  for (let f = 0; f < 8; f++) {
+    const q = new Px(w, h);
+    const ph = (f / 8) * Math.PI * 2;
+    // 계단 2단 + 계단에 비친 포털 빛
+    q.part(2, baseY + 4, w - 4, 5, SP);
+    q.part(6, baseY, w - 12, 5, SP);
+    q.rect(7, baseY, w - 14, 1, SP[0]);
+    for (let x = cx - 14; x <= cx + 14; x++) q.set(x, baseY + 1, `${c[0]}${Math.abs(x - cx) < 8 ? "aa" : "55"}`);
+    // 아치 돌: 위 반원은 방사형 줄눈(쐐기돌 블록), 기둥은 가로 줄눈 · 엇갈린 세로 줄눈, 왼쪽 위 빛
+    for (let y = 0; y < baseY; y++)
+      for (let x = 0; x < w; x++) {
+        const dx = x - cx + 0.5;
+        const dy = y - archCy;
+        const arch = y < archCy ? dx * dx + dy * dy <= Ro * Ro : Math.abs(dx) <= Ro;
+        if (!arch || inside(x, y)) continue;
+        let k: number;
+        let joint: boolean;
+        if (y < archCy) {
+          const a = Math.atan2(dy, dx);
+          const r = Math.sqrt(dx * dx + dy * dy);
+          const seg = ((a + Math.PI) / Math.PI) * 9;
+          joint = Math.abs(seg - Math.round(seg)) < 0.07;
+          k = -Math.cos(a + 0.6) * 0.5 + (r > Ro - 1.5 ? 0.4 : r < Ri + 1.5 ? -0.5 : 0);
+        } else {
+          joint = (y - archCy) % 7 === 0 || (Math.abs(dx) === Ri + 4 && Math.floor((y - archCy) / 7) % 2 === 0);
+          k = (dx < 0 ? 0.25 : -0.35) + (Math.abs(dx) > Ro - 2 ? -0.3 : Math.abs(dx) < Ri + 2 ? (dx < 0 ? -0.4 : 0.1) : 0);
+        }
+        q.set(x, y, joint ? SP[2] : k > 0.3 ? SP[0] : k < -0.3 ? SP[2] : SP[1]);
+      }
+    // 쐐기돌 (맨 위 가운데) — 포털 색 보석
+    q.part(cx - 4, archCy - Ro - 1, 8, 9, SP);
+    q.rect(cx - 2, archCy - Ro + 2, 4, 4, c[1]);
+    q.set(cx - 2, archCy - Ro + 2, c[0]);
+    q.rect(cx - 1, archCy - Ro + 3, 2, 2, f % 4 < 2 ? c[0] : "#ffffff");
+    // 소용돌이: 가장자리 어둡게 → 가운데 밝게 + 나선 팔 3개가 돎 + 입구 테두리 · 위쪽 그늘
+    const vx = cx - 0.5;
+    const vy = archCy + 6;
+    for (let y = 0; y < baseY; y++)
+      for (let x = 0; x < w; x++) {
+        if (!inside(x, y)) continue;
+        const dx = (x - vx) / Ri;
+        const dy = (y - vy) / (Ri + 6);
+        const d = Math.min(1, Math.sqrt(dx * dx + dy * dy));
+        const a = Math.atan2(dy, dx);
+        let lv = (1 - d) * 5.2 + Math.sin(a * 3 + d * 9 - ph * 1.5) * 0.9 - 0.2;
+        const edge = y < archCy ? Ri - Math.sqrt((x - cx + 0.5) ** 2 + (y - archCy) ** 2) : Ri - Math.abs(x - cx + 0.5);
+        if (edge < 2.5) lv -= 1.6;
+        if (y < archCy - Ri * 0.5) lv -= 0.7;
+        q.set(x, y, pal[Math.max(0, Math.min(pal.length - 1, Math.round(lv)))]);
+      }
+    // 빨려 들어가는 빛 알갱이
+    for (let i = 0; i < 10; i++) {
+      const t = (i / 10 + f / 8) % 1;
+      const a = hash(i, 3, 7) * Math.PI * 2 + t * 2.5;
+      const r = (1 - t) * (Ri - 2);
+      const x = Math.round(vx + Math.cos(a) * r);
+      const y = Math.round(vy + Math.sin(a) * r * 1.2);
+      if (inside(x, y)) q.set(x, y, t > 0.6 ? "#ffffff" : c[0]);
+    }
+    // 기둥 룬 (차례로 빛남)
+    for (let i = 0; i < 3; i++) {
+      const on = (f + i * 3) % 8 < 3;
+      for (const sx of [cx - Ri - 6, cx + Ri + 4]) {
+        const y = archCy + 6 + i * 8;
+        q.rect(sx, y, 2, 1, on ? c[0] : c[2]);
+        q.set(sx + (i % 2), y + 1, on ? "#ffffff" : c[2]);
+        q.rect(sx, y + 2, 2, 1, on ? c[0] : c[2]);
+      }
+    }
+    q.outline();
+    frames.push(q.toCanvas());
+  }
+  return frames;
 }
