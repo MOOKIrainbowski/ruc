@@ -275,7 +275,7 @@ export function fire(room: Room, s: Shot, sx: number, sy: number, ax: number, ay
       const r = n.radius;
       if (r > 0) for (const m of live) if (dist(m, p) <= r + m.r) strike(room, s, m, p);
       for (const a of allies(p.x, p.y, r)) if (sk.allyFx || sk.heal || sk.shield || sk.cleanse) support(room, s, a);
-      if (r > 0 || sk.damage) room.ev.push(["gx", Math.round(p.x), Math.round(p.y), Math.round(r), elementOf(s) ?? ""]);
+      if (r > 0 || sk.damage) room.ev.push(["gx", Math.round(p.x), Math.round(p.y), Math.round(r), elementOf(s) ?? "", sk.slot === "R" ? 1 : 0]);
       break;
     }
     case "target": {
@@ -294,7 +294,7 @@ export function fire(room: Room, s: Shot, sx: number, sy: number, ax: number, ay
       const c = groundAt(s, sx, sy, ax, ay);
       for (const m of live) if (dist(m, c) <= n.radius + m.r) strike(room, s, m, c);
       if (sk.heal || sk.allyFx) for (const a of allies(c.x, c.y, n.radius)) if (a !== p || dist(p, c) <= n.radius) support(room, s, a);
-      room.ev.push(["gx", Math.round(c.x), Math.round(c.y), Math.round(n.radius), sk.heal ? "heal" : elementOf(s) ?? ""]);
+      room.ev.push(["gx", Math.round(c.x), Math.round(c.y), Math.round(n.radius), sk.heal ? "heal" : elementOf(s) ?? "", sk.slot === "R" ? 1 : 0]);
       break;
     }
   }

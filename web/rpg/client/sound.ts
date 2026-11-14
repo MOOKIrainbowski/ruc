@@ -104,6 +104,8 @@ const SFX = {
   ok: (t: number) => arp(t, [72, 79, 84, 91], 0.06, "square", 0.16),
   fail: (t: number) => { tone(sfxBus, t, 160, 0.3, "sawtooth", 0.18, 90); },
   boom: (t: number) => { noise(sfxBus, t, 0.6, 0.6, 400); tone(sfxBus, t, 90, 0.5, "sawtooth", 0.25, 30); },
+  // 궁극기: 낮게 울리는 충격 + 위로 치솟는 소리 + 반짝이는 화음
+  ult: (t: number) => { tone(sfxBus, t, 70, 0.7, "sawtooth", 0.32, 28); noise(sfxBus, t, 0.5, 0.45, 600); tone(sfxBus, t, 300, 0.45, "triangle", 0.22, 1400); arp(t + 0.12, [76, 83, 88, 95], 0.06, "square", 0.12); },
   quest: (t: number) => arp(t, [67, 72, 76, 79, 84], 0.09, "triangle", 0.25),
   boss: (t: number) => { noise(sfxBus, t, 0.8, 0.4, 200); arp(t, [40, 43, 46], 0.18, "sawtooth", 0.2); },
   portal: (t: number) => { tone(sfxBus, t, 200, 0.4, "sine", 0.25, 1200); noise(sfxBus, t, 0.35, 0.12, 3000); },

@@ -1141,7 +1141,7 @@ export class Game {
       case "p": {
         const [, pid, owner, , el, x, y, vx, vy, range, seq] = ev as [string, number, number, string, string, number, number, number, number, number, number];
         if (owner === this.you.id && seq >= 0 && this.fx.projs.has(-(seq + 1))) return this.fx.rename(-(seq + 1), pid);
-        this.fx.projectile(pid, x, y, vx, vy, range, el || "wind");
+        this.fx.projectile(pid, x, y, vx, vy, range, el || "wind", SKILLS[ev[3] as string]?.slot === "R");
         return;
       }
       case "px":
@@ -1151,7 +1151,8 @@ export class Game {
         return this.fx.telegraph(shape, x, y, ang, size, width, ms, team);
       }
       case "gx": {
-        const [, x, y, r, kind] = ev as [string, number, number, number, string];
+        const [, x, y, r, kind, ult] = ev as [string, number, number, number, string, number?];
+        if (ult) this.fx.ultImpact(x, y, r, kind === "heal" ? "#4CC764" : kind ? elColor(kind) : "#FFD27A", this.ultNear(x, y));
         return this.fx.ring(x, y, r, kind);
       }
       case "wl": {
@@ -1573,6 +1574,20 @@ export class Game {
     if (sk.targeting === "dash") this.fx.burst(e.x, e.y - 12, el, 10);
     if (sk.targeting === "ally" || sk.targeting === "skillshot" || sk.targeting === "target") this.fx.burst(e.x, e.y - 30, sk.targeting === "ally" ? "heal" : el, 6);
     if (sk.targeting === "blink") this.fx.burst(e.x, e.y - 12, el === "none" ? "dark" : el, 14);
+    // 궁극기 (R): 가장 화려하게 — 내 것이면 컷인 배너 · 화면 연출 · 전용 효과음
+    if (sk.slot === "R") {
+      const uc = el && el !== "none" ? elColor(el) : sk.category === "magical" ? "#b88cff" : "#FFD27A";
+      const mine = e === this.meSprite;
+      this.fx.ultCast(e.x, e.y, uc, mine ? sk.name : null);
+      if (mine || Math.hypot(e.x - this.meSprite.x, e.y - this.meSprite.y) < 240) sfx("ult");
+      // 대상 지정형(그림자 처형 · 챔피언의 결투)은 범위 폭발 이벤트가 없음 → 시전이 끝나는 순간 조준 지점에 명중 연출
+      if (sk.targeting === "target") this.fx.ultLater(dur, ax, ay, uc, this.ultNear(ax, ay));
+    }
+  }
+
+  /** 궁극기 명중이 내 화면에서 얼마나 가까운가 (0 ~ 1) */
+  private ultNear(x: number, y: number) {
+    return Math.max(0, 1 - Math.hypot(x - this.meSprite.x, y - this.meSprite.y) / 360);
   }
 
   // ── 프레임 ──────────────────────────────────────────────────────
@@ -1627,7 +1642,7 @@ export class Game {
             const dy = ay - sy;
             const len = Math.sqrt(dx * dx + dy * dy) || 1;
             const speed = sk.speed! * (1 + this.stats.projSpeed);
-            this.fx.projectile(-(input.seq + 1), sx, sy, (dx / len) * speed, (dy / len) * speed, n.range, sk.elementInherit ? this.you.element : sk.sub ? this.you.prog.sub ?? "none" : sk.el ?? "none");
+            this.fx.projectile(-(input.seq + 1), sx, sy, (dx / len) * speed, (dy / len) * speed, n.range, sk.elementInherit ? this.you.element : sk.sub ? this.you.prog.sub ?? "none" : sk.el ?? "none", sk.slot === "R");
           }
         } else if (fromKey) this.toast(why);
       }

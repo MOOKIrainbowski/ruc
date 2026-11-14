@@ -30,7 +30,7 @@ export const elColor = (el: string) => (ELEMENTS as Record<string, { color: stri
 
 type Particle = { s: Sprite; x: number; y: number; vx: number; vy: number; g: number; life: number; age: number };
 type Num = { t: BitmapText; x: number; y: number; age: number; life: number; crit: boolean; side: number };
-type Proj = { s: Sprite; x: number; y: number; vx: number; vy: number; left: number; el: string; trail: number };
+type Proj = { s: Sprite; x: number; y: number; vx: number; vy: number; left: number; el: string; trail: number; ult?: Sprite };
 type Warn = { g: Graphics; age: number; ms: number; draw: (k: number) => void };
 type Ghost = { s: Sprite; age: number; ms: number };
 /** 처치 조각: 몹 그림을 잘게 잘라 튕겨 날림 */
@@ -80,6 +80,12 @@ export class Fx {
   private comboText: Text | null = null;
   private comboSub: Text | null = null;
   private comboPop = 0;
+  /** 화면 좌표 연출 (궁극기 컷인 · 어두워짐) — draw(k 0→1, 화면 폭, 높이) */
+  private screenFx: { g: Container; age: number; ms: number; draw: (k: number, sw: number, sh: number) => void }[] = [];
+  /** 잠시 뒤 실행 (궁극기 대상 지정형: 시전이 끝나는 순간 명중 연출) */
+  private later: { at: number; fn: () => void }[] = [];
+  /** 같은 자리 연속 궁극기 명중(성역 · 강철 결계 …)은 두 번째부터 가볍게 */
+  private lastUlt = { x: 0, y: 0, at: 0 };
 
   constructor() {
     this.screen.addChild(this.overlay);
@@ -119,14 +125,173 @@ export class Fx {
     this.nums.push({ t, x: x + (Math.random() - 0.5) * 8, y, age: 0, life: crit ? 1100 : 850, crit, side: Math.random() < 0.5 ? -1 : 1 });
   }
 
-  /** 투사체 (서버가 판정, 여기서는 직선으로 그리기만) */
-  projectile(id: number, x: number, y: number, vx: number, vy: number, range: number, el: string) {
+  /** 투사체 (서버가 판정, 여기서는 직선으로 그리기만). ult = 궁극기: 2배 크기 + 빛무리 + 촘촘한 꼬리 */
+  projectile(id: number, x: number, y: number, vx: number, vy: number, range: number, el: string, ult = false) {
     const s = new Sprite(orb());
     s.anchor.set(0.5);
     s.tint = elColor(el);
+    if (ult) s.scale.set(2.2);
     this.world.addChild(s);
-    this.projs.set(id, { s, x, y, vx, vy, left: range, el, trail: 0 });
+    let glow: Sprite | undefined;
+    if (ult) {
+      glow = new Sprite(orb());
+      glow.anchor.set(0.5);
+      glow.scale.set(5.5);
+      glow.tint = elColor(el);
+      glow.alpha = 0.45;
+      glow.blendMode = "add";
+      this.world.addChild(glow);
+    }
+    this.projs.set(id, { s, x, y, vx, vy, left: range, el, trail: 0, ult: glow });
   }
+
+  /**
+   * 궁극기 시전 (2026-11-14 피드백: "궁극기가 Q 스킬과 별로 달라 보이지 않는다" → 모든 스킬 중 가장 화려하게):
+   * 바닥에 돌며 커지는 2중 마법진(육망성 · 룬 점) · 색 빛기둥 · 위로 솟는 소용돌이 입자 · 발밑 충격파.
+   * mine = 내 궁극기 → 화면이 잠깐 어두워지고 사선 컷인 배너(스킬 이름) · 펀치 줌 · 흔들림.
+   */
+  ultCast(x: number, y: number, color: string, name: string | null) {
+    const c = color;
+    // 바닥 마법진
+    const g = new Graphics();
+    g.position.set(x, y);
+    g.blendMode = "add";
+    this.ground.addChild(g);
+    this.warns.push({
+      g, age: 0, ms: 1100,
+      draw: (k) => {
+        const open = 1 - (1 - Math.min(1, k / 0.3)) ** 3;
+        const a = k > 0.7 ? (1 - k) / 0.3 : 1;
+        const R = 46 * open;
+        const rot = k * 3.2;
+        g.clear();
+        g.scale.set(1, 0.55);
+        g.circle(0, 0, R).stroke({ color: c, width: 2.5, alpha: 0.95 * a });
+        g.circle(0, 0, R * 0.86).stroke({ color: 0xffffff, width: 1, alpha: 0.7 * a });
+        g.circle(0, 0, R * 0.5).stroke({ color: c, width: 1.5, alpha: 0.8 * a });
+        for (let t = 0; t < 2; t++) { // 육망성 (두 삼각형이 반대로 돎)
+          const pts: number[] = [];
+          for (let i = 0; i < 3; i++) { const an = (t ? -rot : rot) + (i / 3) * Math.PI * 2 + t * Math.PI; pts.push(Math.cos(an) * R * 0.84, Math.sin(an) * R * 0.84); }
+          g.poly(pts).stroke({ color: t ? 0xffffff : c, width: 1.5, alpha: 0.85 * a });
+        }
+        for (let i = 0; i < 12; i++) { const an = -rot * 1.5 + (i / 12) * Math.PI * 2; g.rect(Math.cos(an) * R * 0.93 - 1.5, Math.sin(an) * R * 0.93 - 1.5, 3, 3).fill({ color: i % 2 ? 0xffffff : c, alpha: a }); }
+        g.circle(0, 0, R).fill({ color: c, alpha: 0.16 * a });
+      },
+    });
+    // 빛기둥
+    const pl = new Graphics();
+    pl.blendMode = "add";
+    this.ground.addChild(pl); // 캐릭터 뒤 (위에 덮으면 캐릭터가 하얗게 지워짐)
+    this.warns.push({
+      g: pl, age: 0, ms: 900,
+      draw: (k) => {
+        const h = 190 * Math.min(1, k * 5);
+        const a = k < 0.5 ? 0.75 : 0.75 * (1 - (k - 0.5) / 0.5);
+        const w = 14 * (1 - k * 0.6);
+        pl.clear().rect(x - w, y - h, w * 2, h).fill({ color: c, alpha: a * 0.45 }).rect(x - w * 0.4, y - h, w * 0.8, h).fill({ color: 0xffffff, alpha: a * 0.8 });
+      },
+    });
+    // 위로 솟는 소용돌이 입자 · 발밑 충격파
+    for (let i = 0; i < 5; i++) this.burst(x, y - 8 - i * 22, "light", 6);
+    this.burst(x, y - 10, "hit", 18);
+    this.shock(x, y, c, 70, 520);
+    this.shock(x, y, 0xffffff, 44, 380);
+    if (!name) return;
+    // 내 궁극기: 화면 어둡게 → 사선 컷인 배너
+    this.flash(0xffffff, 0.35, 180);
+    this.punch = 1;
+    this.quake(260, 4);
+    const dim = new Container();
+    const dg = new Graphics();
+    dim.addChild(dg);
+    const text = new Text({ text: name, style: { fontFamily: "Galmuri11", fontSize: 34, fontWeight: "bold", fill: "#ffffff", stroke: { color: "#1b1420", width: 6 }, letterSpacing: 2 } });
+    text.anchor.set(0.5);
+    const sub = new Text({ text: t("fx.ult"), style: { fontFamily: "Galmuri11", fontSize: 13, fill: c, stroke: { color: "#1b1420", width: 4 }, letterSpacing: 6 } });
+    sub.anchor.set(0.5);
+    dim.addChild(text, sub);
+    this.screen.addChild(dim);
+    this.screenFx.push({
+      g: dim, age: 0, ms: 1250,
+      draw: (k, sw, sh) => {
+        const inK = Math.min(1, k / 0.14);
+        const outK = k > 0.78 ? (k - 0.78) / 0.22 : 0;
+        const a = (1 - outK);
+        dg.clear();
+        dg.rect(0, 0, sw, sh).fill({ color: 0x0a0612, alpha: 0.38 * a * inK }); // 주변이 어두워짐
+        const cy = sh * 0.2; // 캐릭터 머리 위 이름표와 겹치지 않게 위쪽
+        const band = 74;
+        const slide = (1 - (1 - inK) ** 3) * sw * 1.4 - sw * 0.2 + outK * sw * 0.9; // 왼쪽에서 들어와 오른쪽으로 빠짐
+        const skew = 60;
+        dg.poly([slide - sw * 1.2, cy - band / 2, slide + skew, cy - band / 2, slide - skew + 0, cy + band / 2, slide - sw * 1.2 - skew, cy + band / 2]).fill({ color: 0x120a1e, alpha: 0.82 * a });
+        dg.poly([slide - sw * 1.2, cy - band / 2 - 4, slide + skew + 4, cy - band / 2 - 4, slide + skew, cy - band / 2, slide - sw * 1.2, cy - band / 2]).fill({ color: c, alpha: a });
+        dg.poly([slide - sw * 1.2 - skew, cy + band / 2, slide - skew, cy + band / 2, slide - skew - 4, cy + band / 2 + 4, slide - sw * 1.2 - skew - 4, cy + band / 2 + 4]).fill({ color: c, alpha: a });
+        for (let i = 0; i < 9; i++) { // 띠 위를 흐르는 속도선
+          const lx = ((i * 197 + k * sw * 3) % (sw + 200)) - 100;
+          dg.rect(lx, cy - band / 2 + 8 + ((i * 23) % (band - 16)), 60 + (i % 3) * 40, 2).fill({ color: 0xffffff, alpha: 0.35 * a });
+        }
+        const tx = Math.min(sw / 2, slide - sw * 0.5);
+        text.position.set(Math.round(tx + (k > 0.14 && k < 0.78 ? (k - 0.14) * 30 : 0)), Math.round(cy - 4));
+        sub.position.set(Math.round(tx - 10), Math.round(cy + 24));
+        text.alpha = sub.alpha = a * inK;
+        const pop = k < 0.2 ? 1.35 - (k / 0.2) * 0.35 : 1;
+        text.scale.set(pop);
+      },
+    });
+  }
+
+  /** ms 뒤 궁극기 명중 연출 (대상 지정형) */
+  ultLater(ms: number, x: number, y: number, color: string, near: number) {
+    this.later.push({ at: performance.now() + ms, fn: () => this.ultImpact(x, y, 40, color, near) });
+  }
+
+  /**
+   * 궁극기 명중: 3겹 충격파 · 큰 빛살 · 가운데 빛 · 불씨 입자 · 그을린 자국. near = 내 화면과의 가까움 0~1 (번쩍임 · 흔들림 세기).
+   * 같은 자리에서 0.6초 안에 또 오면(반복형 궁극기) 가벼운 판으로.
+   */
+  ultImpact(x: number, y: number, r: number, color: string, near: number) {
+    const now = performance.now();
+    const again = now - this.lastUlt.at < 650 && Math.hypot(x - this.lastUlt.x, y - this.lastUlt.y) < 48;
+    this.lastUlt = { x, y, at: now };
+    const R = Math.max(40, r * 1.25);
+    this.shock(x, y, color, R, 420);
+    this.burst(x, y - 8, color === "#4CC764" ? "heal" : "hit", again ? 10 : 30);
+    if (again) return;
+    this.shock(x, y, 0xffffff, R * 0.7, 300);
+    this.later.push({ at: now + 120, fn: () => this.shock(x, y, color, R * 1.35, 560) });
+    // 빛살
+    const g = new Graphics();
+    g.position.set(x, y - 10);
+    g.blendMode = "add";
+    this.world.addChild(g);
+    const n = this.maxParticles <= 100 ? 10 : 22;
+    const rays = Array.from({ length: n }, (_, i) => ({ a: (i / n) * Math.PI * 2 + Math.random() * 0.25, l: 0.6 + Math.random() * 0.6, w: 1 + Math.random() * 2.5 }));
+    this.warns.push({
+      g, age: 0, ms: 520,
+      draw: (k) => {
+        g.clear();
+        const a = 1 - k;
+        for (const ry of rays) {
+          const len = R * 1.4 * ry.l * (0.3 + 0.9 * Math.min(1, k * 3));
+          g.moveTo(0, 0).lineTo(Math.cos(ry.a) * len, Math.sin(ry.a) * len * 0.62).stroke({ color: Math.random() < 0.3 ? 0xffffff : color, width: ry.w * (1 - k * 0.6), alpha: a });
+        }
+        g.circle(0, 0, 10 + 30 * k).fill({ color: 0xffffff, alpha: 0.7 * (1 - k) ** 2 });
+        g.circle(0, 0, 6 + 46 * k).stroke({ color, width: 3, alpha: a * 0.8 });
+      },
+    });
+    // 그을린 자국 (천천히 사라짐)
+    const sc = new Graphics();
+    sc.position.set(x, y);
+    this.ground.addChild(sc);
+    this.warns.push({ g: sc, age: 0, ms: 1800, draw: (k) => sc.clear().ellipse(0, 0, R * 0.62, R * 0.34).fill({ color: 0x1a0f08, alpha: 0.32 * (1 - k) }).ellipse(0, 0, R * 0.4, R * 0.22).stroke({ color, width: 1, alpha: 0.4 * (1 - k) }) });
+    // 불씨: 위로 흩날림
+    for (let i = 0; i < 4; i++) this.burst(x + (Math.random() - 0.5) * R, y - 6 - Math.random() * 20, "fire", 5);
+    if (near > 0) {
+      this.flash(0xffffff, 0.28 * near, 160);
+      this.quake(220 * near + 60, 2 + 4 * near, 0, -1);
+      this.punch = Math.max(this.punch, 0.8 * near);
+    }
+  }
+
 
   /** 투사체 id 바꾸기 (예측한 것을 서버 id 로) */
   rename(from: number, to: number) {
@@ -139,7 +304,8 @@ export class Fx {
   endProjectile(id: number, burst = true) {
     const p = this.projs.get(id);
     if (!p) return;
-    if (burst) this.burst(p.x, p.y - 12, p.el || "hit", 8);
+    if (burst) this.burst(p.x, p.y - 12, p.el || "hit", p.ult ? 24 : 8);
+    if (p.ult) { this.shock(p.x, p.y, elColor(p.el), 36, 320); p.ult.destroy(); }
     p.s.destroy();
     this.projs.delete(id);
   }
@@ -424,6 +590,14 @@ export class Fx {
       p.s.alpha = p.age > p.life * 0.6 ? 1 - (p.age - p.life * 0.6) / (p.life * 0.4) : 1;
     }
     this.punch = Math.max(0, this.punch - dt / 260);
+    const pnow = performance.now();
+    for (let i = this.later.length - 1; i >= 0; i--) if (pnow >= this.later[i].at) { const f = this.later[i].fn; this.later.splice(i, 1); f(); }
+    for (let i = this.screenFx.length - 1; i >= 0; i--) {
+      const f = this.screenFx[i];
+      f.age += dt;
+      if (f.age >= f.ms) { f.g.destroy({ children: true }); this.screenFx.splice(i, 1); continue; }
+      f.draw(f.age / f.ms, sw, sh);
+    }
     // 화면 오버레이 (번쩍임 · 낮은 체력 테두리)
     const o = this.overlay.clear();
     for (let i = this.flashes.length - 1; i >= 0; i--) {
@@ -498,8 +672,9 @@ export class Fx {
       p.y += (p.vy / len) * step;
       p.left -= step;
       p.s.position.set(Math.round(p.x), Math.round(p.y - 12));
+      if (p.ult) { p.ult.position.copyFrom(p.s.position); p.ult.alpha = 0.35 + 0.15 * Math.sin(performance.now() / 40); }
       p.trail += dt;
-      if (p.trail > 30) { p.trail = 0; this.burst(p.x, p.y - 12, p.el || "none", 1); }
+      if (p.trail > (p.ult ? 12 : 30)) { p.trail = 0; this.burst(p.x, p.y - 12, p.el || "none", p.ult ? 3 : 1); }
       if (p.left <= 0) this.endProjectile(id, false);
     }
     for (let i = this.warns.length - 1; i >= 0; i--) {
