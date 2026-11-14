@@ -9,7 +9,7 @@ depend: [RucCore]
 commands:
   rpgadmin:
     description: 러크 RPG 관리 (데이터 다시 읽기 · 정보)
-    usage: /rpgadmin <reload|info>
+    usage: /rpgadmin <info|exp <이름> <양>|level <이름> <레벨>>
     permission: rucrpg.admin
   rpgmenu:
     description: RPG 메뉴 (인벤토리 · 스킬 · 퀘스트 · 파티 · 지도 · 창고 · 설정)
