@@ -239,7 +239,13 @@ function absorb(w: World, u: Unit, dmg: number): number {
 
 export const shieldOf = (u: Unit) => u.fx.reduce((a, e) => (e.id === "shield" ? a + e.v : a), 0);
 
+const gmProtected = (u: Unit) => {
+  const flags = (u as Unit & { gm?: { invuln?: boolean } }).gm;
+  return u.kind === "p" && !!flags?.invuln;
+};
+
 function loseHp(w: World, src: Unit | undefined, tgt: Unit, dmg: number) {
+  if (gmProtected(tgt)) return;
   if (dmg > 0 && has(tgt, "stealth")) removeEffect(w, tgt, "stealth"); // 맞아도 풀림
   tgt.hp -= absorb(w, tgt, dmg);
   tgt.combat = w.now;
@@ -281,6 +287,10 @@ export type HitSpec = Hit & { threat: number; proc?: boolean; fx?: FxSpec[]; bas
 /** 피해 한 번 (§13-1). 반환: 실제로 깎은 양 (보호막 포함) */
 export function hit(w: World, src: Unit, tgt: Unit, h: HitSpec): number {
   if (tgt.dead || src.dead) return 0;
+  if (gmProtected(tgt)) {
+    w.ev.push(["h", src.id, tgt.id, 0, H_IMMUNE, ""]);
+    return 0;
+  }
   if (tgt.evade || (tgt.mover && tgt.mover.ifr > 0) || has(tgt, "invuln")) {
     w.ev.push(["h", src.id, tgt.id, 0, H_IMMUNE, ""]);
     return 0;

@@ -6,7 +6,7 @@ import type { FullStats } from "../shared/combat";
 import type { RoomKind } from "../shared/constants";
 import type { Item } from "../shared/data/items";
 import { FIRST_QUEST, QUESTS, NOTI_KINDS, type Noti } from "../shared/data/quests";
-import { loadMap, type GameMap, type TiledMap } from "../shared/map";
+import { loadMap, simHash, type GameMap, type TiledMap } from "../shared/map";
 import type { ChannelInfo, S2C, You } from "../shared/protocol";
 import { CombatHud, DeathOverlay } from "./CombatHud";
 import CreateCharacter from "./CreateCharacter";
@@ -216,6 +216,7 @@ export default function RpgGame({ dev }: { dev?: string }) {
             mapCache.set(m.room.kind, w);
           }
           if (!alive || !host.current) return;
+          if (m.sim !== simHash(w.map)) { /* 옛 서버는 sim 이 없음 — 그것도 다른 버전 */ console.error("sim mismatch", m.sim, simHash(w.map)); setBanner({ text: t("hud.simMismatch"), at: Date.now(), ms: 12000 }); }
           setWorld(w);
           const g = new Game(w.map, m.room.kind, n, m.you, m.me, s, m.stats, m.items);
           g.onToast = toast;

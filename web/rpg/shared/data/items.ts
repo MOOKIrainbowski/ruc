@@ -84,7 +84,7 @@ export type Template = {
   shape?: "cap" | "helm";
   gem?: string;
   /** 소모품 (P12): fx = 효과(영약 30분 · 부활 깃털), recall = 3초 뒤 광장, box = 랜덤 상자, tab = 창고 확장 */
-  use?: { fx?: { id: string; ms: number; v?: number }; recall?: true; box?: true; tab?: true };
+  use?: { fx?: { id: string; ms: number; v?: number }; recall?: true; box?: true; tab?: true; food?: number };
   /** 스킬북: 이 스킬을 배우거나 등급을 올림 */
   skill?: string;
   /** 부가석: 마법부여 종류 (data/economy.ts ENCHANTS) */
@@ -147,6 +147,14 @@ export const ITEMS: Record<string, Template> = {
   return_scroll: { name: "귀환 주문서", kind: "consumable", icon: "scroll", lv: 1, rarity: "common", use: { recall: true }, value: 20, desc: "3초 뒤 햇살광장으로 돌아갑니다. 움직이거나 공격받으면 취소 (던전 안에서는 못 씀)." },
   random_box: { name: "랜덤 상자", kind: "consumable", icon: "box", lv: 1, rarity: "rare", use: { box: true }, value: 200, desc: "열면 장비 · 강화 재료 · 부가석 · 포션 중 하나. 운이 높을수록 좋은 희귀도." },
   storage_ticket: { name: "창고 확장권", kind: "consumable", icon: "ticket", lv: 1, rarity: "mythic", use: { tab: true }, value: 1000, desc: "창고를 27칸 늘립니다 (두 번까지, 54 → 108칸)." },
+  meadow_bread: { name: "초원 보리빵", kind: "consumable", icon: "food_bread", lv: 1, rarity: "common", use: { food: 12 }, value: 12, desc: "담백한 보리빵. 스태미나를 12 회복합니다." },
+  sun_apple: { name: "햇살 사과", kind: "consumable", icon: "food_apple", lv: 1, rarity: "common", use: { food: 20 }, value: 18, desc: "새콤달콤한 사과. 스태미나를 20 회복합니다." },
+  roast_skewer: { name: "숯불 고기꼬치", kind: "consumable", icon: "food_skewer", lv: 1, rarity: "common", use: { food: 30 }, value: 28, desc: "겉은 바삭하고 속은 촉촉하다. 스태미나를 30 회복합니다." },
+  river_trout: { name: "강물 송어구이", kind: "consumable", icon: "food_fish", lv: 1, rarity: "common", use: { food: 40 }, value: 38, desc: "허브 향을 입힌 송어. 스태미나를 40 회복합니다." },
+  root_soup: { name: "뿌리채소 수프", kind: "consumable", icon: "food_soup", lv: 1, rarity: "common", use: { food: 50 }, value: 48, desc: "속을 따뜻하게 채운다. 스태미나를 50 회복합니다." },
+  berry_pie: { name: "산딸기 파이", kind: "consumable", icon: "food_pie", lv: 1, rarity: "common", use: { food: 60 }, value: 58, desc: "달콤한 산딸기를 듬뿍 넣었다. 스태미나를 60 회복합니다." },
+  honey_tteok: { name: "꿀바른 찰떡", kind: "consumable", icon: "food_tteok", lv: 1, rarity: "common", use: { food: 70 }, value: 68, desc: "쫀득한 떡에 야생꿀을 발랐다. 스태미나를 70 회복합니다." },
+  feast_bento: { name: "모험가 도시락", kind: "consumable", icon: "food_bento", lv: 1, rarity: "common", use: { food: 85 }, value: 82, desc: "든든하게 채운 야외 식사. 스태미나를 85 회복합니다." },
   // ── 채집물 (P13, 초원) — 연금술사 미르에게서 포션 · 강화석으로 ──
   herb: mat("약초", "herb", "common", "초원 풀숲에서 캔 약초. 세 뿌리면 체력 포션이 된다.", 3),
   blue_herb: mat("푸른 약초", "blue_herb", "common", "이슬을 머금은 푸른 잎. 마나 포션의 재료.", 4),
@@ -184,7 +192,7 @@ export const BOOK_IDS = Object.keys(ITEMS).filter((id) => ITEMS[id].kind === "bo
 /** 스킬북 희귀도 → 스킬 등급: 하급 · 일반 = 하급, 희귀 · 고급 = 중급, 신화 = 상급, 전설 = 초월급 */
 export const bookGrade = (r: Rarity): SkillGrade => (r === "legendary" ? "trans" : r === "mythic" ? "high" : r === "rare" || r === "advanced" ? "mid" : "low");
 
-export const stackable = (t: Template) => t.kind === "potion" || t.kind === "material" || t.kind === "book";
+export const stackable = (t: Template) => t.kind === "potion" || t.kind === "material" || t.kind === "book" || (t.kind === "consumable" && !!t.use?.food);
 export const isGear = (t: Template) => !!t.slot;
 
 /**
@@ -348,6 +356,9 @@ export const BOX_POOL: { tpl: string; w: number; qty?: number }[] = [
   { tpl: "enhance_stone", w: 10, qty: 3 }, { tpl: "protect_scroll", w: 4 }, { tpl: "blessed_stone", w: 2 },
   ...["ench_atk", "ench_ap", "ench_def", "ench_hp", "ench_speed", "ench_crit"].map((tpl) => ({ tpl, w: 2 })),
   { tpl: "hp_potion_m", w: 6, qty: 5 }, { tpl: "mp_potion_m", w: 4, qty: 5 }, { tpl: "en_potion_m", w: 4, qty: 5 }, { tpl: "revive_feather", w: 2 },
+  { tpl: "meadow_bread", w: 8, qty: 4 }, { tpl: "sun_apple", w: 7, qty: 4 }, { tpl: "roast_skewer", w: 5, qty: 3 },
+  { tpl: "river_trout", w: 4, qty: 3 }, { tpl: "root_soup", w: 3, qty: 2 }, { tpl: "berry_pie", w: 3, qty: 2 },
+  { tpl: "honey_tteok", w: 2, qty: 2 }, { tpl: "feast_bento", w: 1, qty: 1 },
 ];
 export function rollBox(rand: () => number, luck: number): { tpl: string; qty: number; rarity: Rarity } {
   const total = BOX_POOL.reduce((a, x) => a + x.w, 0);

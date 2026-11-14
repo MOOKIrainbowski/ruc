@@ -35,6 +35,8 @@ export const newId = () => idSeq++;
 
 export type Player = Unit & {
   kind: "p";
+  /** F8 GM 임시 상태 (저장되지 않음) */
+  gm?: { invuln: boolean; resources: boolean; speed: number };
   mover: Mover;
   ws: WebSocket;
   discordId: string;
@@ -551,6 +553,7 @@ export class Room implements World {
     p.steps++;
     p.lastSeq = inp.seq;
     const m = p.mover;
+    m.spd = p.st.moveSpeed * (p.gm?.speed ?? 1);
     let mv = inp;
     // 강제 이동 디버프 (예측하지 않음 — 서버 보정으로 맞춤, DECISIONS D13)
     const force = find(p, "fear") ?? find(p, "taunt") ?? find(p, "charm");
@@ -667,6 +670,12 @@ export class Room implements World {
       tickEffects(this, u);
       regen(this, u, dt);
     }
+    for (const p of this.players.values()) if (p.gm?.resources) {
+      p.hp = p.st.hp;
+      p.mp = p.st.mana;
+      p.en = p.st.energy;
+      p.mover.stamina = p.mover.staminaMax;
+    }
     // 채집 지점 다시 생김 (P13)
     for (const n of this.nodes) if (n.readyAt && now >= n.readyAt) { n.readyAt = 0; this.ev.push(["gn", n.id, 1, 0]); }
     for (const p of this.players.values()) if (p.job && !p.dead) this.passive(p, now);
@@ -739,12 +748,12 @@ export class Room implements World {
     for (const p of this.players.values()) {
       const m = p.mover;
       const flags = (m.moving ? F_MOVING : 0) | (m.running ? F_RUNNING : 0) | (m.mv > 0 && m.ifr > 0 ? F_ROLL : 0) | (p.dead ? F_DEAD : 0) | (m.lock > 0 ? F_CAST : 0);
-      rows.push([p.id, Math.round(m.x), Math.round(m.y), m.dir, flags, Math.round((p.hp / p.st.hp) * 1000), Math.round((p.mp / Math.max(1, p.st.mana)) * 1000)]);
+      rows.push([p.id, Math.round(m.x), Math.round(m.y), m.dir, flags, Math.round((p.hp / p.st.hp) * 1000), Math.round((p.mp / Math.max(1, p.st.mana)) * 1000), Math.round((p.en / Math.max(1, p.st.energy)) * 1000), Math.round(p.st.hp)]);
     }
     for (const u of this.mobs.values()) {
-      rows.push([u.id, Math.round(u.x), Math.round(u.y), u.dir, (u.moving ? F_MOVING : 0) | (u.dead ? F_DEAD : 0) | (u.wind ? F_CAST : 0), Math.round((u.hp / u.st.hp) * 1000), 0]);
+      rows.push([u.id, Math.round(u.x), Math.round(u.y), u.dir, (u.moving ? F_MOVING : 0) | (u.dead ? F_DEAD : 0) | (u.wind ? F_CAST : 0), Math.round((u.hp / u.st.hp) * 1000), 0, 0, Math.round(u.st.hp)]);
     }
-    for (const q of this.pets) rows.push([q.id, Math.round(q.x), Math.round(q.y), q.dir, q.moving ? F_MOVING : 0, Math.round((q.hp / q.st.hp) * 1000), 0]);
+    for (const q of this.pets) rows.push([q.id, Math.round(q.x), Math.round(q.y), q.dir, q.moving ? F_MOVING : 0, Math.round((q.hp / q.st.hp) * 1000), 0, 0, Math.round(q.st.hp)]);
     for (const u of [...this.players.values(), ...this.mobs.values()]) {
       if (!u.fxDirty) continue;
       u.fxDirty = false;
@@ -767,7 +776,7 @@ export class Room implements World {
       const pe = p.out.length ? `,"pe":${JSON.stringify(p.out)}` : "";
       p.out = [];
       const aoi = rows.filter((r) => r[0] !== p.id && Math.abs(r[1] - p.x) <= AOI.w && Math.abs(r[2] - p.y) <= AOI.h);
-      const f = frame(`{"t":"s","st":${now},"ack":{"seq":${p.lastSeq},"m":${JSON.stringify(packMover(p.mover))}},"v":${JSON.stringify(v)}${ev}${pe}}`, diffRows(p.sent, aoi));
+      const f = frame(`{"t":"s","rv":19,"st":${now},"ack":{"seq":${p.lastSeq},"m":${JSON.stringify(packMover(p.mover))}},"v":${JSON.stringify(v)}${ev}${pe}}`, diffRows(p.sent, aoi));
       p.ws.send(Buffer.from(f.buffer, f.byteOffset, f.byteLength));
     }
   }

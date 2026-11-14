@@ -159,7 +159,7 @@ export function discard(o: Owner, a: unknown, ctx: Ctx): string | null {
   return commit(o, "discard", "", before, [it]);
 }
 
-const KIND_ORDER: ItemKind[] = ["weapon", "armor", "accessory", "potion", "book", "material"];
+const KIND_ORDER: ItemKind[] = ["weapon", "armor", "accessory", "potion", "consumable", "book", "material"];
 /** 정렬: 종류 → 이름 → 높은 희귀도 순, 같은 묶음은 합침 */
 export function sort(o: Owner, loc: unknown, ctx: Ctx): string | null {
   if (loc !== "inventory" && loc !== "storage") return "잘못된 칸입니다";
@@ -188,6 +188,15 @@ const sysLine = (p: Player, text: string) => p.ws.readyState === 1 && p.ws.send(
 /** 영약 · 부활 깃털(효과) · 귀환 주문서(3초 뒤) · 랜덤 상자 · 창고 확장권 */
 function useConsumable(p: Player, it: Item, t: Template): string | null {
   const u = t.use!;
+  if (u.food) {
+    if (p.mover.stamina >= p.mover.staminaMax) return "스태미나가 가득합니다";
+    const before = [clone(it)];
+    it.qty--;
+    const err = commit(p, "use", it.tpl, before, [it]);
+    if (err) return err;
+    p.mover.stamina = Math.min(p.mover.staminaMax, p.mover.stamina + u.food);
+    return null;
+  }
   if (u.recall) {
     if (!p.room || p.room.kind === "plaza") return "이미 광장에 있습니다";
     if (p.room.inst) return "던전에서는 쓸 수 없습니다 (던전 나가기를 쓰세요)";

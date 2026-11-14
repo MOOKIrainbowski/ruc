@@ -351,23 +351,26 @@ test("던전 데이터 (§20-3): 10스테이지 · 5 · 10 보스(페이즈 2 ·
 test("스냅샷 프레임 (D71): 델타 레코드 왕복 · 안 바뀐 줄은 0바이트 · 시야 밖 · mover 압축 왕복", async () => {
   const { diffRows, frame, readFrame, decodeSnapshot } = await import("./snapshot.ts");
   const { packMover, unpackMover } = await import("./movement.ts");
-  type Row = [number, number, number, number, number, number, number];
+  type Row = [number, number, number, number, number, number, number, number, number];
   const sent = new Map<number, Row>();
   const got = new Map<number, Row>();
-  const a: Row = [70001, 1700, 900, 3, 1, 1000, 500];
-  const b: Row = [5, 10, 20, 0, 0, 999, 0];
+  const a: Row = [70001, 1700, 900, 3, 1, 1000, 500, 250, 1840];
+  const b: Row = [5, 10, 20, 0, 0, 999, 0, 0, 120];
   let recs = diffRows(sent, [a, b]);
-  assert.equal(recs.length, 30, "처음은 전체 줄 15바이트 × 2");
-  let f = readFrame(frame('{"t":"s"}', recs), got);
+  assert.equal(recs.length, 38, "처음은 전체 줄 19바이트 × 2");
+  let f = readFrame(frame('{"t":"s","rv":19}', recs), got);
   assert.deepEqual(f.rows, [a, b]);
   assert.equal(diffRows(sent, [a, b]).length, 0, "안 바뀌면 아무것도 안 보냄");
-  const a2: Row = [70001, 1690, 905, 3, 1, 1000, 500];
+  const a2: Row = [70001, 1690, 905, 3, 1, 1000, 500, 250, 1840];
   recs = diffRows(sent, [a2, b]);
   assert.equal(recs.length, 7, "위치만 바뀌면 7바이트");
-  f = readFrame(frame("{}", recs), got);
+  f = readFrame(frame('{"rv":19}', recs), got);
   assert.deepEqual(f.rows, [a2]);
-  const a3: Row = [70001, 1400, 905, 4, 0, 800, 500];
-  f = readFrame(frame("{}", diffRows(sent, [a3])), got);
+  const a3: Row = [70001, 1400, 905, 4, 0, 800, 500, 240, 1840];
+  f = readFrame(frame('{"rv":19}', diffRows(sent, [a3])), got);
+  // 옛 서버(rv 없음) 15바이트 줄도 읽음 (배포 순서가 어긋날 때)
+  const old = new Uint8Array(15); const dv = new DataView(old.buffer); dv.setUint8(0, 1); dv.setUint32(1, 9); dv.setUint16(5, 100); dv.setUint16(7, 200); dv.setUint16(11, 500); dv.setUint16(13, 300);
+  assert.deepEqual(readFrame(frame("{}", old), new Map()).rows, [[9, 100, 200, 0, 0, 500, 300, 1000, 0]]);
   assert.deepEqual(f.rows, [a3], "크게 움직이거나 다른 칸이 바뀌면 전체 줄");
   assert.deepEqual(f.gone, [5], "빠진 엔티티는 시야 밖 레코드");
   assert.deepEqual([...got.keys()], [70001]);
@@ -403,4 +406,29 @@ test("광장(안전지대)에서는 달리기 · 구르기에 스태미나를 �
   const field = mover();
   for (let i = 0; i < 40; i++) step(field, { seq: i, mx: 1, my: 0, run: true }, open);
   assert.ok(field.stamina < field.staminaMax);
+});
+
+test("언덕 (2026-11-14): 모든 계단을 실제 이동 코드로 오르내림 · 앞면 · 가장자리는 막힘", async () => {
+  const { heightKind, STAIRS } = await import("./map.ts");
+  for (const n of ["plaza", "field", "highland", "arena"]) {
+    const m = loadMap(JSON.parse(readFileSync(new URL(`./data/maps/${n}.json`, import.meta.url), "utf8")) as TiledMap);
+    const h = m.height;
+    assert.ok(h, `${n}: height 레이어`);
+    let stairs = 0;
+    for (let y = 0; y < m.h; y++)
+      for (let x = 0; x < m.w - 1; x++) {
+        const k = heightKind(h, m.w, m.h, x, y);
+        if (k === 1 || k === 2) assert.ok(m.collider.solid[y * m.w + x], `${n} (${x},${y}) 언덕 앞면 · 가장자리는 막힘`);
+        // 계단 아래 끝 왼쪽 칸: 오른쪽도 계단이고 아래는 계단이 아님
+        if (!(h[y * m.w + x] & STAIRS) || !(h[y * m.w + x + 1] & STAIRS) || h[(y + 1) * m.w + x] & STAIRS || (x > 0 && h[y * m.w + x - 1] & STAIRS)) continue;
+        stairs++;
+        const mv = newMover((x + 1) * TILE, (y + 2) * TILE - 2, { stamina: 100, moveSpeed: 100, endurance: 0, atkSpeed: 100 });
+        const goal = (y - 2) * TILE - 1; // 계단 위 착지 칸에 발이 들어섬
+        for (let i = 0; i < 600 && mv.y > goal; i++) step(mv, { seq: i, mx: 0, my: -1, run: false }, m.collider);
+        assert.ok(mv.y <= goal, `${n} 계단 (${x},${y}) 오르기 — 멈춘 곳 y=${mv.y.toFixed(1)}`);
+        for (let i = 0; i < 600 && mv.y < (y + 2) * TILE - 2; i++) step(mv, { seq: i, mx: 0, my: 1, run: false }, m.collider);
+        assert.ok(mv.y >= (y + 2) * TILE - 2, `${n} 계단 (${x},${y}) 내려오기`);
+      }
+    assert.ok(stairs >= 1, `${n}: 계단 ${stairs}개`);
+  }
 });

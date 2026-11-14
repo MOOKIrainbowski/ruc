@@ -4,6 +4,10 @@ export const TILE = 16;
 export const TICK_MS = 50; // 서버 틱 20Hz
 /** 클라이언트 입력 · 이동 시뮬레이션 스텝 (DECISIONS D9). 서버도 같은 값으로 재생합니다. */
 export const SIM_MS = 1000 / 60;
+/** 이동 규칙(movement.ts)을 바꾸면 올릴 것 — 맵 충돌 칸과 함께 simHash 에 들어가 서버 · 클라 버전 차이를 잡음 */
+export const SIM_VERSION = 2;
+/** 스냅샷 바이너리 줄 형식(snapshot.ts) 버전 — 형식을 바꾸면 올릴 것 (simHash 에 들어감, Codex 리뷰) */
+export const SNAP_VERSION = 2;
 /** 서버가 틱마다 처리하는 입력 크레딧 (TICK_MS / SIM_MS) 과 상한 */
 export const INPUT_CREDITS_PER_TICK = 3;
 export const INPUT_CREDITS_MAX = 9;

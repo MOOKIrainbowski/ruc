@@ -302,6 +302,18 @@ cd RUC_RPG/server && npm run dev      # 게임 서버 ws://localhost:2567 (node 
 - **HUD 깨짐 원인**: `.rpg-panel:not(.absolute):not(.fixed){position:relative}` 가 툴팁(`rpg-tip rpg-panel`)의 absolute 를 덮어써서 툴팁이 흐름에 끼어들었음 → `:not(.rpg-tip)`
 - 테스트 114 (광장 스태미나 · 분수 비트/재접속/지점이 막히지 않음 추가)
 
+### 베타 피드백 2차 — 2026-11-14 (Claude Code + Codex 공동, 기록 `docs/COLLAB_REVIEW.md` · 배정 `docs/COLLAB_CODEX.md`)
+- **분수 버벅임 원인 = 운영 서버가 옛 코드**(13:58 시작, 분수 · 스태미나 수정 15:02 배포) → 웹 예측과 서버 충돌 · 스태미나가 달라 매 스냅샷 되돌려짐. 재발 방지: `shared/map.ts simHash`(충돌 + 이동 상수 + `SIM_VERSION` + `SNAP_VERSION`)를 `joined.sim` 으로 비교, 다르면 배너 "게임 서버가 웹과 다른 버전". **코드 배포 뒤 운영 게임 서버를 꼭 다시 켤 것.** 이동 규칙을 바꾸면 `SIM_VERSION`, 스냅샷 형식을 바꾸면 `SNAP_VERSION` 올리기. 작은 서버 보정은 화면에서 60ms 에 녹임(`game.ts err`)
+- **월드 그림 2배 해상도**: `art/world.ts R = 2`(타일 32×32 그림), 텍스처는 `hdTex`(해상도 2) — 월드 좌표는 그대로. 다시 그린 것은 `HD_OBJECTS` / `HD_TILES`(`art/terrain.ts`), 아직인 것(포털 · 석상 · 모닥불 외 일부)은 1배 그림을 Scale2x. 새 그림 파일: `terrain.ts`(지형 · 절벽 · 계단) · `trees.ts`(맵별 수종 — `setTreeBiome`) · `fountain.ts` · `buildings.ts`(반목조 주택 · 천막 · 우물 · 바위 · 덤불 · 그루터기 · 기둥) · `props.ts`(Codex: 소품 18종). 바닥은 장식층까지 한 캔버스로 구워 1024px 조각 스프라이트(`chunked`)로 올림
+- **시점**: 모든 그림을 3/4(약 55°)로 통일 — 바닥 원 = 1:0.6 타원, 세운 면은 앞면이 넓게 (아트 규칙 `COLLAB_CODEX.md` 6장)
+- **언덕**: 맵 JSON `height` 레이어(층 + 16 = 계단), `scripts/hills.ts` 로 생성(앞면 · 가장자리 충돌을 collision 에 굽고, 도달성 BFS · 계단 착지 · 양옆 벽 확인). 그림은 `game.ts bakeHills`, 규칙은 `shared/map.ts heightKind`. 테스트: 모든 계단을 실제 `step()` 으로 왕복(`shared.test.ts`). **다시 생성하려면 맵 JSON 을 git 원본으로 되돌린 뒤 실행**(광장은 분수 충돌을 다시 넣어야 함 — 중심 768,768 · 타원 62×42 안 칸, 분수 오브젝트 y 807)
+- **분수**: 중심 = 퀘스트 지점 중심(768,768), 충돌 = 바닥 타원
+- **이펙트**(`fx.ts`): 연타 수 · 치명타 번쩍임/집중선/충격파/펀치 줌 · 처치 조각 · 방향 흔들림 · 피격 붉은 번쩍임 · 낮은 체력 테두리. 품질별 상한
+- **머리 위 바**: 체력 · 기력 · 마나, 100/1000 눈금, 깎인 체력 잔상. 스냅샷 줄 = `[id,x,y,dir,flags,HP‰,MP‰,EN‰,최대HP]`(FULL 19바이트)
+- **휠 배율** 1.25~7(브라우저 저장) · Ctrl+휠 = 핫바 칸
+- **Codex**: 음식 8종(스태미나 12~85, 쌓임, 상점 잡화 · 랜덤 상자) · GM 창(F8) 아이템 지급 UI · 소환/이동/맵 좌표 · 무적 · 자원 무소모 · 이동 배율(최대 ×2 = 이동 상한) · 회복/부활 · 정보 · 아이템 아이콘 32×32 네이티브 재작화 · 소품 2배
+- 테스트 117
+
 ## 10. 새 대화를 시작할 때 이렇게 말하면 됩니다
 > "RUC_RPG/docs/HANDOFF.md 읽고 베타 피드백 반영해줘." (공개는 끝남 — 문제가 생기면 0-6 표)
 

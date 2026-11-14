@@ -162,8 +162,8 @@ export function cast(room: Room, p: Player, inp: MoveInput): string | null {
   }
   const sim = p.steps * SIM_MS;
   if (sim < (p.cd[sk.id] ?? 0) - 1) return "재사용 대기 중입니다";
-  if (p.mp < n.cost.mana) return "마나가 부족합니다";
-  if (p.en < n.cost.energy) return "기력이 부족합니다";
+  if (!p.gm?.resources && p.mp < n.cost.mana) return "마나가 부족합니다";
+  if (!p.gm?.resources && p.en < n.cost.energy) return "기력이 부족합니다";
   let tid = p.id;
   let to: { x: number; y: number } | undefined;
   if (sk.targeting === "target") {
@@ -182,8 +182,10 @@ export function cast(room: Room, p: Player, inp: MoveInput): string | null {
     mul = 1 + ((sk.charge.mul - 1) * held) / sk.charge.ms;
     p.charge = null;
   }
-  p.mp -= n.cost.mana;
-  p.en -= n.cost.energy;
+  if (!p.gm?.resources) {
+    p.mp -= n.cost.mana;
+    p.en -= n.cost.energy;
+  }
   if (sk.throw && p.job === "thrower") {
     // 투척수 「손재주」: 2회 충전 — "+" 키 = 둘 다 찰 때, 본 키 = 다음에 쓸 수 있을 때
     const full = Math.max(sim, p.cd[sk.id + "+"] ?? 0) + n.cooldownMs;

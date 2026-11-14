@@ -7,7 +7,7 @@ import { validAppearance } from "../../../web/rpg/shared/data/appearance.ts";
 import { ELEMENTS } from "../../../web/rpg/shared/data/elements.ts";
 import { ITEMS, RARITIES, type Rarity } from "../../../web/rpg/shared/data/items.ts";
 import { SLOTS, type Slot } from "../../../web/rpg/shared/data/skills.ts";
-import { USE_RANGE, distToObj, loadMap, prop, type GameMap, type TiledMap } from "../../../web/rpg/shared/map.ts";
+import { USE_RANGE, distToObj, loadMap, prop, simHash, type GameMap, type TiledMap } from "../../../web/rpg/shared/map.ts";
 import { blocked } from "../../../web/rpg/shared/movement.ts";
 import type { C2S, ChannelInfo, S2C } from "../../../web/rpg/shared/protocol.ts";
 import { DEV_TICKET_SECRET, verifyTicket, type Ticket } from "../../../web/rpg/shared/ticket.ts";
@@ -119,6 +119,7 @@ function enterRoom(p: Player, room: Room) {
     },
     room: { kind: room.kind, ch: room.ch },
     me: p.mover,
+    sim: simHash(room.map),
     ents: [...others.map(info), ...pets],
     fx: [p, ...others].filter((u) => u.fx.length).map((u) => [u.id, fxRows(room, u)]),
     channels: room.inst ? [] : worlds[room.kind as Shared].list(),

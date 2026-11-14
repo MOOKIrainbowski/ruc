@@ -5,7 +5,7 @@ import type { EntityRow, S2C } from "./protocol.ts";
  * 스냅샷 프레임 (§2-2 바이너리 · 델타, DECISIONS D71). 웹소켓 바이너리 프레임 하나:
  *   [u32 JSON 길이][JSON: t · st · ack · v · ev · pe][엔티티 레코드 …]
  * 레코드는 받는 사람마다 "지난번에 보낸 줄"과 비교한 델타 (시야 AOI 안의 엔티티만):
- *   1 전체   [u8][u32 id][u16 x][u16 y][u8 방향][u8 플래그][u16 HP‰][u16 자원‰]  15바이트
+ *   1 전체   [u8][u32 id][u16 x][u16 y][u8 방향][u8 플래그][u16 HP‰][u16 마나‰][u16 기력‰][u16 최대 HP]  19바이트
  *   2 이동만 [u8][u32 id][i8 dx][i8 dy]                                          7바이트
  *   3 시야 밖 [u8][u32 id]                                                         5바이트
  * 바뀐 게 없는 엔티티는 아무것도 안 보냄 — 클라는 마지막 줄을 그대로 씀.
@@ -16,22 +16,24 @@ const GONE = 3;
 
 /** 이번에 보낼 줄(rows)과 지난번에 보낸 줄(sent)의 차이 → 레코드. sent 는 보낸 것으로 갱신 */
 export function diffRows(sent: Map<number, EntityRow>, rows: EntityRow[]): Uint8Array {
-  const v = new DataView(new ArrayBuffer(rows.length * 15 + sent.size * 5));
+  const v = new DataView(new ArrayBuffer(rows.length * 19 + sent.size * 5));
   let o = 0;
   const seen = new Set<number>();
   for (const r of rows) {
     seen.add(r[0]);
     const old = sent.get(r[0]);
-    if (old && old[1] === r[1] && old[2] === r[2] && old[3] === r[3] && old[4] === r[4] && old[5] === r[5] && old[6] === r[6]) continue;
+    const same = !!old && r.every((x, i) => i < 3 || old[i] === x); // 위치 말고는 그대로
+    if (same && old[1] === r[1] && old[2] === r[2]) continue;
     const dx = old ? r[1] - old[1] : 999;
     const dy = old ? r[2] - old[2] : 999;
-    if (old && old[3] === r[3] && old[4] === r[4] && old[5] === r[5] && old[6] === r[6] && Math.abs(dx) <= 127 && Math.abs(dy) <= 127) {
+    if (same && Math.abs(dx) <= 127 && Math.abs(dy) <= 127) {
       v.setUint8(o, MOVE); v.setUint32(o + 1, r[0]); v.setInt8(o + 5, dx); v.setInt8(o + 6, dy);
       o += 7;
     } else {
       v.setUint8(o, FULL); v.setUint32(o + 1, r[0]); v.setUint16(o + 5, r[1]); v.setUint16(o + 7, r[2]);
       v.setUint8(o + 9, r[3]); v.setUint8(o + 10, r[4]); v.setUint16(o + 11, r[5]); v.setUint16(o + 13, r[6]);
-      o += 15;
+      v.setUint16(o + 15, r[7]); v.setUint16(o + 17, Math.min(65535, r[8]));
+      o += 19;
     }
     sent.set(r[0], r);
   }
@@ -66,6 +68,8 @@ export function readFrame(data: ArrayBuffer | Uint8Array, state: Map<number, Ent
   const v = new DataView(u8.buffer, u8.byteOffset, u8.byteLength);
   const n = v.getUint32(0);
   const json = JSON.parse(dec.decode(u8.subarray(4, 4 + n)));
+  // 전체 줄 크기: 새 서버는 rv = 19 를 보냄. 없으면 옛 서버(15바이트, 기력 · 최대 HP 없음) — 배포 순서가 어긋나도 깨지지 않게 (Codex 최종 확인)
+  const full = json.rv === 19 ? 19 : 15;
   const rows: EntityRow[] = [];
   const gone: number[] = [];
   let o = 4 + n;
@@ -73,14 +77,14 @@ export function readFrame(data: ArrayBuffer | Uint8Array, state: Map<number, Ent
     const kind = v.getUint8(o);
     const id = v.getUint32(o + 1);
     if (kind === FULL) {
-      const r: EntityRow = [id, v.getUint16(o + 5), v.getUint16(o + 7), v.getUint8(o + 9), v.getUint8(o + 10), v.getUint16(o + 11), v.getUint16(o + 13)];
+      const r: EntityRow = [id, v.getUint16(o + 5), v.getUint16(o + 7), v.getUint8(o + 9), v.getUint8(o + 10), v.getUint16(o + 11), v.getUint16(o + 13), full === 19 ? v.getUint16(o + 15) : 1000, full === 19 ? v.getUint16(o + 17) : 0];
       state.set(id, r);
       rows.push(r);
-      o += 15;
+      o += full;
     } else if (kind === MOVE) {
       const old = state.get(id);
       if (old) {
-        const r: EntityRow = [id, old[1] + v.getInt8(o + 5), old[2] + v.getInt8(o + 6), old[3], old[4], old[5], old[6]];
+        const r: EntityRow = [id, old[1] + v.getInt8(o + 5), old[2] + v.getInt8(o + 6), old[3], old[4], old[5], old[6], old[7], old[8]];
         state.set(id, r);
         rows.push(r);
       }

@@ -1,6 +1,7 @@
-import { BitmapText, Container, Graphics, Sprite, Texture } from "pixi.js";
+import { BitmapText, Container, Graphics, Rectangle, Sprite, Text, Texture } from "pixi.js";
 import { ELEMENTS, type ElementId } from "../shared/data/elements";
 import { Px } from "./art/px";
+import { t } from "./i18n";
 
 /**
  * 전투 이펙트 (§12-1 속성 색 · 파티클, §13-1 피해 숫자, §10-2 바닥 경고).
@@ -28,10 +29,12 @@ const STYLE: Record<ElementId | "hit" | "heal" | "dust", { c: [string, string]; 
 export const elColor = (el: string) => (ELEMENTS as Record<string, { color: string }>)[el]?.color ?? "#ffffff";
 
 type Particle = { s: Sprite; x: number; y: number; vx: number; vy: number; g: number; life: number; age: number };
-type Num = { t: BitmapText; x: number; y: number; age: number; life: number; crit: boolean };
+type Num = { t: BitmapText; x: number; y: number; age: number; life: number; crit: boolean; side: number };
 type Proj = { s: Sprite; x: number; y: number; vx: number; vy: number; left: number; el: string; trail: number };
 type Warn = { g: Graphics; age: number; ms: number; draw: (k: number) => void };
 type Ghost = { s: Sprite; age: number; ms: number };
+/** 처치 조각: 몹 그림을 잘게 잘라 튕겨 날림 */
+type Shard = { s: Sprite; x: number; y: number; z: number; vx: number; vy: number; vz: number; spin: number; age: number; life: number };
 
 const NUM_STYLE = { fontFamily: "Galmuri11", fontSize: 14, fill: "#ffffff", stroke: { color: "#1b1420", width: 3 } };
 
@@ -60,7 +63,27 @@ export class Fx {
   projs = new Map<number, Proj>();
   private warns: Warn[] = [];
   private ghosts: Ghost[] = [];
+  private shards: Shard[] = [];
   shake = 0;
+  /** 흔들림 세기(px) · 방향(맞은 쪽으로 밀림) */
+  shakeAmp = 2;
+  private kick = { x: 0, y: 0 };
+  /** 화면 펀치 줌 (처치 · 치명타 순간 살짝 당겨짐, 0 = 그대로) */
+  punch = 0;
+  /** 화면 오버레이: 번쩍임 · 낮은 체력 붉은 테두리 · 연타 수 */
+  private overlay = new Graphics();
+  private flashes: { color: number; a: number; age: number; ms: number }[] = [];
+  private danger = 0;
+  private dangerT = 0;
+  private comboN = 0;
+  private comboAt = 0;
+  private comboText: Text | null = null;
+  private comboSub: Text | null = null;
+  private comboPop = 0;
+
+  constructor() {
+    this.screen.addChild(this.overlay);
+  }
 
   setQuality(q: "low" | "medium" | "high") {
     this.maxParticles = q === "low" ? 100 : q === "medium" ? 400 : 800;
@@ -93,7 +116,7 @@ export class Fx {
     t.alpha = 1;
     t.visible = true;
     this.screen.addChild(t);
-    this.nums.push({ t, x: x + (Math.random() - 0.5) * 8, y, age: 0, life: crit ? 1100 : 850, crit });
+    this.nums.push({ t, x: x + (Math.random() - 0.5) * 8, y, age: 0, life: crit ? 1100 : 850, crit, side: Math.random() < 0.5 ? -1 : 1 });
   }
 
   /** 투사체 (서버가 판정, 여기서는 직선으로 그리기만) */
@@ -272,8 +295,167 @@ export class Fx {
     this.ghosts.push({ s, age: 0, ms });
   }
 
-  update(dt: number, toScreen: (x: number, y: number) => [number, number]) {
+  /** 화면 흔들림: ms 동안, amp px, (dx, dy) 쪽으로 먼저 튐 */
+  quake(ms: number, amp: number, dx = 0, dy = 0) {
+    this.shakeAmp = this.shake > 0 ? Math.max(this.shakeAmp, amp) : amp;
+    this.shake = Math.max(this.shake, ms);
+    this.kick = { x: dx * amp, y: dy * amp };
+  }
+
+  /** 지금 프레임의 흔들림 오프셋 (화면 px) */
+  shakeOffset(): [number, number] {
+    if (this.shake <= 0) return [0, 0];
+    const a = this.shakeAmp * Math.min(1, this.shake / 120);
+    const k = this.kick;
+    this.kick = { x: k.x * 0.6, y: k.y * 0.6 };
+    return [Math.round((Math.random() - 0.5) * 2 * a + k.x), Math.round((Math.random() - 0.5) * 2 * a + k.y)];
+  }
+
+  /** 화면 전체 번쩍임 (치명타 = 흰색, 크게 맞음 = 빨강) */
+  flash(color: number, alpha: number, ms: number) {
+    this.flashes.push({ color, a: alpha, age: 0, ms });
+  }
+
+  /** 낮은 체력 경고 0~1 (매 프레임) */
+  setDanger(k: number) {
+    this.danger = k;
+  }
+
+  /** 바닥 충격파: 바닥에 누운 고리가 빠르게 퍼짐 */
+  shock(x: number, y: number, color: string | number, r: number, ms = 300) {
+    const g = new Graphics();
+    g.position.set(x, y);
+    g.scale.set(1, 0.55);
+    g.blendMode = "add";
+    this.ground.addChild(g);
+    this.warns.push({
+      g, age: 0, ms,
+      draw: (k) => {
+        const e = 1 - (1 - k) ** 3;
+        g.clear().circle(0, 0, r * (0.2 + 0.8 * e)).stroke({ color, width: 3 * (1 - k) + 0.5, alpha: 0.9 * (1 - k) });
+        g.circle(0, 0, r * 0.75 * e).stroke({ color: 0xffffff, width: 1, alpha: 0.5 * (1 - k) });
+      },
+    });
+  }
+
+  /** 치명타 집중선: 맞은 곳을 향해 모이는 빛줄기 */
+  speedLines(x: number, y: number, color: string | number) {
+    const g = new Graphics();
+    g.position.set(x, y);
+    g.blendMode = "add";
+    this.world.addChild(g);
+    const n = this.maxParticles <= 100 ? 6 : 12;
+    const rays = Array.from({ length: n }, (_, i) => ({ a: (i / n) * Math.PI * 2 + Math.random() * 0.3, l: 0.6 + Math.random() * 0.5, w: Math.random() < 0.5 }));
+    this.warns.push({
+      g, age: 0, ms: 240,
+      draw: (k) => {
+        g.clear();
+        for (const r of rays) {
+          const r1 = 46 * r.l * (1 - k * 0.5);
+          const r0 = r1 * (0.35 + 0.5 * k);
+          g.moveTo(Math.cos(r.a) * r0, Math.sin(r.a) * r0 * 0.8).lineTo(Math.cos(r.a) * r1, Math.sin(r.a) * r1 * 0.8).stroke({ color: r.w ? 0xffffff : color, width: 1.5, alpha: 1 - k });
+        }
+      },
+    });
+  }
+
+  /** 처치: 그림을 조각내 튕겨 날림 (위로 솟았다가 바닥에 튀고 사라짐). (dx, dy) = 날아갈 쪽 */
+  shatter(src: Sprite, dx: number, dy: number) {
+    const tex = src.texture;
+    const f = tex.frame;
+    const C = 4; // 조각 크기 (그림 px)
+    const flip = src.scale.x < 0;
+    const ox = src.x - f.width * src.anchor.x;
+    const oy = src.y - f.height * src.anchor.y;
+    const lim = this.maxParticles / 8; // 품질: 낮음 12 · 중간 50 · 높음 100 조각 (Codex 리뷰: 군중 전투에서 과함)
+    let n = 0;
+    for (let y = 0; y < f.height; y += C) for (let x = 0; x < f.width; x += C) {
+      if (n >= lim || Math.random() < 0.35) continue; // 일부만 (가볍게 · 덜 규칙적으로)
+      const piece = new Sprite(new Texture({ source: tex.source, frame: new Rectangle(f.x + x, f.y + y, Math.min(C, f.width - x), Math.min(C, f.height - y)) }));
+      piece.anchor.set(0.5);
+      if (flip) piece.scale.x = -1;
+      this.world.addChild(piece);
+      const px = ox + (flip ? f.width - x - C / 2 : x + C / 2);
+      const py = oy + y + C / 2;
+      const v = 40 + Math.random() * 90;
+      const a = Math.atan2(dy, dx) + (Math.random() - 0.5) * 2.2;
+      this.shards.push({ s: piece, x: px, y: src.y, z: src.y - py, vx: Math.cos(a) * v, vy: Math.sin(a) * v * 0.5, vz: 60 + Math.random() * 120, spin: (Math.random() - 0.5) * 20, age: 0, life: 700 + Math.random() * 500 });
+      n++;
+    }
+    this.burst(src.x, src.y - 12, "hit", 10);
+    this.shock(src.x, src.y, 0xfff4dc, 26, 360);
+  }
+
+  /** 내 연타 +1 (2.4초 안에 다음 타격이 없으면 끊김) — 10 · 25 · 50 · 100 연타에 칭찬 */
+  combo(now: number) {
+    this.comboN = now - this.comboAt < 2400 ? this.comboN + 1 : 1;
+    this.comboAt = now;
+    this.comboPop = 1;
+    if (this.comboN < 3) return;
+    if (!this.comboText || !this.comboSub) {
+      this.comboText = new Text({ text: "", style: { fontFamily: "Galmuri11", fontSize: 30, fontWeight: "bold", fill: "#ffffff", stroke: { color: "#1b1420", width: 5 } } });
+      this.comboSub = new Text({ text: "", style: { fontFamily: "Galmuri11", fontSize: 13, fill: "#FFE14D", stroke: { color: "#1b1420", width: 4 } } });
+      this.comboText.anchor.set(1, 0.5);
+      this.comboSub.anchor.set(1, 0.5);
+      this.screen.addChild(this.comboText, this.comboSub);
+    }
+    const n = this.comboN;
+    this.comboText.text = `${n}`;
+    this.comboText.style.fill = n >= 100 ? "#ff5cf0" : n >= 50 ? "#ff4040" : n >= 25 ? "#ff8a1f" : n >= 10 ? "#FFD84D" : "#ffffff";
+    const praise = n >= 100 ? t("fx.comboLegend") : n >= 50 ? t("fx.comboAmazing") : n >= 25 ? t("fx.comboGreat") : n >= 10 ? t("fx.comboGood") : "";
+    this.comboSub.text = praise ? `${t("fx.combo")} · ${praise}` : t("fx.combo");
+    if ([10, 25, 50, 100].includes(n)) { this.flash(0xffe14d, 0.16, 220); this.comboPop = 1.8; }
+  }
+
+  update(dt: number, toScreen: (x: number, y: number) => [number, number], sw = 0, sh = 0) {
     const s = dt / 1000;
+    // 처치 조각: 위로 솟았다 떨어져 바닥에서 한 번 튀고 흐려짐
+    for (let i = this.shards.length - 1; i >= 0; i--) {
+      const p = this.shards[i];
+      p.age += dt;
+      if (p.age >= p.life) { p.s.destroy(); this.shards.splice(i, 1); continue; }
+      p.vz -= 420 * s;
+      p.z += p.vz * s;
+      if (p.z < 0) { p.z = 0; p.vz = -p.vz * 0.35; p.vx *= 0.6; p.vy *= 0.6; p.spin *= 0.5; }
+      p.x += p.vx * s;
+      p.y += p.vy * s;
+      p.s.position.set(Math.round(p.x), Math.round(p.y - p.z));
+      p.s.rotation += p.spin * s;
+      p.s.alpha = p.age > p.life * 0.6 ? 1 - (p.age - p.life * 0.6) / (p.life * 0.4) : 1;
+    }
+    this.punch = Math.max(0, this.punch - dt / 260);
+    // 화면 오버레이 (번쩍임 · 낮은 체력 테두리)
+    const o = this.overlay.clear();
+    for (let i = this.flashes.length - 1; i >= 0; i--) {
+      const f = this.flashes[i];
+      f.age += dt;
+      if (f.age >= f.ms) { this.flashes.splice(i, 1); continue; }
+      o.rect(0, 0, sw, sh).fill({ color: f.color, alpha: f.a * (1 - f.age / f.ms) });
+    }
+    if (this.danger > 0 && sw) {
+      this.dangerT += dt;
+      const a = this.danger * (0.35 + 0.25 * Math.sin(this.dangerT / 140)); // 심장 박동처럼
+      const b = Math.round(Math.min(sw, sh) * 0.09);
+      for (let k = 0; k < 6; k++) {
+        const w = b * (1 - k / 6);
+        o.rect(0, 0, sw, w).rect(0, sh - w, sw, w).rect(0, 0, w, sh).rect(sw - w, 0, w, sh).fill({ color: 0xc81e28, alpha: a / 6 });
+      }
+    }
+    // 연타 수: 오른쪽 가운데, 맞힐 때마다 툭 튀어나옴 · 끊기기 0.6초 전부터 흐려짐
+    if (this.comboText && this.comboSub) {
+      const left = 2400 - (performance.now() - this.comboAt);
+      const vis = this.comboN >= 3 && left > 0;
+      this.comboText.visible = this.comboSub.visible = vis;
+      if (vis) {
+        this.comboPop = Math.max(0, this.comboPop - dt / 140);
+        const sc = 1 + this.comboPop * 0.45 + Math.min(0.6, this.comboN / 160);
+        this.comboText.scale.set(sc);
+        this.comboText.position.set(Math.round(sw - 40), Math.round(sh * 0.42));
+        this.comboSub.position.set(Math.round(sw - 40), Math.round(sh * 0.42 + 24 * sc));
+        this.comboText.alpha = this.comboSub.alpha = left < 600 ? left / 600 : 1;
+        this.comboText.rotation = this.comboPop > 0.5 ? (Math.random() - 0.5) * 0.08 : 0;
+      } else if (left <= 0) this.comboN = 0;
+    }
     for (let i = this.parts.length - 1; i >= 0; i--) {
       const p = this.parts[i];
       p.age += dt;
@@ -302,7 +484,9 @@ export class Fx {
       const k = n.age / n.life;
       const [sx, sy] = toScreen(n.x, n.y);
       const jitter = n.crit && n.age < 200 ? Math.round((Math.random() - 0.5) * 4) : 0;
-      n.t.position.set(sx + jitter, Math.round(sy - 26 * Math.sqrt(k)));
+      const arc = n.crit ? Math.round(n.side * 22 * k) : 0; // 치명타는 옆으로 튀어 떨어짐
+      const rise = n.crit ? 34 * Math.sin(Math.min(1, k * 1.6) * Math.PI * 0.75) : 26 * Math.sqrt(k);
+      n.t.position.set(sx + jitter + arc, Math.round(sy - rise));
       const base = n.crit ? 1.5 : 1;
       n.t.scale.set(n.age < 110 ? base * (1.7 - (0.7 * n.age) / 110) : base); // 맞는 순간 크게 튀어나옴
       n.t.alpha = k > 0.7 ? 1 - (k - 0.7) / 0.3 : 1;

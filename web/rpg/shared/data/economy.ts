@@ -125,6 +125,8 @@ export const BREW: { out: string; qty: number; need: { tpl: string; qty: number 
 export const SHOP_GOODS: { item: string; price: number }[] = [
   { item: "return_scroll", price: 40 }, { item: "revive_feather", price: 300 }, { item: "elixir_power", price: 250 }, { item: "elixir_luck", price: 250 },
   { item: "elixir_iron", price: 250 }, { item: "random_box", price: 400 }, { item: "storage_ticket", price: 2000 },
+  { item: "meadow_bread", price: 15 }, { item: "sun_apple", price: 22 }, { item: "roast_skewer", price: 35 }, { item: "river_trout", price: 48 },
+  { item: "root_soup", price: 60 }, { item: "berry_pie", price: 72 }, { item: "honey_tteok", price: 85 }, { item: "feast_bento", price: 100 },
 ];
 /** 하급 40 · 일반 35 · 희귀 25% (§17-2), 운이 높으면 위쪽으로 (운 × 0.05%p 를 하급 → 희귀로) */
 function shopRarity(r: number, luck: number): Rarity {

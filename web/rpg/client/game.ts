@@ -1,4 +1,4 @@
-import { Application, Container, CullerPlugin, Graphics, Rectangle, Sprite, Text, Texture, TextureSource, UPDATE_PRIORITY, extensions } from "pixi.js";
+import { Application, CanvasSource, Container, CullerPlugin, Graphics, Rectangle, Sprite, Text, Texture, TextureSource, UPDATE_PRIORITY, extensions } from "pixi.js";
 import { castMs, type FullStats } from "../shared/combat";
 import { CHAR_FEET, CHAR_H, CHAR_W, INTERP_DELAY_MS, SIM_MS, SNAP_MS, TILE, type RoomKind } from "../shared/constants";
 import type { Appearance } from "../shared/data/appearance";
@@ -8,7 +8,7 @@ import { JOBS, LINES, type LineId } from "../shared/data/jobs";
 import { GRADES } from "../shared/data/mobs";
 import { SKILLS, SLOTS, type SkillDef, type Slot } from "../shared/data/skills";
 import { ROLL } from "../shared/data/stats";
-import { USE_RANGE, distToObj, prop, type GameMap, type TiledObject } from "../shared/map";
+import { USE_RANGE, distToObj, heightKind, prop, type GameMap, type TiledObject } from "../shared/map";
 import { castMove, dir8, step, tryRoll, type MoveInput, type Mover } from "../shared/movement";
 import { skillNums } from "../shared/progress";
 import {
@@ -25,12 +25,15 @@ import { MOB_PLATE, mobFrames } from "./art/mobs";
 import { PINGS, PING, PING_WHEEL, TITLES, type PingKind } from "../shared/data/party";
 import { Px } from "./art/px";
 import { hash } from "./art/px";
-import { DECAL_VARIANTS, TILE_COLOR, VARIANTS, contactShadow, decalSheet, objectFrames, tileAtlas } from "./art/world";
+import { cliff, steps } from "./art/terrain";
+import { setTreeBiome } from "./art/trees";
+import { DECAL_VARIANTS, R, TILE_COLOR, VARIANTS, contactShadow, decalSheet, objectFrames, tileAtlas } from "./art/world";
 import { Fx, elColor } from "./fx";
 import { Realism, type Light } from "./realistic";
 import type { Net } from "./net";
 import { NPC_LOOK, NPC_PLACE, type Place } from "./npcs";
 import type { Settings } from "./settings";
+import { t } from "./i18n";
 import { sfx } from "./sound";
 
 TextureSource.defaultOptions.scaleMode = "nearest";
@@ -40,13 +43,16 @@ extensions.add(CullerPlugin);
 /** 네임 플레이트 높이 (발밑에서 머리 위까지 px) — 몹은 art/mobs.ts MOB_PLATE */
 const PLATE_H = MOB_PLATE;
 const PLAYER_PLATE_H = 37;
+/** 마우스 휠 배율 범위 (작을수록 넓게 보임) */
+const ZOOM_MIN = 1.25;
+const ZOOM_MAX = 7;
 /** 닉네임 색 (§23-2): 나 흰색 · 파티원 초록 · 일반 하늘색 · 적(결투 상대 · 결투장) 빨강 */
 const NAME_COLOR = { me: "#ffffff", party: "#7CFC6A", other: "#8fdcff", foe: "#ff6b6b" };
 
 /** 시전 불가지만 안내는 안 띄움 (쿨 · 다른 동작 중) */
 const QUIET = "";
 
-type Sample = { t: number; x: number; y: number; dir: number; flags: number; hp: number; res: number };
+type Sample = { t: number; x: number; y: number; dir: number; flags: number; hp: number; res: number; en: number; hpMax: number };
 type Ent = {
   info: EntityInfo;
   mob: boolean;
@@ -69,7 +75,12 @@ type Ent = {
   animMs: number;
   flags: number;
   hp: number; // 천분율
-  res: number;
+  res: number; // 마나 천분율
+  en: number; // 기력 천분율
+  hpMax: number; // 눈금 (100 마다 작은 칸 · 1000 마다 굵은 칸)
+  /** 깎인 체력 잔상(천분율) · 마지막으로 체력이 그대로이거나 오른 시각 */
+  lag: number;
+  lagAt: number;
   drawn: string;
   fx: FxRow[];
   fxAt: number;
@@ -81,6 +92,8 @@ type Ent = {
   knock: { ms: number; dx: number; dy: number } | null;
   stop: number;
   trail: number;
+  /** 내가 마지막으로 때린 시각 (처치 연출) */
+  hitByMe: number;
   deadMs: number;
   face: number; // 몹: 0 오른쪽 · 1 왼쪽
 };
@@ -208,7 +221,11 @@ export class Game {
   acc = 0;
   keys = new Set<string>();
   inputBlocked = false;
-  zoom = 3;
+  zoom = 0;
+  /** 마우스 휠 배율 (0 = 설정 · 자동을 따름). 부드럽게 따라감 */
+  zoomWant = (() => { try { const z = Number(localStorage.getItem("rpg.zoom")); return z >= ZOOM_MIN && z <= ZOOM_MAX ? z : 0; } catch { return 0; } })();
+  /** 서버 보정과 예측의 작은 차이 — 화면에서만 서서히 줄임 */
+  private err: [number, number] = [0, 0];
   offset: number | null = null;
   water: { s: Sprite; frames: Texture[] }[] = [];
   animated: { s: Sprite; frames: Texture[]; slow?: number }[] = [];
@@ -367,8 +384,14 @@ export class Game {
       if (e.button === 0) this.mouse.held = true;
       if (e.button === 2) this.useHotbar();
     };
-    // 휠 = 핫바 칸 (미니맵 위 휠은 미니맵 확대 — 캔버스에서만 받음)
-    const wheel = (e: WheelEvent) => { if (!this.inputBlocked && e.deltaY) this.sel = (this.sel + (e.deltaY > 0 ? 1 : LOCS.hotbar - 1)) % LOCS.hotbar; };
+    // 휠 = 화면 배율 (2026-11-14 피드백), Ctrl+휠 = 핫바 칸 (미니맵 위 휠은 미니맵 확대 — 캔버스에서만 받음)
+    const wheel = (e: WheelEvent) => {
+      if (this.inputBlocked || !e.deltaY) return;
+      e.preventDefault(); // Ctrl+휠 브라우저 확대 막기
+      if (e.ctrlKey) { this.sel = (this.sel + (e.deltaY > 0 ? 1 : LOCS.hotbar - 1)) % LOCS.hotbar; return; }
+      this.zoomWant = Math.max(ZOOM_MIN, Math.min(ZOOM_MAX, (this.zoomWant || this.zoom) * Math.pow(1.0015, -Math.max(-240, Math.min(240, e.deltaY)))));
+      try { localStorage.setItem("rpg.zoom", String(this.zoomWant)); } catch { /* 저장 못 해도 이번 접속에서는 됨 */ }
+    };
     const mup = (e: MouseEvent) => { if (e.button === 0) this.mouse.held = false; };
     window.addEventListener("keydown", down);
     window.addEventListener("keyup", up);
@@ -376,7 +399,7 @@ export class Game {
     window.addEventListener("mousemove", move);
     window.addEventListener("mouseup", mup);
     this.app.canvas.addEventListener("mousedown", mdown);
-    this.app.canvas.addEventListener("wheel", wheel, { passive: true });
+    this.app.canvas.addEventListener("wheel", wheel, { passive: false });
     this.disposers.push(() => {
       window.removeEventListener("keydown", down); window.removeEventListener("keyup", up); window.removeEventListener("blur", blur);
       window.removeEventListener("mousemove", move); window.removeEventListener("mouseup", mup);
@@ -395,6 +418,7 @@ export class Game {
   }
 
   applySettings(s: Settings) {
+    if (this.settings && this.settings.zoom !== s.zoom) { this.zoomWant = 0; try { localStorage.removeItem("rpg.zoom"); } catch { /* 없어도 됨 */ } } // 설정에서 배율을 고르면 휠 배율은 버림
     this.settings = s;
     this.app.ticker.maxFPS = s.fpsLimit;
     for (const e of [this.meSprite, ...this.ents.values()]) e.shadow.visible = s.shadows;
@@ -407,30 +431,38 @@ export class Game {
   private buildMap() {
     if (this.kind === "plaza") this.spotLabels = FOUNTAIN_SPOTS.map((sp) => { const t = this.label("", sp.x, sp.y + 14, "#FFE14D"); t.style.fontSize = 13; t.visible = false; return t; });
     const { w, h, layers } = this.map;
+    setTreeBiome(this.kind); // 맵마다 수종 (고원 = 가문비, 던전 = 고목 …)
     const atlas = tileAtlas();
-    const atlasTex = Texture.from(atlas);
+    const atlasTex = hdTex(atlas);
     const tileTex = (g: number, v: number) => new Texture({ source: atlasTex.source, frame: new Rectangle((g - 1) * TILE, v * TILE, TILE, TILE) });
 
     // 정적 레이어는 큰 캔버스 한 장으로 굽고(드로우콜 1), 물만 스프라이트로 움직입니다
-    const bake = (layer: Uint16Array) => {
-      const c = Object.assign(document.createElement("canvas"), { width: w * TILE, height: h * TILE });
-      const ctx = c.getContext("2d")!;
+    const paint = (ctx: CanvasRenderingContext2D, layer: Uint16Array) => {
       for (let i = 0; i < w * h; i++) {
         const g = layer[i];
         if (!g || TILE_NAMES[g - 1] === "solid") continue;
         const x = i % w;
         const y = Math.floor(i / w);
-        const v = Math.floor(((x * 7 + y * 13) % 17) / 17 * VARIANTS);
-        ctx.drawImage(atlas, (g - 1) * TILE, v * TILE, TILE, TILE, x * TILE, y * TILE, TILE, TILE);
+        let v = Math.floor(((x * 7 + y * 13) % 17) / 17 * VARIANTS);
+        if (TILE_NAMES[g - 1] === "hedge") v = (v % 4) + (y + 1 < h && layer[(y + 1) * w + x] === g ? 0 : 4); // 남쪽이 트이면 잎 벽 앞면
+        ctx.drawImage(atlas, (g - 1) * TILE * R, v * TILE * R, TILE * R, TILE * R, x * TILE, y * TILE, TILE, TILE);
       }
-      return new Sprite(Texture.from(c));
+    };
+    const bake = (layer: Uint16Array) => {
+      const c = Object.assign(document.createElement("canvas"), { width: w * TILE * R, height: h * TILE * R });
+      const ctx = c.getContext("2d")!;
+      ctx.imageSmoothingEnabled = false;
+      ctx.scale(R, R);
+      paint(ctx, layer);
+      return chunked(c);
     };
     const animGids = new Set(ANIMATED.map(gid));
-    this.world.addChild(this.bakeGround(atlas, animGids));
+    // 장식층(산울타리 · 다리 · 꽃)은 바닥 캔버스에 같이 구움 — 2배 캔버스를 두 장 두지 않게 (GPU 메모리 절반)
+    this.world.addChild(this.bakeGround(atlas, animGids, (ctx) => paint(ctx, layers.decor_below)));
     const waterLayer = new Container();
     for (let i = 0; i < w * h; i++) {
       const g = layers.water[i];
-      if (!animGids.has(g)) continue;
+      if (!animGids.has(g) || layers.decor_below[i]) continue; // 다리 밑 물은 안 움직여도 됨 (다리가 바닥 캔버스에 있음)
       const frames = Array.from({ length: VARIANTS }, (_, v) => tileTex(g, v));
       const s = new Sprite(frames[0]);
       s.position.set((i % w) * TILE, Math.floor(i / w) * TILE);
@@ -438,7 +470,7 @@ export class Game {
       waterLayer.addChild(s);
       this.water.push({ s, frames });
     }
-    this.world.addChild(waterLayer, bake(layers.decor_below), this.fx.ground, this.indicator, this.questLine, this.entityLayer, this.fx.world, this.questMark);
+    this.world.addChild(waterLayer, this.fx.ground, this.indicator, this.questLine, this.entityLayer, this.fx.world, this.questMark);
     if (layers.decor_above.some((g) => g)) this.world.addChild(bake(layers.decor_above));
     this.screenLayer.addChild(this.fx.screen);
 
@@ -461,7 +493,7 @@ export class Game {
         this.marks.set(String(prop(o, "npc")), mark);
         continue;
       }
-      const frames = objectFrames(o).map((c) => Texture.from(c));
+      const frames = objectFrames(o).map(hdTex);
       const s = new Sprite(frames[0]);
       s.anchor.set(0.5, 1);
       s.position.set(o.x, o.y);
@@ -507,10 +539,12 @@ export class Game {
    * ④ 길 · 돌바닥과 잔디의 경계(돌 쪽 어두운 그늘 + 잔디가 돌 위로 삐져나옴, 흙길 가장자리는 들쑥날쑥)
    * ⑤ 물가(젖은 띠 + 거품). 한 번만 계산해 캔버스 한 장으로 굽습니다.
    */
-  private bakeGround(atlas: HTMLCanvasElement, animGids: Set<number>) {
+  private bakeGround(atlas: HTMLCanvasElement, animGids: Set<number>, decor: (ctx: CanvasRenderingContext2D) => void) {
     const { w, h, layers } = this.map;
-    const c = Object.assign(document.createElement("canvas"), { width: w * TILE, height: h * TILE });
+    const c = Object.assign(document.createElement("canvas"), { width: w * TILE * R, height: h * TILE * R });
     const ctx = c.getContext("2d")!;
+    ctx.imageSmoothingEnabled = false;
+    ctx.scale(R, R); // 아래 좌표는 월드 px — 타일 · 데칼 그림은 R 배 해상도 그대로 들어감
     const decals = decalSheet();
     const nameAt = (x: number, y: number): string | null => (x < 0 || y < 0 || x >= w || y >= h ? null : TILE_NAMES[layers.ground[y * w + x] - 1] ?? null);
     const waterAt = (x: number, y: number) => x >= 0 && y >= 0 && x < w && y < h && animGids.has(layers.water[y * w + x]);
@@ -562,7 +596,7 @@ export class Game {
         const name = TILE_NAMES[g - 1];
         const ox = x * TILE, oy = y * TILE;
         // ① 타일 변형 (이웃과 겹치지 않게 해시)
-        ctx.drawImage(atlas, (g - 1) * TILE, Math.floor(hash(x, y, 3) * VARIANTS) * TILE, TILE, TILE, ox, oy, TILE, TILE);
+        ctx.drawImage(atlas, (g - 1) * TILE * R, Math.floor(hash(x, y, 3) * VARIANTS) * TILE * R, TILE * R, TILE * R, ox, oy, TILE, TILE);
         // ② 넓은 얼룩: 2px 단위로 부드럽게 (타일 경계가 네모로 보이지 않게)
         const soft = SOFT.has(name);
         if (soft || HARD.has(name)) {
@@ -584,7 +618,7 @@ export class Game {
           if ((name === "grass" || name === "grass_dark") && r < 0.1) kind = sub < 0.42 ? 0 : sub < 0.58 ? 4 : sub < 0.76 ? 1 : sub < 0.9 ? 2 : 3;
           else if (name === "dirt" && r < 0.09) kind = sub < 0.6 ? 1 : 2;
           else if ((name === "cobble" || name === "sand") && r < 0.07) kind = sub < 0.5 ? 5 : sub < 0.8 ? 6 : 1;
-          if (kind >= 0) ctx.drawImage(decals, Math.floor(hash(x, y, 79) * DECAL_VARIANTS) * TILE, kind * TILE, TILE, TILE, ox, oy, TILE, TILE);
+          if (kind >= 0) ctx.drawImage(decals, Math.floor(hash(x, y, 79) * DECAL_VARIANTS) * TILE * R, kind * TILE * R, TILE * R, TILE * R, ox, oy, TILE, TILE);
         }
         // ④ ⑤ 경계
         DIRS4.forEach(([dx, dy], d) => {
@@ -611,7 +645,63 @@ export class Game {
         });
       }
     }
-    return new Sprite(Texture.from(c));
+    decor(ctx);
+    this.bakeHills(ctx, shade);
+    return chunked(c);
+  }
+
+  /**
+   * ⑥ 언덕 (2026-11-14 피드백 2차, height 레이어 — scripts/hills.ts): 위는 햇빛을 더 받아 살짝 밝게 · 가장자리 풀 테두리와 낭떠러지 선 ·
+   * 남쪽 앞면 = 지층 있는 바위 절벽(위 칸은 풀이 걸쳐 늘어짐) · 돌계단 · 절벽 아래 땅에 그늘. 충돌은 맵 collision 에 이미 구워져 있음.
+   */
+  private bakeHills(ctx: CanvasRenderingContext2D, shade: (d: number, ox: number, oy: number, depth: number, rgb: string, a: number) => void) {
+    const hm = this.map.height;
+    if (!hm) return;
+    const { w, h } = this.map;
+    const lv = (x: number, y: number) => (x < 0 || y < 0 || x >= w || y >= h ? 0 : hm[y * w + x] & 15);
+    const kd = (x: number, y: number) => heightKind(hm, w, h, x, y);
+    const art = (p: { toCanvas(): HTMLCanvasElement }, ox: number, oy: number) => ctx.drawImage(p.toCanvas(), ox, oy, TILE, TILE);
+    const px = (x: number, y: number, ww: number, hh: number, col: string) => { ctx.fillStyle = col; ctx.fillRect(x, y, ww, hh); };
+    for (let y = 0; y < h; y++)
+      for (let x = 0; x < w; x++) {
+        const L = lv(x, y);
+        const k = kd(x, y);
+        const ox = x * TILE, oy = y * TILE;
+        // 더 높은 절벽 · 가장자리 바로 아래 · 옆 땅: 그늘
+        if (k !== 1 && k !== 4) {
+          if (kd(x, y - 1) === 1 && lv(x, y - 1) > L) { shade(0, ox, oy, 9, "24,16,10", 0.5); shade(0, ox, oy, 3, "24,16,10", 0.35); }
+          // 해가 왼쪽 위 → 언덕 동쪽 땅에 그림자가 길게, 서쪽은 짧게
+          if (lv(x - 1, y) > L) { shade(2, ox, oy, 11, "24,16,10", 0.42); shade(2, ox, oy, 3, "24,16,10", 0.3); }
+          if (lv(x + 1, y) > L) shade(3, ox, oy, 4, "24,16,10", 0.28);
+          if (lv(x, y - 1) > L && kd(x, y - 1) !== 1) shade(0, ox, oy, 5, "24,16,10", 0.3);
+        }
+        if (!L) continue;
+        if (k === 1) {
+          const row = kd(x, y - 1) === 1 && lv(x, y - 1) === L ? 1 : 0;
+          art(cliff(x, row, !(kd(x - 1, y) === 1 && lv(x - 1, y) === L), !(kd(x + 1, y) === 1 && lv(x + 1, y) === L), L), ox, oy);
+          continue;
+        }
+        if (k === 4) {
+          art(steps(x + y, kd(x, y - 1) !== 4, kd(x - 1, y) !== 4, kd(x + 1, y) !== 4), ox, oy);
+          continue;
+        }
+        // 위 · 가장자리: 높을수록 햇빛을 더 받음
+        px(ox, oy, TILE, TILE, `rgba(255,236,150,${0.1 * L})`); // 높은 곳은 볕을 더 받아 노랗게 바랜 풀 (Codex 리뷰: 주변과 구분)
+        if ((x * 7 + y * 3) % 5 === 0) px(ox + (x % 3) * 4, oy + (y % 4) * 3, 6, 1, "rgba(255,255,220,0.18)"); // 바람결
+        // 윗면 가장자리 안쪽: 북 · 서쪽은 햇빛 받는 밝은 띠, 동쪽은 그늘 띠 (둥근 언덕 어깨)
+        if (lv(x, y - 2) < L) shade(0, ox, oy, 6, "255,250,200", 0.16);
+        if (lv(x - 2, y) < L) shade(2, ox, oy, 6, "255,250,200", 0.14);
+        if (lv(x + 2, y) < L) shade(3, ox, oy, 7, "30,40,10", 0.2);
+        if (k === 2) {
+          // 더 낮은 쪽으로: 바깥 낭떠러지(어두운 바위 띠 — 뒤쪽 · 옆 절벽이 살짝 보임) + 풀 가장자리 빛 + 안쪽 풀 그늘
+          if (lv(x, y - 1) < L) { px(ox, oy, TILE, 2.5, "#5f4f3d"); px(ox, oy, TILE, 1, "#3a2f25"); px(ox, oy + 2.5, TILE, 1, "#d6f08a"); px(ox, oy + 3.5, TILE, 1, "#7cb43a"); }
+          if (lv(x - 1, y) < L && !(kd(x - 1, y) & 5)) { px(ox, oy, 3, TILE, "#826e53"); px(ox, oy, 1, TILE, "#3a2f25"); px(ox + 3, oy, 1, TILE, "#d6f08a"); px(ox + 4, oy, 0.5, TILE, "#7cb43a"); }
+          if (lv(x + 1, y) < L && !(kd(x + 1, y) & 5)) { px(ox + TILE - 3, oy, 3, TILE, "#5f4f3d"); px(ox + TILE - 1, oy, 1, TILE, "#3a2f25"); px(ox + TILE - 4, oy, 1, TILE, "#a9d957"); }
+          // 모서리만 낮은 칸 (대각선)
+          if (lv(x, y - 1) >= L && lv(x - 1, y) >= L && lv(x - 1, y - 1) < L) px(ox, oy, 3, 2.5, "#5f4f3d");
+          if (lv(x, y - 1) >= L && lv(x + 1, y) >= L && lv(x + 1, y - 1) < L) px(ox + TILE - 3, oy, 3, 2.5, "#5f4f3d");
+        }
+      }
   }
 
   private labels: { t: Text; x: number; y: number }[] = [];
@@ -798,7 +888,7 @@ export class Game {
     const y = isMe ? this.me.y : 0;
     return {
       info, mob, sprite, shadow, plate, label, title, bars, icons, frames, buf: [], x, y, dir: 0, shown: 0, turnMs: 0, action: "idle", animMs: 0,
-      flags: 0, hp: 1000, res: 1000, drawn: "", fx: [], fxAt: 0, flash: 0, lunge: null, act: null, deadMs: 0, face: 0, knock: null, stop: 0, trail: 0,
+      flags: 0, hp: 1000, res: 1000, en: 1000, hpMax: 100, lag: 1000, lagAt: 0, drawn: "", fx: [], fxAt: 0, flash: 0, lunge: null, act: null, deadMs: 0, face: 0, knock: null, stop: 0, trail: 0, hitByMe: 0,
     };
   }
 
@@ -952,15 +1042,16 @@ export class Game {
       this.castLog = this.castLog.filter((c) => c.seq > m.ack.seq);
       const fixed = { ...m.ack.m };
       for (const i of this.pending) this.replay(fixed, i);
-      if (Math.abs(fixed.x - this.me.x) > 24 || Math.abs(fixed.y - this.me.y) > 24) this.prev = { ...fixed }; // 크게 어긋나면 순간이동
+      if (Math.abs(fixed.x - this.me.x) > 24 || Math.abs(fixed.y - this.me.y) > 24) { this.prev = { ...fixed }; this.err = [0, 0]; } // 크게 어긋나면 순간이동
+      else { this.err[0] += this.me.x - fixed.x; this.err[1] += this.me.y - fixed.y; } // 작은 어긋남은 화면에서 녹여 없앰 (튀지 않게)
       this.me = fixed;
-      for (const [id, x, y, dir, flags, hp, res] of m.e) {
+      for (const [id, x, y, dir, flags, hp, res, en, hpMax] of m.e) {
         const e = this.ents.get(id);
         if (!e) continue;
         // 델타라 멈춰 있는 동안은 줄이 안 옴 — 다시 움직이면 직전 위치를 한 스냅샷 전 시각에 넣어 보간이 거기서 시작하게
         const last = e.buf[e.buf.length - 1];
         if (last && m.st - last.t > SNAP_MS * 1.5) e.buf.push({ ...last, t: m.st - SNAP_MS });
-        e.buf.push({ t: m.st, x, y, dir, flags, hp, res });
+        e.buf.push({ t: m.st, x, y, dir, flags, hp, res, en, hpMax });
         if (e.buf.length > 30) e.buf.shift();
       }
       // 시야(AOI) 밖으로 나감 → 숨김 (다시 들어오면 전체 줄이 옴)
@@ -1010,10 +1101,26 @@ export class Game {
           }
           if (src === this.you.id) {
             this.meSprite.stop = e.stop = crit ? 90 : 50;
-            if (crit && this.settings.shake) this.fx.shake = Math.max(this.fx.shake, 90);
+            e.hitByMe = now;
+            this.fx.combo(now);
+            const kx = e.knock?.dx ?? 0;
+            const ky = e.knock?.dy ?? 0;
+            // 도파민 (2026-11-14 피드백 2차): 치명타 = 흰 번쩍임 · 집중선 · 바닥 충격파 · 펀치 줌 · 큰 흔들림
+            if (crit) {
+              this.fx.flash(0xffffff, 0.22, 120);
+              this.fx.speedLines(e.x, e.y - 14, el ? elColor(el) : 0xffd27a);
+              this.fx.shock(e.x, e.y, el ? elColor(el) : 0xffd27a, 30);
+              this.fx.punch = Math.max(this.fx.punch, 0.7);
+              if (this.settings.shake) this.fx.quake(150, 4, kx, ky);
+            } else if (this.settings.shake) this.fx.quake(60, 1.2, kx, ky);
           }
         }
-        if (mine && this.settings.shake && amount > this.v[1] * 0.05) this.fx.shake = 160;
+        if (mine) {
+          const k = Math.min(1, amount / Math.max(1, this.v[1]) / 0.25); // 최대 체력의 25% 면 가장 셈
+          this.fx.flash(0xff2020, 0.08 + 0.22 * k, 160 + 140 * k);
+          const s = this.ent(src);
+          if (this.settings.shake && amount > this.v[1] * 0.03) this.fx.quake(140 + 120 * k, 2 + 4 * k, s ? Math.sign(this.me.x - s.x) : 0, s ? Math.sign(this.me.y - s.y) : 0);
+        }
         return;
       }
       case "c": {
@@ -1083,7 +1190,7 @@ export class Game {
         // 보스 페이즈 전환 (§20-4)
         this.onBanner(`${ev[2]}`, 2600);
         sfx("boss");
-        if (this.settings.shake) this.fx.shake = 400;
+        if (this.settings.shake) this.fx.quake(400, 3);
         const e = this.ent(ev[1] as number);
         if (e) this.fx.burst(e.x, e.y - 30, e.info.el || "grass", 30);
         return;
@@ -1113,7 +1220,21 @@ export class Game {
         return this.setFx(ev[1] as number, ev[2] as FxRow[]);
       case "d": {
         const e = this.ent(ev[1] as number);
-        if (e) { e.deadMs = 1; this.fx.burst(e.x, e.y - 10, e.mob ? "hit" : "dark", 16); }
+        if (!e) return;
+        e.deadMs = 1;
+        if (!e.mob || e.info.pet || !e.sprite.visible) this.fx.burst(e.x, e.y - 10, e.mob ? "hit" : "dark", 16);
+        else {
+          // 처치: 몹이 조각나 내 반대쪽으로 튕겨 날아감 · 내가 잡았으면 펀치 줌 + 흔들림
+          const dx = e.x - this.meSprite.x;
+          const dy = e.y - this.meSprite.y;
+          const len = Math.sqrt(dx * dx + dy * dy) || 1;
+          this.fx.shatter(e.sprite, dx / len, dy / len);
+          if (now - e.hitByMe < 1500) {
+            this.fx.punch = 1;
+            if (this.settings.shake) this.fx.quake(180, 3, dx / len, dy / len);
+            this.fx.number(e.x, e.y - (PLATE_H[e.info.mob!] ?? 24) - 8, t("fx.kill"), "#FFE14D", true);
+          }
+        }
         return;
       }
       case "dr":
@@ -1281,8 +1402,8 @@ export class Game {
     }
     const V = [[0, 1], [1, 1], [1, 0], [1, -1], [0, -1], [-1, -1], [-1, 0], [-1, 1]][this.me.dir] ?? [0, 1];
     const [tx, ty] = best ? [best.x, best.y] : [this.me.x + V[0] * 60, this.me.y + V[1] * 60];
-    this.mouse.sx = this.world.x + tx * this.zoom;
-    this.mouse.sy = this.world.y + ty * this.zoom;
+    this.mouse.sx = this.world.x + tx * this.world.scale.x;
+    this.mouse.sy = this.world.y + ty * this.world.scale.x;
   }
   /** 모바일 공격 단추 = 왼쪽 마우스 누르고 있기 */
   setAttack(on: boolean) {
@@ -1421,7 +1542,7 @@ export class Game {
   }
 
   private aimPoint(): [number, number] {
-    const z = this.zoom;
+    const z = this.world.scale.x || this.zoom;
     return [Math.round((this.mouse.sx - this.world.x) / z), Math.round((this.mouse.sy - this.world.y) / z)];
   }
 
@@ -1516,14 +1637,19 @@ export class Game {
     }
     const a = this.acc / SIM_MS;
     const me = this.meSprite;
-    me.x = this.prev.x + (this.me.x - this.prev.x) * a;
-    me.y = this.prev.y + (this.me.y - this.prev.y) * a;
+    const decay = Math.exp(-dt / 60);
+    this.err[0] *= decay;
+    this.err[1] *= decay;
+    me.x = this.prev.x + (this.me.x - this.prev.x) * a + this.err[0];
+    me.y = this.prev.y + (this.me.y - this.prev.y) * a + this.err[1];
     me.dir = this.me.dir;
     const rolling = this.me.mv > 0 && this.me.rollCd > ROLL.cdSteps;
     if (this.me.mv > 0 && !rolling) this.fx.burst(me.x, me.y - 12, this.you.element, 1); // 돌진 잔상
     me.flags = (rolling ? F_ROLL : 0) | (this.deadUntil || this.ghost ? F_DEAD : 0);
     me.hp = (this.v[0] / Math.max(1, this.v[1])) * 1000;
     me.res = (this.v[2] / Math.max(1, this.v[3])) * 1000;
+    me.en = (this.v[4] / Math.max(1, this.v[5])) * 1000;
+    me.hpMax = this.v[1] ?? 100;
     this.animate(me, this.me.running ? "run" : this.me.moving ? "walk" : "idle", dt, now);
 
     // 다른 플레이어 · 몹 — 100ms 전 시점으로 보간
@@ -1544,6 +1670,8 @@ export class Game {
       e.flags = cur.flags;
       e.hp = cur.hp;
       e.res = cur.res;
+      e.en = cur.en;
+      e.hpMax = cur.hpMax;
       e.sprite.visible = e.plate.visible = true;
       e.shadow.visible = this.settings.shadows;
       this.animate(e, cur.flags & F_RUNNING ? "run" : cur.flags & F_MOVING ? "walk" : "idle", dt, now);
@@ -1574,20 +1702,24 @@ export class Game {
     // 카메라: 정수 배율, 정수 좌표 (픽셀 떨림 방지)
     const sw = this.app.screen.width;
     const sh = this.app.screen.height;
-    // 화면 배율 ×N: 숫자가 클수록 더 넓게 보임 (×4 = 가장 많이 보임). 확대 배율 = 6 − N
-    this.zoom = this.settings.zoom ? 6 - this.settings.zoom : Math.max(2, Math.min(5, Math.round(Math.min(sw / 520, sh / 320))));
+    // 화면 배율 ×N: 숫자가 클수록 더 넓게 보임 (×4 = 가장 많이 보임). 확대 배율 = 6 − N. 휠로 바꾸면 그 값을 부드럽게 따라감
+    const base = this.settings.zoom ? 6 - this.settings.zoom : Math.max(2, Math.min(5, Math.round(Math.min(sw / 520, sh / 320))));
+    const want = this.zoomWant || base;
+    this.zoom = !this.zoom || Math.abs(want - this.zoom) < 0.002 ? want : this.zoom + (want - this.zoom) * (1 - Math.exp(-dt / 70));
     const z = this.zoom;
     const mapW = this.map.w * TILE;
     const mapH = this.map.h * TILE;
     // 맵이 화면보다 작으면 가운데 (아주 넓은 화면에서 한쪽만 검게 비지 않게)
     const cx = mapW * z <= sw ? mapW / 2 : Math.max(sw / 2 / z, Math.min(mapW - sw / 2 / z, me.x));
     const cy = mapH * z <= sh ? mapH / 2 : Math.max(sh / 2 / z, Math.min(mapH - sh / 2 / z, me.y - 16));
-    const shake = this.fx.shake > 0 && this.settings.shake ? Math.round((Math.random() - 0.5) * 4) : 0;
-    this.world.scale.set(z);
-    this.world.position.set(Math.round(sw / 2 - cx * z) + shake, Math.round(sh / 2 - cy * z));
+    const [qx, qy] = this.settings.shake ? this.fx.shakeOffset() : [0, 0];
+    const zp = z * (1 + 0.045 * this.fx.punch * this.fx.punch); // 펀치 줌 (화면 가운데 = 나 기준)
+    this.world.scale.set(zp);
+    this.world.position.set(Math.round(sw / 2 - cx * zp) + qx, Math.round(sh / 2 - cy * zp) + qy);
 
-    const toScreen = (x: number, y: number): [number, number] => [Math.round(this.world.x + x * z), Math.round(this.world.y + y * z)];
-    this.fx.update(dt, toScreen);
+    const toScreen = (x: number, y: number): [number, number] => [Math.round(this.world.x + x * zp), Math.round(this.world.y + y * zp)];
+    this.fx.setDanger(this.v[1] && this.v[0] > 0 && this.v[0] < this.v[1] * 0.3 ? 1 - this.v[0] / (this.v[1] * 0.3) * 0.6 : 0);
+    this.fx.update(dt, toScreen, sw, sh);
     if (this.realism.enabled) {
       const sprites = [this.meSprite.sprite, ...[...this.ents.values()].map((e) => e.sprite), ...this.animated.filter((a) => a.slow).map((a) => a.s)];
       this.realism.update({ zoom: z, wx: this.world.x, wy: this.world.y, sw, sh }, this.lightSrc, sprites, { x: me.x, y: me.y - 8 });
@@ -1637,15 +1769,58 @@ export class Game {
     this.drawQuest(now);
   }
 
+  /**
+   * 머리 위 막대 (2026-11-14 피드백: 크게 · 구체적으로): 플레이어 = 체력 · 기력 · 마나 세 줄, 몹 = 체력.
+   * 체력 눈금: 100 마다 가는 선 · 1000 마다 굵은 선 — 체력이 많을수록 칸이 잘게 많아짐 (너무 촘촘하면 굵은 선만).
+   * 깎인 체력은 흰 조각으로 잠깐 남았다가 줄어듦. 배율이 커지면 막대도 같이 커짐.
+   */
   private drawBars(e: Ent) {
-    const key = `${Math.round(e.hp / 20)}:${Math.round(e.res / 20)}`;
+    const player = !e.mob;
+    const k = Math.max(1, Math.min(2.6, this.zoom / 2.2));
+    // 깎인 체력 잔상: 0.35초 머물다가 빠르게 따라옴. 회복은 바로
+    const hp = Math.max(0, Math.min(1000, e.hp));
+    if (hp >= e.lag) { e.lag = hp; e.lagAt = performance.now(); }
+    else if (performance.now() - e.lagAt > 350) e.lag = Math.max(hp, e.lag - this.dtMs * 2.2);
+    const key = `${Math.round(hp)}:${Math.round(e.lag)}:${Math.round(e.res / 8)}:${Math.round(e.en / 8)}:${e.hpMax}:${k.toFixed(2)}:${this.isFoe(e)}`;
     if (key === e.drawn) return;
     e.drawn = key;
-    const w = e.mob ? 26 : 32;
+    const W = player ? 46 : e.info.pet ? 26 : 34;
+    const HH = player ? 5 : 4; // 체력 줄 높이
+    const SH = 2; // 기력 · 마나 줄 높이
+    const H = player ? HH + SH * 2 + 4 : HH + 2; // 테두리 · 사이 1px 포함
     const g = e.bars.clear();
-    g.rect(-w / 2 - 1, -5, w + 2, e.mob ? 5 : 7).fill(0x1b1420);
-    g.rect(-w / 2, -4, (w * Math.max(0, e.hp)) / 1000, 3).fill(e.mob && !e.info.pet ? 0xe5484d : 0x4cc764); // 소환수는 초록 (P13)
-    if (!e.mob) g.rect(-w / 2, -1, (w * Math.max(0, e.res)) / 1000, 2).fill(0x2f7bff);
+    e.bars.scale.set(k);
+    e.bars.position.set(0, 2 - H * k);
+    const x0 = -W / 2;
+    g.roundRect(x0 - 1.5, -1.5, W + 3, H + 3, 2).fill({ color: 0x0c0810, alpha: 0.55 }); // 바깥 그늘
+    g.rect(x0 - 1, -1, W + 2, H + 2).fill(0x1b1420);
+    const bar = (y: number, h: number, v: number, col: number, hi: number, back: number) => {
+      g.rect(x0, y, W, h).fill(back);
+      const w = (W * Math.max(0, Math.min(1000, v))) / 1000;
+      if (w <= 0) return;
+      g.rect(x0, y, w, h).fill(col);
+      g.rect(x0, y, w, Math.max(1, Math.floor(h / 2.5))).fill({ color: hi, alpha: 0.75 }); // 윗면 반사
+    };
+    const foe = this.isFoe(e);
+    const hpCol = e.mob && !e.info.pet ? [0xd9343b, 0xff8a8a] : foe ? [0xe5484d, 0xff9a9e] : e === this.meSprite ? [0x3fbf5a, 0xa8f0b4] : [0x46b4e8, 0xb4e8ff];
+    bar(0, HH, hp, hpCol[0], hpCol[1], 0x3a1a1e);
+    if (e.lag > hp) g.rect(x0 + (W * hp) / 1000, 0, (W * (e.lag - hp)) / 1000, HH).fill({ color: 0xfff1c8, alpha: 0.9 }); // 방금 깎인 만큼
+    // 눈금
+    const max = Math.max(1, e.hpMax);
+    const small = (W * 100) / max >= 1.6; // 가는 선끼리 1.6px 은 떨어져야 그림
+    for (let v = small ? 100 : 1000; v < max; v += small ? 100 : 1000) {
+      const x = x0 + Math.round((W * v) / max * 2) / 2;
+      const big = v % 1000 === 0;
+      g.rect(x - (big ? 0.5 : 0.25), 0, big ? 1 : 0.5, big ? HH : Math.ceil(HH * 0.6)).fill({ color: 0x120c16, alpha: big ? 0.95 : 0.7 });
+    }
+    if (player) {
+      bar(HH + 1, SH, e.en, 0xf0a020, 0xffe08a, 0x3a2a10); // 기력
+      bar(HH + 2 + SH, SH, e.res, 0x2f7bff, 0x9cc8ff, 0x16224a); // 마나
+    }
+    const top = 2 - H * k - 2;
+    e.label.y = top;
+    if (e.title) e.title.y = top - 13;
+    e.icons.y = top + 34 - (e.title ? 13 : 0);
   }
 
   private animate(e: Ent, base: Action, dt: number, now: number) {
@@ -1794,6 +1969,31 @@ export class Game {
 
 let shadow: Texture | null = null;
 const shadowTex = () => (shadow ??= Texture.from(shadowCanvas()));
+
+/**
+ * 큰 구운 캔버스 → 1024px(월드 512px) 조각 스프라이트들 (Codex 리뷰: 2배 바닥이 최대 3584×3840 — 2048 텍스처 한계 기기 ·
+ * 모바일 메모리). 조각은 컬링되어 화면에 들어온 것만 GPU 에 올라감.
+ */
+function chunked(c: HTMLCanvasElement) {
+  const box = new Container();
+  const N = 1024;
+  for (let y = 0; y < c.height; y += N)
+    for (let x = 0; x < c.width; x += N) {
+      const part = Object.assign(document.createElement("canvas"), { width: Math.min(N, c.width - x), height: Math.min(N, c.height - y) });
+      part.getContext("2d")!.drawImage(c, x, y, part.width, part.height, 0, 0, part.width, part.height);
+      const s = new Sprite(hdTex(part));
+      s.position.set(x / R, y / R);
+      s.cullable = true;
+      box.addChild(s);
+    }
+  c.width = c.height = 0; // 큰 캔버스 메모리 바로 돌려줌
+  return box;
+}
+
+/** 월드 그림(R 배 캔버스) → 해상도 R 텍스처: 월드 크기는 그대로, 픽셀은 R² 배 */
+function hdTex(c: HTMLCanvasElement) {
+  return new Texture({ source: new CanvasSource({ resource: c, resolution: R }) });
+}
 
 function glowCanvas() {
   const c = Object.assign(document.createElement("canvas"), { width: 64, height: 64 });

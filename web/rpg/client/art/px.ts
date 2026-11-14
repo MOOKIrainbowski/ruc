@@ -134,11 +134,13 @@ export function hash(x: number, y: number, s = 0) {
  * ① Scale2x 로 모서리를 매끈하게 두 배 ② 위쪽은 밝게 · 아래쪽은 어둡게 세로 명암
  * ③ 왼쪽 위 테두리 반사광 · 오른쪽 아래 그늘 ④ 안쪽 결(디더)로 재질감 ⑤ 바깥 1px 부드러운 그림자
  */
-export function refine32(src: Px): Px {
+/** Scale2x (EPX): 두 배로 키우며 계단 모서리를 매끈하게 — 다시 그리지 않은 1배 그림을 2배 월드 그림으로 쓸 때도 씀 */
+export function scale2x(src: Px, wrap = false): Px {
   const w = src.w;
   const h = src.h;
   const out = new Px(w * 2, h * 2);
-  const at = (x: number, y: number) => (x < 0 || y < 0 || x >= w || y >= h ? 0 : src.d[y * w + x]);
+  // wrap = 타일: 바깥을 반대편으로 이어 봄 (모서리가 투명해지지 않게)
+  const at = (x: number, y: number) => (wrap ? src.d[((y + h) % h) * w + ((x + w) % w)] : x < 0 || y < 0 || x >= w || y >= h ? 0 : src.d[y * w + x]);
   for (let y = 0; y < h; y++)
     for (let x = 0; x < w; x++) {
       const P = at(x, y);
@@ -155,6 +157,18 @@ export function refine32(src: Px): Px {
       out.d[(y * 2 + 1) * out.w + x * 2] = e2;
       out.d[(y * 2 + 1) * out.w + x * 2 + 1] = e3;
     }
+  return out;
+}
+
+/** 캔버스 → Px (불러온 그림을 다시 손질할 때) */
+export function fromCanvas(c: HTMLCanvasElement): Px {
+  const p = new Px(c.width, c.height);
+  p.d.set(new Uint32Array(c.getContext("2d")!.getImageData(0, 0, c.width, c.height).data.buffer));
+  return p;
+}
+
+export function refine32(src: Px): Px {
+  const out = scale2x(src);
   const ow = out.w;
   const oh = out.h;
   const solid = (x: number, y: number) => x >= 0 && y >= 0 && x < ow && y < oh && out.d[y * ow + x] >>> 24 > 0x80;

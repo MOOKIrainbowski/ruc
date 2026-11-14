@@ -1,7 +1,12 @@
 import { TILE } from "../../shared/constants";
 import type { TiledObject } from "../../shared/map";
 import { TILE_NAMES, type TileName } from "../../shared/tiles";
-import { Px, hash, type C3 } from "./px";
+import { PROPS } from "./props";
+import { TERRAIN } from "./terrain";
+import { treeFrames } from "./trees";
+import { fountainFrames2x } from "./fountain";
+import { BUILDINGS } from "./buildings";
+import { Px, fromCanvas, hash, scale2x, type C3 } from "./px";
 
 /**
  * 광장 · 초원 타일 · 오브젝트 그림 (§18 팔레트: 사암 #E8D3A9 · 테라코타 #C8643B · 잔디 #8CC63F · 분수 물 #5EC8F0 · 가로등 #FFD27A).
@@ -10,6 +15,18 @@ import { Px, hash, type C3 } from "./px";
  */
 
 export const VARIANTS = 8;
+/**
+ * 월드 그림 해상도 (2026-11-14 피드백 2차 "픽셀을 최대한 많이"): 1 월드 px = R 그림 px — 타일 하나 = 32×32 그림.
+ * 이 파일의 그림 함수는 모두 R 배 크기 캔버스를 돌려주고, game.ts 가 해상도 R 텍스처로 올려 월드 크기는 그대로.
+ * 아직 다시 그리지 않은 그림은 1배로 그린 뒤 Scale2x 로 키움(`up`) — 다시 그린 것은 HD 표에 등록.
+ */
+export const R = 2;
+const up = (p: Px) => scale2x(p, true);
+const upCanvas = (c: HTMLCanvasElement) => scale2x(fromCanvas(c)).toCanvas();
+/** 2배로 다시 그린 타일 (없으면 1배 그림을 키움) */
+const HD_TILES: Partial<Record<TileName, (v: number) => Px>> = TERRAIN;
+/** 2배로 다시 그린 오브젝트 (없으면 1배 그림을 키움). 캔버스 크기 = (width + 12) × R, (height + 8) × R — 발밑 가운데 아래 기준 */
+export const HD_OBJECTS: Record<string, (o: TiledObject) => HTMLCanvasElement[]> = { ...PROPS, ...BUILDINGS, tree: treeFrames, fountain: fountainFrames2x };
 /** 오브젝트 그림 여백 (나무 잎이 가장자리에서 잘리던 문제) */
 const PAD_X = 6;
 const PAD_TOP = 8;
@@ -208,8 +225,9 @@ function tile(name: TileName, v: number): Px {
 
 /** 타일 아틀라스: 가로 = 타일, 세로 = 변형/프레임 8 */
 export function tileAtlas(): HTMLCanvasElement {
-  const a = new Px(TILE * TILE_NAMES.length, TILE * VARIANTS);
-  TILE_NAMES.forEach((n, i) => { for (let v = 0; v < VARIANTS; v++) a.draw(tile(n, v), i * TILE, v * TILE); });
+  const T = TILE * R;
+  const a = new Px(T * TILE_NAMES.length, T * VARIANTS);
+  TILE_NAMES.forEach((n, i) => { for (let v = 0; v < VARIANTS; v++) a.draw(HD_TILES[n]?.(v) ?? up(tile(n, v)), i * T, v * T); });
   return a.toCanvas();
 }
 
@@ -236,8 +254,12 @@ function stripes(p: Px, x0: number, y0: number, w: number, h: number, a: string,
   }
 }
 
-/** 오브젝트 하나의 그림. 여러 장이면 애니메이션 프레임. 발밑 중심이 오브젝트 좌표. */
+/** 오브젝트 하나의 그림 (R 배). 여러 장이면 애니메이션 프레임. 발밑 중심이 오브젝트 좌표. */
 export function objectFrames(o: TiledObject): HTMLCanvasElement[] {
+  return HD_OBJECTS[o.type]?.(o) ?? objectFrames1x(o).map(upCanvas);
+}
+
+function objectFrames1x(o: TiledObject): HTMLCanvasElement[] {
   const w = o.width;
   const h = o.height;
   const p = new Px(w, h);
@@ -630,10 +652,13 @@ function decal(kind: DecalKind, v: number): Px {
 
 /** 데칼 시트: 가로 = 변형, 세로 = 종류 */
 export function decalSheet(): HTMLCanvasElement {
-  const a = new Px(TILE * DECAL_VARIANTS, TILE * DECAL_KINDS.length);
-  DECAL_KINDS.forEach((k, ki) => { for (let v = 0; v < DECAL_VARIANTS; v++) a.draw(decal(k, v), v * TILE, ki * TILE); });
+  const T = TILE * R;
+  const a = new Px(T * DECAL_VARIANTS, T * DECAL_KINDS.length);
+  DECAL_KINDS.forEach((k, ki) => { for (let v = 0; v < DECAL_VARIANTS; v++) a.draw(HD_DECALS[k]?.(v) ?? scale2x(decal(k, v)), v * T, ki * T); });
   return a.toCanvas();
 }
+/** 2배로 다시 그린 데칼 */
+const HD_DECALS: Partial<Record<DecalKind, (v: number) => Px>> = {};
 
 /** 물체 밑 부드러운 접촉 그림자 (타원, 가운데 진하고 가장자리 투명) */
 export function contactShadow(): HTMLCanvasElement {

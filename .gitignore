@@ -149,3 +149,4 @@ minecraft/servers/*/plugins/RucCore/terms-cursor.txt
 
 # RPG 게임 서버 DB (런타임)
 RUC_RPG/server/data/
+.scratch/

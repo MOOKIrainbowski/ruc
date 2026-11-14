@@ -39,6 +39,7 @@ const int = (v: unknown, d: number) => (Number.isFinite(Number(v)) && v !== unde
 
 export const GM_HELP = [
   "/gm give 닉 아이템id [개수] [희귀도]", "/gm level 닉 레벨", "/gm ruc 닉 양(음수 가능)", "/gm tp 닉 | /gm tp 맵 x y",
+  '/gm summon "닉" · /gm warp "닉" 맵 x y', '/gm toggle "닉" invuln|resources on|off · /gm speed "닉" 배율', '/gm heal "닉" · /gm info "닉"',
   "/gm spawn 몹id [수] [등급]", "/gm mute 닉 분 [사유] · /gm unmute 닉", "/gm kick 닉 [사유]", "/gm ban 닉 시간|perm [사유] · /gm unban 닉",
   "/gm announce 내용", "/gm who",
 ].join("\n");
@@ -46,7 +47,7 @@ export const GM_HELP = [
 /** "/gm …" 실행. 반환 = 거절 이유 (성공하면 GM 채팅으로 결과) */
 export function gmCommand(p: Player, text: string): string | null {
   if (!isGM(p)) return "GM 만 쓸 수 있는 명령입니다";
-  const [, cmd = "help", ...a] = text.split(/\s+/);
+  const [, cmd = "help", ...a] = [...text.matchAll(/"([^"]+)"|(\S+)/g)].map((m) => m[1] ?? m[2]);
   const ok = (msg: string, target: string | null = null) => {
     audit(p.char.id, `gm_${cmd}`, target, null, { args: a });
     tell(p, msg);
@@ -70,6 +71,54 @@ export function gmCommand(p: Player, text: string): string | null {
       sendInv(q);
       return ok(`${q.char.nickname}에게 ${ITEMS[a[1]].name} ×${int(a[2], 1)} (${r})`, q.char.nickname);
     }
+    case "summon": {
+      const q = findOnline(a[0]);
+      if (!need(q) || !p.room) return "접속 중인 닉네임이 아닙니다";
+      gmHooks.place(q, p.room, p.x, p.y);
+      return ok(`${q.char.nickname} 소환 완료`, q.char.nickname);
+    }
+    case "warp": {
+      const q = findOnline(a[0]);
+      const kind = a[1] as RoomKind;
+      if (!need(q)) return "접속 중인 닉네임이 아닙니다";
+      if (!Object.hasOwn(CHANNEL_CAP, kind) || kind === "dungeon") return "맵은 plaza · field · highland · arena";
+      gmHooks.travel(q, kind, int(a[2], 0), int(a[3], 0));
+      return ok(`${q.char.nickname} → ${kind} (${a[2]}, ${a[3]})`, q.char.nickname);
+    }
+    case "toggle": {
+      const q = findOnline(a[0]);
+      const key = a[1];
+      const on = a[2] === "on" ? true : a[2] === "off" ? false : null;
+      if (!need(q) || !["invuln", "resources"].includes(key ?? "") || on === null) return '/gm toggle "닉" invuln|resources on|off';
+      q.gm ??= { invuln: false, resources: false, speed: 1 };
+      q.gm[key as "invuln" | "resources"] = on;
+      if (key === "resources" && on) {
+        q.hp = q.st.hp; q.mp = q.st.mana; q.en = q.st.energy; q.mover.stamina = q.mover.staminaMax;
+      }
+      return ok(`${q.char.nickname}: ${key} ${on ? "켜짐" : "꺼짐"}`, q.char.nickname);
+    }
+    case "speed": {
+      const q = findOnline(a[0]);
+      const speed = Number(a[1] ?? 2);
+      if (!need(q) || !Number.isFinite(speed)) return '/gm speed "닉" 배율(0.5~2, 이동 상한)';
+      q.gm ??= { invuln: false, resources: false, speed: 1 };
+      q.gm.speed = Math.max(0.5, Math.min(2, speed));
+      q.mover.spd = q.st.moveSpeed * q.gm.speed;
+      return ok(`${q.char.nickname} 이동 속도 ×${q.gm.speed}`, q.char.nickname);
+    }
+    case "heal": {
+      const q = findOnline(a[0]);
+      if (!need(q)) return "접속 중인 닉네임이 아닙니다";
+      if (q.dead && q.room) q.room.revive(q, 1);
+      q.hp = q.st.hp; q.mp = q.st.mana; q.en = q.st.energy; q.mover.stamina = q.mover.staminaMax;
+      return ok(`${q.char.nickname} 회복 완료`, q.char.nickname);
+    }
+    case "info": {
+      const q = findOnline(a[0]);
+      if (!need(q)) return "접속 중인 닉네임이 아닙니다";
+      const gear = q.items.filter((i) => i.loc === "equipped").map((i) => ITEMS[i.tpl]?.name ?? i.tpl).join(", ") || "없음";
+      return ok(`${q.char.nickname} Lv${q.char.level} · ${q.room?.kind ?? "-"} ${q.room?.ch ?? ""} (${Math.round(q.x)},${Math.round(q.y)})\nHP ${Math.round(q.hp)}/${q.st.hp} · MP ${Math.round(q.mp)}/${q.st.mana} · EN ${Math.round(q.en)}/${q.st.energy} · STA ${Math.round(q.mover.stamina)}/${q.mover.staminaMax}\nRUC ${q.ruc} · 장비 ${gear}`, q.char.nickname);
+    }
     case "level": {
       const q = findOnline(a[0]);
       if (!need(q)) return "접속 중인 닉네임이 아닙니다";
@@ -87,7 +136,7 @@ export function gmCommand(p: Player, text: string): string | null {
     case "tp": {
       if (a.length >= 3) {
         const kind = a[0] as RoomKind;
-        if (!Object.hasOwn(CHANNEL_CAP, kind) || kind === "dungeon") return "맵은 plaza · field · arena";
+        if (!Object.hasOwn(CHANNEL_CAP, kind) || kind === "dungeon") return "맵은 plaza · field · highland · arena";
         gmHooks.travel(p, kind, int(a[1], 0), int(a[2], 0));
         return ok(`${kind} (${a[1]}, ${a[2]})`);
       }
@@ -157,7 +206,7 @@ export function gmPanel(p: Player, bug?: unknown) {
   }
   send(p, {
     t: "gm",
-    players: online.all().map((q) => ({ name: q.char.nickname, lv: q.char.level, where: q.room?.kind ?? "", ch: q.room?.ch ?? 0, x: Math.round(q.x), y: Math.round(q.y), party: !!partyOf(q), muted: !!activeSanction(q.discordId, "mute") })),
+    players: online.all().map((q) => ({ name: q.char.nickname, lv: q.char.level, where: q.room?.kind ?? "", ch: q.room?.ch ?? 0, x: Math.round(q.x), y: Math.round(q.y), party: !!partyOf(q), muted: !!activeSanction(q.discordId, "mute"), invuln: !!q.gm?.invuln, resources: !!q.gm?.resources, speed: q.gm?.speed ?? 1 })),
     bugs: listBugs(20).map((b) => ({ id: b.id, name: b.name, place: b.place, text: b.text, at: b.created_at, img: !!b.img })),
   });
   return null;

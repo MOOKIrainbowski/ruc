@@ -20,8 +20,8 @@ import type { MoveInput, Mover } from "./movement.ts";
 /** 플레이어는 ap(외형) · look(옷 색을 바꾸는 장비 템플릿 id) · tt(칭호 id), 몹은 mob(종류) · grade */
 /** pet = 소환수 · 설치물의 주인 id (P9) — 몹 그림(mob) 또는 주인 모습(ap, 잔상) */
 export type EntityInfo = { id: number; name: string; el: string; lv: number; ap?: Appearance; look?: string[]; jb?: string; tt?: string; mob?: string; grade?: Grade; pet?: number; gd?: string; nt?: string; aw?: 1 };
-/** 스냅샷 한 줄: [id, x, y, dir, flags, HP 천분율, 마나 또는 기력 천분율] */
-export type EntityRow = [number, number, number, number, number, number, number];
+/** 스냅샷 한 줄: [id, x, y, dir, flags, HP 천분율, 마나 천분율, 기력 천분율, 최대 HP] — 몹 · 소환수는 마나 · 기력 0 */
+export type EntityRow = [number, number, number, number, number, number, number, number, number];
 export const F_MOVING = 1;
 export const F_RUNNING = 2;
 export const F_ROLL = 4;
@@ -167,7 +167,7 @@ export type S2C =
   | { t: "needCreate"; defaultName: string }
   | { t: "createError"; msg: string }
   | {
-      t: "joined"; you: You; room: { kind: RoomKind; ch: number }; me: Mover; ents: EntityInfo[]; fx: [number, FxRow[]][];
+      t: "joined"; you: You; room: { kind: RoomKind; ch: number }; me: Mover; sim?: number; ents: EntityInfo[]; fx: [number, FxRow[]][];
       channels: ChannelInfo[]; stats: FullStats; items: Item[]; drops: DropRow[]; nodes?: GatherRow[];
     }
   | { t: "spawn"; e: EntityInfo }
@@ -202,7 +202,7 @@ export type S2C =
   /** 창고 확장 장수 (P12) */
   | { t: "tabs"; n: number }
   /** GM 창 데이터 */
-  | { t: "gm"; players?: { name: string; lv: number; where: string; ch: number; x: number; y: number; party: boolean; muted: boolean }[]; bugs?: { id: number; name: string; place: string; text: string; at: number; img: boolean }[]; bug?: { id: number; img: string | null; log: string[] } | null }
+  | { t: "gm"; players?: { name: string; lv: number; where: string; ch: number; x: number; y: number; party: boolean; muted: boolean; invuln: boolean; resources: boolean; speed: number }[]; bugs?: { id: number; name: string; place: string; text: string; at: number; img: boolean }[]; bug?: { id: number; img: string | null; log: string[] } | null }
   /** 파티 (P7): 내 파티(없으면 null) · 파티원 상태(2Hz) · 모집 중인 파티 · 핑 */
   | { t: "party"; party: PartyView | null }
   | { t: "pv"; v: PartyVitals[] }
