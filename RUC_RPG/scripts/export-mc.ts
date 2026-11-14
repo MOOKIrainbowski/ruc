@@ -55,6 +55,48 @@ function save(dir: string, name: string, value: unknown): void {
   writeFileSync(join(dir, name), `${JSON.stringify(clean, null, 2)}\n`, "utf8");
 }
 
+type EffectMod = { k: string; op: "add" | "mul"; c: number; v: boolean; s: boolean; el?: string };
+function exportEffectMods(id: string, raw: unknown): EffectMod[] {
+  if (typeof raw !== "function") throw new Error(`effects.${id}.mods must be a function`);
+  const evaluate = (v: number, s: number): any[] => {
+    const result = (raw as (v: number, s: number) => unknown)(v, s);
+    if (!Array.isArray(result)) throw new Error(`effects.${id}.mods(${v},${s}) must return an array`);
+    return result;
+  };
+  const base = evaluate(1, 1);
+  const doubledV = evaluate(2, 1);
+  const doubledS = evaluate(1, 2);
+  if (base.length !== doubledV.length || base.length !== doubledS.length) throw new Error(`effects.${id}.mods changes result length`);
+  return base.map((entry, index) => {
+    if (!entry || typeof entry !== "object" || typeof entry.k !== "string") throw new Error(`effects.${id}.mods[${index}] has invalid shape`);
+    const op = Object.hasOwn(entry, "add") ? "add" : Object.hasOwn(entry, "mul") ? "mul" : undefined;
+    if (!op || Object.hasOwn(entry, op === "add" ? "mul" : "add")) throw new Error(`effects.${id}.mods[${index}] must have exactly one add/mul coefficient`);
+    const c = entry[op];
+    if (typeof c !== "number" || !Number.isFinite(c)) throw new Error(`effects.${id}.mods[${index}] coefficient is not finite`);
+    const vEntry = doubledV[index], sEntry = doubledS[index];
+    if (!vEntry || !sEntry || vEntry.k !== entry.k || sEntry.k !== entry.k || vEntry[op] === undefined || sEntry[op] === undefined) throw new Error(`effects.${id}.mods[${index}] changes its operation or key`);
+    const vFlag = Math.abs(vEntry[op] - 2 * c) < 1e-9;
+    const sFlag = Math.abs(sEntry[op] - 2 * c) < 1e-9;
+    if (!vFlag && Math.abs(vEntry[op] - c) >= 1e-9) throw new Error(`effects.${id}.mods[${index}] is not linear in v`);
+    if (!sFlag && Math.abs(sEntry[op] - c) >= 1e-9) throw new Error(`effects.${id}.mods[${index}] is not linear in stacks`);
+    if (vFlag && sFlag && c === 0) throw new Error(`effects.${id}.mods[${index}] has ambiguous zero coefficient`);
+    const atZeroV = evaluate(0, 1)[index]?.[op], atZeroS = evaluate(1, 0)[index]?.[op], bothDouble = evaluate(2, 2)[index]?.[op];
+    const expectedV = vFlag ? 0 : c, expectedS = sFlag ? 0 : c, expectedBoth = c * (vFlag ? 2 : 1) * (sFlag ? 2 : 1);
+    if (Math.abs(atZeroV - expectedV) >= 1e-9 || Math.abs(atZeroS - expectedS) >= 1e-9 || Math.abs(bothDouble - expectedBoth) >= 1e-9) throw new Error(`effects.${id}.mods[${index}] is not c*v^a*stacks^b`);
+    const mod: EffectMod = { k: entry.k, op, c, v: vFlag, s: sFlag };
+    if (entry.el !== undefined) {
+      if (typeof entry.el !== "string") throw new Error(`effects.${id}.mods[${index}].el is not a string`);
+      mod.el = entry.el;
+    }
+    return mod;
+  });
+}
+
+const EFFECTS_EXPORT = Object.fromEntries(Object.entries(EFFECTS).map(([id, effect]) => {
+  const { mods, ...fields } = effect;
+  return [id, { ...fields, ...(mods ? { mods: exportEffectMods(id, mods) } : {}) }];
+}));
+
 // TIERS is intentionally module-private. Reconstruct its table from the generated
 // tier gear, which carries the same key/name/level/palette/gem/description values.
 const tiers = Object.keys(ITEMS).filter((id) => id.endsWith("_sword") && !!ITEMS[`${id.slice(0, -"_sword".length)}_staff`]?.gem).map((id) => {
@@ -69,7 +111,7 @@ const tables: Record<string, unknown> = {
   "skills.json": { SKILLS, SLOTS, APPRENTICE_SLOTS },
   "jobs.json": { LINES, JOBS, STAT_GRADE, AWAKEN, AWAKEN_NAME, SPIRIT_BUFF, JOB_LV, JOB_POTENTIAL, JOB_POT_SHIFT },
   "mobs.json": { MOBS, GRADES },
-  "effects.json": { EFFECTS, FOREVER_MS },
+  "effects.json": { EFFECTS: EFFECTS_EXPORT, FOREVER_MS },
   "elements.json": { ELEMENTS, ELEMENT_IDS, ELEMENT_PROC, REACTIONS },
   "stats.json": { BASE_STATS, LEVEL_GROWTH, MOVE, STAMINA, SECONDARY, CAPS, COMBAT, ROLL },
   "economy.json": { ENHANCE, ENHANCE_MAX, ENHANCE_OPT, PREFIXES, ENCHANTS, ENCH_SLOTS, ENCH_POWER, ENCH_COST_MUL, RARITY_VALUE, SHOP, SHOP_GOODS, BREW, MAIL, MARKET },
@@ -207,7 +249,15 @@ const golden = {
 
 mkdirSync(dataDir, { recursive: true });
 mkdirSync(testDir, { recursive: true });
+const droppedFunctions: string[] = [];
+function findFunctions(value: unknown, path: string): void {
+  if (typeof value === "function") { droppedFunctions.push(path); return; }
+  if (Array.isArray(value)) value.forEach((v, i) => findFunctions(v, `${path}[${i}]`));
+  else if (value && typeof value === "object") for (const [key, child] of Object.entries(value)) findFunctions(child, `${path}.${key}`);
+}
+for (const [name, value] of Object.entries(tables)) findFunctions(value, name);
 for (const [name, value] of Object.entries(tables)) save(dataDir, name, value);
 save(testDir, "golden.json", golden);
 
 console.log(`Exported ${Object.keys(tables).length} data tables and golden.json (${skillNumCases.length} skill cases, ${damageCases.length} damage cases, ${mobCases.length} mob cases).`);
+console.log(`JSON.stringify would otherwise drop ${droppedFunctions.length} function-valued field(s): ${droppedFunctions.join(", ") || "none"}`);

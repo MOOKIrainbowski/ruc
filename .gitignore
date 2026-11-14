@@ -150,3 +150,6 @@ minecraft/servers/*/plugins/RucCore/terms-cursor.txt
 # RPG 게임 서버 DB (런타임)
 RUC_RPG/server/data/
 .scratch/
+
+# 러크 RPG 시험 서버 (scripts/rpg-test-setup.py 가 만듦 — 런타임 전부)
+minecraft/servers/rpg-test/

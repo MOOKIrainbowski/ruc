@@ -24,7 +24,8 @@ sha1 = hashlib.sha1(OUT.read_bytes()).hexdigest()
 
 props = PROPS.read_text(encoding="utf-8")
 for key, value in {"resource-pack": URL.replace(":", r"\:"), "resource-pack-sha1": sha1,
-                   "resource-pack-prompt": json.dumps("강화대 · 러크 강화석 텍스처")}.items():
+                   "resource-pack-prompt": json.dumps("러크 RPG — HUD · 아이콘 · 미니맵 (꼭 받아야 화면이 보입니다)"),
+                   "require-resource-pack": "true"}.items():
     props = re.sub(rf"^{key}=.*$", lambda _: f"{key}={value}", props, flags=re.M)   # lambda: 값의 역슬래시를 정규식이 해석하지 않게
 PROPS.write_text(props, encoding="utf-8")
 print(OUT, sha1)

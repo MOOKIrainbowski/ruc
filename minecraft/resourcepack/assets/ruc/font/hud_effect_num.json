@@ -1,0 +1,13 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/atlas_effect_num_3x7_00.png",
+      "height": 7,
+      "ascent": 6,
+      "chars": [
+        ""
+      ]
+    }
+  ]
+}

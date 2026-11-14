@@ -92,7 +92,9 @@ public final class RucRpg extends JavaPlugin {
                 if (u instanceof kr.rucserver.rpg.mob.MobUnit m) mobs.killed(m, by);
                 else if (u instanceof kr.rucserver.rpg.character.PlayerUnit pu) runtime.killed(pu, by);
             };
-            hud = new Hud();
+            Hud glyph = kr.rucserver.rpg.hud.GlyphHud.load(this);
+            hud = glyph != null ? glyph : new Hud();
+            getLogger().info(glyph != null ? "HUD: 리소스팩 글리프" : "HUD: 글자판 (hud-glyphs.json v2 없음)");
             runtime.hud(hud);
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "RPG 를 켜지 못했습니다", e);
@@ -122,7 +124,15 @@ public final class RucRpg extends JavaPlugin {
         npcs = new kr.rucserver.rpg.world.NpcRuntime(this);
         getServer().getPluginManager().registerEvents(worlds, this);
         getServer().getPluginManager().registerEvents(npcs, this);
-        getServer().getScheduler().runTaskLater(this, npcs::spawnAll, 40L);
+        // 처음 켤 때 안 지은 맵은 알아서 지음 (운영 서버에서 명령을 칠 필요 없게)
+        getServer().getScheduler().runTaskLater(this, () -> {
+            for (String k : kr.rucserver.rpg.world.RpgWorlds.KINDS)
+                if (!worlds.built(k)) {
+                    getLogger().info("맵 " + k + " 이 없어 짓습니다…");
+                    worlds.build(k, () -> { mobs.refill("rpg_" + k); npcs.spawnAll(); getLogger().info("맵 " + k + " 완성"); });
+                }
+            npcs.spawnAll();
+        }, 40L);
         getServer().getPluginManager().registerEvents(new kr.rucserver.rpg.ui.Gui.Events(this), this);
         getServer().getPluginManager().registerEvents(itemRuntime, this);
         equipMenu = new kr.rucserver.rpg.ui.EquipMenu(this);

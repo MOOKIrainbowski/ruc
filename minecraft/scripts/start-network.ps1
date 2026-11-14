@@ -39,7 +39,7 @@ $Servers = @("home", "raid", "war")
 $Spec = @{
     home  = @("1G",   "2G")
     raid  = @("1G",   "2G")
-    war   = @("512M", "1G")
+    war   = @("1G",   "3G")   # 2026-11-15 러크 RPG (맵 5개 · 몹 · 모델)
     peace = @("512M", "1G")
 }
 

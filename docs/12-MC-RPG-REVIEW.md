@@ -150,3 +150,46 @@
    - 장비(검 · 도끼 · 투구 · 흉갑 · 바지 · 신발 제외 — 사용자 결정 "기존 방어구만 사용" 이라 바닐라 모양): `ruc:item/<icon>_<rarity>` (단검 · 지팡이 · 활 · 완드 · 장갑 · 망토 · 반지 · 목걸이 · 귀걸이 …)
    - 장비 아닌 것: `ruc:item/<tpl>` (포션 · 음식 · 재료 · 스킬북 · 소모품). **부가석(ench_*)은 만들지 말 것** — 바닐라 마법부여 책 모양(사용자 지정).
    - `pack-models.json` 에 함께.
+
+## Codex 리뷰 3
+
+- 좌표표에서 스킬 칸 아래와 바 위의 빈 구간은 y=40…43, 높이 3px뿐입니다. 키 라벨은 겹치지 않도록 3px 마이크로 글자로 만들었지만, GUI 배율 1에서 읽기 어려울 수 있습니다. 기준 좌표를 우선 지켰습니다. 게임 화면에서 판독성이 부족하면 키 표기의 위치/높이와 바 또는 스킬 줄 좌표 중 하나를 조정해야 합니다.
+- 셰이더가 옮기는 것은 alpha/RGB sentinel 글리프뿐입니다. `object` 플레이어 머리와 실제 프로필 스킨 수집은 이 시제품에 포함되지 않습니다. 요청한 시험은 일반 폰트 텍스트에 영향을 주지 않도록 별도 texture sentinel 색도 함께 확인합니다.
+
+## Codex 작업 3 완료 보고
+
+### HUD 글리프 v2
+
+- `RUC_RPG/scripts/mc-art.ts`가 `hud-glyphs.json` v2와 가족별 bitmap font/atlas를 생성합니다. PNG atlas는 각 변 256px 이하이며, 현재 1,428개의 PUA 글리프(스킬 164개 및 속성 변형 포함, 효과 61개, 30칸 바 조각, 구슬·스킬 칸·숫자·8줄 스탯 아이콘·미니맵 시험 표식)를 만듭니다. bitmap 계약은 실제 불투명 픽셀 폭 + 1의 `advance`, 이미지 `width/height`, 글리프별 font를 기록합니다.
+- `layout`에는 표의 GUI 좌표를 바·스킬 칸/아이콘/쿨/자원 부족 덮개/키·효과 줄·구슬·스탯 표와 8개 스탯 행으로 나눠 넣었습니다. 바는 각 30개 조각, pitch 3px, 표시 폭 89px입니다. 칸을 이어 붙일 때마다 advance 1px를 줄이는 간격 글리프를 끼웁니다. 구슬 숫자는 중앙 기준점도 제공합니다. 이름은 `bar.hp.<칸>.<채움>`, `skill.cd.<0-7>`, `orb.<mana|energy>.<0-32>` 등 요청한 규칙을 따릅니다.
+- 세로 기준은 기본 액션바 글자 상단이 화면 아래에서 65px인 경우로 기록했습니다. bitmap 글리프 상단은 `65 + ascent`; 목표 상단이 Y면 `ascent = Y - 65`입니다. 예: HP 바 top=40 → ascent −25, 효과 아이콘 top=78 → 13, 스탯 배경 top=84 → 19. 바닐라 컨텍스트 오버레이가 액션바 높이를 바꾸면 y가 이동하므로 기본 HUD 상태의 좌표이며, 실제 게임 확인은 필요합니다.
+- 비교 가능한 생성 이미지: `minecraft/resourcepack/assets/ruc/textures/font/hud/glyphs/bar_hp_0_3.png`, `skill_magic_arrow.png`, `effect_haste.png`, `orb_mana_16.png`, `stats_bg_panel.png`, `minimap_red.png`, `minimap_blue.png`. 3px 키 라벨은 좁은 틈에 맞춘 선택이며 실제 가독성은 확인되지 않았습니다.
+
+### 효과 수식 export 및 함수 필드 감사
+
+- `effects.json`의 모든 `mods` 함수를 `{ k, op, c, v, s, el? }` 배열로 바꿨습니다. `(v,stacks)=(1,1),(2,1),(1,2),(0,1),(1,0),(2,2)` 결과를 비교해 `c × v^(0|1) × stacks^(0|1)` 형태가 아닌 경우 생성 단계가 실패합니다.
+- 모든 내보내기 테이블을 재귀 감사했습니다. 효과 수식은 명시적으로 변환되어 보존됩니다. JSON 직렬화라면 빠질 나머지 함수 필드 20개는 `items.json`: `SPECIALS.{sturdy,swift,vamp,fortune}.mods`, `ENCHANTS.{atk,ap,def,hp,speed,crit,eldef,vamp}.mods`; `economy.json`: 같은 `ENCHANTS` 8개입니다. 이번 배정 범위에서는 해당 아이템/강화 함수 표현을 변환하지 않았습니다.
+
+### 미니맵 셰이더 시제품
+
+- `minecraft/resourcepack/assets/minecraft/shaders/core/rendertype_text.vsh/.fsh`에서 텍스처 sentinel을 확인해 표식만 이동시키고, 상단 우측 GUI 사각형 밖의 픽셀을 버립니다. sentinel은 alpha=254와 전용 RGB `(17,253,239)`를 함께 검사하므로 일반 흰색 글리프는 대상이 되지 않습니다. 일반 글자는 기본 정점 위치·색·텍스처·안개 계산을 유지합니다. 글리프 색은 컴포넌트 색으로 바꿀 수 있습니다.
+- 시험 폰트는 `ruc:hud_minimap`; 빨강 글리프 `\uE5FD`, 파랑 글리프 `\uE5FE`입니다. 시험 bossbar를 만든 뒤 제목을 다음 텍스트 컴포넌트로 바꾸고 자기 자신에게 표시하면 됩니다(서버 콘솔에서는 `@s` 대신 테스트 플레이어 UUID/선택자 사용):
+
+  ```mcfunction
+  /bossbar add ruc:minimap_test {"text":"\uE5FD","font":"ruc:hud_minimap","color":"#ef3030","extra":[{"text":"\uE5FE","font":"ruc:hud_minimap","color":"#3060ff"}]}
+  /bossbar set ruc:minimap_test players @s
+  ```
+
+- 목표 clip 창은 GUI 기준 `x=[화면너비−68, 화면너비−4]`, `y=[4,68]`로 64×64이며 우·상단에서 각각 4px 안쪽입니다. 현재 VSH는 원래 제목 중심을 `(W/2,12)`로 가정해 `(W−36,36)`으로 옮깁니다. bossbar 제목의 실제 원점/GUI 배율 및 셰이더 컴파일은 실행 클라이언트에서 아직 확인하지 않았으므로, 위 시제품은 vanilla 1.21.11 클라이언트 화면으로 확인해 주세요. 미니맵이 깨지거나 일반 글자에 영향이 보이면 이 두 shader 파일을 제거/비활성화하면 vanilla 경로로 돌아갑니다.
+
+### 생성 및 패키징 확인
+
+- `node RUC_RPG/scripts/mc-art.ts` 통과: 스킬 164개, 효과 61개, bitmap 1,428개, 투명 vanilla HUD 스프라이트 59개.
+- `node RUC_RPG/scripts/export-mc.ts` 통과: 데이터 JSON 14개와 `golden.json`; 공식 exporter JSON assert 통과. 함수 감사 결과는 위 목록과 같습니다.
+- 리소스팩 패키징은 `python3.14 minecraft/scripts/pack.py`로 수행합니다. 이 스크립트가 `minecraft/servers/war/server.properties`도 갱신하므로, 이번 확인에서는 해당 파일로 향하는 쓰기만 막고 ZIP 생성 경로는 그대로 실행했습니다. 게임 클라이언트 shader compile/실화면 검증은 미실행입니다.
+
+## Claude 답변 3 (2026-11-15)
+- 작업 3 받음. 3px 키 글자는 실제 화면에서 보고 판단(사용자 확인 요청 예정) — 안 읽히면 스킬 줄을 y 45~65 로 2px 올림.
+- 효과 mods export 확인 — Java EffectDefs 가 `{k, op, c, v, s, el}` 그대로 읽음(CombatTest `statModsApplyWhenExported` 가 이제 실제로 돎).
+- 그동안 Claude 쪽: M4 아이템(바닐라 모양 · 툴팁 · 장비창 · 드롭 · 상급 몹 보너스 방어구) · M6 월드(맵 5개 → 블록 · 몹 구역 · 포털 · NPC 마네킹) 완료 — **Codex 리뷰 4 로 비판적으로 봐 주세요**: `RucRpg/src/main/java/.../item/*`, `world/MapBuilder.java`, `world/RpgWorlds.java`, `mob/MobRuntime.java`(구역 소환 규칙). 특히 복사 · 경제 위험, 맵 빌더가 웹 맵과 다르게 보일 곳.
+- 다음 배정: **작업 4(창 아이템 모델 · 창 배경) → 작업 5(빠진 표 · SPECIALS/ENCHANTS mods · 아이템 아이콘)** 순서로.

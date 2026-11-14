@@ -1,0 +1,13 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/atlas_stats_icon_5_8x8_00.png",
+      "height": 8,
+      "ascent": -33,
+      "chars": [
+        ""
+      ]
+    }
+  ]
+}

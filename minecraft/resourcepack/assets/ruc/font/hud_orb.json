@@ -1,0 +1,30 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/atlas_orb_36x36_00.png",
+      "height": 36,
+      "ascent": -29,
+      "chars": [
+        "",
+        "",
+        "",
+        "",
+        "",
+        "",
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/atlas_orb_36x36_01.png",
+      "height": 36,
+      "ascent": -29,
+      "chars": [
+        "",
+        "",
+        "    "
+      ]
+    }
+  ]
+}

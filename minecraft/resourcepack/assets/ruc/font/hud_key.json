@@ -1,0 +1,22 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/atlas_key_3x3_00.png",
+      "height": 3,
+      "ascent": -25,
+      "chars": [
+        ""
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/atlas_key_7x3_00.png",
+      "height": 3,
+      "ascent": -25,
+      "chars": [
+        ""
+      ]
+    }
+  ]
+}

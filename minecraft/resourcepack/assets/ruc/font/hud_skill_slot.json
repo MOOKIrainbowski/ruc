@@ -1,0 +1,13 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/atlas_skill_slot_20x20_00.png",
+      "height": 20,
+      "ascent": -2,
+      "chars": [
+        ""
+      ]
+    }
+  ]
+}

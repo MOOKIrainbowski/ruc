@@ -20,6 +20,8 @@ public final class PlayerUnit extends Unit {
     public long lockUntil, dashUntil, rollReady;
     /** 장비 발동 효과 (특수효과 · 세트): id → 수치 */
     public final java.util.Map<String, Double> procs = new java.util.HashMap<>();
+    /** HUD 스탯 표 보이기 (설정) */
+    public boolean showStats = true;
     /** GM: 자원 무소모 */
     public boolean gmNoCost;
 

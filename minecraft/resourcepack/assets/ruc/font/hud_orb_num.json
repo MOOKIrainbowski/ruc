@@ -1,0 +1,13 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/atlas_orb_num_5x7_00.png",
+      "height": 7,
+      "ascent": -43,
+      "chars": [
+        ""
+      ]
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/atlas_skill_overlay_16x16_00.png",
+      "height": 16,
+      "ascent": -4,
+      "chars": [
+        ""
+      ]
+    }
+  ]
+}
