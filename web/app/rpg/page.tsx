@@ -13,46 +13,16 @@ export const metadata = {
 };
 
 /**
- * 게임 서버가 켜져 있는가 (P18): 운영 게임 서버는 운영자 PC 에서 돌아서 PC 가 꺼져 있으면 꺼져 있음.
- * 게임 서버 주소(wss → https)의 상태 응답을 5초 안에 받으면 켜진 것 — Vercel 함수(iad1, 미국)에서 한국 PC 까지 Funnel 왕복이 2.5초를 넘겨 5초.
- * (페이지 preferredRegion = icn1 은 Hobby 에서 무시됨 — 줄이려면 Vercel Settings → Functions → Function Region) 개발 모드는 확인하지 않음.
+ * 러크 RPG (RUC_RPG/RUC_RPG_PROMPT.md). 디스코드 로그인 필수 (§1).
+ * 게임 서버(운영자 PC)가 켜져 있는지는 여기서 확인하지 않음 — Vercel 함수(미국)에서 한국 PC 까지 Funnel 왕복이
+ * 몇 초씩 걸려 켜져 있어도 "꺼져 있음"으로 나왔음(2026-11-14). 브라우저가 가까운 Funnel 로 직접 붙어 보고
+ * 안 되면 "게임 서버가 꺼져 있어요"를 띄움 (client/net.ts).
  */
-async function serverUp(): Promise<boolean> {
-  const ws = process.env.NEXT_PUBLIC_RPG_WS_URL?.trim();
-  if (!ws || process.env.NODE_ENV === "development") return true;
-  try {
-    const r = await fetch(ws.replace(/^ws/, "http"), { cache: "no-store", signal: AbortSignal.timeout(5000) });
-    return r.ok;
-  } catch {
-    return false;
-  }
-}
-
-/** 러크 RPG (RUC_RPG/RUC_RPG_PROMPT.md). 디스코드 로그인 필수 (§1). */
 export default async function Page({ searchParams }: { searchParams: Promise<{ dev?: string }> }) {
   const open = rpgOpen();
   const session = await getSession();
   const dev = process.env.NODE_ENV === "development" ? (await searchParams).dev : undefined;
-  const up = open && (session || dev) ? await serverUp() : true;
-  if (open && (session || dev) && up) return <RpgGame dev={dev} />;
-  if (open && !up)
-    return (
-      <main className="flex min-h-screen items-center justify-center px-4">
-        <div className="glass-strong w-full max-w-md rounded-2xl p-8 text-center">
-          <p className="eyebrow mb-3">RUC CHRONICLE · BETA</p>
-          <h1 className="headline text-3xl">게임 서버가 꺼져 있어요</h1>
-          <p className="mt-4 text-[13px] leading-relaxed text-white/75">
-            러크 RPG 베타 서버는 운영자의 PC 가 켜져 있을 때만 열립니다.
-            <br />
-            잠시 뒤에 다시 와 주세요!
-          </p>
-          <a href="/rpg" className="mt-7 inline-block rounded-lg bg-ruc-400 px-6 py-3 text-sm font-bold text-ruc-900 transition-colors hover:bg-ruc-300">다시 확인</a>
-          <p className="mt-4">
-            <Link href="/home" className="text-[12px] text-white/50 underline">홈으로</Link>
-          </p>
-        </div>
-      </main>
-    );
+  if (open && (session || dev)) return <RpgGame dev={dev} />;
 
   return (
     <main className="flex min-h-screen items-center justify-center px-4">

@@ -29,7 +29,7 @@ export class Net {
     this.ws = ws;
     await new Promise<void>((ok, fail) => {
       ws.onopen = () => ok();
-      ws.onerror = () => fail(new Error("게임 서버에 연결하지 못했습니다"));
+      ws.onerror = () => fail(new Error("게임 서버가 꺼져 있어요 — 러크 RPG 베타 서버는 운영자의 PC 가 켜져 있을 때만 열립니다. 잠시 뒤에 다시 와 주세요!"));
     });
     ws.onmessage = (e) => {
       if (typeof e.data !== "string") {
