@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "skillCount": 164,
+  "effectCount": 61,
+  "elementCount": 12,
+  "lineCount": 6,
+  "jobCount": 30,
+  "statIcons": [
+    "heart",
+    "foot",
+    "drop",
+    "flame",
+    "sword",
+    "star",
+    "bolt",
+    "wing",
+    "shield",
+    "ring",
+    "sparkle",
+    "heartPlus",
+    "clock",
+    "clover"
+  ],
+  "uiModels": 9,
+  "gearIcons": [
+    "bow",
+    "cape",
+    "dagger",
+    "earring",
+    "gloves",
+    "necklace",
+    "ring",
+    "staff",
+    "wand"
+  ],
+  "canonicalGearTemplates": {
+    "bow": "ancient_bow",
+    "cape": "dusk_cape",
+    "dagger": "dusk_dagger",
+    "earring": "fang_earring",
+    "gloves": "dusk_gloves",
+    "necklace": "rabbit_charm",
+    "ring": "copper_ring",
+    "staff": "ancient_staff",
+    "wand": "dusk_wand"
+  },
+  "nonGearItems": 198,
+  "enchantsSkipped": 8,
+  "modelsGenerated": 548,
+  "notes": [
+    "Job icon backgrounds use the line color; magic/hybrid variants use their existing kind distinction because Job has no own color field.",
+    "Gear icon+rarity keys can represent several templates; the alphabetically first template is the canonical web itemIcon source."
+  ]
+}

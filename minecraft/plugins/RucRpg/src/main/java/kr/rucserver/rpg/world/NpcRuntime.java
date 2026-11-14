@@ -91,6 +91,8 @@ public final class NpcRuntime implements Listener {
             case "sera" -> plugin.menus().job(p);
             case "owen" -> plugin.menus().skills(p);
             case "lumi" -> plugin.menus().main(p);
+            case "volt" -> plugin.econGui().smith(p);
+            case "pip" -> plugin.core().getMailbox().open(p, 0);
             default -> {}   // 볼트(강화 M5) · 미르(제조 M8) · 핍(우편: RucCore /우편함) · 다리오(던전 M7)
         }
     }

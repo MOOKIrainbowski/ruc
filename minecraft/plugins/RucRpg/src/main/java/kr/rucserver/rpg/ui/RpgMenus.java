@@ -71,6 +71,9 @@ public final class RpgMenus {
         g.set(12, Gui.button("전직", canAdvance, List.of(Gui.gray(canAdvance ? "지금 전직할 수 있습니다!" : "Lv10 1차 · Lv30 2차 · Lv60 각성"))), (pl, t) -> job(pl));
         g.set(13, Gui.button("장비 (V)", false, List.of(Gui.gray("장갑 · 망토 · 장신구 칸"), Gui.gray("방어구 · 무기는 바닐라 칸 그대로"))), (pl, t) -> plugin.equipMenu().open(pl));
         g.set(14, Gui.button("퀘스트 (J)", false, List.of(Gui.gray("준비 중 (M6)"))), null);
+        g.set(19, Gui.button("창고 (B)", false, List.of(Gui.gray("광장에서만"))), (pl, t) -> plugin.econGui().storage(pl));
+        g.set(20, Gui.button("대장간", false, List.of(Gui.gray("강화 · 마법부여 · 수리 · 분해 · 재조합"), Gui.gray("광장 강화대 · 볼트에게서도"))), (pl, t) -> plugin.econGui().smith(pl));
+        g.set(21, Gui.button("우편함", false, List.of(Gui.gray("러크 우편함 (기존)"))), (pl, t) -> plugin.core().getMailbox().open(pl, 0));
         g.set(15, Gui.button("파티 (P)", false, List.of(Gui.gray("준비 중 (M7)"))), null);
         g.set(16, Gui.button("지도 (M)", false, List.of(Gui.gray("준비 중 (M9)"))), null);
         g.set(22, Gui.button("조작법", false, List.of(

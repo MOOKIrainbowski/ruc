@@ -3386,7 +3386,15 @@
         0.04,
         0.08
       ],
-      "desc": "최대 체력 +{v}%"
+      "desc": "최대 체력 +{v}%",
+      "mods": [
+        {
+          "k": "hp",
+          "op": "mul",
+          "c": 1,
+          "v": true
+        }
+      ]
     },
     "swift": {
       "name": "바람결",
@@ -3398,7 +3406,15 @@
         0.03,
         0.06
       ],
-      "desc": "이동 속도 +{v}%"
+      "desc": "이동 속도 +{v}%",
+      "mods": [
+        {
+          "k": "moveSpeed",
+          "op": "mul",
+          "c": 1,
+          "v": true
+        }
+      ]
     },
     "vamp": {
       "name": "흡혈",
@@ -3410,7 +3426,15 @@
         0.02,
         0.04
       ],
-      "desc": "흡혈 +{v}%"
+      "desc": "흡혈 +{v}%",
+      "mods": [
+        {
+          "k": "lifesteal",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
+      ]
     },
     "fortune": {
       "name": "행운",
@@ -3421,7 +3445,15 @@
         2,
         4
       ],
-      "desc": "운 +{v}"
+      "desc": "운 +{v}",
+      "mods": [
+        {
+          "k": "luck",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
+      ]
     }
   },
   "ENCHANTS": {
@@ -3430,6 +3462,14 @@
       "range": [
         2,
         4
+      ],
+      "mods": [
+        {
+          "k": "atk",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     },
     "ap": {
@@ -3437,6 +3477,14 @@
       "range": [
         2,
         4
+      ],
+      "mods": [
+        {
+          "k": "ap",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     },
     "def": {
@@ -3444,6 +3492,20 @@
       "range": [
         2,
         4
+      ],
+      "mods": [
+        {
+          "k": "pdef",
+          "op": "add",
+          "c": 1,
+          "v": true
+        },
+        {
+          "k": "mdef",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     },
     "hp": {
@@ -3451,6 +3513,14 @@
       "range": [
         15,
         30
+      ],
+      "mods": [
+        {
+          "k": "hp",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     },
     "speed": {
@@ -3458,6 +3528,14 @@
       "range": [
         2,
         4
+      ],
+      "mods": [
+        {
+          "k": "moveSpeed",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     },
     "crit": {
@@ -3465,6 +3543,14 @@
       "range": [
         0.01,
         0.02
+      ],
+      "mods": [
+        {
+          "k": "crit",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     },
     "eldef": {
@@ -3472,6 +3558,14 @@
       "range": [
         5,
         10
+      ],
+      "mods": [
+        {
+          "k": "elDef",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     },
     "vamp": {
@@ -3479,6 +3573,14 @@
       "range": [
         0.01,
         0.02
+      ],
+      "mods": [
+        {
+          "k": "lifesteal",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     }
   },
@@ -3531,5 +3633,406 @@
       "gem": "#8fd0ff",
       "desc": "들고 있으면 머리카락이 곤두선다."
     }
-  ]
+  ],
+  "EQUIP_SLOTS": [
+    "helmet",
+    "chest",
+    "legs",
+    "boots",
+    "gloves",
+    "cape",
+    "weapon",
+    "offhand",
+    "ring1",
+    "ring2",
+    "necklace",
+    "earring",
+    "watch",
+    "doll",
+    "costumeTop",
+    "costumeBottom",
+    "hair"
+  ],
+  "EQUIP_NAME": {
+    "helmet": "투구",
+    "chest": "흉갑",
+    "legs": "바지",
+    "boots": "신발",
+    "gloves": "장갑",
+    "cape": "망토",
+    "weapon": "무기",
+    "offhand": "보조무기",
+    "ring1": "반지",
+    "ring2": "반지",
+    "necklace": "목걸이",
+    "earring": "귀걸이",
+    "watch": "시계",
+    "doll": "인형",
+    "costumeTop": "코스튬 상의",
+    "costumeBottom": "코스튬 하의",
+    "hair": "헤어"
+  },
+  "LOCS": {
+    "inventory": 27,
+    "hotbar": 5,
+    "equipped": 17,
+    "storage": 108
+  },
+  "STORAGE": {
+    "base": 54,
+    "tab": 27,
+    "maxTabs": 2
+  },
+  "STACK": 64,
+  "STACKING_RULES": {
+    "max": 64,
+    "stackableKinds": [
+      "potion",
+      "material",
+      "book"
+    ],
+    "consumableWhen": "use.food is present"
+  },
+  "POTION_CD_MS": 8000,
+  "SPECIAL_TIER": {
+    "advanced": 1,
+    "mythic": 1.5,
+    "legendary": 2.2
+  },
+  "BOX_POOL": [
+    {
+      "tpl": "old_dagger",
+      "w": 3
+    },
+    {
+      "tpl": "wood_sword",
+      "w": 3
+    },
+    {
+      "tpl": "apprentice_staff",
+      "w": 3
+    },
+    {
+      "tpl": "hunter_bow",
+      "w": 3
+    },
+    {
+      "tpl": "goblin_axe",
+      "w": 3
+    },
+    {
+      "tpl": "fang_sword",
+      "w": 3
+    },
+    {
+      "tpl": "vine_wand",
+      "w": 3
+    },
+    {
+      "tpl": "leather_cap",
+      "w": 3
+    },
+    {
+      "tpl": "leather_vest",
+      "w": 3
+    },
+    {
+      "tpl": "leather_pants",
+      "w": 3
+    },
+    {
+      "tpl": "leather_boots",
+      "w": 3
+    },
+    {
+      "tpl": "leather_gloves",
+      "w": 3
+    },
+    {
+      "tpl": "meadow_cape",
+      "w": 3
+    },
+    {
+      "tpl": "copper_ring",
+      "w": 3
+    },
+    {
+      "tpl": "rabbit_charm",
+      "w": 3
+    },
+    {
+      "tpl": "enhance_stone",
+      "w": 10,
+      "qty": 3
+    },
+    {
+      "tpl": "protect_scroll",
+      "w": 4
+    },
+    {
+      "tpl": "blessed_stone",
+      "w": 2
+    },
+    {
+      "tpl": "ench_atk",
+      "w": 2
+    },
+    {
+      "tpl": "ench_ap",
+      "w": 2
+    },
+    {
+      "tpl": "ench_def",
+      "w": 2
+    },
+    {
+      "tpl": "ench_hp",
+      "w": 2
+    },
+    {
+      "tpl": "ench_speed",
+      "w": 2
+    },
+    {
+      "tpl": "ench_crit",
+      "w": 2
+    },
+    {
+      "tpl": "hp_potion_m",
+      "w": 6,
+      "qty": 5
+    },
+    {
+      "tpl": "mp_potion_m",
+      "w": 4,
+      "qty": 5
+    },
+    {
+      "tpl": "en_potion_m",
+      "w": 4,
+      "qty": 5
+    },
+    {
+      "tpl": "revive_feather",
+      "w": 2
+    },
+    {
+      "tpl": "meadow_bread",
+      "w": 8,
+      "qty": 4
+    },
+    {
+      "tpl": "sun_apple",
+      "w": 7,
+      "qty": 4
+    },
+    {
+      "tpl": "roast_skewer",
+      "w": 5,
+      "qty": 3
+    },
+    {
+      "tpl": "river_trout",
+      "w": 4,
+      "qty": 3
+    },
+    {
+      "tpl": "root_soup",
+      "w": 3,
+      "qty": 2
+    },
+    {
+      "tpl": "berry_pie",
+      "w": 3,
+      "qty": 2
+    },
+    {
+      "tpl": "honey_tteok",
+      "w": 2,
+      "qty": 2
+    },
+    {
+      "tpl": "feast_bento",
+      "w": 1,
+      "qty": 1
+    }
+  ],
+  "BOOK_IDS": [
+    "book_magic_arrow",
+    "book_dash_slash",
+    "book_first_aid",
+    "book_shield_bash",
+    "book_taunt_shout",
+    "book_iron_wall",
+    "book_earth_split",
+    "book_counter_stance",
+    "book_fortress",
+    "book_shield_throw",
+    "book_guardian_rush",
+    "book_sanctuary_wall",
+    "book_kings_guard",
+    "book_double_slash",
+    "book_lunge",
+    "book_battle_cry",
+    "book_whirlwind",
+    "book_crushing_blow",
+    "book_sword_storm",
+    "book_knight_strike",
+    "book_parry",
+    "book_knight_charge",
+    "book_commander",
+    "book_shuriken",
+    "book_backstab",
+    "book_smoke",
+    "book_shadow_strike",
+    "book_poison_blade",
+    "book_thousand_blades",
+    "book_triple_shuriken",
+    "book_shunpo",
+    "book_leaf_cut",
+    "book_shadow_execute",
+    "book_element_bolt",
+    "book_arcane_burst",
+    "book_mage_blink",
+    "book_element_nova",
+    "book_bind",
+    "book_meteor",
+    "book_sub_bolt",
+    "book_element_shield",
+    "book_dual_storm",
+    "book_cataclysm",
+    "book_quick_shot",
+    "book_multishot",
+    "book_disengage",
+    "book_piercing_arrow",
+    "book_arrow_rain",
+    "book_storm_arrow",
+    "book_aimed_shot",
+    "book_roll_shot",
+    "book_snare_arrow",
+    "book_hawk_eye",
+    "book_heal_light",
+    "book_holy_bolt",
+    "book_swift_blessing",
+    "book_prayer_shield",
+    "book_purify_wave",
+    "book_sanctuary",
+    "book_healing_breath",
+    "book_guardian_angel",
+    "book_radiance",
+    "book_resurrection",
+    "book_blood_cleave",
+    "book_reckless_leap",
+    "book_bloodlust_howl",
+    "book_undying_rage",
+    "book_stone_spike",
+    "book_earth_bulwark",
+    "book_quake",
+    "book_iron_domain",
+    "book_holy_strike",
+    "book_dawn_rush",
+    "book_consecration",
+    "book_aegis_of_dawn",
+    "book_rune_slash",
+    "book_blink_strike",
+    "book_arcane_edge",
+    "book_storm_blade",
+    "book_pommel_strike",
+    "book_sidestep",
+    "book_challenge",
+    "book_champions_duel",
+    "book_piercing_thrust",
+    "book_pole_vault",
+    "book_spear_sweep",
+    "book_dragon_lance",
+    "book_flurry",
+    "book_step_kick",
+    "book_palm_wave",
+    "book_hundred_fists",
+    "book_shadow_bolt",
+    "book_night_veil",
+    "book_dusk_blade",
+    "book_eclipse_reaper",
+    "book_mirage_slash",
+    "book_shade_swap",
+    "book_phantom_blades",
+    "book_thousand_shades",
+    "book_scout_dart",
+    "book_sprint",
+    "book_flare",
+    "book_ambush",
+    "book_arcane_missile",
+    "book_phase_shift",
+    "book_mana_orb",
+    "book_arcane_cataclysm",
+    "book_summon_spirit",
+    "book_spirit_swap",
+    "book_summon_golem",
+    "book_grand_pact",
+    "book_hex_bolt",
+    "book_dark_pact",
+    "book_curse_field",
+    "book_soul_drain",
+    "book_acid_flask",
+    "book_smoke_bomb",
+    "book_healing_mist",
+    "book_great_reaction",
+    "book_mind_spike",
+    "book_mirror_step",
+    "book_enthrall",
+    "book_dreamscape",
+    "book_holy_light",
+    "book_purify",
+    "book_judgment",
+    "book_sanctum_ray",
+    "book_precise_shot",
+    "book_tumble_back",
+    "book_piercing_round",
+    "book_deadeye",
+    "book_marked_shot",
+    "book_bear_trap",
+    "book_call_wolf",
+    "book_beast_volley",
+    "book_dagger_fan",
+    "book_caltrops",
+    "book_bomb",
+    "book_cluster_bomb",
+    "book_arcane_arrow",
+    "book_arrow_blink",
+    "book_prism_shot",
+    "book_starfall_arrow",
+    "book_song_of_valor",
+    "book_song_of_haste",
+    "book_dissonance",
+    "book_grand_symphony",
+    "book_deploy_turret",
+    "book_rocket_jump",
+    "book_mend_bot",
+    "book_overclock",
+    "book_spirit_totem",
+    "book_hex",
+    "book_cleansing_wave",
+    "book_storm_totem",
+    "book_spirit_link",
+    "book_wisp_guard",
+    "book_spirit_burst",
+    "book_spirit_ascension"
+  ],
+  "GATHER": {
+    "herb": {
+      "item": "herb",
+      "respawnMs": 45000,
+      "w": 5
+    },
+    "blue_herb": {
+      "item": "blue_herb",
+      "respawnMs": 45000,
+      "w": 3
+    },
+    "ore": {
+      "item": "ore",
+      "respawnMs": 60000,
+      "w": 2
+    }
+  }
 }

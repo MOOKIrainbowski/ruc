@@ -346,7 +346,12 @@ public class ItemService {
         JsonObject def = enchants.has(k) ? enchants.getAsJsonObject(k) : null;
         if (def != null && def.has("mods")) linearMods(def, v, el, out);
         else if (el != null) out.add(Formulas.Mod.elDef(el, v));
-        else out.add(Formulas.Mod.add(k, v));   // export 전: 종류 이름이 곧 스탯 키인 경우
+        else switch (k) {   // export 전 대체 (web ENCHANTS mods 와 같은 뜻)
+            case "def" -> { out.add(Formulas.Mod.add("pdef", v)); out.add(Formulas.Mod.add("mdef", v)); }
+            case "speed" -> out.add(Formulas.Mod.add("moveSpeed", v));
+            case "vamp" -> out.add(Formulas.Mod.add("lifesteal", v));
+            default -> out.add(Formulas.Mod.add(k, v));   // atk · ap · hp · crit
+        }
     }
 
     /** export 된 선형 mods 스펙 { k, op, c, v, el? } — 값 = c × (v ? 인자 : 1) */

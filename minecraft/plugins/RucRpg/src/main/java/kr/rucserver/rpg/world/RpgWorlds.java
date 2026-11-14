@@ -45,6 +45,10 @@ public final class RpgWorlds implements Listener {
     private final Map<String, World> worlds = new HashMap<>();
     private final List<Portal> portals = new ArrayList<>();
     private final Map<UUID, Long> portalCd = new HashMap<>();
+    /** 우클릭하면 창이 열리는 곳 (블록 좌표 상자) */
+    public record Spot(String world, int x0, int z0, int x1, int z1, String kind) {}
+    private final List<Spot> spots = new ArrayList<>();
+
     /** NPC 자리 (맵 kind → 목록) — NpcRuntime 이 씀 */
     public final Map<String, List<RpgMap.Obj>> npcs = new HashMap<>();
 
@@ -115,9 +119,22 @@ public final class RpgWorlds implements Listener {
                             Double.parseDouble(o.prop("ax") == null ? "0" : o.prop("ax")), Double.parseDouble(o.prop("ay") == null ? "0" : o.prop("ay"))));
                 }
                 case "npc" -> npcs.computeIfAbsent(kind, k -> new ArrayList<>()).add(o);
+                case "anvil", "tent_shop", "tent_market", "mailbox", "workbench" -> spot(w, o, o.type());
+                case "building" -> { if ("storage".equals(o.prop("role"))) spot(w, o, "storage"); }
                 default -> {}
             }
         }
+    }
+
+    private void spot(World w, RpgMap.Obj o, String kind) {
+        spots.add(new Spot(w.getName(), (int) Math.floor(o.x() / 8) - 1, (int) Math.floor(o.y() / 8) - 1, (int) Math.ceil((o.x() + o.w()) / 8) + 1, (int) Math.ceil((o.y() + o.h()) / 8) + 1, kind));
+    }
+
+    /** 이 블록을 우클릭하면 열릴 창 종류 (없으면 null) */
+    public String spotAt(org.bukkit.block.Block b) {
+        for (Spot s : spots)
+            if (s.world().equals(b.getWorld().getName()) && b.getX() >= s.x0() && b.getX() <= s.x1() && b.getZ() >= s.z0() && b.getZ() <= s.z1()) return s.kind();
+        return null;
     }
 
     /** /rpgadmin build <맵> */

@@ -21,6 +21,7 @@
       "key": "ruc:hud_key",
       "minimap": "ruc:hud_minimap",
       "stats_bg": "ruc:hud_stats_bg",
+      "gui_bg": "ruc:gui",
       "effect_num": "ruc:hud_effect_num",
       "orb_num": "ruc:hud_orb_num"
     },
@@ -11300,9 +11301,33 @@
       "width": 98,
       "height": 84
     },
+    "gui.bg.27": {
+      "font": "ruc:gui",
+      "char": "",
+      "advance": 177,
+      "inkWidth": 176,
+      "width": 176,
+      "height": 166
+    },
+    "gui.bg.54": {
+      "font": "ruc:gui",
+      "char": "",
+      "advance": 177,
+      "inkWidth": 176,
+      "width": 176,
+      "height": 222
+    },
+    "gui.title": {
+      "font": "ruc:gui",
+      "char": "",
+      "advance": 97,
+      "inkWidth": 96,
+      "width": 96,
+      "height": 16
+    },
     "num.small.0": {
       "font": "ruc:hud_effect_num",
-      "char": "",
+      "char": "",
       "advance": 4,
       "inkWidth": 3,
       "width": 3,
@@ -11310,7 +11335,7 @@
     },
     "num.orb.0": {
       "font": "ruc:hud_orb_num",
-      "char": "",
+      "char": "",
       "advance": 5,
       "inkWidth": 4,
       "width": 5,
@@ -11318,7 +11343,7 @@
     },
     "num.small.1": {
       "font": "ruc:hud_effect_num",
-      "char": "",
+      "char": "",
       "advance": 4,
       "inkWidth": 3,
       "width": 3,
@@ -11326,7 +11351,7 @@
     },
     "num.orb.1": {
       "font": "ruc:hud_orb_num",
-      "char": "",
+      "char": "",
       "advance": 5,
       "inkWidth": 4,
       "width": 5,
@@ -11334,7 +11359,7 @@
     },
     "num.small.2": {
       "font": "ruc:hud_effect_num",
-      "char": "",
+      "char": "",
       "advance": 4,
       "inkWidth": 3,
       "width": 3,
@@ -11342,7 +11367,7 @@
     },
     "num.orb.2": {
       "font": "ruc:hud_orb_num",
-      "char": "",
+      "char": "",
       "advance": 5,
       "inkWidth": 4,
       "width": 5,
@@ -11350,7 +11375,7 @@
     },
     "num.small.3": {
       "font": "ruc:hud_effect_num",
-      "char": "",
+      "char": "",
       "advance": 4,
       "inkWidth": 3,
       "width": 3,
@@ -11358,7 +11383,7 @@
     },
     "num.orb.3": {
       "font": "ruc:hud_orb_num",
-      "char": "",
+      "char": "",
       "advance": 5,
       "inkWidth": 4,
       "width": 5,
@@ -11366,7 +11391,7 @@
     },
     "num.small.4": {
       "font": "ruc:hud_effect_num",
-      "char": "",
+      "char": "",
       "advance": 4,
       "inkWidth": 3,
       "width": 3,
@@ -11374,7 +11399,7 @@
     },
     "num.orb.4": {
       "font": "ruc:hud_orb_num",
-      "char": "",
+      "char": "",
       "advance": 5,
       "inkWidth": 4,
       "width": 5,
@@ -11382,7 +11407,7 @@
     },
     "num.small.5": {
       "font": "ruc:hud_effect_num",
-      "char": "",
+      "char": "",
       "advance": 4,
       "inkWidth": 3,
       "width": 3,
@@ -11390,7 +11415,7 @@
     },
     "num.orb.5": {
       "font": "ruc:hud_orb_num",
-      "char": "",
+      "char": "",
       "advance": 5,
       "inkWidth": 4,
       "width": 5,
@@ -11398,7 +11423,7 @@
     },
     "num.small.6": {
       "font": "ruc:hud_effect_num",
-      "char": "",
+      "char": "",
       "advance": 4,
       "inkWidth": 3,
       "width": 3,
@@ -11406,7 +11431,7 @@
     },
     "num.orb.6": {
       "font": "ruc:hud_orb_num",
-      "char": "",
+      "char": "",
       "advance": 5,
       "inkWidth": 4,
       "width": 5,
@@ -11414,7 +11439,7 @@
     },
     "num.small.7": {
       "font": "ruc:hud_effect_num",
-      "char": "",
+      "char": "",
       "advance": 4,
       "inkWidth": 3,
       "width": 3,
@@ -11422,7 +11447,7 @@
     },
     "num.orb.7": {
       "font": "ruc:hud_orb_num",
-      "char": "",
+      "char": "",
       "advance": 5,
       "inkWidth": 4,
       "width": 5,
@@ -11430,7 +11455,7 @@
     },
     "num.small.8": {
       "font": "ruc:hud_effect_num",
-      "char": "",
+      "char": "",
       "advance": 4,
       "inkWidth": 3,
       "width": 3,
@@ -11438,7 +11463,7 @@
     },
     "num.orb.8": {
       "font": "ruc:hud_orb_num",
-      "char": "",
+      "char": "",
       "advance": 5,
       "inkWidth": 4,
       "width": 5,
@@ -11446,7 +11471,7 @@
     },
     "num.small.9": {
       "font": "ruc:hud_effect_num",
-      "char": "",
+      "char": "",
       "advance": 4,
       "inkWidth": 3,
       "width": 3,
@@ -11454,7 +11479,7 @@
     },
     "num.orb.9": {
       "font": "ruc:hud_orb_num",
-      "char": "",
+      "char": "",
       "advance": 5,
       "inkWidth": 4,
       "width": 5,
@@ -11462,160 +11487,160 @@
     }
   },
   "spaces": {
-    "-1": "",
-    "+1": "",
-    "-2": "",
-    "+2": "",
-    "-4": "",
-    "+4": "",
-    "-8": "",
-    "+8": "",
-    "-16": "",
-    "+16": "",
-    "-32": "",
-    "+32": "",
-    "-64": "",
-    "+64": "",
-    "-128": "",
-    "+128": "",
-    "-256": "",
-    "+256": "",
-    "-512": "",
-    "+512": "",
-    "-1024": "",
-    "+1024": ""
+    "-1": "",
+    "+1": "",
+    "-2": "",
+    "+2": "",
+    "-4": "",
+    "+4": "",
+    "-8": "",
+    "+8": "",
+    "-16": "",
+    "+16": "",
+    "-32": "",
+    "+32": "",
+    "-64": "",
+    "+64": "",
+    "-128": "",
+    "+128": "",
+    "-256": "",
+    "+256": "",
+    "-512": "",
+    "+512": "",
+    "-1024": "",
+    "+1024": ""
   },
   "spaceFont": "ruc:space",
   "spacing": {
     "-1": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": -1,
       "width": -1
     },
     "+1": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": 1,
       "width": 1
     },
     "-2": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": -2,
       "width": -2
     },
     "+2": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": 2,
       "width": 2
     },
     "-4": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": -4,
       "width": -4
     },
     "+4": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": 4,
       "width": 4
     },
     "-8": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": -8,
       "width": -8
     },
     "+8": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": 8,
       "width": 8
     },
     "-16": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": -16,
       "width": -16
     },
     "+16": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": 16,
       "width": 16
     },
     "-32": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": -32,
       "width": -32
     },
     "+32": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": 32,
       "width": 32
     },
     "-64": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": -64,
       "width": -64
     },
     "+64": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": 64,
       "width": 64
     },
     "-128": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": -128,
       "width": -128
     },
     "+128": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": 128,
       "width": 128
     },
     "-256": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": -256,
       "width": -256
     },
     "+256": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": 256,
       "width": 256
     },
     "-512": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": -512,
       "width": -512
     },
     "+512": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": 512,
       "width": 512
     },
     "-1024": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": -1024,
       "width": -1024
     },
     "+1024": {
       "font": "ruc:space",
-      "char": "",
+      "char": "",
       "advance": 1024,
       "width": 1024
     }
@@ -11979,5 +12004,89 @@
     "skillCount": 164,
     "effectCount": 61,
     "contextualOverlayCaveat": "Coordinates assume default/no contextual left-right GUI overlays; vanilla actionbar y shifts when those overlays occupy more height."
+  },
+  "gui": {
+    "font": "ruc:gui",
+    "coordinateOrigin": "container top-left GUI px",
+    "vanillaTitleDrawOrigin": {
+      "x": 8,
+      "y": 6
+    },
+    "backdrop": {
+      "27": {
+        "name": "gui.bg.27",
+        "width": 176,
+        "height": 166,
+        "advance": 177,
+        "ascent": 13,
+        "offset": {
+          "x": -8,
+          "y": 0
+        },
+        "titleOriginOffset": {
+          "x": -8,
+          "y": 0
+        },
+        "slotGrid": {
+          "x": 8,
+          "y": 18,
+          "columns": 9,
+          "rows": 3,
+          "pitch": 18
+        },
+        "playerInventoryRows": [
+          84,
+          102,
+          120,
+          138
+        ]
+      },
+      "54": {
+        "name": "gui.bg.54",
+        "width": 176,
+        "height": 222,
+        "advance": 177,
+        "ascent": 13,
+        "offset": {
+          "x": -8,
+          "y": 0
+        },
+        "titleOriginOffset": {
+          "x": -8,
+          "y": 0
+        },
+        "slotGrid": {
+          "x": 8,
+          "y": 18,
+          "columns": 9,
+          "rows": 6,
+          "pitch": 18
+        },
+        "playerInventoryRows": [
+          138,
+          156,
+          174,
+          192
+        ]
+      }
+    },
+    "titlePlate": {
+      "name": "gui.title",
+      "x": 40,
+      "y": 2,
+      "width": 96,
+      "height": 16,
+      "advance": 97,
+      "ascent": 13,
+      "anchor": "centered on 176px panel",
+      "fontBaselineOffsetY": 2
+    },
+    "renderSequence": {
+      "backdrop": "prepend space(-8), then gui.bg.<27|54>",
+      "restoreTitleCursor": "append spaces whose total is -(backdrop.advance-8), then vanilla title",
+      "titlePlate": "render gui.title at x=40 with y offset +2 relative to vanilla title baseline, then its caption",
+      "spaces": "compose non-power-of-two advances from hud-glyphs.json spacing entries"
+    },
+    "layering": "Backdrop interior is transparent; only thin frame and slot rules plus the title plaque are opaque/semitransparent. Verify on an actual container because title glyphs are rendered over slots."
   }
 }

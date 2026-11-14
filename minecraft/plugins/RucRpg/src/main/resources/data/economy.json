@@ -96,6 +96,14 @@
       "range": [
         2,
         4
+      ],
+      "mods": [
+        {
+          "k": "atk",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     },
     "ap": {
@@ -103,6 +111,14 @@
       "range": [
         2,
         4
+      ],
+      "mods": [
+        {
+          "k": "ap",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     },
     "def": {
@@ -110,6 +126,20 @@
       "range": [
         2,
         4
+      ],
+      "mods": [
+        {
+          "k": "pdef",
+          "op": "add",
+          "c": 1,
+          "v": true
+        },
+        {
+          "k": "mdef",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     },
     "hp": {
@@ -117,6 +147,14 @@
       "range": [
         15,
         30
+      ],
+      "mods": [
+        {
+          "k": "hp",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     },
     "speed": {
@@ -124,6 +162,14 @@
       "range": [
         2,
         4
+      ],
+      "mods": [
+        {
+          "k": "moveSpeed",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     },
     "crit": {
@@ -131,6 +177,14 @@
       "range": [
         0.01,
         0.02
+      ],
+      "mods": [
+        {
+          "k": "crit",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     },
     "eldef": {
@@ -138,6 +192,14 @@
       "range": [
         5,
         10
+      ],
+      "mods": [
+        {
+          "k": "elDef",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     },
     "vamp": {
@@ -145,6 +207,14 @@
       "range": [
         0.01,
         0.02
+      ],
+      "mods": [
+        {
+          "k": "lifesteal",
+          "op": "add",
+          "c": 1,
+          "v": true
+        }
       ]
     }
   },

@@ -43,6 +43,8 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.item.ItemService items;
     private kr.rucserver.rpg.item.ItemRuntime itemRuntime;
     private kr.rucserver.rpg.ui.EquipMenu equipMenu;
+    private kr.rucserver.rpg.econ.Economy economy;
+    private kr.rucserver.rpg.econ.EconGui econGui;
     private kr.rucserver.rpg.skill.SkillDefs skillDefs;
     private kr.rucserver.rpg.skill.Progression progression;
     private kr.rucserver.rpg.skill.SkillEngine skills;
@@ -136,6 +138,31 @@ public final class RucRpg extends JavaPlugin {
         getServer().getPluginManager().registerEvents(new kr.rucserver.rpg.ui.Gui.Events(this), this);
         getServer().getPluginManager().registerEvents(itemRuntime, this);
         equipMenu = new kr.rucserver.rpg.ui.EquipMenu(this);
+        try {
+            economy = new kr.rucserver.rpg.econ.Economy(this, items, core.getDatabase());
+            economy.createSchema();
+        } catch (Exception e) { getLogger().log(Level.SEVERE, "경제 테이블 만들기 실패", e); }
+        econGui = new kr.rucserver.rpg.econ.EconGui(this, economy, items);
+        getServer().getPluginManager().registerEvents(econGui, this);
+        getServer().getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            /** 광장 시설: 강화대 → 대장간 · 상점 천막 → 일반 상점 · 시장 천막 → 유저 상점(RucCore) · 창고 · 우편함(RucCore) */
+            @org.bukkit.event.EventHandler(priority = org.bukkit.event.EventPriority.HIGH)
+            public void onUse(org.bukkit.event.player.PlayerInteractEvent e) {
+                if (e.getHand() != org.bukkit.inventory.EquipmentSlot.HAND || e.getClickedBlock() == null || e.getAction() != org.bukkit.event.block.Action.RIGHT_CLICK_BLOCK) return;
+                String kind = worlds.spotAt(e.getClickedBlock());
+                if (kind == null || runtime.unit(e.getPlayer()) == null) return;
+                e.setCancelled(true);
+                Player p = e.getPlayer();
+                switch (kind) {
+                    case "anvil" -> econGui.smith(p);
+                    case "tent_shop" -> econGui.shop(p);
+                    case "tent_market" -> core.getShop().open(p, 0, false);
+                    case "storage" -> econGui.storage(p);
+                    case "mailbox" -> core.getMailbox().open(p, 0);
+                    default -> p.sendMessage(Component.text("제조(연금술)는 M8 에서 열립니다", NamedTextColor.GRAY));
+                }
+            }
+        }, this);
         // /reload 등으로 이미 접속한 사람이 있으면 다시 붙임
         for (Player p : Bukkit.getOnlinePlayers()) chars.onJoin(new org.bukkit.event.player.PlayerJoinEvent(p, (net.kyori.adventure.text.Component) null));
         getLogger().info("러크 RPG 켜짐 — 아이템 " + data.count("items.ITEMS") + " · 스킬 " + data.count("skills.SKILLS")
@@ -234,6 +261,8 @@ public final class RucRpg extends JavaPlugin {
     public kr.rucserver.rpg.world.RpgWorlds worlds() { return worlds; }
     public kr.rucserver.rpg.world.NpcRuntime npcs() { return npcs; }
     public kr.rucserver.rpg.ui.EquipMenu equipMenu() { return equipMenu; }
+    public kr.rucserver.rpg.econ.Economy economy() { return economy; }
+    public kr.rucserver.rpg.econ.EconGui econGui() { return econGui; }
     public kr.rucserver.rpg.skill.SkillEngine skills() { return skills; }
     public kr.rucserver.rpg.skill.Progression progression() { return progression; }
 
