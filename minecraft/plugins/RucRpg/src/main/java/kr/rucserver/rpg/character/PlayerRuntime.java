@@ -270,6 +270,7 @@ public final class PlayerRuntime implements Listener {
             u.ch.exp -= loss;
             if (loss > 0) u.player.sendMessage(Component.text("쓰러졌습니다 — 경험치 " + loss + " 를 잃었습니다.", NamedTextColor.RED));
         }
+        plugin.itemRuntime().deathWear(u);
         u.player.setHealth(0);
     }
 

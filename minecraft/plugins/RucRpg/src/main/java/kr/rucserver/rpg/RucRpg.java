@@ -39,6 +39,8 @@ public final class RucRpg extends JavaPlugin {
     private Hud hud;
     private kr.rucserver.rpg.ui.RpgMenus menus;
     private kr.rucserver.rpg.item.ItemService items;
+    private kr.rucserver.rpg.item.ItemRuntime itemRuntime;
+    private kr.rucserver.rpg.ui.EquipMenu equipMenu;
     private kr.rucserver.rpg.skill.SkillDefs skillDefs;
     private kr.rucserver.rpg.skill.Progression progression;
     private kr.rucserver.rpg.skill.SkillEngine skills;
@@ -67,7 +69,14 @@ public final class RucRpg extends JavaPlugin {
             projectiles = new kr.rucserver.rpg.world.Projectiles(this, world, combat);
             mobs = new kr.rucserver.rpg.mob.MobRuntime(this, world, combat, new kr.rucserver.rpg.mob.MobDefs(data, formulas), projectiles);
             world.onDamaged = (s, t, a, th, h) -> mobs.damaged(s, t, a, th);
-            items = new kr.rucserver.rpg.item.ItemService();
+            items = new kr.rucserver.rpg.item.ItemService(this);
+            kr.rucserver.rpg.item.EquipStore equipStore = new kr.rucserver.rpg.item.EquipStore(core.getDatabase());
+            equipStore.createSchema();
+            itemRuntime = new kr.rucserver.rpg.item.ItemRuntime(this, items, equipStore);
+            world.onStruck = (src, tgt, a, h) -> {
+                if (src instanceof kr.rucserver.rpg.character.PlayerUnit ps) itemRuntime.onDealt(ps, tgt, a, h);
+                if (tgt instanceof kr.rucserver.rpg.character.PlayerUnit pt) itemRuntime.onTaken(pt, src, a, h);
+            };
             skillDefs = new kr.rucserver.rpg.skill.SkillDefs(data, formulas);
             progression = new kr.rucserver.rpg.skill.Progression(data, skillDefs);
             skills = new kr.rucserver.rpg.skill.SkillEngine(this, world, combat, skillDefs, progression, projectiles);
@@ -93,6 +102,11 @@ public final class RucRpg extends JavaPlugin {
         chars.onLoaded(p -> {
             runtime.attach(p, chars.get(p));
             progression.sync(runtime.unit(p));   // 견습 스킬 · 레벨 따라 자동 습득
+            java.util.UUID id = p.getUniqueId();
+            getServer().getScheduler().runTaskAsynchronously(this, () -> {
+                try { itemRuntime.equip().load(id); } catch (Exception e) { getLogger().warning("장비 불러오기 실패: " + e.getMessage()); }
+                getServer().getScheduler().runTask(this, () -> { if (p.isOnline()) itemRuntime.refresh(p); });
+            });
         });
         getServer().getPluginManager().registerEvents(chars, this);
         getServer().getPluginManager().registerEvents(runtime, this);
@@ -102,6 +116,8 @@ public final class RucRpg extends JavaPlugin {
         kr.rucserver.rpg.ui.Gui.loadModels(getClassLoader());
         menus = new kr.rucserver.rpg.ui.RpgMenus(this);
         getServer().getPluginManager().registerEvents(new kr.rucserver.rpg.ui.Gui.Events(this), this);
+        getServer().getPluginManager().registerEvents(itemRuntime, this);
+        equipMenu = new kr.rucserver.rpg.ui.EquipMenu(this);
         // /reload 등으로 이미 접속한 사람이 있으면 다시 붙임
         for (Player p : Bukkit.getOnlinePlayers()) chars.onJoin(new org.bukkit.event.player.PlayerJoinEvent(p, (net.kyori.adventure.text.Component) null));
         getLogger().info("러크 RPG 켜짐 — 아이템 " + data.count("items.ITEMS") + " · 스킬 " + data.count("skills.SKILLS")
@@ -125,6 +141,16 @@ public final class RucRpg extends JavaPlugin {
                 try { n = Long.parseLong(args[2]); } catch (NumberFormatException ex) { return false; }
                 if (args[0].equalsIgnoreCase("exp")) runtime.gainExp(t, n); else runtime.setLevel(t, (int) n);
                 sender.sendMessage(Component.text(t.getName() + " → Lv." + chars.get(t).level + " (" + chars.get(t).exp + " exp)", NamedTextColor.GREEN));
+                return true;
+            }
+            if (args.length >= 3 && args[0].equalsIgnoreCase("give")) {
+                Player t = Bukkit.getPlayerExact(args[1]);
+                if (t == null || items.tpl(args[2]) == null) { sender.sendMessage(Component.text("사람 또는 아이템이 없습니다", NamedTextColor.RED)); return true; }
+                int qty = args.length >= 4 ? Integer.parseInt(args[3]) : 1;
+                String rar = args.length >= 5 ? args[4] : "common";
+                if (kr.rucserver.rpg.item.ItemService.stackable(items.tpl(args[2]))) itemRuntime.give(t, items.create(args[2], rar, qty));
+                else for (int i = 0; i < Math.min(qty, 36); i++) itemRuntime.give(t, items.create(args[2], rar, 1));
+                sender.sendMessage(Component.text(t.getName() + " ← " + args[2] + " ×" + qty + " " + rar, NamedTextColor.GREEN));
                 return true;
             }
             if (args.length >= 2 && args[0].equalsIgnoreCase("spawn") && sender instanceof Player p) {
@@ -169,9 +195,29 @@ public final class RucRpg extends JavaPlugin {
     public kr.rucserver.rpg.mob.MobRuntime mobs() { return mobs; }
     public Hud hud() { return hud; }
     public kr.rucserver.rpg.item.ItemService items() { return items; }
+    public kr.rucserver.rpg.item.ItemRuntime itemRuntime() { return itemRuntime; }
+    public kr.rucserver.rpg.ui.RpgMenus menus() { return menus; }
+    public kr.rucserver.rpg.ui.EquipMenu equipMenu() { return equipMenu; }
     public kr.rucserver.rpg.skill.SkillEngine skills() { return skills; }
     public kr.rucserver.rpg.skill.Progression progression() { return progression; }
 
-    /** 몹 처치 뒤 (드롭 · 퀘스트 · 파티 분배가 M4 · M6 · M7 에서 여기에 붙음) */
-    public void mobKilled(kr.rucserver.rpg.mob.MobUnit m, kr.rucserver.rpg.character.PlayerUnit by) {}
+    /** 몹 처치 뒤: 드롭 · 처치 발동 효과 (퀘스트 · 파티 분배는 M6 · M7 에서 여기에) */
+    public void mobKilled(kr.rucserver.rpg.mob.MobUnit m, kr.rucserver.rpg.character.PlayerUnit by) {
+        itemRuntime.mobDrops(m, by);
+        itemRuntime.onKill(by);
+    }
+
+    /** 광장 부활 · 귀환 위치 (M6 에서 광장을 지으면 config plaza.*) */
+    public org.bukkit.Location plazaSpawn(org.bukkit.World w) {
+        String world = getConfig().getString("plaza.world", null);
+        org.bukkit.World pw = world == null ? null : getServer().getWorld(world);
+        if (pw != null) return new org.bukkit.Location(pw, getConfig().getDouble("plaza.x"), getConfig().getDouble("plaza.y"), getConfig().getDouble("plaza.z"));
+        return w.getSpawnLocation();
+    }
+
+    /** 첫 캐릭터: 기본 장비 · 포션 · 음식 */
+    public void starterKit(Player p) {
+        for (String[] k : new String[][]{{"wood_sword", "1"}, {"apprentice_staff", "1"}, {"leather_vest", "1"}, {"hp_potion_s", "5"}, {"mp_potion_s", "3"}, {"meadow_bread", "3"}})
+            if (items.tpl(k[0]) != null) itemRuntime.give(p, items.create(k[0], "common", Integer.parseInt(k[1])));
+    }
 }

@@ -75,6 +75,8 @@ public final class MobRuntime implements Listener {
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
     }
 
+    public MobDefs defs() { return defs; }
+
     public MobUnit of(Entity e) { return e == null ? null : byEntity.get(e.getUniqueId()); }
     public int count() { return byEntity.size(); }
 

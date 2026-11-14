@@ -45,6 +45,12 @@ public final class RpgWorld implements World {
     public DamagedHook onDamaged = (s, t, a, th, h) -> {};
 
     public interface DamagedHook { void on(Unit src, Unit tgt, double amount, double threat, Combat.HitSpec h); }
+    /** 직접 타격 뒤 (장비 내구도 · 발동 효과) */
+    public StruckHook onStruck = (s, t, a, h) -> {};
+    public interface StruckHook { void on(Unit src, Unit tgt, double amount, Combat.HitSpec h); }
+
+    @Override
+    public void struck(Unit src, Unit tgt, double amount, Combat.HitSpec h) { onStruck.on(src, tgt, amount, h); }
 
     public RpgWorld(RucRpg plugin) { this.plugin = plugin; }
 

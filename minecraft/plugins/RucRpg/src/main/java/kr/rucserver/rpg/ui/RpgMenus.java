@@ -69,7 +69,7 @@ public final class RpgMenus {
         g.set(11, Gui.button("스탯", false, List.of(Gui.gray("모든 스탯 · 보조 스탯 · 속성 방어"))), (pl, t) -> stats(pl));
         boolean canAdvance = canAdvance(c);
         g.set(12, Gui.button("전직", canAdvance, List.of(Gui.gray(canAdvance ? "지금 전직할 수 있습니다!" : "Lv10 1차 · Lv30 2차 · Lv60 각성"))), (pl, t) -> job(pl));
-        g.set(13, Gui.button("인벤토리 · 장비 (V)", false, List.of(Gui.gray("준비 중 (M4)"))), null);
+        g.set(13, Gui.button("장비 (V)", false, List.of(Gui.gray("장갑 · 망토 · 장신구 칸"), Gui.gray("방어구 · 무기는 바닐라 칸 그대로"))), (pl, t) -> plugin.equipMenu().open(pl));
         g.set(14, Gui.button("퀘스트 (J)", false, List.of(Gui.gray("준비 중 (M6)"))), null);
         g.set(15, Gui.button("파티 (P)", false, List.of(Gui.gray("준비 중 (M7)"))), null);
         g.set(16, Gui.button("지도 (M)", false, List.of(Gui.gray("준비 중 (M9)"))), null);

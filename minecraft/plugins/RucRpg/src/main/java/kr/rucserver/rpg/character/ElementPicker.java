@@ -117,6 +117,7 @@ public final class ElementPicker implements Listener {
         h.done = true;
         p.closeInventory();
         plugin.chars().create(p, el);
+        plugin.starterKit(p);
         p.playSound(p.getLocation(), Sound.ENTITY_PLAYER_LEVELUP, 0.8f, 1.4f);
         p.sendMessage(Component.text("[러크 RPG] ", NamedTextColor.GOLD).append(Component.text(plainName(it) + "으로 모험을 시작합니다!", NamedTextColor.WHITE)));   // "… 속성" 뒤라 늘 "으로"
     }

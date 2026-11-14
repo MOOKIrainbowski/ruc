@@ -18,6 +18,8 @@ public final class PlayerUnit extends Unit {
     /** 스킬 쿨 (스킬 id → 다시 쓸 수 있는 시각 ms) · 경직 · 돌진 · 구르기 */
     public final java.util.Map<String, Long> cd = new java.util.HashMap<>();
     public long lockUntil, dashUntil, rollReady;
+    /** 장비 발동 효과 (특수효과 · 세트): id → 수치 */
+    public final java.util.Map<String, Double> procs = new java.util.HashMap<>();
     /** GM: 자원 무소모 */
     public boolean gmNoCost;
 

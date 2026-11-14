@@ -40,6 +40,11 @@ public final class Gui implements InventoryHolder {
 
     private final Inventory inv;
     private final Map<Integer, Click> clicks = new HashMap<>();
+    /** 아래(플레이어 인벤토리) 칸을 눌렀을 때 — 장비창에서 입을 장비 고르기 등. 칸 번호 = 플레이어 인벤토리 번호 */
+    public BottomClick onBottom;
+
+    public interface BottomClick { void on(Player p, int invSlot, ItemStack it); }
+
     /** 닫으면 열 창 (null = 그냥 닫힘) */
     public Runnable onBack;
     boolean switching;
@@ -113,7 +118,11 @@ public final class Gui implements InventoryHolder {
         public void onClick(InventoryClickEvent e) {
             if (!(e.getInventory().getHolder() instanceof Gui g)) return;
             e.setCancelled(true);
-            if (!(e.getWhoClicked() instanceof Player p) || e.getClickedInventory() != e.getInventory()) return;
+            if (!(e.getWhoClicked() instanceof Player p)) return;
+            if (e.getClickedInventory() != e.getInventory()) {
+                if (g.onBottom != null && e.getClickedInventory() == p.getInventory()) g.onBottom.on(p, e.getSlot(), e.getCurrentItem());
+                return;
+            }
             Click c = g.clicks.get(e.getRawSlot());
             if (c == null) return;
             p.playSound(p.getLocation(), Sound.UI_BUTTON_CLICK, 0.4f, 1.2f);

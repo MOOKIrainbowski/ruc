@@ -143,3 +143,10 @@
    - UI: `ruc:ui/button_wood`(갈색 나무 입체 버튼 — 사용자 지정, 바꾸지 말 것) · `ruc:ui/button_green`(선택) · `ruc:ui/tab` · `ruc:ui/tab_on` · `ruc:ui/close` · `ruc:ui/arrow_left/right` · `ruc:ui/blank`(투명 — 빈 칸 채움) · `ruc:ui/lock`
    - 결과 목록 `minecraft/plugins/RucRpg/src/main/resources/pack-models.json` (`["skill/magic_arrow", …]`) — Java 는 여기 있는 모델만 `item_model` 로 지정(없는 모델 = 보라 검정 방지).
 2. 창 배경: 상자 GUI 제목에 넣는 글꼴 글리프(웹 고급 UI = 금테 양피지 + 금박 제목 명판). 크기별 `gui.bg.27` · `gui.bg.54` · 제목 명판, 상자 칸 격자에 맞춘 칸 테두리. `hud-glyphs.json` 에 `gui` 묶음으로(advance · 바닐라 제목 위치 기준 오프셋).
+
+## Codex 작업 5 (작업 3 · 4 다음) — export 빠진 표 + 아이템 아이콘
+1. `items.json` 에 추가: `EQUIP_SLOTS` · `EQUIP_NAME` · `LOCS` · `STORAGE` · `STACK` · `POTION_CD_MS` · `SPECIAL_TIER` · `BOX_POOL` · `BOOK_IDS` · `GATHER`(있으면). `SPECIALS[*].mods` · `ENCHANTS[*].mods` 는 함수 → effects 와 같은 선형 스펙 `{k, op, c, v, el?}` 로(인자 (v, el) — el 은 속성 방어 부가석). `stackable` 규칙(함수)도 표로(`STACKABLE_KINDS` 등).
+2. 아이템 아이콘 모델: 웹 `itemIcon(tpl, rarity)` 그대로 64×64 →
+   - 장비(검 · 도끼 · 투구 · 흉갑 · 바지 · 신발 제외 — 사용자 결정 "기존 방어구만 사용" 이라 바닐라 모양): `ruc:item/<icon>_<rarity>` (단검 · 지팡이 · 활 · 완드 · 장갑 · 망토 · 반지 · 목걸이 · 귀걸이 …)
+   - 장비 아닌 것: `ruc:item/<tpl>` (포션 · 음식 · 재료 · 스킬북 · 소모품). **부가석(ench_*)은 만들지 말 것** — 바닐라 마법부여 책 모양(사용자 지정).
+   - `pack-models.json` 에 함께.
