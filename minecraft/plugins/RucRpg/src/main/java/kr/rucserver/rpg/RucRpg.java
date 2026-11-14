@@ -38,6 +38,8 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.mob.MobRuntime mobs;
     private Hud hud;
     private kr.rucserver.rpg.ui.RpgMenus menus;
+    private kr.rucserver.rpg.world.RpgWorlds worlds;
+    private kr.rucserver.rpg.world.NpcRuntime npcs;
     private kr.rucserver.rpg.item.ItemService items;
     private kr.rucserver.rpg.item.ItemRuntime itemRuntime;
     private kr.rucserver.rpg.ui.EquipMenu equipMenu;
@@ -115,6 +117,12 @@ public final class RucRpg extends JavaPlugin {
         getServer().getPluginManager().registerEvents(skills, this);
         kr.rucserver.rpg.ui.Gui.loadModels(getClassLoader());
         menus = new kr.rucserver.rpg.ui.RpgMenus(this);
+        worlds = new kr.rucserver.rpg.world.RpgWorlds(this);
+        safeZones.plaza = worlds::isPlaza;
+        npcs = new kr.rucserver.rpg.world.NpcRuntime(this);
+        getServer().getPluginManager().registerEvents(worlds, this);
+        getServer().getPluginManager().registerEvents(npcs, this);
+        getServer().getScheduler().runTaskLater(this, npcs::spawnAll, 40L);
         getServer().getPluginManager().registerEvents(new kr.rucserver.rpg.ui.Gui.Events(this), this);
         getServer().getPluginManager().registerEvents(itemRuntime, this);
         equipMenu = new kr.rucserver.rpg.ui.EquipMenu(this);
@@ -162,9 +170,25 @@ public final class RucRpg extends JavaPlugin {
                 sender.sendMessage(Component.text(args[1] + " Lv." + lv + " " + grade + " × " + ok, ok > 0 ? NamedTextColor.GREEN : NamedTextColor.RED));
                 return true;
             }
+            if (args.length >= 2 && args[0].equalsIgnoreCase("build")) {
+                String k = args[1];
+                long t0 = System.currentTimeMillis();
+                boolean ok = worlds.build(k, () -> {
+                    mobs.refill("rpg_" + k);
+                    npcs.spawnAll();
+                    sender.sendMessage(Component.text("맵 " + k + " 완성 (" + (System.currentTimeMillis() - t0) / 1000.0 + "초)", NamedTextColor.GREEN));
+                });
+                sender.sendMessage(Component.text(ok ? "맵 " + k + " 짓는 중…" : "없는 맵: " + k, ok ? NamedTextColor.YELLOW : NamedTextColor.RED));
+                return true;
+            }
+            if (args.length >= 2 && args[0].equalsIgnoreCase("goto") && sender instanceof Player p) {
+                worlds.go(p, args[1], 0, 0);
+                return true;
+            }
             if (args.length > 0 && args[0].equalsIgnoreCase("info")) {
                 sender.sendMessage(Component.text("러크 RPG " + getPluginMeta().getVersion() + " — 아이템 " + data.count("items.ITEMS")
-                        + " · 스킬 " + data.count("skills.SKILLS") + " · 몹 " + data.count("mobs.MOBS"), NamedTextColor.GOLD));
+                        + " · 스킬 " + data.count("skills.SKILLS") + " · 몹 " + data.count("mobs.MOBS") + " · 지금 몹 " + mobs.count()
+                        + " · 맵 " + String.join(",", kr.rucserver.rpg.world.RpgWorlds.KINDS.stream().filter(worlds::built).toList()), NamedTextColor.GOLD));
                 return true;
             }
             return false;
@@ -197,6 +221,8 @@ public final class RucRpg extends JavaPlugin {
     public kr.rucserver.rpg.item.ItemService items() { return items; }
     public kr.rucserver.rpg.item.ItemRuntime itemRuntime() { return itemRuntime; }
     public kr.rucserver.rpg.ui.RpgMenus menus() { return menus; }
+    public kr.rucserver.rpg.world.RpgWorlds worlds() { return worlds; }
+    public kr.rucserver.rpg.world.NpcRuntime npcs() { return npcs; }
     public kr.rucserver.rpg.ui.EquipMenu equipMenu() { return equipMenu; }
     public kr.rucserver.rpg.skill.SkillEngine skills() { return skills; }
     public kr.rucserver.rpg.skill.Progression progression() { return progression; }
@@ -212,7 +238,8 @@ public final class RucRpg extends JavaPlugin {
         String world = getConfig().getString("plaza.world", null);
         org.bukkit.World pw = world == null ? null : getServer().getWorld(world);
         if (pw != null) return new org.bukkit.Location(pw, getConfig().getDouble("plaza.x"), getConfig().getDouble("plaza.y"), getConfig().getDouble("plaza.z"));
-        return w.getSpawnLocation();
+        org.bukkit.Location s = worlds == null ? null : worlds.spawn("plaza");
+        return s != null ? s : w.getSpawnLocation();
     }
 
     /** 첫 캐릭터: 기본 장비 · 포션 · 음식 */

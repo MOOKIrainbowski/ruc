@@ -30,7 +30,11 @@ public final class SafeZones {
 
     private static double num(Object o) { return o instanceof Number n ? n.doubleValue() : Double.parseDouble(String.valueOf(o)); }
 
+    /** 광장 월드 전체 (RpgWorlds 가 채움) */
+    public java.util.function.Predicate<Location> plaza = l -> false;
+
     public boolean contains(Location l) {
+        if (plaza.test(l)) return true;
         for (Box b : boxes) if (b.has(l)) return true;
         return false;
     }

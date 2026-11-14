@@ -82,6 +82,13 @@ public final class MobRuntime implements Listener {
 
     public MobUnit.Zone addZone(MobUnit.Zone z) { zones.add(z); return z; }
 
+    /** 맵을 지은 뒤: 그 월드 구역을 다시 채움 */
+    public void refill(String world) {
+        long now = w.now();
+        for (MobUnit.Zone z : zones)
+            if (z.world.equals(world)) for (int i = z.alive + z.respawn.size(); i < z.count; i++) z.respawn.add(now + 500 + i * 200L);
+    }
+
     // ── 소환 ────────────────────────────────────────────────────────
 
     public MobUnit spawn(MobUnit.Zone z, org.bukkit.World world) {
@@ -175,13 +182,15 @@ public final class MobRuntime implements Listener {
 
     private void tick() {
         long now = w.now();
-        for (MobUnit.Zone z : zones) {   // 리젠
+        for (MobUnit.Zone z : zones) {   // 리젠 — 근처(구역 + 80블록)에 플레이어가 있을 때만 (안 그러면 청크가 내려가 몹이 바로 사라짐)
+            if (z.respawn.isEmpty()) continue;
+            org.bukkit.World world = Bukkit.getWorld(z.world);
+            if (world == null || !active(world, z)) continue;
             for (LongCursor it = new LongCursor(z.respawn); it.hasNext(); ) {
                 long at = it.next();
                 if (now >= at) {
                     it.remove();
-                    org.bukkit.World world = Bukkit.getWorld(z.world);
-                    if (world != null) spawn(z, world);
+                    if (spawn(z, world) == null) z.respawn.add(now + 5000);   // 자리가 없으면 나중에
                 }
             }
         }
@@ -190,13 +199,24 @@ public final class MobRuntime implements Listener {
                 if (now >= m.removeAt) despawn(m);
                 continue;
             }
-            if (m.body == null || !m.body.isValid()) { despawn(m); continue; }
+            if (m.body == null || !m.body.isValid()) {   // 청크가 내려가 사라짐 → 구역이 다시 채움
+                despawn(m);
+                m.zone.alive--;
+                if (m.zone.count > 0) m.zone.respawn.add(now + 1000);
+                continue;
+            }
             RpgWorld.place(m, m.body.getLocation());
             c.tickEffects(w, m);
             if (m.dead) continue;
             ai(m, now);
             updatePlate(m);
         }
+    }
+
+    private static boolean active(org.bukkit.World world, MobUnit.Zone z) {
+        double cx = z.x / RpgWorld.PX, cz = z.y / RpgWorld.PX, r = z.r / RpgWorld.PX + 80;
+        for (Player p : world.getPlayers()) if (Math.hypot(p.getLocation().getX() - cx, p.getLocation().getZ() - cz) <= r) return true;
+        return false;
     }
 
     /** 리스트 위에서 지우기 쉽게 */

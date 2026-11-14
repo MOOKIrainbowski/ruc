@@ -18,6 +18,10 @@ tasks.shadowJar {
     archiveClassifier.set("")
 }
 
+tasks.processResources {
+    from("../../../web/rpg/shared/data/maps") { into("maps") }
+}
+
 tasks.test {
     useJUnitPlatform()
 }

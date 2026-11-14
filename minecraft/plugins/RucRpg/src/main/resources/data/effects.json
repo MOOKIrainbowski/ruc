@@ -6,7 +6,16 @@
       "cat": "stat",
       "icon": "wing",
       "color": "#3FC8E8",
-      "desc": "이동 속도 +{v}%"
+      "desc": "이동 속도 +{v}%",
+      "mods": [
+        {
+          "k": "moveSpeed",
+          "op": "mul",
+          "c": 1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "atkspd": {
       "name": "공격속도 증가",
@@ -14,7 +23,16 @@
       "cat": "stat",
       "icon": "bolt",
       "color": "#F5C542",
-      "desc": "공격 속도 +{v}"
+      "desc": "공격 속도 +{v}",
+      "mods": [
+        {
+          "k": "atkSpeed",
+          "op": "add",
+          "c": 1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "regen_hp": {
       "name": "체력 회복",
@@ -80,7 +98,23 @@
       "cat": "stat",
       "icon": "sword",
       "color": "#E5484D",
-      "desc": "공격력 · 주문력 +{v}%"
+      "desc": "공격력 · 주문력 +{v}%",
+      "mods": [
+        {
+          "k": "atk",
+          "op": "mul",
+          "c": 1,
+          "v": true,
+          "s": false
+        },
+        {
+          "k": "ap",
+          "op": "mul",
+          "c": 1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "guard": {
       "name": "방어력 증가",
@@ -88,7 +122,23 @@
       "cat": "stat",
       "icon": "shield",
       "color": "#9AA3AD",
-      "desc": "물리 · 마법 방어력 +{v}"
+      "desc": "물리 · 마법 방어력 +{v}",
+      "mods": [
+        {
+          "k": "pdef",
+          "op": "add",
+          "c": 1,
+          "v": true,
+          "s": false
+        },
+        {
+          "k": "mdef",
+          "op": "add",
+          "c": 1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "critup": {
       "name": "치명타 강화",
@@ -96,7 +146,23 @@
       "cat": "stat",
       "icon": "star",
       "color": "#F2C94C",
-      "desc": "치명타 확률 · 피해 +{v}%"
+      "desc": "치명타 확률 · 피해 +{v}%",
+      "mods": [
+        {
+          "k": "crit",
+          "op": "add",
+          "c": 1,
+          "v": true,
+          "s": false
+        },
+        {
+          "k": "critDmg",
+          "op": "add",
+          "c": 1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "vamp": {
       "name": "흡혈",
@@ -104,7 +170,16 @@
       "cat": "stat",
       "icon": "fang",
       "color": "#E5484D",
-      "desc": "준 피해의 {v}% 만큼 회복"
+      "desc": "준 피해의 {v}% 만큼 회복",
+      "mods": [
+        {
+          "k": "lifesteal",
+          "op": "add",
+          "c": 1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "thorns": {
       "name": "가시",
@@ -128,7 +203,16 @@
       "cat": "stat",
       "icon": "fist",
       "color": "#FF8A1F",
-      "desc": "군중 제어 시간 −{v}%"
+      "desc": "군중 제어 시간 −{v}%",
+      "mods": [
+        {
+          "k": "tenacity",
+          "op": "add",
+          "c": 1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "unstoppable": {
       "name": "저지 불가",
@@ -152,7 +236,16 @@
       "cat": "stat",
       "icon": "shield",
       "color": "#B39DDB",
-      "desc": "받는 모든 피해 −{v}%"
+      "desc": "받는 모든 피해 −{v}%",
+      "mods": [
+        {
+          "k": "dmgDown",
+          "op": "add",
+          "c": 1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "invuln": {
       "name": "무적",
@@ -184,7 +277,16 @@
       "cat": "stat",
       "icon": "clover",
       "color": "#2ECC71",
-      "desc": "경험치 +{v}%, 운 +{v}"
+      "desc": "경험치 +{v}%, 운 +{v}",
+      "mods": [
+        {
+          "k": "luck",
+          "op": "add",
+          "c": 1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "imbue": {
       "name": "속성 부여",
@@ -216,7 +318,16 @@
       "cat": "stat",
       "icon": "ghost",
       "color": "#6B3FA0",
-      "desc": "전투 밖에서 이동 속도 +25%"
+      "desc": "전투 밖에서 이동 속도 +25%",
+      "mods": [
+        {
+          "k": "moveSpeed",
+          "op": "mul",
+          "c": 0.25,
+          "v": false,
+          "s": false
+        }
+      ]
     },
     "elixir_power": {
       "name": "용맹의 영약",
@@ -225,7 +336,23 @@
       "keep": true,
       "icon": "sword",
       "color": "#ff6b3d",
-      "desc": "공격력 · 주문력 +{v}%"
+      "desc": "공격력 · 주문력 +{v}%",
+      "mods": [
+        {
+          "k": "atk",
+          "op": "mul",
+          "c": 1,
+          "v": true,
+          "s": false
+        },
+        {
+          "k": "ap",
+          "op": "mul",
+          "c": 1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "elixir_luck": {
       "name": "행운의 영약",
@@ -234,7 +361,16 @@
       "keep": true,
       "icon": "clover",
       "color": "#2ECC71",
-      "desc": "경험치 +{v}% · 운 +10"
+      "desc": "경험치 +{v}% · 운 +10",
+      "mods": [
+        {
+          "k": "luck",
+          "op": "add",
+          "c": 10,
+          "v": false,
+          "s": false
+        }
+      ]
     },
     "elixir_iron": {
       "name": "강철의 영약",
@@ -243,7 +379,23 @@
       "keep": true,
       "icon": "shield",
       "color": "#9aa3ad",
-      "desc": "물리 · 마법 방어력 +{v}"
+      "desc": "물리 · 마법 방어력 +{v}",
+      "mods": [
+        {
+          "k": "pdef",
+          "op": "add",
+          "c": 1,
+          "v": true,
+          "s": false
+        },
+        {
+          "k": "mdef",
+          "op": "add",
+          "c": 1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "terr_bless": {
       "name": "영지의 가호",
@@ -251,7 +403,16 @@
       "cat": "stat",
       "icon": "crown",
       "color": "#F2C94C",
-      "desc": "내 길드 · 국가의 영지: 경험치 +10% · 이동 속도 +5%"
+      "desc": "내 길드 · 국가의 영지: 경험치 +10% · 이동 속도 +5%",
+      "mods": [
+        {
+          "k": "moveSpeed",
+          "op": "mul",
+          "c": 0.05,
+          "v": false,
+          "s": false
+        }
+      ]
     },
     "feather": {
       "name": "부활 깃털",
@@ -269,7 +430,23 @@
       "max": 10,
       "icon": "fang",
       "color": "#E5484D",
-      "desc": "잃은 HP 10%마다 흡혈 +2% · 공속 +3%"
+      "desc": "잃은 HP 10%마다 흡혈 +2% · 공속 +3%",
+      "mods": [
+        {
+          "k": "lifesteal",
+          "op": "add",
+          "c": 0.02,
+          "v": false,
+          "s": true
+        },
+        {
+          "k": "atkSpeed",
+          "op": "mul",
+          "c": 0.03,
+          "v": false,
+          "s": true
+        }
+      ]
     },
     "earth_root": {
       "name": "대지의 뿌리",
@@ -277,7 +454,23 @@
       "cat": "stat",
       "icon": "seed",
       "color": "#B08A5A",
-      "desc": "정지 중 방어 +20% · 넉백 면역"
+      "desc": "정지 중 방어 +20% · 넉백 면역",
+      "mods": [
+        {
+          "k": "pdef",
+          "op": "mul",
+          "c": 0.2,
+          "v": false,
+          "s": false
+        },
+        {
+          "k": "mdef",
+          "op": "mul",
+          "c": 0.2,
+          "v": false,
+          "s": false
+        }
+      ]
     },
     "melody": {
       "name": "선율",
@@ -285,7 +478,23 @@
       "cat": "stat",
       "icon": "wave",
       "color": "#FF7EB6",
-      "desc": "공격 속도 · 이동 속도 +{v}%"
+      "desc": "공격 속도 · 이동 속도 +{v}%",
+      "mods": [
+        {
+          "k": "atkSpeed",
+          "op": "mul",
+          "c": 1,
+          "v": true,
+          "s": false
+        },
+        {
+          "k": "moveSpeed",
+          "op": "mul",
+          "c": 1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "aim_focus": {
       "name": "집중",
@@ -302,7 +511,16 @@
       "cat": "softCC",
       "icon": "arrowDown",
       "color": "#3FC8E8",
-      "desc": "이동 속도 −{v}%"
+      "desc": "이동 속도 −{v}%",
+      "mods": [
+        {
+          "k": "moveSpeed",
+          "op": "mul",
+          "c": -1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "poison": {
       "name": "독",
@@ -330,7 +548,16 @@
       "tick": 1000,
       "icon": "flame",
       "color": "#FF5A36",
-      "desc": "초당 피해 · 받는 치유 −30%"
+      "desc": "초당 피해 · 받는 치유 −30%",
+      "mods": [
+        {
+          "k": "healTaken",
+          "op": "add",
+          "c": -0.3,
+          "v": false,
+          "s": false
+        }
+      ]
     },
     "airborne": {
       "name": "에어본",
@@ -440,7 +667,16 @@
       "max": 3,
       "icon": "snow",
       "color": "#9EE7FF",
-      "desc": "3중첩이면 빙결"
+      "desc": "3중첩이면 빙결",
+      "mods": [
+        {
+          "k": "moveSpeed",
+          "op": "mul",
+          "c": -1,
+          "v": true,
+          "s": true
+        }
+      ]
     },
     "shock": {
       "name": "감전",
@@ -506,7 +742,16 @@
       },
       "icon": "swirl",
       "color": "#f2f2f2",
-      "desc": "작은 동물로 변했습니다"
+      "desc": "작은 동물로 변했습니다",
+      "mods": [
+        {
+          "k": "moveSpeed",
+          "op": "mul",
+          "c": -0.5,
+          "v": false,
+          "s": false
+        }
+      ]
     },
     "weaken": {
       "name": "약화",
@@ -514,7 +759,23 @@
       "cat": "stat",
       "icon": "arrowDown",
       "color": "#E5484D",
-      "desc": "공격력 · 주문력 −{v}%"
+      "desc": "공격력 · 주문력 −{v}%",
+      "mods": [
+        {
+          "k": "atk",
+          "op": "mul",
+          "c": -1,
+          "v": true,
+          "s": false
+        },
+        {
+          "k": "ap",
+          "op": "mul",
+          "c": -1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "shatter": {
       "name": "파쇄",
@@ -522,7 +783,23 @@
       "cat": "stat",
       "icon": "crack",
       "color": "#9AA3AD",
-      "desc": "물리 · 마법 방어력 −{v}"
+      "desc": "물리 · 마법 방어력 −{v}",
+      "mods": [
+        {
+          "k": "pdef",
+          "op": "add",
+          "c": -1,
+          "v": true,
+          "s": false
+        },
+        {
+          "k": "mdef",
+          "op": "add",
+          "c": -1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "curse": {
       "name": "저주",
@@ -530,7 +807,16 @@
       "cat": "stat",
       "icon": "skull",
       "color": "#6B3FA0",
-      "desc": "받는 치유 · 보호막 −50%"
+      "desc": "받는 치유 · 보호막 −50%",
+      "mods": [
+        {
+          "k": "healTaken",
+          "op": "add",
+          "c": -0.5,
+          "v": false,
+          "s": false
+        }
+      ]
     },
     "mark": {
       "name": "표식",
@@ -538,7 +824,16 @@
       "cat": "stat",
       "icon": "target",
       "color": "#E5484D",
-      "desc": "받는 피해 +{v}%"
+      "desc": "받는 피해 +{v}%",
+      "mods": [
+        {
+          "k": "dmgTakenUp",
+          "op": "add",
+          "c": 1,
+          "v": true,
+          "s": false
+        }
+      ]
     },
     "exhaust": {
       "name": "탈진",
