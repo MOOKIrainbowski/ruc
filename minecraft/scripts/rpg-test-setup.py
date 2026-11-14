@@ -45,7 +45,7 @@ for k, v in {"server-port": "25599", "server-ip": "127.0.0.1", "online-mode": "f
              "motd": "Ruc RPG test", "require-resource-pack": "false", "level-name": "world",
              "spawn-protection": "0", "enforce-secure-profile": "false",
              # 봇(mineflayer)은 설정 단계 리소스팩 응답을 못 해 멈춤 — 사람이 확인할 때는 팩을 직접 넣어 씀
-             "resource-pack": "", "resource-pack-sha1": ""}.items():
+             "resource-pack": "", "resource-pack-sha1": "", "level-type": r"minecraft\:flat", "generate-structures": "false"}.items():
     props, n = re.subn(rf"^{k}=.*$", f"{k}={v}", props, flags=re.M)
     if not n: props += f"\n{k}={v}"
 props = re.sub(r"^rcon\.password=.*$", "rcon.password=", props, flags=re.M)

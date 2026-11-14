@@ -52,7 +52,10 @@ public final class PlayerRuntime implements Listener {
         this.plugin = plugin;
         this.f = f;
         this.defs = defs;
-        for (World w : Bukkit.getWorlds()) w.setGameRule(GameRule.NATURAL_REGENERATION, false);
+        for (World w : Bukkit.getWorlds()) {
+            w.setGameRule(GameRule.NATURAL_REGENERATION, false);
+            w.setGameRule(GameRule.KEEP_INVENTORY, true);   // 웹 RPG 처럼 죽어도 아이템은 그대로
+        }
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
     }
 
@@ -69,6 +72,8 @@ public final class PlayerRuntime implements Listener {
         u.stamina = ch.stamina < 0 ? u.st.get("stamina") : Math.min(ch.stamina, u.st.get("stamina"));
         if (u.hp <= 0) u.hp = u.st.get("hp");   // 죽은 채 나갔으면 다시 들어올 때 살아 있음 (웹 RPG 와 같음)
         units.put(p.getUniqueId(), u);
+        kr.rucserver.rpg.world.RpgWorld.place(u, p.getLocation());
+        plugin.world().add(u);
         syncVanilla(u);
     }
 
@@ -161,6 +166,10 @@ public final class PlayerRuntime implements Listener {
             if (!p.isOnline()) continue;
             boolean safe = plugin.safeZones().contains(p.getLocation());
             boolean running = p.isSprinting() && p.getGameMode() != GameMode.CREATIVE && p.getGameMode() != GameMode.SPECTATOR;
+            double ox = u.x, oy = u.y;
+            kr.rucserver.rpg.world.RpgWorld.place(u, p.getLocation());
+            u.moving = Math.hypot(u.x - ox, u.y - oy) > 0.2;
+            plugin.combat().tickEffects(plugin.world(), u);
             u.staminaTick(f, running, safe, DT * 1000, 1);
             u.regen(f, now, DT);
             u.exhaustDrain(f, DT);
@@ -214,7 +223,9 @@ public final class PlayerRuntime implements Listener {
         PlayerUnit u = units.get(p.getUniqueId());
         if (u == null) return;
         EntityDamageEvent.DamageCause c = e.getCause();
-        if (COMBAT_CAUSES.contains(c)) return;   // M2
+        if (e instanceof org.bukkit.event.entity.EntityDamageByEntityEvent be && (be.getDamager() instanceof Player
+                || be.getDamager() instanceof org.bukkit.entity.Projectile pr && pr.getShooter() instanceof Player)) { e.setCancelled(true); return; }   // PvP = 결투만 (M7)
+        if (COMBAT_CAUSES.contains(c)) { e.setCancelled(true); return; }   // 바닐라 몹 공격 등 — RPG 몹은 전투 엔진으로만 때림
         if (c == EntityDamageEvent.DamageCause.VOID || c == EntityDamageEvent.DamageCause.KILL) {
             u.hp = 0;
             return;   // 바닐라 죽음 그대로
@@ -248,9 +259,22 @@ public final class PlayerRuntime implements Listener {
         Bukkit.getScheduler().runTask(plugin, () -> syncVanilla(u));
     }
 
+    /** 전투 엔진이 플레이어를 쓰러뜨림 (combat.die → world.killed). 현재 레벨 필요 경험치의 3% 손실 (PvP 제외, §13-4) */
+    public void killed(PlayerUnit u, kr.rucserver.rpg.engine.Unit by) {
+        boolean pvp = by != null && by.isPlayer() && by != u;
+        if (!pvp) {
+            long loss = Math.min(u.ch.exp, (long) Math.floor(Formulas.expToNext(u.ch.level) * f.combat("deathExpLoss")));
+            u.ch.exp -= loss;
+            if (loss > 0) u.player.sendMessage(Component.text("쓰러졌습니다 — 경험치 " + loss + " 를 잃었습니다.", NamedTextColor.RED));
+        }
+        u.player.setHealth(0);
+    }
+
     @EventHandler(priority = EventPriority.LOWEST)
     public void onQuit(PlayerQuitEvent e) {
         PlayerUnit u = units.remove(e.getPlayer().getUniqueId());
+        if (u != null) plugin.world().remove(u);
+        if (hud != null) hud.forget(e.getPlayer().getUniqueId());
         if (u != null) writeBack(u);   // CharService(MONITOR)가 이어서 저장
     }
 

@@ -33,6 +33,9 @@ public final class RucRpg extends JavaPlugin {
     private SafeZones safeZones;
     private kr.rucserver.rpg.engine.EffectDefs effects;
     private kr.rucserver.rpg.engine.Combat combat;
+    private kr.rucserver.rpg.world.RpgWorld world;
+    private kr.rucserver.rpg.world.Projectiles projectiles;
+    private kr.rucserver.rpg.mob.MobRuntime mobs;
 
     @Override
     public void onEnable() {
@@ -54,6 +57,14 @@ public final class RucRpg extends JavaPlugin {
             if (!effects.hasModsData()) getLogger().warning("effects.json 에 mods 가 없음 — 스탯 버프/디버프가 효과 없음 (export-mc.ts 갱신 필요)");
             combat = new kr.rucserver.rpg.engine.Combat(data, formulas, effects);
             runtime = new PlayerRuntime(this, formulas, effects);
+            world = new kr.rucserver.rpg.world.RpgWorld(this);
+            projectiles = new kr.rucserver.rpg.world.Projectiles(this, world, combat);
+            mobs = new kr.rucserver.rpg.mob.MobRuntime(this, world, combat, new kr.rucserver.rpg.mob.MobDefs(data, formulas), projectiles);
+            world.onDamaged = (s, t, a, th, h) -> mobs.damaged(s, t, a, th);
+            world.onKilled = (u, by) -> {
+                if (u instanceof kr.rucserver.rpg.mob.MobUnit m) mobs.killed(m, by);
+                else if (u instanceof kr.rucserver.rpg.character.PlayerUnit pu) runtime.killed(pu, by);
+            };
             runtime.hud(new Hud());
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "RPG 를 켜지 못했습니다", e);
@@ -66,6 +77,7 @@ public final class RucRpg extends JavaPlugin {
         getServer().getPluginManager().registerEvents(chars, this);
         getServer().getPluginManager().registerEvents(runtime, this);
         getServer().getPluginManager().registerEvents(picker, this);
+        getServer().getPluginManager().registerEvents(mobs, this);
         // /reload 등으로 이미 접속한 사람이 있으면 다시 붙임
         for (Player p : Bukkit.getOnlinePlayers()) chars.onJoin(new org.bukkit.event.player.PlayerJoinEvent(p, (net.kyori.adventure.text.Component) null));
         getLogger().info("러크 RPG 켜짐 — 아이템 " + data.count("items.ITEMS") + " · 스킬 " + data.count("skills.SKILLS")
@@ -74,6 +86,7 @@ public final class RucRpg extends JavaPlugin {
 
     @Override
     public void onDisable() {
+        if (mobs != null) mobs.despawnAll();
         if (runtime != null) runtime.writeBackAll();
         if (chars != null) chars.saveAllNow();
     }
@@ -88,6 +101,15 @@ public final class RucRpg extends JavaPlugin {
                 try { n = Long.parseLong(args[2]); } catch (NumberFormatException ex) { return false; }
                 if (args[0].equalsIgnoreCase("exp")) runtime.gainExp(t, n); else runtime.setLevel(t, (int) n);
                 sender.sendMessage(Component.text(t.getName() + " → Lv." + chars.get(t).level + " (" + chars.get(t).exp + " exp)", NamedTextColor.GREEN));
+                return true;
+            }
+            if (args.length >= 2 && args[0].equalsIgnoreCase("spawn") && sender instanceof Player p) {
+                int lv = args.length >= 3 ? Integer.parseInt(args[2]) : 1;
+                String grade = args.length >= 4 ? args[3] : "normal";
+                int n = args.length >= 5 ? Integer.parseInt(args[4]) : 1;
+                int ok = 0;
+                for (int i = 0; i < n; i++) if (mobs.spawnAt(p, args[1], lv, grade) != null) ok++;
+                sender.sendMessage(Component.text(args[1] + " Lv." + lv + " " + grade + " × " + ok, ok > 0 ? NamedTextColor.GREEN : NamedTextColor.RED));
                 return true;
             }
             if (args.length > 0 && args[0].equalsIgnoreCase("info")) {
@@ -111,4 +133,10 @@ public final class RucRpg extends JavaPlugin {
     public PlayerRuntime runtime() { return runtime; }
     public SafeZones safeZones() { return safeZones; }
     public kr.rucserver.rpg.engine.Combat combat() { return combat; }
+    public kr.rucserver.rpg.world.RpgWorld world() { return world; }
+    public kr.rucserver.rpg.world.Projectiles projectiles() { return projectiles; }
+    public kr.rucserver.rpg.mob.MobRuntime mobs() { return mobs; }
+
+    /** 몹 처치 뒤 (드롭 · 퀘스트 · 파티 분배가 M4 · M6 · M7 에서 여기에 붙음) */
+    public void mobKilled(kr.rucserver.rpg.mob.MobUnit m, kr.rucserver.rpg.character.PlayerUnit by) {}
 }
