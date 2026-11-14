@@ -37,6 +37,7 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.world.Projectiles projectiles;
     private kr.rucserver.rpg.mob.MobRuntime mobs;
     private Hud hud;
+    private kr.rucserver.rpg.model.ModelEngine models;
     private kr.rucserver.rpg.ui.RpgMenus menus;
     private kr.rucserver.rpg.world.RpgWorlds worlds;
     private kr.rucserver.rpg.world.NpcRuntime npcs;
@@ -76,6 +77,8 @@ public final class RucRpg extends JavaPlugin {
             runtime = new PlayerRuntime(this, formulas, effects);
             world = new kr.rucserver.rpg.world.RpgWorld(this);
             projectiles = new kr.rucserver.rpg.world.Projectiles(this, world, combat);
+            kr.rucserver.rpg.ui.Gui.loadModels(getClassLoader());
+            models = new kr.rucserver.rpg.model.ModelEngine(this);
             mobs = new kr.rucserver.rpg.mob.MobRuntime(this, world, combat, new kr.rucserver.rpg.mob.MobDefs(data, formulas), projectiles);
             world.onDamaged = (s, t, a, th, h) -> mobs.damaged(s, t, a, th);
             items = new kr.rucserver.rpg.item.ItemService(this);
@@ -280,6 +283,7 @@ public final class RucRpg extends JavaPlugin {
     public kr.rucserver.rpg.world.Projectiles projectiles() { return projectiles; }
     public kr.rucserver.rpg.mob.MobRuntime mobs() { return mobs; }
     public Hud hud() { return hud; }
+    public kr.rucserver.rpg.model.ModelEngine models() { return models; }
     public kr.rucserver.rpg.item.ItemService items() { return items; }
     public kr.rucserver.rpg.item.ItemRuntime itemRuntime() { return itemRuntime; }
     public kr.rucserver.rpg.ui.RpgMenus menus() { return menus; }

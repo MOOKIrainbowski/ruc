@@ -174,6 +174,7 @@ public final class RpgWorld implements World {
 
     /** 맞은 쪽 붉은 깜빡임 (바닐라 피격 연출) */
     public void hurtFlash(Unit u) {
+        if (u instanceof MobUnit m && m.model != null) { m.model.hurt(); m.model.play("hurt"); return; }
         if (entityOf(u) instanceof LivingEntity le) le.playHurtAnimation(0);
     }
 

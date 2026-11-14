@@ -67,6 +67,10 @@ public final class NpcRuntime implements Listener {
                     e.getPersistentDataContainer().set(tag, PersistentDataType.STRING, id);
                 });
                 byEntity.put(m.getUniqueId(), id);
+                if (plugin.models() != null && plugin.models().has(id)) {   // NPC 모델이 있으면 마네킹은 클릭 판정만
+                    var inst = plugin.models().attach(id, m);
+                    if (inst != null) m.setInvisible(true);
+                }
             }
         }
     }

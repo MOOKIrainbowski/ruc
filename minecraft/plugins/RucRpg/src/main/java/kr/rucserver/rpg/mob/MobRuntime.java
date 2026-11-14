@@ -117,6 +117,7 @@ public final class MobRuntime implements Listener {
                 t.setLineWidth(200);
             });
             m.body.addPassenger(m.plate);
+            if (plugin.models() != null) m.model = plugin.models().attach(m.key, m.body);
             byEntity.put(m.body.getUniqueId(), m);
             w.add(m);
             z.alive++;
@@ -209,6 +210,7 @@ public final class MobRuntime implements Listener {
             c.tickEffects(w, m);
             if (m.dead) continue;
             ai(m, now);
+            if (m.model != null) m.model.play(m.moving ? "walk" : "idle");
             updatePlate(m);
         }
     }
@@ -229,6 +231,7 @@ public final class MobRuntime implements Listener {
     }
 
     private void despawn(MobUnit m) {
+        if (m.model != null) m.model.remove();
         byEntity.remove(m.body == null ? null : m.body.getUniqueId());
         w.remove(m);
         if (m.plate != null) m.plate.remove();
@@ -373,6 +376,7 @@ public final class MobRuntime implements Listener {
         face(m, tgt.x, tgt.y);
         m.atkReady = now + ms + a.get("cdMs").getAsLong();
         m.body.swingMainHand();
+        if (m.model != null) m.model.play(special && m.def.has("special") ? "cast" : "attack");
         if (special) m.body.getWorld().playSound(m.body.getLocation(), Sound.ENTITY_RAVAGER_ROAR, 0.5f, 1.6f);
     }
 
@@ -600,6 +604,7 @@ public final class MobRuntime implements Listener {
             m.body.setAI(false);
         }
         if (m.plate != null) m.plate.remove();
+        if (m.model != null) { var model = m.model; m.model = null; model.die(() -> {}); }
         PlayerUnit best = null;
         double bv = 0;
         for (Map.Entry<Integer, Double> e : m.dmgBy.entrySet())
