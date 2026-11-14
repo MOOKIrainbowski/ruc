@@ -61,8 +61,6 @@ public final class MobRuntime implements Listener {
     private final NamespacedKey tag;
     private final Map<java.util.UUID, MobUnit> byEntity = new ConcurrentHashMap<>();
     private final List<MobUnit.Zone> zones = new ArrayList<>();
-    /** 플레이어 평타 쿨 (M3 스킬 엔진 전 임시) */
-    private final Map<java.util.UUID, Long> basicReady = new ConcurrentHashMap<>();
 
     public MobRuntime(RucRpg plugin, RpgWorld w, Combat c, MobDefs defs, Projectiles shots) {
         this.plugin = plugin;
@@ -606,18 +604,8 @@ public final class MobRuntime implements Listener {
         if (m == null) return;
         e.setCancelled(true);
         if (!(e instanceof EntityDamageByEntityEvent be) || !(be.getDamager() instanceof Player p)) return;
-        PlayerUnit pu = plugin.runtime().unit(p);
-        if (pu == null || pu.dead || pu.blockAtk || m.dead) return;
-        long now = w.now();
-        if (now < basicReady.getOrDefault(p.getUniqueId(), 0L)) return;
-        basicReady.put(p.getUniqueId(), now + (long) c.formulas().castMs(500, pu.st.get("atkSpeed")));
-        Combat.HitSpec h = new Combat.HitSpec();
-        h.atkRatio = 1;
-        h.melee = true;
-        h.basic = true;
-        RpgWorld.place(pu, p.getLocation());
-        c.hit(w, pu, m, h);
-        pu.spend(3);
+        if (plugin.runtime().unit(p) == null || m.dead) return;
+        plugin.skills().basicFromHit(p);   // 평타 = 무기 평타 스킬 (스킬 엔진의 부채꼴 판정 · 쿨 · 스태미나)
     }
 
     @EventHandler(priority = EventPriority.HIGH)

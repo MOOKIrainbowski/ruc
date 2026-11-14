@@ -36,6 +36,11 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.world.RpgWorld world;
     private kr.rucserver.rpg.world.Projectiles projectiles;
     private kr.rucserver.rpg.mob.MobRuntime mobs;
+    private Hud hud;
+    private kr.rucserver.rpg.item.ItemService items;
+    private kr.rucserver.rpg.skill.SkillDefs skillDefs;
+    private kr.rucserver.rpg.skill.Progression progression;
+    private kr.rucserver.rpg.skill.SkillEngine skills;
 
     @Override
     public void onEnable() {
@@ -61,11 +66,22 @@ public final class RucRpg extends JavaPlugin {
             projectiles = new kr.rucserver.rpg.world.Projectiles(this, world, combat);
             mobs = new kr.rucserver.rpg.mob.MobRuntime(this, world, combat, new kr.rucserver.rpg.mob.MobDefs(data, formulas), projectiles);
             world.onDamaged = (s, t, a, th, h) -> mobs.damaged(s, t, a, th);
+            items = new kr.rucserver.rpg.item.ItemService();
+            skillDefs = new kr.rucserver.rpg.skill.SkillDefs(data, formulas);
+            progression = new kr.rucserver.rpg.skill.Progression(data, skillDefs);
+            skills = new kr.rucserver.rpg.skill.SkillEngine(this, world, combat, skillDefs, progression, projectiles);
+            progression.notify = (u, id, lv, kind) -> {
+                String name = skillDefs.get(id).get("name").getAsString();
+                String msg = switch (kind) { case "learn" -> "새 스킬: " + name + " (Lv." + lv + ")"; case "grade" -> name + " 등급이 올랐습니다"; default -> name + " Lv." + lv; };
+                hud.toast(u.player, msg);
+                u.player.sendMessage(Component.text("[스킬] ", NamedTextColor.AQUA).append(Component.text(msg, NamedTextColor.WHITE)));
+            };
             world.onKilled = (u, by) -> {
                 if (u instanceof kr.rucserver.rpg.mob.MobUnit m) mobs.killed(m, by);
                 else if (u instanceof kr.rucserver.rpg.character.PlayerUnit pu) runtime.killed(pu, by);
             };
-            runtime.hud(new Hud());
+            hud = new Hud();
+            runtime.hud(hud);
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "RPG 를 켜지 못했습니다", e);
             getServer().getPluginManager().disablePlugin(this);
@@ -73,11 +89,15 @@ public final class RucRpg extends JavaPlugin {
         }
         ElementPicker picker = new ElementPicker(this);
         chars.onNew(picker::open);
-        chars.onLoaded(p -> runtime.attach(p, chars.get(p)));
+        chars.onLoaded(p -> {
+            runtime.attach(p, chars.get(p));
+            progression.sync(runtime.unit(p));   // 견습 스킬 · 레벨 따라 자동 습득
+        });
         getServer().getPluginManager().registerEvents(chars, this);
         getServer().getPluginManager().registerEvents(runtime, this);
         getServer().getPluginManager().registerEvents(picker, this);
         getServer().getPluginManager().registerEvents(mobs, this);
+        getServer().getPluginManager().registerEvents(skills, this);
         // /reload 등으로 이미 접속한 사람이 있으면 다시 붙임
         for (Player p : Bukkit.getOnlinePlayers()) chars.onJoin(new org.bukkit.event.player.PlayerJoinEvent(p, (net.kyori.adventure.text.Component) null));
         getLogger().info("러크 RPG 켜짐 — 아이템 " + data.count("items.ITEMS") + " · 스킬 " + data.count("skills.SKILLS")
@@ -136,6 +156,10 @@ public final class RucRpg extends JavaPlugin {
     public kr.rucserver.rpg.world.RpgWorld world() { return world; }
     public kr.rucserver.rpg.world.Projectiles projectiles() { return projectiles; }
     public kr.rucserver.rpg.mob.MobRuntime mobs() { return mobs; }
+    public Hud hud() { return hud; }
+    public kr.rucserver.rpg.item.ItemService items() { return items; }
+    public kr.rucserver.rpg.skill.SkillEngine skills() { return skills; }
+    public kr.rucserver.rpg.skill.Progression progression() { return progression; }
 
     /** 몹 처치 뒤 (드롭 · 퀘스트 · 파티 분배가 M4 · M6 · M7 에서 여기에 붙음) */
     public void mobKilled(kr.rucserver.rpg.mob.MobUnit m, kr.rucserver.rpg.character.PlayerUnit by) {}

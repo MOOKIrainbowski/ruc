@@ -119,6 +119,7 @@ public final class PlayerRuntime implements Listener {
             u.stamina = u.st.get("stamina");
             u.exhausted = false;
             levelUpShow(p, c.level);
+            plugin.progression().sync(u);   // 레벨 따라 자동 습득 · 쌓아 둔 숙련도로 스킬 레벨업
             plugin.chars().saveAsync(c);
         }
         syncVanilla(u);
@@ -131,6 +132,7 @@ public final class PlayerRuntime implements Listener {
         u.ch.level = Math.max(1, Math.min(f.maxLevel(), level));
         u.ch.exp = 0;
         rebuild(u);
+        plugin.progression().sync(u);
         u.hp = u.st.get("hp");
         u.mp = u.st.get("mana");
         u.en = u.st.get("energy");
@@ -192,7 +194,8 @@ public final class PlayerRuntime implements Listener {
         p.setSaturation(0);
         AttributeInstance ms = p.getAttribute(Attribute.MOVEMENT_SPEED);
         if (ms != null) {
-            double want = 0.1 * Math.min(u.st.get("moveSpeed"), f.cap("moveSpeed")) / 100 * (u.exhausted ? 0.7 : 1);
+            boolean locked = u.blockMove || System.currentTimeMillis() < u.lockUntil;
+            double want = locked ? 0 : 0.1 * Math.min(u.st.get("moveSpeed"), f.cap("moveSpeed")) / 100 * (u.exhausted ? 0.7 : 1);
             if (Math.abs(ms.getBaseValue() - want) > 1e-6) ms.setBaseValue(want);
         }
         // 경험치 바 = RPG 레벨 (RucCore 레벨은 스코어보드에 그대로, 사용자 결정 Q4)

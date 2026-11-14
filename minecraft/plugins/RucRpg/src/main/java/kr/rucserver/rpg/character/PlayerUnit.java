@@ -15,6 +15,11 @@ public final class PlayerUnit extends Unit {
     public double stamina;
     public boolean exhausted;
     public double restMs;
+    /** 스킬 쿨 (스킬 id → 다시 쓸 수 있는 시각 ms) · 경직 · 돌진 · 구르기 */
+    public final java.util.Map<String, Long> cd = new java.util.HashMap<>();
+    public long lockUntil, dashUntil, rollReady;
+    /** GM: 자원 무소모 */
+    public boolean gmNoCost;
 
     PlayerUnit(Player player, RpgChar ch) {
         super("p");
