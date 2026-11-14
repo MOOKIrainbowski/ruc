@@ -1,0 +1,76 @@
+{
+  "PARTY": {
+    "max": 5,
+    "leaderWeight": 1.5,
+    "expRange": 320,
+    "expBonus": 0.05,
+    "askMs": 120000,
+    "offlineMs": 60000,
+    "noteMax": 30
+  },
+  "PINGS": {
+    "omw": {
+      "name": "가는 중",
+      "icon": "➜",
+      "color": "#4CC764"
+    },
+    "help": {
+      "name": "지원 요청",
+      "icon": "✚",
+      "color": "#3BA7FF"
+    },
+    "back": {
+      "name": "후퇴!",
+      "icon": "↩",
+      "color": "#F5C542"
+    },
+    "attack": {
+      "name": "총공격!",
+      "icon": "⚔",
+      "color": "#E5484D"
+    },
+    "danger": {
+      "name": "위험 · 주의",
+      "icon": "!",
+      "color": "#FF8A1F"
+    },
+    "gather": {
+      "name": "여기로 집결",
+      "icon": "◎",
+      "color": "#C9A0F0"
+    },
+    "enemy": {
+      "name": "적 발견",
+      "icon": "◉",
+      "color": "#ff6b6b"
+    }
+  },
+  "PING_WHEEL": [
+    "attack",
+    "omw",
+    "help",
+    "gather",
+    "back",
+    "enemy",
+    "danger"
+  ],
+  "PING": {
+    "ms": 3000,
+    "burst": 3,
+    "windowMs": 5000
+  },
+  "DUEL": {
+    "askMs": 15000,
+    "countdownMs": 3000,
+    "maxMs": 180000,
+    "range": 320
+  },
+  "KDA": {
+    "season": "beta1",
+    "assistMs": 10000
+  },
+  "TITLES": {
+    "ruins_clear": "고목을 쓰러뜨린 자",
+    "first_purifier": "첫 번째 정화자"
+  }
+}

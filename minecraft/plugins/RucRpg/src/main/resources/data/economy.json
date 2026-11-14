@@ -1,0 +1,307 @@
+{
+  "ENHANCE": [
+    {
+      "ok": 0.95,
+      "boom": 0,
+      "stones": 1,
+      "mul": 1
+    },
+    {
+      "ok": 0.9,
+      "boom": 0,
+      "stones": 1,
+      "mul": 1.2
+    },
+    {
+      "ok": 0.85,
+      "boom": 0,
+      "stones": 2,
+      "mul": 1.5
+    },
+    {
+      "ok": 0.75,
+      "boom": 0,
+      "stones": 2,
+      "mul": 2
+    },
+    {
+      "ok": 0.65,
+      "boom": 0.01,
+      "stones": 3,
+      "mul": 3
+    },
+    {
+      "ok": 0.55,
+      "boom": 0.03,
+      "stones": 3,
+      "mul": 4
+    },
+    {
+      "ok": 0.45,
+      "boom": 0.05,
+      "stones": 4,
+      "mul": 6
+    },
+    {
+      "ok": 0.35,
+      "boom": 0.08,
+      "stones": 5,
+      "mul": 8
+    },
+    {
+      "ok": 0.25,
+      "boom": 0.12,
+      "stones": 6,
+      "mul": 12
+    },
+    {
+      "ok": 0.15,
+      "boom": 0.15,
+      "stones": 8,
+      "mul": 20
+    }
+  ],
+  "ENHANCE_MAX": 10,
+  "ENHANCE_OPT": {
+    "chance": 0.2,
+    "max": 3,
+    "scale": 0.5
+  },
+  "PREFIXES": {
+    "weapon": [
+      "새벽을 가르는",
+      "꺼지지 않는 불씨의",
+      "천둥을 부르는",
+      "바람을 베는",
+      "정령왕의"
+    ],
+    "armor": [
+      "숲의 맹세를 지닌",
+      "무너지지 않는",
+      "황금 들판의",
+      "얼어붙은 달의",
+      "정령왕의"
+    ],
+    "accessory": [
+      "별빛 머금은",
+      "끝없는 파도의",
+      "행운이 깃든",
+      "새벽을 품은",
+      "정령왕의"
+    ]
+  },
+  "ENCHANTS": {
+    "atk": {
+      "name": "공격력",
+      "range": [
+        2,
+        4
+      ]
+    },
+    "ap": {
+      "name": "주문력",
+      "range": [
+        2,
+        4
+      ]
+    },
+    "def": {
+      "name": "방어력",
+      "range": [
+        2,
+        4
+      ]
+    },
+    "hp": {
+      "name": "체력",
+      "range": [
+        15,
+        30
+      ]
+    },
+    "speed": {
+      "name": "이동 속도",
+      "range": [
+        2,
+        4
+      ]
+    },
+    "crit": {
+      "name": "치명타 확률",
+      "range": [
+        0.01,
+        0.02
+      ]
+    },
+    "eldef": {
+      "name": "속성 방어력",
+      "range": [
+        5,
+        10
+      ]
+    },
+    "vamp": {
+      "name": "흡혈",
+      "range": [
+        0.01,
+        0.02
+      ]
+    }
+  },
+  "ENCH_SLOTS": {
+    "poor": 0,
+    "common": 1,
+    "rare": 1,
+    "advanced": 2,
+    "mythic": 2,
+    "legendary": 3
+  },
+  "ENCH_POWER": {
+    "poor": 0.6,
+    "common": 1,
+    "rare": 1.5,
+    "advanced": 2.2,
+    "mythic": 3.2,
+    "legendary": 4.5
+  },
+  "ENCH_COST_MUL": {
+    "poor": 1,
+    "common": 1.5,
+    "rare": 2,
+    "advanced": 3,
+    "mythic": 5,
+    "legendary": 8
+  },
+  "RARITY_VALUE": {
+    "poor": 1,
+    "common": 3,
+    "rare": 10,
+    "advanced": 40,
+    "mythic": 200,
+    "legendary": 1000
+  },
+  "SHOP": {
+    "slots": 8,
+    "hours": 6,
+    "kstOffsetH": 9
+  },
+  "SHOP_GOODS": [
+    {
+      "item": "return_scroll",
+      "price": 40
+    },
+    {
+      "item": "revive_feather",
+      "price": 300
+    },
+    {
+      "item": "elixir_power",
+      "price": 250
+    },
+    {
+      "item": "elixir_luck",
+      "price": 250
+    },
+    {
+      "item": "elixir_iron",
+      "price": 250
+    },
+    {
+      "item": "random_box",
+      "price": 400
+    },
+    {
+      "item": "storage_ticket",
+      "price": 2000
+    },
+    {
+      "item": "meadow_bread",
+      "price": 15
+    },
+    {
+      "item": "sun_apple",
+      "price": 22
+    },
+    {
+      "item": "roast_skewer",
+      "price": 35
+    },
+    {
+      "item": "river_trout",
+      "price": 48
+    },
+    {
+      "item": "root_soup",
+      "price": 60
+    },
+    {
+      "item": "berry_pie",
+      "price": 72
+    },
+    {
+      "item": "honey_tteok",
+      "price": 85
+    },
+    {
+      "item": "feast_bento",
+      "price": 100
+    }
+  ],
+  "BREW": [
+    {
+      "out": "hp_potion_s",
+      "qty": 2,
+      "need": [
+        {
+          "tpl": "herb",
+          "qty": 3
+        }
+      ]
+    },
+    {
+      "out": "mp_potion_s",
+      "qty": 2,
+      "need": [
+        {
+          "tpl": "blue_herb",
+          "qty": 3
+        }
+      ]
+    },
+    {
+      "out": "hp_potion_m",
+      "qty": 1,
+      "need": [
+        {
+          "tpl": "herb",
+          "qty": 4
+        },
+        {
+          "tpl": "blue_herb",
+          "qty": 2
+        }
+      ]
+    },
+    {
+      "out": "enhance_stone",
+      "qty": 1,
+      "need": [
+        {
+          "tpl": "ore",
+          "qty": 5
+        }
+      ]
+    }
+  ],
+  "MAIL": {
+    "days": 30,
+    "max": 100,
+    "perMail": 64
+  },
+  "MARKET": {
+    "days": 7,
+    "max": 10,
+    "fee": 0.05,
+    "options": 3
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "SKILL_GRADES": [
+    "low",
+    "mid",
+    "high",
+    "trans"
+  ],
+  "GRADE": {
+    "low": {
+      "name": "하급",
+      "power": 1,
+      "cost": 1,
+      "fx": 1,
+      "range": 1
+    },
+    "mid": {
+      "name": "중급",
+      "power": 1.2,
+      "cost": 0.9,
+      "fx": 1.2,
+      "range": 1
+    },
+    "high": {
+      "name": "상급",
+      "power": 1.45,
+      "cost": 0.8,
+      "fx": 1.2,
+      "range": 1.15
+    },
+    "trans": {
+      "name": "초월급",
+      "power": 1.8,
+      "cost": 0.7,
+      "fx": 1.2,
+      "range": 1.15
+    }
+  },
+  "MASTERY": {
+    "use": 1,
+    "hit": 2,
+    "kill": 5,
+    "support": 2
+  },
+  "MASTERY_MOB": [
+    1,
+    1.5,
+    2,
+    3,
+    5,
+    7,
+    10
+  ],
+  "POT_GAIN": {
+    "low": 1,
+    "mid": 3,
+    "high": 6,
+    "transcendent": 12
+  }
+}

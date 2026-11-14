@@ -1,0 +1,3535 @@
+{
+  "ITEMS": {
+    "old_dagger": {
+      "name": "낡은 단검",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "dagger",
+      "lv": 1,
+      "stats": {
+        "atk": 4,
+        "atkSpeed": 15
+      },
+      "look": [
+        "#d9dde2",
+        "#a7aeb6",
+        "#6f7780"
+      ],
+      "desc": "날은 무뎌졌지만 손에 착 붙는다."
+    },
+    "wood_sword": {
+      "name": "나무 검",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "sword",
+      "lv": 1,
+      "stats": {
+        "atk": 7
+      },
+      "look": [
+        "#e8c48f",
+        "#c49a6c",
+        "#8a6440"
+      ],
+      "desc": "광장 아이들이 칼싸움 놀이에 쓰던 검. 의외로 단단하다."
+    },
+    "apprentice_staff": {
+      "name": "견습 지팡이",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "bolt",
+      "icon": "staff",
+      "lv": 1,
+      "stats": {
+        "ap": 7,
+        "mana": 10
+      },
+      "look": [
+        "#c98d58",
+        "#a36a3c",
+        "#7d4f2b"
+      ],
+      "gem": "#7fd3ff",
+      "desc": "끝에 박힌 작은 마력석이 따뜻하게 빛난다."
+    },
+    "hunter_bow": {
+      "name": "사냥꾼의 활",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "shot",
+      "icon": "bow",
+      "lv": 3,
+      "stats": {
+        "atk": 6,
+        "crit": 0.02
+      },
+      "look": [
+        "#d9a066",
+        "#a36a3c",
+        "#7d4f2b"
+      ],
+      "desc": "초원 토끼를 쫓던 사냥꾼이 쓰던 활."
+    },
+    "goblin_axe": {
+      "name": "고블린 손도끼",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "axe",
+      "lv": 6,
+      "stats": {
+        "atk": 11,
+        "critDmg": 0.1
+      },
+      "look": [
+        "#c9c2b2",
+        "#8f877a",
+        "#5e574d"
+      ],
+      "desc": "이 빠진 도끼날에 고블린 이빨 자국이 남아 있다."
+    },
+    "fang_sword": {
+      "name": "송곳니 검",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "sword",
+      "lv": 10,
+      "stats": {
+        "atk": 15,
+        "crit": 0.03
+      },
+      "look": [
+        "#fffaf0",
+        "#e2d6b8",
+        "#b3a586"
+      ],
+      "desc": "덩굴 늑대의 송곳니를 갈아 만든 검."
+    },
+    "vine_wand": {
+      "name": "덩굴 완드",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "bolt",
+      "icon": "wand",
+      "lv": 10,
+      "stats": {
+        "ap": 14,
+        "mana": 20
+      },
+      "look": [
+        "#a3e06a",
+        "#6fb840",
+        "#4b902f"
+      ],
+      "gem": "#ffe14d",
+      "desc": "감긴 덩굴이 아직도 조금씩 자란다."
+    },
+    "leather_cap": {
+      "name": "가죽 모자",
+      "kind": "armor",
+      "slot": "helmet",
+      "icon": "helmet",
+      "lv": 1,
+      "stats": {
+        "pdef": 3,
+        "hp": 10
+      },
+      "look": [
+        "#d9b07a",
+        "#a0764c",
+        "#7a5636"
+      ],
+      "shape": "cap",
+      "desc": "햇볕을 가리기에 딱 좋다."
+    },
+    "leather_vest": {
+      "name": "가죽 조끼",
+      "kind": "armor",
+      "slot": "chest",
+      "icon": "chest",
+      "lv": 1,
+      "stats": {
+        "pdef": 5,
+        "hp": 20
+      },
+      "look": [
+        "#c49a6c",
+        "#a0764c",
+        "#7a5636"
+      ],
+      "desc": "주머니가 많아서 모험가들이 좋아한다."
+    },
+    "leather_pants": {
+      "name": "가죽 바지",
+      "kind": "armor",
+      "slot": "legs",
+      "icon": "legs",
+      "lv": 1,
+      "stats": {
+        "pdef": 4,
+        "hp": 15
+      },
+      "look": [
+        "#8a6a4a",
+        "#6b4f36",
+        "#4f3826"
+      ],
+      "desc": "무릎에 덧댄 천이 든든하다."
+    },
+    "leather_boots": {
+      "name": "가죽 장화",
+      "kind": "armor",
+      "slot": "boots",
+      "icon": "boots",
+      "lv": 1,
+      "stats": {
+        "pdef": 2,
+        "moveSpeed": 3
+      },
+      "look": "#5a3b2a",
+      "desc": "초원 진흙도 문제없다."
+    },
+    "leather_gloves": {
+      "name": "가죽 장갑",
+      "kind": "armor",
+      "slot": "gloves",
+      "icon": "gloves",
+      "lv": 1,
+      "stats": {
+        "pdef": 2,
+        "atkSpeed": 5
+      },
+      "look": "#8a6440",
+      "desc": "손바닥이 미끄럽지 않게 홈이 파여 있다."
+    },
+    "meadow_cape": {
+      "name": "초원 망토",
+      "kind": "armor",
+      "slot": "cape",
+      "icon": "cape",
+      "lv": 3,
+      "stats": {
+        "mdef": 4,
+        "regen": 2
+      },
+      "look": [
+        "#b5f07a",
+        "#5fa845",
+        "#3f7a2f"
+      ],
+      "desc": "바람이 불면 풀 냄새가 난다."
+    },
+    "sprout_helm": {
+      "name": "새싹 수호자 투구",
+      "kind": "armor",
+      "slot": "helmet",
+      "icon": "helmet",
+      "lv": 8,
+      "set": "sprout_guardian",
+      "look": [
+        "#b5f07a",
+        "#6fb840",
+        "#3f7a2f"
+      ],
+      "stats": {
+        "pdef": 6,
+        "mdef": 4,
+        "hp": 25
+      },
+      "desc": "투구 꼭대기에서 새싹이 고개를 내민다."
+    },
+    "sprout_mail": {
+      "name": "새싹 수호자 갑옷",
+      "kind": "armor",
+      "slot": "chest",
+      "icon": "chest",
+      "lv": 8,
+      "set": "sprout_guardian",
+      "stats": {
+        "pdef": 9,
+        "mdef": 6,
+        "hp": 40
+      },
+      "look": [
+        "#a3e06a",
+        "#6fb840",
+        "#4b902f"
+      ],
+      "desc": "나무껍질과 잎맥을 엮어 만든 갑옷."
+    },
+    "sprout_greaves": {
+      "name": "새싹 수호자 각반",
+      "kind": "armor",
+      "slot": "legs",
+      "icon": "legs",
+      "lv": 8,
+      "set": "sprout_guardian",
+      "stats": {
+        "pdef": 7,
+        "mdef": 5,
+        "hp": 30
+      },
+      "look": [
+        "#7fb84a",
+        "#5a8a35",
+        "#3f6a26"
+      ],
+      "desc": "걸을 때마다 잎이 바스락거린다."
+    },
+    "sprout_boots": {
+      "name": "새싹 수호자 장화",
+      "kind": "armor",
+      "slot": "boots",
+      "icon": "boots",
+      "lv": 8,
+      "set": "sprout_guardian",
+      "stats": {
+        "pdef": 4,
+        "mdef": 3,
+        "moveSpeed": 4
+      },
+      "look": "#3f6a26",
+      "desc": "밟은 자리에 작은 꽃이 핀다는 소문."
+    },
+    "sprout_gloves": {
+      "name": "새싹 수호자 장갑",
+      "kind": "armor",
+      "slot": "gloves",
+      "icon": "gloves",
+      "lv": 8,
+      "set": "sprout_guardian",
+      "look": "#4b902f",
+      "stats": {
+        "pdef": 4,
+        "mdef": 3,
+        "atkSpeed": 6
+      },
+      "desc": "손등에 덩굴무늬가 수놓여 있다."
+    },
+    "copper_ring": {
+      "name": "구리 반지",
+      "kind": "accessory",
+      "slot": "ring",
+      "icon": "ring",
+      "lv": 1,
+      "stats": {
+        "atk": 2,
+        "ap": 2
+      },
+      "desc": "흔하지만 왠지 행운이 따르는 것 같다."
+    },
+    "rabbit_charm": {
+      "name": "토끼발 목걸이",
+      "kind": "accessory",
+      "slot": "necklace",
+      "icon": "necklace",
+      "lv": 3,
+      "stats": {
+        "luck": 2,
+        "moveSpeed": 2
+      },
+      "desc": "토끼정령이 떨어뜨린 솜털 뭉치를 엮었다."
+    },
+    "fang_earring": {
+      "name": "늑대 송곳니 귀걸이",
+      "kind": "accessory",
+      "slot": "earring",
+      "icon": "earring",
+      "lv": 10,
+      "stats": {
+        "crit": 0.03,
+        "critDmg": 0.05
+      },
+      "desc": "귀에 걸면 늑대 울음소리가 들리는 듯하다."
+    },
+    "ancient_blade": {
+      "name": "고목 수호검",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "sword",
+      "lv": 15,
+      "stats": {
+        "atk": 22,
+        "crit": 0.03,
+        "hp": 30
+      },
+      "look": [
+        "#eefadf",
+        "#b9d69a",
+        "#7da35e"
+      ],
+      "desc": "엘드라의 뿌리가 감싸던 검. 칼날에서 숲 냄새가 난다."
+    },
+    "ancient_staff": {
+      "name": "고목 지팡이",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "bolt",
+      "icon": "staff",
+      "lv": 15,
+      "stats": {
+        "ap": 22,
+        "mana": 40,
+        "cdr": 0.03
+      },
+      "look": [
+        "#d4c09a",
+        "#8a7350",
+        "#5e4c33"
+      ],
+      "gem": "#b5f07a",
+      "desc": "천 년 묵은 가지에 정령의 숨결이 남아 있다."
+    },
+    "ancient_bow": {
+      "name": "고목 장궁",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "shot",
+      "icon": "bow",
+      "lv": 15,
+      "stats": {
+        "atk": 19,
+        "crit": 0.05
+      },
+      "look": [
+        "#d4c09a",
+        "#8a7350",
+        "#5e4c33"
+      ],
+      "desc": "시위를 당기면 잎사귀가 바람에 떤다."
+    },
+    "ancient_mail": {
+      "name": "고대 수피 갑옷",
+      "kind": "armor",
+      "slot": "chest",
+      "icon": "chest",
+      "lv": 15,
+      "stats": {
+        "pdef": 16,
+        "mdef": 10,
+        "hp": 70
+      },
+      "look": [
+        "#b9a27a",
+        "#8a7350",
+        "#5e4c33"
+      ],
+      "desc": "고대 수목 기사의 껍질을 덧대 만든 갑옷."
+    },
+    "twin_ring": {
+      "name": "쌍생화 반지",
+      "kind": "accessory",
+      "slot": "ring",
+      "icon": "ring",
+      "lv": 15,
+      "stats": {
+        "atk": 5,
+        "ap": 5,
+        "crit": 0.02
+      },
+      "desc": "두 송이 꽃이 서로를 감싸 안은 반지."
+    },
+    "hp_potion_s": {
+      "name": "체력 포션 (소)",
+      "kind": "potion",
+      "icon": "potion_hp",
+      "lv": 1,
+      "heal": {
+        "hp": 80
+      },
+      "rarity": "common",
+      "desc": "딸기 맛이 난다.",
+      "value": 5
+    },
+    "hp_potion_m": {
+      "name": "체력 포션 (중)",
+      "kind": "potion",
+      "icon": "potion_hp",
+      "lv": 1,
+      "heal": {
+        "hp": 200
+      },
+      "rarity": "common",
+      "desc": "딸기에 꿀을 조금 넣었다.",
+      "value": 13
+    },
+    "hp_potion_l": {
+      "name": "체력 포션 (대)",
+      "kind": "potion",
+      "icon": "potion_hp",
+      "lv": 1,
+      "heal": {
+        "hp": 450
+      },
+      "rarity": "common",
+      "desc": "한 병이면 하루 종일 뛰어다닐 수 있다.",
+      "value": 28
+    },
+    "mp_potion_s": {
+      "name": "마나 포션 (소)",
+      "kind": "potion",
+      "icon": "potion_mp",
+      "lv": 1,
+      "heal": {
+        "mp": 40
+      },
+      "rarity": "common",
+      "desc": "박하 향이 머리를 맑게 한다.",
+      "value": 5
+    },
+    "mp_potion_m": {
+      "name": "마나 포션 (중)",
+      "kind": "potion",
+      "icon": "potion_mp",
+      "lv": 1,
+      "heal": {
+        "mp": 100
+      },
+      "rarity": "common",
+      "desc": "마력석 가루가 반짝인다.",
+      "value": 13
+    },
+    "mp_potion_l": {
+      "name": "마나 포션 (대)",
+      "kind": "potion",
+      "icon": "potion_mp",
+      "lv": 1,
+      "heal": {
+        "mp": 220
+      },
+      "rarity": "common",
+      "desc": "병 안에서 별이 빙글빙글 돈다.",
+      "value": 28
+    },
+    "en_potion_s": {
+      "name": "기력 포션 (소)",
+      "kind": "potion",
+      "icon": "potion_en",
+      "lv": 1,
+      "heal": {
+        "en": 40
+      },
+      "rarity": "common",
+      "desc": "귤 맛. 톡 쏜다.",
+      "value": 5
+    },
+    "en_potion_m": {
+      "name": "기력 포션 (중)",
+      "kind": "potion",
+      "icon": "potion_en",
+      "lv": 1,
+      "heal": {
+        "en": 100
+      },
+      "rarity": "common",
+      "desc": "마시면 주먹이 불끈 쥐어진다.",
+      "value": 13
+    },
+    "en_potion_l": {
+      "name": "기력 포션 (대)",
+      "kind": "potion",
+      "icon": "potion_en",
+      "lv": 1,
+      "heal": {
+        "en": 220
+      },
+      "rarity": "common",
+      "desc": "대장장이 볼트의 비밀 레시피.",
+      "value": 28
+    },
+    "elixir_power": {
+      "name": "용맹의 영약",
+      "kind": "consumable",
+      "icon": "elixir_power",
+      "lv": 1,
+      "rarity": "rare",
+      "use": {
+        "fx": {
+          "id": "elixir_power",
+          "ms": 1800000,
+          "v": 0.1
+        }
+      },
+      "value": 120,
+      "desc": "30분 동안 공격력 · 주문력 +10%. 쓰러져도 남습니다."
+    },
+    "elixir_luck": {
+      "name": "행운의 영약",
+      "kind": "consumable",
+      "icon": "elixir_luck",
+      "lv": 1,
+      "rarity": "rare",
+      "use": {
+        "fx": {
+          "id": "elixir_luck",
+          "ms": 1800000,
+          "v": 0.1
+        }
+      },
+      "value": 120,
+      "desc": "30분 동안 경험치 +10% · 운 +10. 쓰러져도 남습니다."
+    },
+    "elixir_iron": {
+      "name": "강철의 영약",
+      "kind": "consumable",
+      "icon": "elixir_iron",
+      "lv": 1,
+      "rarity": "rare",
+      "use": {
+        "fx": {
+          "id": "elixir_iron",
+          "ms": 1800000,
+          "v": 12
+        }
+      },
+      "value": 120,
+      "desc": "30분 동안 물리 · 마법 방어력 +12. 쓰러져도 남습니다."
+    },
+    "revive_feather": {
+      "name": "부활 깃털",
+      "kind": "consumable",
+      "icon": "feather",
+      "lv": 1,
+      "rarity": "advanced",
+      "use": {
+        "fx": {
+          "id": "feather",
+          "ms": 600000
+        }
+      },
+      "value": 150,
+      "desc": "10분 안에 쓰러지면 그 자리에서 HP 30%로 일어납니다 (한 번)."
+    },
+    "return_scroll": {
+      "name": "귀환 주문서",
+      "kind": "consumable",
+      "icon": "scroll",
+      "lv": 1,
+      "rarity": "common",
+      "use": {
+        "recall": true
+      },
+      "value": 20,
+      "desc": "3초 뒤 햇살광장으로 돌아갑니다. 움직이거나 공격받으면 취소 (던전 안에서는 못 씀)."
+    },
+    "random_box": {
+      "name": "랜덤 상자",
+      "kind": "consumable",
+      "icon": "box",
+      "lv": 1,
+      "rarity": "rare",
+      "use": {
+        "box": true
+      },
+      "value": 200,
+      "desc": "열면 장비 · 강화 재료 · 부가석 · 포션 중 하나. 운이 높을수록 좋은 희귀도."
+    },
+    "storage_ticket": {
+      "name": "창고 확장권",
+      "kind": "consumable",
+      "icon": "ticket",
+      "lv": 1,
+      "rarity": "mythic",
+      "use": {
+        "tab": true
+      },
+      "value": 1000,
+      "desc": "창고를 27칸 늘립니다 (두 번까지, 54 → 108칸)."
+    },
+    "meadow_bread": {
+      "name": "초원 보리빵",
+      "kind": "consumable",
+      "icon": "food_bread",
+      "lv": 1,
+      "rarity": "common",
+      "use": {
+        "food": 12
+      },
+      "value": 12,
+      "desc": "담백한 보리빵. 스태미나를 12 회복합니다."
+    },
+    "sun_apple": {
+      "name": "햇살 사과",
+      "kind": "consumable",
+      "icon": "food_apple",
+      "lv": 1,
+      "rarity": "common",
+      "use": {
+        "food": 20
+      },
+      "value": 18,
+      "desc": "새콤달콤한 사과. 스태미나를 20 회복합니다."
+    },
+    "roast_skewer": {
+      "name": "숯불 고기꼬치",
+      "kind": "consumable",
+      "icon": "food_skewer",
+      "lv": 1,
+      "rarity": "common",
+      "use": {
+        "food": 30
+      },
+      "value": 28,
+      "desc": "겉은 바삭하고 속은 촉촉하다. 스태미나를 30 회복합니다."
+    },
+    "river_trout": {
+      "name": "강물 송어구이",
+      "kind": "consumable",
+      "icon": "food_fish",
+      "lv": 1,
+      "rarity": "common",
+      "use": {
+        "food": 40
+      },
+      "value": 38,
+      "desc": "허브 향을 입힌 송어. 스태미나를 40 회복합니다."
+    },
+    "root_soup": {
+      "name": "뿌리채소 수프",
+      "kind": "consumable",
+      "icon": "food_soup",
+      "lv": 1,
+      "rarity": "common",
+      "use": {
+        "food": 50
+      },
+      "value": 48,
+      "desc": "속을 따뜻하게 채운다. 스태미나를 50 회복합니다."
+    },
+    "berry_pie": {
+      "name": "산딸기 파이",
+      "kind": "consumable",
+      "icon": "food_pie",
+      "lv": 1,
+      "rarity": "common",
+      "use": {
+        "food": 60
+      },
+      "value": 58,
+      "desc": "달콤한 산딸기를 듬뿍 넣었다. 스태미나를 60 회복합니다."
+    },
+    "honey_tteok": {
+      "name": "꿀바른 찰떡",
+      "kind": "consumable",
+      "icon": "food_tteok",
+      "lv": 1,
+      "rarity": "common",
+      "use": {
+        "food": 70
+      },
+      "value": 68,
+      "desc": "쫀득한 떡에 야생꿀을 발랐다. 스태미나를 70 회복합니다."
+    },
+    "feast_bento": {
+      "name": "모험가 도시락",
+      "kind": "consumable",
+      "icon": "food_bento",
+      "lv": 1,
+      "rarity": "common",
+      "use": {
+        "food": 85
+      },
+      "value": 82,
+      "desc": "든든하게 채운 야외 식사. 스태미나를 85 회복합니다."
+    },
+    "herb": {
+      "name": "약초",
+      "kind": "material",
+      "icon": "herb",
+      "lv": 1,
+      "rarity": "common",
+      "desc": "초원 풀숲에서 캔 약초. 세 뿌리면 체력 포션이 된다.",
+      "value": 3
+    },
+    "blue_herb": {
+      "name": "푸른 약초",
+      "kind": "material",
+      "icon": "blue_herb",
+      "lv": 1,
+      "rarity": "common",
+      "desc": "이슬을 머금은 푸른 잎. 마나 포션의 재료.",
+      "value": 4
+    },
+    "ore": {
+      "name": "광석",
+      "kind": "material",
+      "icon": "ore",
+      "lv": 1,
+      "rarity": "common",
+      "desc": "바위 틈의 반짝이는 광석. 다섯 개를 녹이면 강화석 하나.",
+      "value": 5
+    },
+    "slime_jelly": {
+      "name": "슬라임 젤리",
+      "kind": "material",
+      "icon": "jelly",
+      "lv": 1,
+      "rarity": "poor",
+      "desc": "말랑말랑. 강화 재료로 쓰인다는 소문이 있다.",
+      "value": 2
+    },
+    "rabbit_fluff": {
+      "name": "토끼 솜털",
+      "kind": "material",
+      "icon": "fluff",
+      "lv": 1,
+      "rarity": "poor",
+      "desc": "손바닥 위에서 바람도 없이 둥실 떠오른다.",
+      "value": 3
+    },
+    "goblin_coin": {
+      "name": "고블린 동전",
+      "kind": "material",
+      "icon": "coin",
+      "lv": 1,
+      "rarity": "common",
+      "desc": "어느 나라 돈인지 아무도 모른다.",
+      "value": 4
+    },
+    "wolf_pelt": {
+      "name": "늑대 가죽",
+      "kind": "material",
+      "icon": "pelt",
+      "lv": 1,
+      "rarity": "common",
+      "desc": "덩굴 자국이 무늬처럼 남아 있다.",
+      "value": 6
+    },
+    "enhance_stone": {
+      "name": "강화석",
+      "kind": "material",
+      "icon": "stone",
+      "lv": 1,
+      "rarity": "rare",
+      "desc": "광장 대장간의 강화대에서 장비를 강화할 때 씁니다.",
+      "value": 15
+    },
+    "protect_scroll": {
+      "name": "강화 보호 주문서",
+      "kind": "material",
+      "icon": "scroll",
+      "lv": 1,
+      "rarity": "advanced",
+      "desc": "강화가 파괴로 끝나도 실패(유지)로 바꿔 줍니다. 강화할 때 자동으로 한 장 씁니다.",
+      "value": 10
+    },
+    "blessed_stone": {
+      "name": "축복 강화석",
+      "kind": "material",
+      "icon": "stone",
+      "lv": 1,
+      "rarity": "mythic",
+      "desc": "강화 성공률 +10%p (파괴율은 그대로). 강화할 때 고르면 한 개 씁니다.",
+      "value": 2
+    },
+    "spore_dust": {
+      "name": "포자 가루",
+      "kind": "material",
+      "icon": "spore",
+      "lv": 1,
+      "rarity": "common",
+      "desc": "버섯 주술사의 모자에서 털어 낸 가루. 재채기가 난다.",
+      "value": 6
+    },
+    "moss_heart": {
+      "name": "이끼 낀 돌심장",
+      "kind": "material",
+      "icon": "moss",
+      "lv": 1,
+      "rarity": "rare",
+      "desc": "아직도 아주 천천히 뛰고 있다.",
+      "value": 20
+    },
+    "dark_sap": {
+      "name": "어둠 수액",
+      "kind": "material",
+      "icon": "sap",
+      "lv": 1,
+      "rarity": "rare",
+      "desc": "그림자 덩굴에서 배어 나온 끈적한 수액.",
+      "value": 18
+    },
+    "ancient_bark": {
+      "name": "고대 수피 갑옷 조각",
+      "kind": "material",
+      "icon": "bark",
+      "lv": 1,
+      "rarity": "advanced",
+      "desc": "고대 수목 기사의 갑옷에서 떨어진 조각.",
+      "value": 30
+    },
+    "spirit_leaf": {
+      "name": "정령의 잎사귀",
+      "kind": "material",
+      "icon": "leaf",
+      "lv": 1,
+      "rarity": "rare",
+      "desc": "균형을 되찾은 정령이 남긴 잎사귀. 은은하게 빛난다.",
+      "value": 40
+    },
+    "ench_atk": {
+      "name": "공격력 부가석",
+      "kind": "material",
+      "icon": "gem",
+      "lv": 1,
+      "desc": "마법부여: 공격력",
+      "value": 8,
+      "enchant": "atk"
+    },
+    "ench_ap": {
+      "name": "주문력 부가석",
+      "kind": "material",
+      "icon": "gem",
+      "lv": 1,
+      "desc": "마법부여: 주문력",
+      "value": 8,
+      "enchant": "ap"
+    },
+    "ench_def": {
+      "name": "방어 부가석",
+      "kind": "material",
+      "icon": "gem",
+      "lv": 1,
+      "desc": "마법부여: 물리 · 마법 방어력",
+      "value": 8,
+      "enchant": "def"
+    },
+    "ench_hp": {
+      "name": "체력 부가석",
+      "kind": "material",
+      "icon": "gem",
+      "lv": 1,
+      "desc": "마법부여: 최대 체력",
+      "value": 8,
+      "enchant": "hp"
+    },
+    "ench_speed": {
+      "name": "신속 부가석",
+      "kind": "material",
+      "icon": "gem",
+      "lv": 1,
+      "desc": "마법부여: 이동 속도",
+      "value": 10,
+      "enchant": "speed"
+    },
+    "ench_crit": {
+      "name": "치명 부가석",
+      "kind": "material",
+      "icon": "gem",
+      "lv": 1,
+      "desc": "마법부여: 치명타 확률",
+      "value": 10,
+      "enchant": "crit"
+    },
+    "ench_eldef": {
+      "name": "속성 방어 부가석",
+      "kind": "material",
+      "icon": "gem",
+      "lv": 1,
+      "desc": "마법부여: 속성 하나의 방어력 (속성은 부여할 때 정해짐)",
+      "value": 8,
+      "enchant": "eldef"
+    },
+    "ench_vamp": {
+      "name": "흡혈 부가석",
+      "kind": "material",
+      "icon": "gem",
+      "lv": 1,
+      "desc": "마법부여: 흡혈",
+      "value": 12,
+      "enchant": "vamp"
+    },
+    "book_magic_arrow": {
+      "name": "스킬북: 마력 화살",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "magic_arrow",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_dash_slash": {
+      "name": "스킬북: 대시 베기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "dash_slash",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_first_aid": {
+      "name": "스킬북: 응급 처치",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "first_aid",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_shield_bash": {
+      "name": "스킬북: 방패 강타",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "shield_bash",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_taunt_shout": {
+      "name": "스킬북: 도발의 외침",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "taunt_shout",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_iron_wall": {
+      "name": "스킬북: 철벽",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "iron_wall",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_earth_split": {
+      "name": "스킬북: 대지 가르기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "earth_split",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_counter_stance": {
+      "name": "스킬북: 반격 태세",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "counter_stance",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_fortress": {
+      "name": "스킬북: 불굴의 요새",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "fortress",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_shield_throw": {
+      "name": "스킬북: 방패 투척",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "shield_throw",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_guardian_rush": {
+      "name": "스킬북: 수호 돌진",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "guardian_rush",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_sanctuary_wall": {
+      "name": "스킬북: 성역의 방패",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "sanctuary_wall",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_kings_guard": {
+      "name": "스킬북: 왕의 수호",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "kings_guard",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_double_slash": {
+      "name": "스킬북: 연속 베기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "double_slash",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_lunge": {
+      "name": "스킬북: 돌진 찌르기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "lunge",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_battle_cry": {
+      "name": "스킬북: 전투 함성",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "battle_cry",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_whirlwind": {
+      "name": "스킬북: 회전 베기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "whirlwind",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_crushing_blow": {
+      "name": "스킬북: 강타",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "crushing_blow",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_sword_storm": {
+      "name": "스킬북: 검풍",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "sword_storm",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_knight_strike": {
+      "name": "스킬북: 기사의 일격",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "knight_strike",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_parry": {
+      "name": "스킬북: 흘려 막기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "parry",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_knight_charge": {
+      "name": "스킬북: 돌격",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "knight_charge",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_commander": {
+      "name": "스킬북: 기사단장의 결의",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "commander",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_shuriken": {
+      "name": "스킬북: 표창",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "shuriken",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_backstab": {
+      "name": "스킬북: 급소 찌르기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "backstab",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_smoke": {
+      "name": "스킬북: 연막",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "smoke",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_shadow_strike": {
+      "name": "스킬북: 그림자 습격",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "shadow_strike",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_poison_blade": {
+      "name": "스킬북: 독 바르기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "poison_blade",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_thousand_blades": {
+      "name": "스킬북: 천 개의 칼날",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "thousand_blades",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_triple_shuriken": {
+      "name": "스킬북: 삼연 표창",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "triple_shuriken",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_shunpo": {
+      "name": "스킬북: 순보",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "shunpo",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_leaf_cut": {
+      "name": "스킬북: 낙엽 베기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "leaf_cut",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_shadow_execute": {
+      "name": "스킬북: 그림자 처형",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "shadow_execute",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_element_bolt": {
+      "name": "스킬북: 원소탄",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "element_bolt",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_arcane_burst": {
+      "name": "스킬북: 마력 폭발",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "arcane_burst",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_mage_blink": {
+      "name": "스킬북: 점멸",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "mage_blink",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_element_nova": {
+      "name": "스킬북: 원소 폭발진",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "element_nova",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_bind": {
+      "name": "스킬북: 속박의 사슬",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "bind",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_meteor": {
+      "name": "스킬북: 운석 낙하",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "meteor",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_sub_bolt": {
+      "name": "스킬북: 보조 원소탄",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "sub_bolt",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_element_shield": {
+      "name": "스킬북: 원소 보호막",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "element_shield",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_dual_storm": {
+      "name": "스킬북: 이중 원소 폭풍",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "dual_storm",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_cataclysm": {
+      "name": "스킬북: 원소 붕괴",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "cataclysm",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_quick_shot": {
+      "name": "스킬북: 속사",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "quick_shot",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_multishot": {
+      "name": "스킬북: 다중 사격",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "multishot",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_disengage": {
+      "name": "스킬북: 후퇴 사격",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "disengage",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_piercing_arrow": {
+      "name": "스킬북: 관통 화살",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "piercing_arrow",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_arrow_rain": {
+      "name": "스킬북: 화살비",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "arrow_rain",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_storm_arrow": {
+      "name": "스킬북: 폭풍 화살",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "storm_arrow",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_aimed_shot": {
+      "name": "스킬북: 조준 사격",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "aimed_shot",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_roll_shot": {
+      "name": "스킬북: 구르며 쏘기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "roll_shot",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_snare_arrow": {
+      "name": "스킬북: 덫 화살",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "snare_arrow",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_hawk_eye": {
+      "name": "스킬북: 매의 눈",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "hawk_eye",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_heal_light": {
+      "name": "스킬북: 치유의 빛",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "heal_light",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_holy_bolt": {
+      "name": "스킬북: 신성 화살",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "holy_bolt",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_swift_blessing": {
+      "name": "스킬북: 축복의 발걸음",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "swift_blessing",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_prayer_shield": {
+      "name": "스킬북: 보호의 기도",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "prayer_shield",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_purify_wave": {
+      "name": "스킬북: 정화의 물결",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "purify_wave",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_sanctuary": {
+      "name": "스킬북: 성역",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "sanctuary",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_healing_breath": {
+      "name": "스킬북: 치유의 숨결",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "healing_breath",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_guardian_angel": {
+      "name": "스킬북: 수호천사",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "guardian_angel",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_radiance": {
+      "name": "스킬북: 광휘",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "radiance",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_resurrection": {
+      "name": "스킬북: 부활의 기적",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "resurrection",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_blood_cleave": {
+      "name": "스킬북: 피의 가르기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "blood_cleave",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_reckless_leap": {
+      "name": "스킬북: 무모한 도약",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "reckless_leap",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_bloodlust_howl": {
+      "name": "스킬북: 피의 포효",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "bloodlust_howl",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_undying_rage": {
+      "name": "스킬북: 불사의 분노",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "undying_rage",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_stone_spike": {
+      "name": "스킬북: 바위 가시",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "stone_spike",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_earth_bulwark": {
+      "name": "스킬북: 대지 성벽",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "earth_bulwark",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_quake": {
+      "name": "스킬북: 지진",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "quake",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_iron_domain": {
+      "name": "스킬북: 강철 결계",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "iron_domain",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_holy_strike": {
+      "name": "스킬북: 신성 강타",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "holy_strike",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_dawn_rush": {
+      "name": "스킬북: 여명의 질주",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "dawn_rush",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_consecration": {
+      "name": "스킬북: 축성",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "consecration",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_aegis_of_dawn": {
+      "name": "스킬북: 새벽의 방패",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "aegis_of_dawn",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_rune_slash": {
+      "name": "스킬북: 룬 베기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "rune_slash",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_blink_strike": {
+      "name": "스킬북: 섬광 베기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "blink_strike",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_arcane_edge": {
+      "name": "스킬북: 마력 검기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "arcane_edge",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_storm_blade": {
+      "name": "스킬북: 폭풍 마검",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "storm_blade",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_pommel_strike": {
+      "name": "스킬북: 자루 치기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "pommel_strike",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_sidestep": {
+      "name": "스킬북: 흘려 넘기기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "sidestep",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_challenge": {
+      "name": "스킬북: 결투 신청",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "challenge",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_champions_duel": {
+      "name": "스킬북: 챔피언의 결투",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "champions_duel",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_piercing_thrust": {
+      "name": "스킬북: 관통 찌르기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "piercing_thrust",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_pole_vault": {
+      "name": "스킬북: 장대 뛰기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "pole_vault",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_spear_sweep": {
+      "name": "스킬북: 창 휘두르기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "spear_sweep",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_dragon_lance": {
+      "name": "스킬북: 용의 창",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "dragon_lance",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_flurry": {
+      "name": "스킬북: 연타",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "flurry",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_step_kick": {
+      "name": "스킬북: 발돋움 차기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "step_kick",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_palm_wave": {
+      "name": "스킬북: 장풍",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "palm_wave",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_hundred_fists": {
+      "name": "스킬북: 백열권",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "hundred_fists",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_shadow_bolt": {
+      "name": "스킬북: 그림자 화살",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "shadow_bolt",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_night_veil": {
+      "name": "스킬북: 밤의 장막",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "night_veil",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_dusk_blade": {
+      "name": "스킬북: 황혼의 칼날",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "dusk_blade",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_eclipse_reaper": {
+      "name": "스킬북: 월식",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "eclipse_reaper",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_mirage_slash": {
+      "name": "스킬북: 신기루 베기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "mirage_slash",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_shade_swap": {
+      "name": "스킬북: 그림자 바꿔치기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "shade_swap",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_phantom_blades": {
+      "name": "스킬북: 환영 칼날",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "phantom_blades",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_thousand_shades": {
+      "name": "스킬북: 천의 그림자",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "thousand_shades",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_scout_dart": {
+      "name": "스킬북: 정찰 표창",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "scout_dart",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_sprint": {
+      "name": "스킬북: 질주",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "sprint",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_flare": {
+      "name": "스킬북: 조명탄",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "flare",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_ambush": {
+      "name": "스킬북: 매복",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "ambush",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_arcane_missile": {
+      "name": "스킬북: 비전 화살",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "arcane_missile",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_phase_shift": {
+      "name": "스킬북: 위상 이동",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "phase_shift",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_mana_orb": {
+      "name": "스킬북: 마력 구체",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "mana_orb",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_arcane_cataclysm": {
+      "name": "스킬북: 비전 대격변",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "arcane_cataclysm",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_summon_spirit": {
+      "name": "스킬북: 정령 소환",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "summon_spirit",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_spirit_swap": {
+      "name": "스킬북: 정령 보호막",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "spirit_swap",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_summon_golem": {
+      "name": "스킬북: 골렘 소환",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "summon_golem",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_grand_pact": {
+      "name": "스킬북: 대계약",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "grand_pact",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_hex_bolt": {
+      "name": "스킬북: 저주탄",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "hex_bolt",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_dark_pact": {
+      "name": "스킬북: 어둠의 계약",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "dark_pact",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_curse_field": {
+      "name": "스킬북: 저주의 땅",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "curse_field",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_soul_drain": {
+      "name": "스킬북: 영혼 흡수",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "soul_drain",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_acid_flask": {
+      "name": "스킬북: 산성 플라스크",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "acid_flask",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_smoke_bomb": {
+      "name": "스킬북: 연막탄",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "smoke_bomb",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_healing_mist": {
+      "name": "스킬북: 치유 안개",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "healing_mist",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_great_reaction": {
+      "name": "스킬북: 대반응",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "great_reaction",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_mind_spike": {
+      "name": "스킬북: 정신 송곳",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "mind_spike",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_mirror_step": {
+      "name": "스킬북: 거울 걸음",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "mirror_step",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_enthrall": {
+      "name": "스킬북: 매혹",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "enthrall",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_dreamscape": {
+      "name": "스킬북: 꿈의 정원",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "dreamscape",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_holy_light": {
+      "name": "스킬북: 성광탄",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "holy_light",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_purify": {
+      "name": "스킬북: 정화",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "purify",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_judgment": {
+      "name": "스킬북: 심판",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "judgment",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_sanctum_ray": {
+      "name": "스킬북: 성역의 광선",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "sanctum_ray",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_precise_shot": {
+      "name": "스킬북: 정밀 사격",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "precise_shot",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_tumble_back": {
+      "name": "스킬북: 후방 구르기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "tumble_back",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_piercing_round": {
+      "name": "스킬북: 관통탄",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "piercing_round",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_deadeye": {
+      "name": "스킬북: 필살 저격",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "deadeye",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_marked_shot": {
+      "name": "스킬북: 표식 사격",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "marked_shot",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_bear_trap": {
+      "name": "스킬북: 곰덫",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "bear_trap",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_call_wolf": {
+      "name": "스킬북: 사냥개 부르기",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "call_wolf",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_beast_volley": {
+      "name": "스킬북: 몰이 사격",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "beast_volley",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_dagger_fan": {
+      "name": "스킬북: 단검 부채",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "dagger_fan",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_caltrops": {
+      "name": "스킬북: 마름쇠",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "caltrops",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_bomb": {
+      "name": "스킬북: 폭탄",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "bomb",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_cluster_bomb": {
+      "name": "스킬북: 집속 폭탄",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "cluster_bomb",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_arcane_arrow": {
+      "name": "스킬북: 마력 화살",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "arcane_arrow",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_arrow_blink": {
+      "name": "스킬북: 화살 도약",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "arrow_blink",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_prism_shot": {
+      "name": "스킬북: 프리즘 사격",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "prism_shot",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_starfall_arrow": {
+      "name": "스킬북: 별똥 화살",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "starfall_arrow",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_song_of_valor": {
+      "name": "스킬북: 용기의 노래",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "song_of_valor",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_song_of_haste": {
+      "name": "스킬북: 질풍의 노래",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "song_of_haste",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_dissonance": {
+      "name": "스킬북: 불협화음",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "dissonance",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_grand_symphony": {
+      "name": "스킬북: 대교향곡",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "grand_symphony",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_deploy_turret": {
+      "name": "스킬북: 포탑 설치",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "deploy_turret",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_rocket_jump": {
+      "name": "스킬북: 로켓 점프",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "rocket_jump",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_mend_bot": {
+      "name": "스킬북: 수리 장치",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "mend_bot",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_overclock": {
+      "name": "스킬북: 과부하",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "overclock",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_spirit_totem": {
+      "name": "스킬북: 치유 토템",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "spirit_totem",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_hex": {
+      "name": "스킬북: 변이 주술",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "hex",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_cleansing_wave": {
+      "name": "스킬북: 정화의 물결",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "cleansing_wave",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_storm_totem": {
+      "name": "스킬북: 폭풍 토템",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "storm_totem",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_spirit_link": {
+      "name": "스킬북: 정령 연결",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "spirit_link",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_wisp_guard": {
+      "name": "스킬북: 도깨비불 수호",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "wisp_guard",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_spirit_burst": {
+      "name": "스킬북: 정령 폭발",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "spirit_burst",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "book_spirit_ascension": {
+      "name": "스킬북: 정령 강림",
+      "kind": "book",
+      "icon": "book",
+      "lv": 1,
+      "skill": "spirit_ascension",
+      "value": 30,
+      "desc": "읽으면 스킬을 배우거나 등급이 오릅니다. 희귀할수록 높은 등급."
+    },
+    "dusk_sword": {
+      "name": "황혼 검",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "sword",
+      "lv": 35,
+      "stats": {
+        "atk": 51,
+        "crit": 0.03,
+        "hp": 70
+      },
+      "look": [
+        "#c8a0f0",
+        "#8a5dc8",
+        "#5a3a8a"
+      ],
+      "desc": "황혼 고원의 저녁빛을 머금었다."
+    },
+    "dusk_dagger": {
+      "name": "황혼 단검",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "dagger",
+      "lv": 35,
+      "stats": {
+        "atk": 42,
+        "atkSpeed": 15,
+        "crit": 0.04
+      },
+      "look": [
+        "#c8a0f0",
+        "#8a5dc8",
+        "#5a3a8a"
+      ],
+      "desc": "황혼 고원의 저녁빛을 머금었다."
+    },
+    "dusk_axe": {
+      "name": "황혼 도끼",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "axe",
+      "lv": 35,
+      "stats": {
+        "atk": 58,
+        "critDmg": 0.12
+      },
+      "look": [
+        "#c8a0f0",
+        "#8a5dc8",
+        "#5a3a8a"
+      ],
+      "desc": "황혼 고원의 저녁빛을 머금었다."
+    },
+    "dusk_bow": {
+      "name": "황혼 장궁",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "shot",
+      "icon": "bow",
+      "lv": 35,
+      "stats": {
+        "atk": 44,
+        "crit": 0.05
+      },
+      "look": [
+        "#c8a0f0",
+        "#8a5dc8",
+        "#5a3a8a"
+      ],
+      "desc": "황혼 고원의 저녁빛을 머금었다."
+    },
+    "dusk_staff": {
+      "name": "황혼 지팡이",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "bolt",
+      "icon": "staff",
+      "lv": 35,
+      "stats": {
+        "ap": 51,
+        "mana": 93,
+        "cdr": 0.03
+      },
+      "look": [
+        "#c8a0f0",
+        "#8a5dc8",
+        "#5a3a8a"
+      ],
+      "gem": "#ff9a9e",
+      "desc": "황혼 고원의 저녁빛을 머금었다."
+    },
+    "dusk_wand": {
+      "name": "황혼 완드",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "bolt",
+      "icon": "wand",
+      "lv": 35,
+      "stats": {
+        "ap": 44,
+        "mana": 58,
+        "crit": 0.03
+      },
+      "look": [
+        "#c8a0f0",
+        "#8a5dc8",
+        "#5a3a8a"
+      ],
+      "gem": "#ff9a9e",
+      "desc": "황혼 고원의 저녁빛을 머금었다."
+    },
+    "dusk_helm": {
+      "name": "황혼 투구",
+      "kind": "armor",
+      "slot": "helmet",
+      "icon": "helmet",
+      "lv": 35,
+      "stats": {
+        "pdef": 14,
+        "mdef": 9,
+        "hp": 58
+      },
+      "look": [
+        "#c8a0f0",
+        "#8a5dc8",
+        "#5a3a8a"
+      ],
+      "desc": "황혼 고원의 저녁빛을 머금었다."
+    },
+    "dusk_mail": {
+      "name": "황혼 갑옷",
+      "kind": "armor",
+      "slot": "chest",
+      "icon": "chest",
+      "lv": 35,
+      "stats": {
+        "pdef": 37,
+        "mdef": 23,
+        "hp": 163
+      },
+      "look": [
+        "#c8a0f0",
+        "#8a5dc8",
+        "#5a3a8a"
+      ],
+      "desc": "황혼 고원의 저녁빛을 머금었다."
+    },
+    "dusk_greaves": {
+      "name": "황혼 각반",
+      "kind": "armor",
+      "slot": "legs",
+      "icon": "legs",
+      "lv": 35,
+      "stats": {
+        "pdef": 28,
+        "mdef": 19,
+        "hp": 117
+      },
+      "look": [
+        "#8a5dc8",
+        "#5a3a8a",
+        "#5a3a8a"
+      ],
+      "desc": "황혼 고원의 저녁빛을 머금었다."
+    },
+    "dusk_boots": {
+      "name": "황혼 장화",
+      "kind": "armor",
+      "slot": "boots",
+      "icon": "boots",
+      "lv": 35,
+      "stats": {
+        "pdef": 9,
+        "mdef": 7,
+        "moveSpeed": 4
+      },
+      "look": "#5a3a8a",
+      "desc": "황혼 고원의 저녁빛을 머금었다."
+    },
+    "dusk_gloves": {
+      "name": "황혼 장갑",
+      "kind": "armor",
+      "slot": "gloves",
+      "icon": "gloves",
+      "lv": 35,
+      "stats": {
+        "pdef": 9,
+        "mdef": 7,
+        "atkSpeed": 8
+      },
+      "look": "#8a5dc8",
+      "desc": "황혼 고원의 저녁빛을 머금었다."
+    },
+    "dusk_cape": {
+      "name": "황혼 망토",
+      "kind": "armor",
+      "slot": "cape",
+      "icon": "cape",
+      "lv": 35,
+      "stats": {
+        "mdef": 19,
+        "regen": 5
+      },
+      "look": [
+        "#c8a0f0",
+        "#8a5dc8",
+        "#5a3a8a"
+      ],
+      "desc": "황혼 고원의 저녁빛을 머금었다."
+    },
+    "frost_sword": {
+      "name": "서리 검",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "sword",
+      "lv": 55,
+      "stats": {
+        "atk": 81,
+        "crit": 0.03,
+        "hp": 110
+      },
+      "look": [
+        "#e8faff",
+        "#9ee7ff",
+        "#4a9ac0"
+      ],
+      "desc": "만지면 손끝이 얼얼하다."
+    },
+    "frost_dagger": {
+      "name": "서리 단검",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "dagger",
+      "lv": 55,
+      "stats": {
+        "atk": 66,
+        "atkSpeed": 15,
+        "crit": 0.04
+      },
+      "look": [
+        "#e8faff",
+        "#9ee7ff",
+        "#4a9ac0"
+      ],
+      "desc": "만지면 손끝이 얼얼하다."
+    },
+    "frost_axe": {
+      "name": "서리 도끼",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "axe",
+      "lv": 55,
+      "stats": {
+        "atk": 92,
+        "critDmg": 0.12
+      },
+      "look": [
+        "#e8faff",
+        "#9ee7ff",
+        "#4a9ac0"
+      ],
+      "desc": "만지면 손끝이 얼얼하다."
+    },
+    "frost_bow": {
+      "name": "서리 장궁",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "shot",
+      "icon": "bow",
+      "lv": 55,
+      "stats": {
+        "atk": 70,
+        "crit": 0.05
+      },
+      "look": [
+        "#e8faff",
+        "#9ee7ff",
+        "#4a9ac0"
+      ],
+      "desc": "만지면 손끝이 얼얼하다."
+    },
+    "frost_staff": {
+      "name": "서리 지팡이",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "bolt",
+      "icon": "staff",
+      "lv": 55,
+      "stats": {
+        "ap": 81,
+        "mana": 147,
+        "cdr": 0.03
+      },
+      "look": [
+        "#e8faff",
+        "#9ee7ff",
+        "#4a9ac0"
+      ],
+      "gem": "#ffffff",
+      "desc": "만지면 손끝이 얼얼하다."
+    },
+    "frost_wand": {
+      "name": "서리 완드",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "bolt",
+      "icon": "wand",
+      "lv": 55,
+      "stats": {
+        "ap": 70,
+        "mana": 92,
+        "crit": 0.03
+      },
+      "look": [
+        "#e8faff",
+        "#9ee7ff",
+        "#4a9ac0"
+      ],
+      "gem": "#ffffff",
+      "desc": "만지면 손끝이 얼얼하다."
+    },
+    "frost_helm": {
+      "name": "서리 투구",
+      "kind": "armor",
+      "slot": "helmet",
+      "icon": "helmet",
+      "lv": 55,
+      "stats": {
+        "pdef": 22,
+        "mdef": 15,
+        "hp": 92
+      },
+      "look": [
+        "#e8faff",
+        "#9ee7ff",
+        "#4a9ac0"
+      ],
+      "desc": "만지면 손끝이 얼얼하다."
+    },
+    "frost_mail": {
+      "name": "서리 갑옷",
+      "kind": "armor",
+      "slot": "chest",
+      "icon": "chest",
+      "lv": 55,
+      "stats": {
+        "pdef": 59,
+        "mdef": 37,
+        "hp": 257
+      },
+      "look": [
+        "#e8faff",
+        "#9ee7ff",
+        "#4a9ac0"
+      ],
+      "desc": "만지면 손끝이 얼얼하다."
+    },
+    "frost_greaves": {
+      "name": "서리 각반",
+      "kind": "armor",
+      "slot": "legs",
+      "icon": "legs",
+      "lv": 55,
+      "stats": {
+        "pdef": 44,
+        "mdef": 29,
+        "hp": 183
+      },
+      "look": [
+        "#9ee7ff",
+        "#4a9ac0",
+        "#4a9ac0"
+      ],
+      "desc": "만지면 손끝이 얼얼하다."
+    },
+    "frost_boots": {
+      "name": "서리 장화",
+      "kind": "armor",
+      "slot": "boots",
+      "icon": "boots",
+      "lv": 55,
+      "stats": {
+        "pdef": 15,
+        "mdef": 11,
+        "moveSpeed": 4
+      },
+      "look": "#4a9ac0",
+      "desc": "만지면 손끝이 얼얼하다."
+    },
+    "frost_gloves": {
+      "name": "서리 장갑",
+      "kind": "armor",
+      "slot": "gloves",
+      "icon": "gloves",
+      "lv": 55,
+      "stats": {
+        "pdef": 15,
+        "mdef": 11,
+        "atkSpeed": 8
+      },
+      "look": "#9ee7ff",
+      "desc": "만지면 손끝이 얼얼하다."
+    },
+    "frost_cape": {
+      "name": "서리 망토",
+      "kind": "armor",
+      "slot": "cape",
+      "icon": "cape",
+      "lv": 55,
+      "stats": {
+        "mdef": 29,
+        "regen": 7
+      },
+      "look": [
+        "#e8faff",
+        "#9ee7ff",
+        "#4a9ac0"
+      ],
+      "desc": "만지면 손끝이 얼얼하다."
+    },
+    "ember_sword": {
+      "name": "잿불 검",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "sword",
+      "lv": 75,
+      "stats": {
+        "atk": 110,
+        "crit": 0.03,
+        "hp": 150
+      },
+      "look": [
+        "#ffc8a0",
+        "#ff6b3d",
+        "#a8321a"
+      ],
+      "desc": "꺼지지 않는 잿불이 속에서 타오른다."
+    },
+    "ember_dagger": {
+      "name": "잿불 단검",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "dagger",
+      "lv": 75,
+      "stats": {
+        "atk": 90,
+        "atkSpeed": 15,
+        "crit": 0.04
+      },
+      "look": [
+        "#ffc8a0",
+        "#ff6b3d",
+        "#a8321a"
+      ],
+      "desc": "꺼지지 않는 잿불이 속에서 타오른다."
+    },
+    "ember_axe": {
+      "name": "잿불 도끼",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "axe",
+      "lv": 75,
+      "stats": {
+        "atk": 125,
+        "critDmg": 0.12
+      },
+      "look": [
+        "#ffc8a0",
+        "#ff6b3d",
+        "#a8321a"
+      ],
+      "desc": "꺼지지 않는 잿불이 속에서 타오른다."
+    },
+    "ember_bow": {
+      "name": "잿불 장궁",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "shot",
+      "icon": "bow",
+      "lv": 75,
+      "stats": {
+        "atk": 95,
+        "crit": 0.05
+      },
+      "look": [
+        "#ffc8a0",
+        "#ff6b3d",
+        "#a8321a"
+      ],
+      "desc": "꺼지지 않는 잿불이 속에서 타오른다."
+    },
+    "ember_staff": {
+      "name": "잿불 지팡이",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "bolt",
+      "icon": "staff",
+      "lv": 75,
+      "stats": {
+        "ap": 110,
+        "mana": 200,
+        "cdr": 0.03
+      },
+      "look": [
+        "#ffc8a0",
+        "#ff6b3d",
+        "#a8321a"
+      ],
+      "gem": "#ffe14d",
+      "desc": "꺼지지 않는 잿불이 속에서 타오른다."
+    },
+    "ember_wand": {
+      "name": "잿불 완드",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "bolt",
+      "icon": "wand",
+      "lv": 75,
+      "stats": {
+        "ap": 95,
+        "mana": 125,
+        "crit": 0.03
+      },
+      "look": [
+        "#ffc8a0",
+        "#ff6b3d",
+        "#a8321a"
+      ],
+      "gem": "#ffe14d",
+      "desc": "꺼지지 않는 잿불이 속에서 타오른다."
+    },
+    "ember_helm": {
+      "name": "잿불 투구",
+      "kind": "armor",
+      "slot": "helmet",
+      "icon": "helmet",
+      "lv": 75,
+      "stats": {
+        "pdef": 30,
+        "mdef": 20,
+        "hp": 125
+      },
+      "look": [
+        "#ffc8a0",
+        "#ff6b3d",
+        "#a8321a"
+      ],
+      "desc": "꺼지지 않는 잿불이 속에서 타오른다."
+    },
+    "ember_mail": {
+      "name": "잿불 갑옷",
+      "kind": "armor",
+      "slot": "chest",
+      "icon": "chest",
+      "lv": 75,
+      "stats": {
+        "pdef": 80,
+        "mdef": 50,
+        "hp": 350
+      },
+      "look": [
+        "#ffc8a0",
+        "#ff6b3d",
+        "#a8321a"
+      ],
+      "desc": "꺼지지 않는 잿불이 속에서 타오른다."
+    },
+    "ember_greaves": {
+      "name": "잿불 각반",
+      "kind": "armor",
+      "slot": "legs",
+      "icon": "legs",
+      "lv": 75,
+      "stats": {
+        "pdef": 60,
+        "mdef": 40,
+        "hp": 250
+      },
+      "look": [
+        "#ff6b3d",
+        "#a8321a",
+        "#a8321a"
+      ],
+      "desc": "꺼지지 않는 잿불이 속에서 타오른다."
+    },
+    "ember_boots": {
+      "name": "잿불 장화",
+      "kind": "armor",
+      "slot": "boots",
+      "icon": "boots",
+      "lv": 75,
+      "stats": {
+        "pdef": 20,
+        "mdef": 15,
+        "moveSpeed": 4
+      },
+      "look": "#a8321a",
+      "desc": "꺼지지 않는 잿불이 속에서 타오른다."
+    },
+    "ember_gloves": {
+      "name": "잿불 장갑",
+      "kind": "armor",
+      "slot": "gloves",
+      "icon": "gloves",
+      "lv": 75,
+      "stats": {
+        "pdef": 20,
+        "mdef": 15,
+        "atkSpeed": 8
+      },
+      "look": "#ff6b3d",
+      "desc": "꺼지지 않는 잿불이 속에서 타오른다."
+    },
+    "ember_cape": {
+      "name": "잿불 망토",
+      "kind": "armor",
+      "slot": "cape",
+      "icon": "cape",
+      "lv": 75,
+      "stats": {
+        "mdef": 40,
+        "regen": 10
+      },
+      "look": [
+        "#ffc8a0",
+        "#ff6b3d",
+        "#a8321a"
+      ],
+      "desc": "꺼지지 않는 잿불이 속에서 타오른다."
+    },
+    "storm_sword": {
+      "name": "폭풍 검",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "sword",
+      "lv": 95,
+      "stats": {
+        "atk": 139,
+        "crit": 0.03,
+        "hp": 190
+      },
+      "look": [
+        "#fff4b0",
+        "#F2C94C",
+        "#a87a10"
+      ],
+      "desc": "들고 있으면 머리카락이 곤두선다."
+    },
+    "storm_dagger": {
+      "name": "폭풍 단검",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "dagger",
+      "lv": 95,
+      "stats": {
+        "atk": 114,
+        "atkSpeed": 15,
+        "crit": 0.04
+      },
+      "look": [
+        "#fff4b0",
+        "#F2C94C",
+        "#a87a10"
+      ],
+      "desc": "들고 있으면 머리카락이 곤두선다."
+    },
+    "storm_axe": {
+      "name": "폭풍 도끼",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "slash",
+      "icon": "axe",
+      "lv": 95,
+      "stats": {
+        "atk": 158,
+        "critDmg": 0.12
+      },
+      "look": [
+        "#fff4b0",
+        "#F2C94C",
+        "#a87a10"
+      ],
+      "desc": "들고 있으면 머리카락이 곤두선다."
+    },
+    "storm_bow": {
+      "name": "폭풍 장궁",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "shot",
+      "icon": "bow",
+      "lv": 95,
+      "stats": {
+        "atk": 120,
+        "crit": 0.05
+      },
+      "look": [
+        "#fff4b0",
+        "#F2C94C",
+        "#a87a10"
+      ],
+      "desc": "들고 있으면 머리카락이 곤두선다."
+    },
+    "storm_staff": {
+      "name": "폭풍 지팡이",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "bolt",
+      "icon": "staff",
+      "lv": 95,
+      "stats": {
+        "ap": 139,
+        "mana": 253,
+        "cdr": 0.03
+      },
+      "look": [
+        "#fff4b0",
+        "#F2C94C",
+        "#a87a10"
+      ],
+      "gem": "#8fd0ff",
+      "desc": "들고 있으면 머리카락이 곤두선다."
+    },
+    "storm_wand": {
+      "name": "폭풍 완드",
+      "kind": "weapon",
+      "slot": "weapon",
+      "basic": "bolt",
+      "icon": "wand",
+      "lv": 95,
+      "stats": {
+        "ap": 120,
+        "mana": 158,
+        "crit": 0.03
+      },
+      "look": [
+        "#fff4b0",
+        "#F2C94C",
+        "#a87a10"
+      ],
+      "gem": "#8fd0ff",
+      "desc": "들고 있으면 머리카락이 곤두선다."
+    },
+    "storm_helm": {
+      "name": "폭풍 투구",
+      "kind": "armor",
+      "slot": "helmet",
+      "icon": "helmet",
+      "lv": 95,
+      "stats": {
+        "pdef": 38,
+        "mdef": 25,
+        "hp": 158
+      },
+      "look": [
+        "#fff4b0",
+        "#F2C94C",
+        "#a87a10"
+      ],
+      "desc": "들고 있으면 머리카락이 곤두선다."
+    },
+    "storm_mail": {
+      "name": "폭풍 갑옷",
+      "kind": "armor",
+      "slot": "chest",
+      "icon": "chest",
+      "lv": 95,
+      "stats": {
+        "pdef": 101,
+        "mdef": 63,
+        "hp": 443
+      },
+      "look": [
+        "#fff4b0",
+        "#F2C94C",
+        "#a87a10"
+      ],
+      "desc": "들고 있으면 머리카락이 곤두선다."
+    },
+    "storm_greaves": {
+      "name": "폭풍 각반",
+      "kind": "armor",
+      "slot": "legs",
+      "icon": "legs",
+      "lv": 95,
+      "stats": {
+        "pdef": 76,
+        "mdef": 51,
+        "hp": 317
+      },
+      "look": [
+        "#F2C94C",
+        "#a87a10",
+        "#a87a10"
+      ],
+      "desc": "들고 있으면 머리카락이 곤두선다."
+    },
+    "storm_boots": {
+      "name": "폭풍 장화",
+      "kind": "armor",
+      "slot": "boots",
+      "icon": "boots",
+      "lv": 95,
+      "stats": {
+        "pdef": 25,
+        "mdef": 19,
+        "moveSpeed": 4
+      },
+      "look": "#a87a10",
+      "desc": "들고 있으면 머리카락이 곤두선다."
+    },
+    "storm_gloves": {
+      "name": "폭풍 장갑",
+      "kind": "armor",
+      "slot": "gloves",
+      "icon": "gloves",
+      "lv": 95,
+      "stats": {
+        "pdef": 25,
+        "mdef": 19,
+        "atkSpeed": 8
+      },
+      "look": "#F2C94C",
+      "desc": "들고 있으면 머리카락이 곤두선다."
+    },
+    "storm_cape": {
+      "name": "폭풍 망토",
+      "kind": "armor",
+      "slot": "cape",
+      "icon": "cape",
+      "lv": 95,
+      "stats": {
+        "mdef": 51,
+        "regen": 13
+      },
+      "look": [
+        "#fff4b0",
+        "#F2C94C",
+        "#a87a10"
+      ],
+      "desc": "들고 있으면 머리카락이 곤두선다."
+    }
+  },
+  "RARITIES": [
+    "poor",
+    "common",
+    "rare",
+    "advanced",
+    "mythic",
+    "legendary"
+  ],
+  "RARITY": {
+    "poor": {
+      "name": "하급",
+      "color": "#8E8E8E",
+      "specials": 0,
+      "dur": 1,
+      "stat": 0.8,
+      "up": 0.45
+    },
+    "common": {
+      "name": "일반",
+      "color": "#FFFFFF",
+      "specials": 0,
+      "dur": 1.2,
+      "stat": 1,
+      "up": 0.25
+    },
+    "rare": {
+      "name": "희귀",
+      "color": "#3DDC84",
+      "specials": 0,
+      "dur": 1.5,
+      "stat": 1.25,
+      "up": 0.15
+    },
+    "advanced": {
+      "name": "고급",
+      "color": "#3B82F6",
+      "specials": 1,
+      "dur": 2,
+      "stat": 1.55,
+      "up": 0.12
+    },
+    "mythic": {
+      "name": "신화",
+      "color": "#A855F7",
+      "specials": 1,
+      "dur": 2.6,
+      "stat": 1.9,
+      "up": 0.08
+    },
+    "legendary": {
+      "name": "전설",
+      "color": "#FF9F1C",
+      "specials": 2,
+      "dur": 3.5,
+      "stat": 2.4,
+      "up": 0
+    }
+  },
+  "SETS": {
+    "sprout_guardian": {
+      "name": "새싹 수호자",
+      "tiers": [
+        {
+          "n": 2,
+          "desc": "재생력 +10",
+          "mods": [
+            {
+              "k": "regen",
+              "add": 10
+            }
+          ]
+        },
+        {
+          "n": 3,
+          "desc": "풀 속성 방어력 +20",
+          "mods": [
+            {
+              "k": "elDef",
+              "el": "grass",
+              "add": 20
+            }
+          ]
+        },
+        {
+          "n": 5,
+          "desc": "피격 시 10% 확률로 2초 덩굴 보호막 (최대 체력 8%)",
+          "proc": {
+            "id": "vine_shield",
+            "v": 0.08
+          }
+        }
+      ]
+    }
+  },
+  "SPECIALS": {
+    "kill_haste": {
+      "name": "추격자",
+      "on": [
+        "weapon"
+      ],
+      "range": [
+        0.15,
+        0.25
+      ],
+      "desc": "처치하면 2초간 이동 속도 +{v}%"
+    },
+    "fifth_bolt": {
+      "name": "낙뢰",
+      "on": [
+        "weapon"
+      ],
+      "range": [
+        0.6,
+        1
+      ],
+      "desc": "5번째 평타마다 번개가 떨어져 공격력의 {v}% 전기 피해"
+    },
+    "burn_touch": {
+      "name": "불씨",
+      "on": [
+        "weapon"
+      ],
+      "range": [
+        0.1,
+        0.2
+      ],
+      "desc": "평타가 맞으면 {v}% 확률로 화상"
+    },
+    "low_shield": {
+      "name": "최후의 보루",
+      "on": [
+        "armor"
+      ],
+      "range": [
+        0.1,
+        0.18
+      ],
+      "desc": "체력이 30% 아래로 떨어지면 최대 체력 {v}% 보호막 (재사용 60초)"
+    },
+    "thorns": {
+      "name": "가시 돋친",
+      "on": [
+        "armor"
+      ],
+      "range": [
+        0.1,
+        0.2
+      ],
+      "desc": "근접 공격을 받으면 받은 피해의 {v}% 반사"
+    },
+    "sturdy": {
+      "name": "튼튼한",
+      "on": [
+        "armor"
+      ],
+      "range": [
+        0.04,
+        0.08
+      ],
+      "desc": "최대 체력 +{v}%"
+    },
+    "swift": {
+      "name": "바람결",
+      "on": [
+        "armor",
+        "accessory"
+      ],
+      "range": [
+        0.03,
+        0.06
+      ],
+      "desc": "이동 속도 +{v}%"
+    },
+    "vamp": {
+      "name": "흡혈",
+      "on": [
+        "weapon",
+        "accessory"
+      ],
+      "range": [
+        0.02,
+        0.04
+      ],
+      "desc": "흡혈 +{v}%"
+    },
+    "fortune": {
+      "name": "행운",
+      "on": [
+        "accessory"
+      ],
+      "range": [
+        2,
+        4
+      ],
+      "desc": "운 +{v}"
+    }
+  },
+  "ENCHANTS": {
+    "atk": {
+      "name": "공격력",
+      "range": [
+        2,
+        4
+      ]
+    },
+    "ap": {
+      "name": "주문력",
+      "range": [
+        2,
+        4
+      ]
+    },
+    "def": {
+      "name": "방어력",
+      "range": [
+        2,
+        4
+      ]
+    },
+    "hp": {
+      "name": "체력",
+      "range": [
+        15,
+        30
+      ]
+    },
+    "speed": {
+      "name": "이동 속도",
+      "range": [
+        2,
+        4
+      ]
+    },
+    "crit": {
+      "name": "치명타 확률",
+      "range": [
+        0.01,
+        0.02
+      ]
+    },
+    "eldef": {
+      "name": "속성 방어력",
+      "range": [
+        5,
+        10
+      ]
+    },
+    "vamp": {
+      "name": "흡혈",
+      "range": [
+        0.01,
+        0.02
+      ]
+    }
+  },
+  "TIERS": [
+    {
+      "key": "dusk",
+      "name": "황혼",
+      "lv": 35,
+      "c": [
+        "#c8a0f0",
+        "#8a5dc8",
+        "#5a3a8a"
+      ],
+      "gem": "#ff9a9e",
+      "desc": "황혼 고원의 저녁빛을 머금었다."
+    },
+    {
+      "key": "frost",
+      "name": "서리",
+      "lv": 55,
+      "c": [
+        "#e8faff",
+        "#9ee7ff",
+        "#4a9ac0"
+      ],
+      "gem": "#ffffff",
+      "desc": "만지면 손끝이 얼얼하다."
+    },
+    {
+      "key": "ember",
+      "name": "잿불",
+      "lv": 75,
+      "c": [
+        "#ffc8a0",
+        "#ff6b3d",
+        "#a8321a"
+      ],
+      "gem": "#ffe14d",
+      "desc": "꺼지지 않는 잿불이 속에서 타오른다."
+    },
+    {
+      "key": "storm",
+      "name": "폭풍",
+      "lv": 95,
+      "c": [
+        "#fff4b0",
+        "#F2C94C",
+        "#a87a10"
+      ],
+      "gem": "#8fd0ff",
+      "desc": "들고 있으면 머리카락이 곤두선다."
+    }
+  ]
+}

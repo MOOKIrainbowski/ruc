@@ -1,0 +1,184 @@
+{
+  "ROOM_NAME": {
+    "plaza": "햇살광장 솔라스",
+    "field": "햇살 초원",
+    "arena": "결투장",
+    "dungeon": "고목의 유적",
+    "highland": "황혼 고원"
+  },
+  "RUINS": {
+    "name": "고목의 유적",
+    "recommend": "권장 Lv10~30 · 1~5인",
+    "restMs": 30000,
+    "revives": 3,
+    "reviveDelayMs": 10000,
+    "revivePct": 0.5,
+    "potionsPerStage": 5,
+    "hpPerMember": 0.6,
+    "returnMs": 8000,
+    "stages": [
+      {
+        "name": "새싹의 회랑",
+        "lv": 6,
+        "groups": [
+          {
+            "mob": "sprout_slime",
+            "n": 12,
+            "grade": "normal"
+          }
+        ],
+        "ruc": 30
+      },
+      {
+        "name": "고블린 약탈대",
+        "lv": 8,
+        "groups": [
+          {
+            "mob": "goblin",
+            "n": 8,
+            "grade": "normal"
+          },
+          {
+            "mob": "goblin",
+            "n": 4,
+            "grade": "low"
+          }
+        ],
+        "ruc": 50
+      },
+      {
+        "name": "덩굴 늑대 굴",
+        "lv": 11,
+        "groups": [
+          {
+            "mob": "wolf",
+            "n": 10,
+            "grade": "low"
+          }
+        ],
+        "ruc": 70
+      },
+      {
+        "name": "포자의 제단",
+        "lv": 13,
+        "groups": [
+          {
+            "mob": "shroom_shaman",
+            "n": 6,
+            "grade": "mid"
+          }
+        ],
+        "ruc": 90
+      },
+      {
+        "name": "성난 숲정령",
+        "lv": 15,
+        "groups": [
+          {
+            "mob": "fern",
+            "n": 1,
+            "grade": "calamity"
+          }
+        ],
+        "ruc": 200,
+        "boss": true
+      },
+      {
+        "name": "이끼 덮인 수문",
+        "lv": 17,
+        "groups": [
+          {
+            "mob": "moss_golem",
+            "n": 4,
+            "grade": "mid"
+          },
+          {
+            "mob": "moss_golem",
+            "n": 3,
+            "grade": "high"
+          }
+        ],
+        "ruc": 140
+      },
+      {
+        "name": "그림자 뿌리",
+        "lv": 19,
+        "groups": [
+          {
+            "mob": "shadow_vine",
+            "n": 6,
+            "grade": "high"
+          }
+        ],
+        "ruc": 170
+      },
+      {
+        "name": "고대 수목 기사단",
+        "lv": 21,
+        "groups": [
+          {
+            "mob": "tree_knight",
+            "n": 2,
+            "grade": "minor"
+          },
+          {
+            "mob": "tree_knight",
+            "n": 4,
+            "grade": "high"
+          }
+        ],
+        "ruc": 210
+      },
+      {
+        "name": "쌍둥이 꽃의 정원",
+        "lv": 23,
+        "groups": [
+          {
+            "mob": "twin_witch",
+            "n": 3,
+            "grade": "minor"
+          }
+        ],
+        "ruc": 260,
+        "waves": true
+      },
+      {
+        "name": "고목왕의 옥좌",
+        "lv": 26,
+        "groups": [
+          {
+            "mob": "eldra",
+            "n": 1,
+            "grade": "catastrophe"
+          }
+        ],
+        "ruc": 0,
+        "boss": true,
+        "limitMs": 900000
+      }
+    ],
+    "clear": {
+      "ruc": 5000,
+      "gear": [
+        "ancient_blade",
+        "ancient_staff",
+        "ancient_bow",
+        "ancient_mail",
+        "twin_ring"
+      ],
+      "legendary": 0.05,
+      "items": [
+        [
+          "enhance_stone",
+          10
+        ],
+        [
+          "blessed_stone",
+          1
+        ]
+      ],
+      "title": "ruins_clear",
+      "firstTitle": "first_purifier"
+    }
+  }
+}

@@ -154,7 +154,7 @@ public class MenuService {
         return switch (id) {
             case "home" -> Material.BEACON;
             case "raid" -> Material.NETHERITE_SWORD;
-            case "war" -> Material.SHIELD;
+            case "war" -> Material.ENCHANTED_BOOK;   // 2026-11-15 국가전 → 러크 RPG
             case "peace" -> Material.OAK_SAPLING;
             default -> Material.PAPER;
         };

@@ -42,8 +42,8 @@ public class ServerSelector {
     public static final List<Target> TARGETS = List.of(
             new Target("raid", "약탈", "전투 중 접속 종료 시 전부 소멸",
                     Material.NETHERITE_SWORD, NamedTextColor.RED),
-            new Target("war", "국가전", "국가 소속만 입장 가능",
-                    Material.SHIELD, NamedTextColor.GOLD),
+            new Target("war", "러크 RPG", "직업 · 스킬 · 던전 · 보스",
+                    Material.ENCHANTED_BOOK, NamedTextColor.GOLD),
             new Target("peace", "평화", "직접·간접 살해 전면 차단",
                     Material.OAK_SAPLING, NamedTextColor.GREEN)
     );

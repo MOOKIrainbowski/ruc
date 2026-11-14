@@ -219,7 +219,7 @@ public class DiscordRelayService {
         return switch (plugin.getConfig().getString("server-id", "")) {
             case "home" -> "광장 · 상점 · 길드";
             case "raid" -> "PvP · 약탈 허용";
-            case "war" -> "길드 · 국가 전쟁";
+            case "war" -> "러크 RPG";
             case "peace" -> "PvP 없는 생존";
             default -> "러크 서버";
         };

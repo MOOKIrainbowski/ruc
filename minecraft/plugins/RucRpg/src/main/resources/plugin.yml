@@ -1,0 +1,22 @@
+name: RucRpg
+version: '${version}'
+main: kr.rucserver.rpg.RucRpg
+api-version: '1.21'
+author: Ruc Server
+description: 러크 RPG (마크) — 스탯 · 직업 · 스킬 · 아이템 · 몹 · 던전 (구 국가전 서버)
+depend: [RucCore]
+
+commands:
+  rpgadmin:
+    description: 러크 RPG 관리 (데이터 다시 읽기 · 정보)
+    usage: /rpgadmin <reload|info>
+    permission: rucrpg.admin
+  rpgmenu:
+    description: RPG 메뉴 (인벤토리 · 스킬 · 퀘스트 · 파티 · 지도 · 창고 · 설정)
+    usage: /메뉴
+    aliases: [메뉴, rpg]
+
+permissions:
+  rucrpg.admin:
+    description: RPG 관리 · GM 권한
+    default: op
