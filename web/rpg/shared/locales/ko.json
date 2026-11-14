@@ -550,5 +550,12 @@
   "gm.on": "켜짐",
   "gm.off": "꺼짐",
   "gm.noPlayers": "접속자가 없습니다",
-  "gm.noItems": "검색 결과가 없습니다"
+  "gm.noItems": "검색 결과가 없습니다",
+  "gm.picked": "고른 아이템",
+  "gm.pickHelp": "누르면 지급 목록에 넣기 · 다시 누르면 빼기 (여러 개 가능) — 아래 /gm 칸에 명령이 자동으로 만들어져요",
+  "gm.clearPicks": "목록 비우기",
+  "gm.qtyHelp": "바꾸면 고른 아이템 전부에 적용 · 아이템마다 따로 바꿀 수도 있어요",
+  "gm.rarityHelp": "장비에만 적용 (나머지는 기본 희귀도)",
+  "gm.level": "레벨",
+  "gm.setLevel": "레벨 변경"
 }

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { CHAT, type ChatChannel } from "../shared/data/chat";
-import { ITEMS, RARITIES, RARITY, type Rarity } from "../shared/data/items";
+import { ITEMS, RARITIES, RARITY, isGear, type Rarity } from "../shared/data/items";
 import { ROOM_NAME } from "../shared/data/dungeons";
 import type { RoomKind } from "../shared/constants";
 import type { S2C } from "../shared/protocol";
@@ -118,8 +118,10 @@ export function GmWindow({ data, send, onClose }: { data: GmData; send: Send; on
   const [target, setTarget] = useState("");
   const [category, setCategory] = useState("all");
   const [search, setSearch] = useState("");
-  const [tpl, setTpl] = useState(Object.keys(ITEMS)[0]);
+  /** 지급할 아이템 여러 개 (클릭으로 넣고 빼기) — 고를 때마다 아래 /gm 칸에 명령이 만들어짐 */
+  const [picks, setPicks] = useState<{ tpl: string; qty: number }[]>([]);
   const [qty, setQty] = useState(1);
+  const [lv, setLv] = useState(1);
   const [rarity, setRarity] = useState<Rarity>("common");
   const [speedValue, setSpeedValue] = useState("1");
   const [map, setMap] = useState<"plaza" | "field" | "highland" | "arena">("plaza");
@@ -131,12 +133,23 @@ export function GmWindow({ data, send, onClose }: { data: GmData; send: Send; on
   const players = data.players ?? [];
   const selected = players.find((p) => p.name === target) ?? players[0];
   useEffect(() => setSpeedValue(String(selected?.speed ?? 1)), [selected?.name]);
+  useEffect(() => setLv(selected?.lv ?? 1), [selected?.name, selected?.lv]);
+  // 고른 아이템 → give 명령 (여러 개는 " ; " 로 이어서 한 번에 실행). 장비만 희귀도를 붙임, 나머지는 아이템 기본 희귀도
+  const giveCmd = (who: string) => picks.map((k) => `give "${who}" ${k.tpl} ${k.qty}${isGear(ITEMS[k.tpl]) ? ` ${rarity}` : ""}`).join(" ; ");
+  useEffect(() => { if (tab === "items") setCmd(selected && picks.length ? giveCmd(selected.name) : ""); }, [tab, picks, rarity, selected?.name]);
+  useEffect(() => { if (tab !== "items") setCmd(""); }, [tab]); // 다른 탭에서 실행을 눌러 또 지급되지 않게
+  const pick = (id: string) => setPicks((ps) => (ps.some((k) => k.tpl === id) ? ps.filter((k) => k.tpl !== id) : ps.length >= 30 ? ps : [...ps, { tpl: id, qty }]));
+  // " ; " 로 이어진 give 여러 개는 하나씩 보냄 (공지 문장 속 ; 는 그대로 — 전부 give 일 때만 나눔)
+  const runCmd = (text: string) => {
+    const parts = text.split(";").map((x) => x.trim().replace(/^\/gm\s+/, "")).filter(Boolean);
+    if (parts.length > 1 && parts.every((c) => c.startsWith("give "))) parts.slice(0, 30).forEach(gm);
+    else gm(text.trim().replace(/^\/gm\s+/, ""));
+  };
   const groups: Record<string, string> = { all: t("gm.allItems"), weapon: t("gm.weapon"), armor: t("gm.armor"), accessory: t("gm.accessory"), potion: t("gm.potion"), food: t("gm.food"), material: t("gm.material"), book: t("gm.book"), consumable: t("gm.consumable") };
   const items = Object.entries(ITEMS).filter(([id, item]) => {
     const group = item.use?.food ? "food" : item.kind;
     return (category === "all" || group === category) && `${item.name} ${id}`.toLowerCase().includes(search.toLowerCase());
   });
-  const chosen = ITEMS[tpl];
   return (
     <Window title={t("gm.title")} onClose={onClose} wide>
       <div className="mb-2 flex gap-1.5">
@@ -161,6 +174,8 @@ export function GmWindow({ data, send, onClose }: { data: GmData; send: Send; on
             <button className="rpg-btn" disabled={!selected} onClick={() => selected && gm(`warp "${selected.name}" ${map} ${x} ${y}`)}>{t("gm.warp")}</button>
             <button className="rpg-btn" disabled={!selected} onClick={() => selected && gm(`heal "${selected.name}"`)}>{t("gm.heal")}</button>
             <button className="rpg-btn" disabled={!selected} onClick={() => selected && gm(`info "${selected.name}"`)}>{t("gm.info")}</button>
+            <label className="flex items-center gap-1 text-[10px]">{t("gm.level")}<input className="rpg-input w-14" type="number" min="1" max="100" value={lv} onChange={(e) => setLv(Math.max(1, Math.min(100, Math.round(Number(e.target.value) || 1))))} onKeyDown={(e) => { if (e.key === "Enter" && selected) gm(`level "${selected.name}" ${lv}`); }} /></label>
+            <button className="rpg-btn" disabled={!selected || lv === selected?.lv} onClick={() => selected && gm(`level "${selected.name}" ${lv}`)}>{t("gm.setLevel")}</button>
             {selected && <>
               <button className="rpg-btn" onClick={() => gm(`toggle "${selected.name}" invuln ${selected.invuln ? "off" : "on"}`)}>{t("gm.invuln")}: {selected.invuln ? t("gm.on") : t("gm.off")}</button>
               <button className="rpg-btn" onClick={() => gm(`toggle "${selected.name}" resources ${selected.resources ? "off" : "on"}`)}>{t("gm.resources")}: {selected.resources ? t("gm.on") : t("gm.off")}</button>
@@ -184,20 +199,35 @@ export function GmWindow({ data, send, onClose }: { data: GmData; send: Send; on
             <input className="rpg-input min-w-32 flex-1" value={search} onChange={(e) => setSearch(e.target.value)} placeholder={t("gm.searchItem")} />
           </div>
           <div className="grid grid-cols-2 gap-1 sm:grid-cols-3">
-            {items.map(([id, item]) => <button key={id} className="flex min-w-0 items-center gap-1 rounded border border-[#c9a97a] bg-[#f6e9c8] p-1 text-left" data-on={tpl === id} onClick={() => setTpl(id)}>
-              <img className="rpg-pixel h-8 w-8 shrink-0" src={iconUrl(itemIcon(id, item.rarity ?? rarity))} alt="" />
-              <span className="min-w-0 truncate text-[11px]">{item.name}</span>
-            </button>)}
+            {items.map(([id, item]) => {
+              const on = picks.some((k) => k.tpl === id);
+              return <button key={id} className={`flex min-w-0 items-center gap-1 rounded border p-1 text-left ${on ? "border-[#3e9a3e] bg-[#d8f0c8]" : "border-[#c9a97a] bg-[#f6e9c8]"}`} onClick={() => pick(id)} title={t("gm.pickHelp")}>
+                <img className="rpg-pixel h-8 w-8 shrink-0" src={iconUrl(itemIcon(id, isGear(item) ? rarity : item.rarity ?? "common"))} alt="" />
+                <span className="min-w-0 flex-1 truncate text-[11px]">{item.name}</span>
+                {on && <span className="text-[11px] font-bold text-[#2f7a2f]">✔</span>}
+              </button>;
+            })}
             {!items.length && <span className="col-span-full p-2 text-center text-xs">{t("gm.noItems")}</span>}
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-1.5 rounded border border-[#c9a97a] bg-[#f6e9c8] p-2">
-            {chosen && <><img className="rpg-pixel h-8 w-8" src={iconUrl(itemIcon(tpl, rarity))} alt="" /><b className="mr-auto text-xs">{chosen.name}</b></>}
-            <select className="rpg-input" value={rarity} onChange={(e) => setRarity(e.target.value as Rarity)}>{RARITIES.map((r) => <option key={r} value={r}>{RARITY[r].name}</option>)}</select>
-            <label className="flex items-center gap-1 text-[10px]">{t("gm.quantity")}<input className="rpg-input w-16" type="number" min="1" max="999" value={qty} onChange={(e) => setQty(Math.max(1, Math.min(999, Number(e.target.value))))} /></label>
-            <select className="rpg-input min-w-28" value={selected?.name ?? ""} onChange={(e) => setTarget(e.target.value)} disabled={!players.length}>
-              {players.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
-            </select>
-            <button className="rpg-btn" disabled={!selected} onClick={() => selected && gm(`give "${selected.name}" ${tpl} ${qty} ${rarity}`)}>{t("gm.give")}</button>
+          <div className="sticky bottom-0 z-10 mt-2 rounded border border-[#c9a97a] bg-[#f6e9c8] p-2 shadow-[0_-4px_8px_rgba(60,40,20,0.18)]">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <b className="mr-auto text-xs">{t("gm.picked")} {picks.length}</b>
+              <select className="rpg-input" value={rarity} onChange={(e) => setRarity(e.target.value as Rarity)} title={t("gm.rarityHelp")}>{RARITIES.map((r) => <option key={r} value={r}>{RARITY[r].name}</option>)}</select>
+              <label className="flex items-center gap-1 text-[10px]" title={t("gm.qtyHelp")}>{t("gm.quantity")}<input className="rpg-input w-16" type="number" min="1" max="999" value={qty} onChange={(e) => { const n = Math.max(1, Math.min(999, Number(e.target.value) || 1)); setQty(n); setPicks((ps) => ps.map((k) => ({ ...k, qty: n }))); }} /></label>
+              <select className="rpg-input min-w-28" value={selected?.name ?? ""} onChange={(e) => setTarget(e.target.value)} disabled={!players.length}>
+                {players.map((p) => <option key={p.name} value={p.name}>{p.name}</option>)}
+              </select>
+              <button className="rpg-btn" disabled={!picks.length} onClick={() => setPicks([])}>{t("gm.clearPicks")}</button>
+              <button className="rpg-btn" disabled={!selected || !picks.length} onClick={() => runCmd(cmd)}>{t("gm.give")}</button>
+            </div>
+            {picks.length > 0 && <div className="mt-1.5 flex flex-wrap gap-1">
+              {picks.map((k) => <span key={k.tpl} className="flex items-center gap-1 rounded border border-[#c9a97a] bg-[#fffaf0] py-0.5 pl-0.5 pr-1 text-[11px]">
+                <img className="rpg-pixel h-5 w-5" src={iconUrl(itemIcon(k.tpl, isGear(ITEMS[k.tpl]) ? rarity : ITEMS[k.tpl].rarity ?? "common"))} alt="" />
+                {ITEMS[k.tpl].name}
+                <input className="rpg-input w-12 !py-0 !text-[11px]" type="number" min="1" max="999" value={k.qty} onChange={(e) => { const n = Math.max(1, Math.min(999, Number(e.target.value) || 1)); setPicks((ps) => ps.map((x) => (x.tpl === k.tpl ? { ...x, qty: n } : x))); }} />
+                <button className="text-[#a8323a]" onClick={() => pick(k.tpl)} aria-label={t("hud.close")}>✕</button>
+              </span>)}
+            </div>}
           </div>
         </>}
         {tab === "bugs" && (data.bugs ?? []).map((b) => (
@@ -214,7 +244,7 @@ export function GmWindow({ data, send, onClose }: { data: GmData; send: Send; on
           </div>
         ))}
       </div>
-      <form className="mt-2 flex gap-1.5" onSubmit={(e) => { e.preventDefault(); if (cmd.trim()) gm(cmd.trim()); setCmd(""); }}>
+      <form className="mt-2 flex gap-1.5" onSubmit={(e) => { e.preventDefault(); if (cmd.trim()) runCmd(cmd); if (!(tab === "items" && picks.length)) setCmd(""); }}>
         <span className="self-center font-mono text-[#8c6642]">/gm</span>
         <input className="rpg-input flex-1" value={cmd} placeholder="announce 점검 10분 뒤 · give 닉 enhance_stone 10 · help" onChange={(e) => setCmd(e.target.value)} />
         <button className="rpg-btn" type="submit">{t("gm.run")}</button>
