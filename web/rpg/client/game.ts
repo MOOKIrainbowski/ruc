@@ -168,7 +168,7 @@ function mobTextures(key: string): Texture[][] {
 const itemTex = new Map<string, Texture>();
 const itemTexture = (tpl: string, r: Rarity) => {
   let t = itemTex.get(tpl + r);
-  if (!t) { t = Texture.from(itemIcon(tpl, r)); itemTex.set(tpl + r, t); }
+  if (!t) { t = hdTex(itemIcon(tpl, r)); itemTex.set(tpl + r, t); } // 64×64 아이콘 → 월드에서는 32px 크기
   return t;
 };
 const iconTex = new Map<string, Texture>();

@@ -168,7 +168,14 @@ export function fromCanvas(c: HTMLCanvasElement): Px {
 }
 
 export function refine32(src: Px): Px {
-  const out = scale2x(src);
+  return refine(src, 1);
+}
+
+/** refine32 를 n 번 키워서 (n = 2 → 4배 크기). 명암 · 테두리 · 결 · 그림자는 원래 비율대로 (n px 단위) */
+export function refine(src: Px, n: number): Px {
+  let out = scale2x(src);
+  for (let i = 1; i < n; i++) out = scale2x(out);
+  const u = 1 << (n - 1); // 원래 32px 기준 1px = u px
   const ow = out.w;
   const oh = out.h;
   const solid = (x: number, y: number) => x >= 0 && y >= 0 && x < ow && y < oh && out.d[y * ow + x] >>> 24 > 0x80;
@@ -184,13 +191,13 @@ export function refine32(src: Px): Px {
       const v = src2[y * ow + x];
       if (v >>> 24 < 0x80) continue;
       let k = Math.round(12 - (y / oh) * 28); // 위 +12 → 아래 −16
-      if (!solid(x - 1, y - 1) || !solid(x, y - 1) || !solid(x - 1, y)) k += 14; // 왼쪽 위 테두리 반사광
-      if (!solid(x + 1, y + 1) || !solid(x + 1, y) || !solid(x, y + 1)) k -= 10; // 오른쪽 아래 그늘
-      if ((x + y) % 4 === 0) k += 3; // 결
+      if (!solid(x - u, y - u) || !solid(x, y - u) || !solid(x - u, y)) k += 14; // 왼쪽 위 테두리 반사광
+      if (!solid(x + u, y + u) || !solid(x + u, y) || !solid(x, y + u)) k -= 10; // 오른쪽 아래 그늘
+      if ((Math.floor(x / u) + Math.floor(y / u)) % 4 === 0) k += 3; // 결
       out.d[y * ow + x] = shift(v, k);
     }
   // 바깥 부드러운 그림자 (아래 오른쪽으로 1px, 반투명)
-  for (let y = 1; y < oh; y++)
-    for (let x = 1; x < ow; x++) if (!out.d[y * ow + x] && solid(x - 1, y - 1)) out.d[y * ow + x] = 0x44000000;
+  for (let y = u; y < oh; y++)
+    for (let x = u; x < ow; x++) if (!out.d[y * ow + x] && solid(x - u, y - u)) out.d[y * ow + x] = 0x44000000;
   return out;
 }
