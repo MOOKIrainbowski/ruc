@@ -44,6 +44,7 @@ export type Loc = keyof typeof LOCS;
 /** [위치, 칸]. 칸 −1 = 빈 곳에 알아서 */
 export type ItemPos = [Loc, number];
 export const STACK = 64;
+export const STACKABLE_KINDS = ["potion", "material", "book"] as const;
 /** 포션 공유 쿨 (§14-2) */
 export const POTION_CD_MS = 8000;
 
@@ -192,7 +193,7 @@ export const BOOK_IDS = Object.keys(ITEMS).filter((id) => ITEMS[id].kind === "bo
 /** 스킬북 희귀도 → 스킬 등급: 하급 · 일반 = 하급, 희귀 · 고급 = 중급, 신화 = 상급, 전설 = 초월급 */
 export const bookGrade = (r: Rarity): SkillGrade => (r === "legendary" ? "trans" : r === "mythic" ? "high" : r === "rare" || r === "advanced" ? "mid" : "low");
 
-export const stackable = (t: Template) => t.kind === "potion" || t.kind === "material" || t.kind === "book" || (t.kind === "consumable" && !!t.use?.food);
+export const stackable = (t: Template) => (STACKABLE_KINDS as readonly string[]).includes(t.kind) || (t.kind === "consumable" && !!t.use?.food);
 export const isGear = (t: Template) => !!t.slot;
 
 /**
@@ -210,7 +211,7 @@ export const SPECIALS: Record<string, { name: string; on: ItemKind[]; range: [nu
   vamp: { name: "흡혈", on: ["weapon", "accessory"], range: [0.02, 0.04], desc: "흡혈 +{v}%", mods: (v) => [{ k: "lifesteal", add: v }] },
   fortune: { name: "행운", on: ["accessory"], range: [2, 4], desc: "운 +{v}", mods: (v) => [{ k: "luck", add: v }] },
 };
-const SPECIAL_TIER: Partial<Record<Rarity, number>> = { advanced: 1, mythic: 1.5, legendary: 2.2 };
+export const SPECIAL_TIER: Partial<Record<Rarity, number>> = { advanced: 1, mythic: 1.5, legendary: 2.2 };
 
 /** 세트 (§14-5): 같은 세트를 n개 이상 입으면 단계별 효과. proc = 서버 발동 규칙 */
 export const SETS: Record<string, { name: string; tiers: { n: number; desc: string; mods?: Mod[]; proc?: Special }[] }> = {
