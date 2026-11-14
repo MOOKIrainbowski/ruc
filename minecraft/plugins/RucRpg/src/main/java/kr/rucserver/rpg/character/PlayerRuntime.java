@@ -120,6 +120,7 @@ public final class PlayerRuntime implements Listener {
             u.exhausted = false;
             levelUpShow(p, c.level);
             plugin.progression().sync(u);   // 레벨 따라 자동 습득 · 쌓아 둔 숙련도로 스킬 레벨업
+            plugin.quests().quest(p, "level", null);
             plugin.chars().saveAsync(c);
         }
         syncVanilla(u);

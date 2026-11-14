@@ -82,7 +82,7 @@ public final class NpcRuntime implements Listener {
         if (def != null) {
             JsonObject d = def.getAsJsonObject();
             String line = d.getAsJsonArray("lines").get((int) (Math.random() * d.getAsJsonArray("lines").size())).getAsString();
-            p.sendMessage(Component.text("[" + d.get("name").getAsString() + "] ", TextColor.color(0xF2C94C)).append(Component.text(line, NamedTextColor.WHITE)));
+            p.sendMessage(Component.text("[" + d.get("name").getAsString() + "] ", TextColor.color(0xF2C94C)).append(Component.text(kr.rucserver.rpg.quest.QuestEngine.mc(line), NamedTextColor.WHITE)));
         }
         p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_AMBIENT, 0.6f, 1.2f);
         talked.accept(p, id);
@@ -92,7 +92,7 @@ public final class NpcRuntime implements Listener {
             case "owen" -> plugin.menus().skills(p);
             case "lumi" -> plugin.menus().main(p);
             case "volt" -> plugin.econGui().smith(p);
-            case "pip" -> plugin.core().getMailbox().open(p, 0);
+            case "pip" -> { plugin.core().getMailbox().open(p, 0); plugin.quests().quest(p, "claim", null); }
             default -> {}   // 볼트(강화 M5) · 미르(제조 M8) · 핍(우편: RucCore /우편함) · 다리오(던전 M7)
         }
     }

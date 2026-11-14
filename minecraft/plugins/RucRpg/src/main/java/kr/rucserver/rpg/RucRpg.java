@@ -45,6 +45,7 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.ui.EquipMenu equipMenu;
     private kr.rucserver.rpg.econ.Economy economy;
     private kr.rucserver.rpg.econ.EconGui econGui;
+    private kr.rucserver.rpg.quest.QuestEngine quests;
     private kr.rucserver.rpg.skill.SkillDefs skillDefs;
     private kr.rucserver.rpg.skill.Progression progression;
     private kr.rucserver.rpg.skill.SkillEngine skills;
@@ -108,6 +109,7 @@ public final class RucRpg extends JavaPlugin {
         chars.onLoaded(p -> {
             runtime.attach(p, chars.get(p));
             progression.sync(runtime.unit(p));   // 견습 스킬 · 레벨 따라 자동 습득
+            if (quests != null) quests.load(p);
             java.util.UUID id = p.getUniqueId();
             getServer().getScheduler().runTaskAsynchronously(this, () -> {
                 try { itemRuntime.equip().load(id); } catch (Exception e) { getLogger().warning("장비 불러오기 실패: " + e.getMessage()); }
@@ -143,6 +145,13 @@ public final class RucRpg extends JavaPlugin {
             economy.createSchema();
         } catch (Exception e) { getLogger().log(Level.SEVERE, "경제 테이블 만들기 실패", e); }
         econGui = new kr.rucserver.rpg.econ.EconGui(this, economy, items);
+        quests = new kr.rucserver.rpg.quest.QuestEngine(this, core.getDatabase());
+        try { quests.createSchema(); } catch (Exception e) { getLogger().log(Level.SEVERE, "퀘스트 테이블 만들기 실패", e); }
+        npcs.talked = (p, id) -> quests.quest(p, "talk", id);
+        getServer().getPluginManager().registerEvents(new org.bukkit.event.Listener() {
+            @org.bukkit.event.EventHandler
+            public void onQuit(org.bukkit.event.player.PlayerQuitEvent e) { quests.forget(e.getPlayer()); }
+        }, this);
         getServer().getPluginManager().registerEvents(econGui, this);
         getServer().getPluginManager().registerEvents(new org.bukkit.event.Listener() {
             /** 광장 시설: 강화대 → 대장간 · 상점 천막 → 일반 상점 · 시장 천막 → 유저 상점(RucCore) · 창고 · 우편함(RucCore) */
@@ -158,7 +167,7 @@ public final class RucRpg extends JavaPlugin {
                     case "tent_shop" -> econGui.shop(p);
                     case "tent_market" -> core.getShop().open(p, 0, false);
                     case "storage" -> econGui.storage(p);
-                    case "mailbox" -> core.getMailbox().open(p, 0);
+                    case "mailbox" -> { core.getMailbox().open(p, 0); quests.quest(p, "claim", null); }
                     default -> p.sendMessage(Component.text("제조(연금술)는 M8 에서 열립니다", NamedTextColor.GRAY));
                 }
             }
@@ -236,6 +245,7 @@ public final class RucRpg extends JavaPlugin {
                 case "rpgskill" -> menus.skills(p);
                 case "rpgstats" -> menus.stats(p);
                 case "rpgjob" -> menus.job(p);
+                case "rpgquest" -> quests.journal(p);
                 default -> { return false; }
             }
             return true;
@@ -263,12 +273,17 @@ public final class RucRpg extends JavaPlugin {
     public kr.rucserver.rpg.ui.EquipMenu equipMenu() { return equipMenu; }
     public kr.rucserver.rpg.econ.Economy economy() { return economy; }
     public kr.rucserver.rpg.econ.EconGui econGui() { return econGui; }
+    public kr.rucserver.rpg.quest.QuestEngine quests() { return quests; }
+
+    /** 파티 중인가 (M7 파티가 붙으면 그쪽에서) */
+    public boolean inParty(Player p) { return false; }
     public kr.rucserver.rpg.skill.SkillEngine skills() { return skills; }
     public kr.rucserver.rpg.skill.Progression progression() { return progression; }
 
     /** 몹 처치 뒤: 드롭 · 처치 발동 효과 (퀘스트 · 파티 분배는 M6 · M7 에서 여기에) */
     public void mobKilled(kr.rucserver.rpg.mob.MobUnit m, kr.rucserver.rpg.character.PlayerUnit by) {
         itemRuntime.mobDrops(m, by);
+        quests.quest(by.player, "kill", m.key);
         itemRuntime.onKill(by);
     }
 

@@ -21,6 +21,9 @@ commands:
   rpgstats:
     description: 스탯창
     aliases: [스탯, stats]
+  rpgquest:
+    description: 퀘스트 일지
+    aliases: [퀘스트, quest]
   rpgjob:
     description: 전직
     aliases: [전직, job]

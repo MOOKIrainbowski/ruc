@@ -125,7 +125,7 @@ public final class EconGui implements Listener {
             String r = eco.enhance(pl, s.slot, s.uid, s.blessed, s.protect);
             if (r.startsWith("!")) { pl.sendMessage(Component.text(r.substring(1), NamedTextColor.RED)); openSmith(pl, s); return; }
             switch (r) {
-                case "ok" -> { pl.playSound(pl.getLocation(), Sound.BLOCK_ANVIL_USE, 1f, 1.4f); pl.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, pl.getLocation().add(0, 1, 0), 30, 0.4, 0.6, 0.4, 0.2); pl.sendMessage(Component.text("강화 성공!", NamedTextColor.GREEN)); announce(pl, s); }
+                case "ok" -> { plugin.quests().quest(pl, "enhance", null); pl.playSound(pl.getLocation(), Sound.BLOCK_ANVIL_USE, 1f, 1.4f); pl.getWorld().spawnParticle(Particle.TOTEM_OF_UNDYING, pl.getLocation().add(0, 1, 0), 30, 0.4, 0.6, 0.4, 0.2); pl.sendMessage(Component.text("강화 성공!", NamedTextColor.GREEN)); announce(pl, s); }
                 case "boom" -> { pl.playSound(pl.getLocation(), Sound.ENTITY_GENERIC_EXPLODE, 0.8f, 1f); pl.sendMessage(Component.text("강화 실패 — 장비가 파괴되었습니다...", NamedTextColor.DARK_RED)); s.slot = -1; }
                 default -> { pl.playSound(pl.getLocation(), Sound.BLOCK_ANVIL_LAND, 0.6f, 0.8f); pl.sendMessage(Component.text("강화 실패 (등급은 그대로)", NamedTextColor.GRAY)); }
             }
@@ -276,6 +276,7 @@ public final class EconGui implements Listener {
         if (err != null) p.sendMessage(Component.text(err, NamedTextColor.RED));
         else {
             p.playSound(p.getLocation(), Sound.ENTITY_VILLAGER_YES, 0.7f, 1.2f);
+            plugin.quests().quest(p, "buy", s.tpl());
             Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> eco.savePurchased(p.getUniqueId(), cycle, got));
         }
         shop(p);

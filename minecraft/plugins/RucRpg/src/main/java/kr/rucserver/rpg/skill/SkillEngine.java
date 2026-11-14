@@ -208,6 +208,7 @@ public final class SkillEngine implements Listener {
         double sx = p.x, sy = p.y;
         castMove(p, sk, n, a[0], a[1], to);
         if (!"A".equals(slot)) prog.gain(p, id, prog.masteryOf("use"), null);
+        plugin.quests().quest(p.player, "cast", slot);
         Shot s = new Shot(p, id, sk, n, mul, tid, 0, id, new HashSet<>());
         long castT = (long) ((SkillDefs.num(sk, "castMs", 0) > 0 ? c.formulas().castMs(sk.get("castMs").getAsDouble(), p.st.get("atkSpeed")) : 0)
                 + SkillDefs.num(sk, "delayMs", 0));
@@ -618,5 +619,6 @@ public final class SkillEngine implements Listener {
         Bukkit.getScheduler().runTaskLater(plugin, () -> p.iframes = false, Math.max(1, ifr / 50));
         dash(p, dir.getX(), dir.getZ(), roll.get("dist").getAsDouble(), ms);
         vfx.roll(p.player);
+        plugin.quests().quest(p.player, "roll", null);
     }
 }

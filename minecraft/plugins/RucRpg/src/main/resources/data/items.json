@@ -3684,6 +3684,11 @@
     "maxTabs": 2
   },
   "STACK": 64,
+  "STACKABLE_KINDS": [
+    "potion",
+    "material",
+    "book"
+  ],
   "STACKING_RULES": {
     "max": 64,
     "stackableKinds": [
