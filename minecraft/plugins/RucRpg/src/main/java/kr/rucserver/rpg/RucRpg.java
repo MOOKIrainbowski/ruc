@@ -37,6 +37,7 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.world.Projectiles projectiles;
     private kr.rucserver.rpg.mob.MobRuntime mobs;
     private Hud hud;
+    private kr.rucserver.rpg.ui.RpgMenus menus;
     private kr.rucserver.rpg.item.ItemService items;
     private kr.rucserver.rpg.skill.SkillDefs skillDefs;
     private kr.rucserver.rpg.skill.Progression progression;
@@ -98,6 +99,9 @@ public final class RucRpg extends JavaPlugin {
         getServer().getPluginManager().registerEvents(picker, this);
         getServer().getPluginManager().registerEvents(mobs, this);
         getServer().getPluginManager().registerEvents(skills, this);
+        kr.rucserver.rpg.ui.Gui.loadModels(getClassLoader());
+        menus = new kr.rucserver.rpg.ui.RpgMenus(this);
+        getServer().getPluginManager().registerEvents(new kr.rucserver.rpg.ui.Gui.Events(this), this);
         // /reload 등으로 이미 접속한 사람이 있으면 다시 붙임
         for (Player p : Bukkit.getOnlinePlayers()) chars.onJoin(new org.bukkit.event.player.PlayerJoinEvent(p, (net.kyori.adventure.text.Component) null));
         getLogger().info("러크 RPG 켜짐 — 아이템 " + data.count("items.ITEMS") + " · 스킬 " + data.count("skills.SKILLS")
@@ -139,10 +143,17 @@ public final class RucRpg extends JavaPlugin {
             }
             return false;
         }
-        if (command.getName().equals("rpgmenu")) {
-            sender.sendMessage(Component.text("RPG 메뉴는 준비 중입니다 (M1).", NamedTextColor.GRAY));
+        if (sender instanceof Player p && runtime.unit(p) != null) {
+            switch (command.getName()) {
+                case "rpgmenu" -> menus.main(p);
+                case "rpgskill" -> menus.skills(p);
+                case "rpgstats" -> menus.stats(p);
+                case "rpgjob" -> menus.job(p);
+                default -> { return false; }
+            }
             return true;
         }
+        if (sender instanceof Player) { sender.sendMessage(Component.text("캐릭터를 불러오는 중입니다.", NamedTextColor.GRAY)); return true; }
         return false;
     }
 

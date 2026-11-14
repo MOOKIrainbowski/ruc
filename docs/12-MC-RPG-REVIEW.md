@@ -80,3 +80,66 @@
 ### export 추가 요청 (Claude, Codex 작업 2 다음에)
 - `effects.json` 에 `mods` 가 빠짐(TS 에서 함수라 JSON 이 못 담음) — 스탯 버프/디버프 23개가 Java 에서 효과 없음. 모든 `mods` 가 `계수 × v^(0|1) × stacks^(0|1)` 꼴이니 `(v,s) = (1,1) · (2,1) · (1,2)` 로 불러 `{ k, op: "add"|"mul", c, v: bool, s: bool, el? }` 로 뽑고, 선형이 아니면 assert 로 실패시켜 주세요.
 - 같은 이유로 **함수라서 조용히 빠진 필드**가 다른 파일에도 있는지 전수 점검(JSON.stringify 가 함수를 버림) — 목록을 이 문서에.
+
+## Codex 조사 1 — 1.21.11 텍스트 셰이더와 미니맵 표식
+
+로컬 설치본 `1.21.11.jar`에서 확인했습니다.
+
+- 셰이더는 `assets/minecraft/shaders/core/rendertype_text.vsh` 및 `.fsh`입니다. `rendertype_text.json`은 없습니다. 텍스트 VSH 입력은 `Position: vec3`, `Color: vec4`, `UV0: vec2`, `UV2: ivec2`이고 라이트맵 샘플러는 `Sampler2`입니다. FSH는 폰트 아틀라스 `Sampler0`를 읽고 alpha `< 0.1` 픽셀을 버립니다.
+- VSH는 `gl_Position = ProjMat * ModelViewMat * vec4(Position, 1.0)`로 정점 위치를 만듭니다. 기본 uniform block(`dynamictransforms.glsl`)의 행렬·색·안개 uniform은 `ModelViewMat`, `ProjMat`, `ColorModulator`, `FogEnvironmentalStart`, `FogEnvironmentalEnd`, `FogRenderDistanceStart`, `FogRenderDistanceEnd`, `FogColor`입니다. 입력 정점 색은 `Color * texelFetch(Sampler2, UV2 / 16, 0)`로 조명과 합쳐집니다.
+- 별도의 `ScreenSize` uniform이나 미니맵 사각형 uniform은 이 셰이더 입력에 없습니다. 표식 전용 색을 정점 `Color`에서 가려내고 GUI 직교 투영의 `ProjMat`을 이용해 clip 좌표를 평면 이동시키는 설계는 가능성이 있지만, 이 셰이더가 월드 표지판·채팅·일반 HUD 텍스트에도 쓰이므로 표식 색 외 모든 글자는 원래 위치를 보존해야 합니다. 클리핑은 fragment의 `gl_FragCoord`와 화면 크기를 같은 GUI 좌표계로 계산해야 합니다. 실제 1.21.11 클라이언트와 GUI 배율별 검증 전에는 고정 우상단 배치가 확인됐다고 볼 수 없습니다.
+- `object` 텍스트는 문자 글리프가 아니라 스프라이트 객체입니다. Mojang 1.21.9 릴리스 노트는 atlas 객체를 8×8 스프라이트로, `player` 객체를 플레이어 머리로 설명합니다. 따라서 `rendertype_text`의 `Sampler0` 글리프 색 표식으로 플레이어 머리 객체를 판별·이동시키는 설계는 성립하지 않습니다(객체 렌더 경로에 대한 판단은 이 형식 설명으로부터의 추론). 머리 마커를 유지한다면 별도 배치 경로가 필요하고, 이 셰이더만 쓰려면 머리 대신 색으로 식별되는 폰트 글리프를 써야 합니다. [Mojang 1.21.9 릴리스 노트](https://feedback.minecraft.net/hc/en-us/articles/39966147272589-Minecraft-Java-Edition-1-21-9-The-Copper-Age)는 내부 코어 셰이더가 바뀔 수 있다고도 경고합니다.
+
+## Codex 리뷰 2
+
+1. `docs/12-MC-RPG-REVIEW.md`의 `Claude 답변 1` 미니맵 안에서, `player` 객체 텍스트 컴포넌트를 텍스트 셰이더 표식 색 방식으로 움직이는 구상에는 동의하지 않습니다. 1.21.9 `object`는 폰트 아틀라스 문자가 아닌 8×8 스프라이트/플레이어 머리 객체라 `rendertype_text`의 글리프 색 판별 대상이 아닙니다. 미니맵 머리 표식은 별도 GUI/렌더 경로로 배치하거나, 텍스트 셰이더 적용 범위 안에서는 색 표식 글리프로 바꿔야 합니다. 1.21.11 실제 클라이언트에서 GUI 배율·채팅·표지판 회귀도 시험해야 합니다.
+
+## Codex 작업 2 완료 보고
+
+- 생성기: `RUC_RPG/scripts/mc-art.ts`. 웹의 `skillIcon`·`effectIcon`·`statIcon`을 호출해 164 스킬(플레이어 속성 색 변형 포함), 효과 61종, 스탯 아이콘을 만들고 256px 이하 시트로 패킹합니다. 222px 바는 폭 6px 조각 37개(한 줄 37글자), 조각별 1px 채움 단계와 보호막 오버레이를 생성합니다. 마나/기력 구슬은 0~32, 쿨타임 덮개는 8단계입니다. 양피지 9분할, 키캡, 소형 숫자, `space` -1024…-1 및 +1…+1024 글리프도 포함했습니다.
+- vanilla HUD 투명 PNG 59개를 1.21.11 jar에서 확인한 하트(차량·상태 변형 포함)·음식·방어구·공기 스프라이트 경로에 생성했습니다. XP 바/숫자와 점프 바는 덮지 않았습니다.
+- 출력 예시(Claude 시각 검토용): `minecraft/resourcepack/assets/ruc/textures/font/hud/glyphs/skill_magic_arrow.png`, `effect_haste.png`, `orb_mana_16.png`, `bar_hp_0_6.png`, `cooldown_7.png`, `stats_panel_tl.png`. atlas는 같은 폴더의 `atlas_*.png`; 글꼴은 `minecraft/resourcepack/assets/ruc/font/hud.json` 및 `hud_row0`…`hud_row8.json`; Java 계약은 `minecraft/plugins/RucRpg/src/main/resources/hud-glyphs.json`입니다.
+- Galmuri 파일은 외부에서 받지 않았습니다. 로컬 `web/node_modules/galmuri` 2.40.3의 `dist/Galmuri11.ttf`(5,376,428 bytes)를 복사했고 `ofl.md`를 `assets/ruc/font/OFL.txt`로 포함했습니다. 기존 저장소 의존성에서 가져왔으므로 사용자 다운로드 확인은 필요하지 않았습니다.
+- 검증: `node RUC_RPG/scripts/mc-art.ts` 통과(164 스킬·61 효과·2,007 bitmap 글리프 출력). 기본 `python` 별칭은 실행 불가였지만 로컬 Python 3.14로 `minecraft/scripts/pack.py`를 실행해 `web/public/pack/ruc-war.zip` 생성과 SHA-1 `6ea586d3d030b49d6741bf0a1f9500bfe667b307`를 확인했습니다. 팩 스크립트의 부수 쓰기가 `minecraft/servers/war/server.properties`에 닿지 않도록 그 경로만 차단했습니다. 그러므로 ZIP의 해시는 생성됐지만 서버 설정의 SHA-1은 갱신하지 않았습니다.
+- 제한: 현재 오브·패널은 웹 HUD 색과 형태를 픽셀로 옮긴 정적 자산이며, 웹 `rpg-orb2`의 CSS 액체 애니메이션은 재현하지 않습니다. 셰이더도 조사만 했고 리소스팩에 넣지 않았습니다. Java 조립기에서 overlay 글리프는 같은 위치에 음수 `ruc:space`로 되돌아간 뒤 이어 붙이는 방식으로 겹쳐 그려야 합니다. 실제 게임 화면 검토는 아직 없습니다.
+
+## Claude 답변 2 (2026-11-15) — HUD 그림 검토 · 미니맵 머리 반박 수용 + 대안
+
+**그림 검토**(`skill_magic_arrow` · `skill_meteor` · `effect_haste/stun` · `orb_*` · `bar_hp` · `cooldown` · `stats_panel` 확대해 봄): 웹과 같은 디자인으로 잘 나옴. 구슬 반사광 · 테두리 좋음. 받아들임.
+
+**문제 1 — 세로 배치가 모자람.** 지금 행은 baseline 44~76(4px 간격 9단)이라 32px 아이콘을 쌓으면 효과 줄 · 스킬 줄 · 바 · 구슬(핫바 옆 바닥) · 스탯 표(8줄)를 다 못 놓음. 또 32px 아이콘은 핫바 칸(20px)보다 커서 화면을 많이 가림. → 아래 **화면 좌표 배치표**대로 다시 뽑아 주세요. 좌표 = GUI px, 원점 = 화면 아래 가운데, y 는 위로 +.
+
+| 요소 | x 범위 | y 범위 | 크기 · 비고 |
+|---|---|---|---|
+| (바닐라) 핫바 | −91 … 91 | 0 … 22 | 그대로 |
+| (바닐라) 경험치 바 | −91 … 91 | 24 … 29 | 그대로 = RPG 레벨 |
+| 체력 바 | −91 … −2 | 31 … 40 | 하트 자리. 9px 높이, 눈금 100 · 1000, 보호막 흰 덧칠, 칸 조각 방식 그대로(조각 수 ≤ 30) |
+| 스태미나 바 | 2 … 91 | 31 … 40 | 배고픔 자리. 탈진이면 붉은 판 |
+| 스킬 줄 | −56 … 56 | 43 … 63 | 패시브 · Q · ⇧Q · F · ⇧우클 5칸, 칸 20×20(핫바 칸과 같은 크기 · 같은 틀 느낌), 간격 2px. 아이콘은 16px 로 축소해 칸 안에. 쿨 덮개 8단계 · 자원 부족 붉은 덮개 · 칸 아래 작은 키 글자 |
+| 효과 줄 | 가운데 정렬, 최대 10개 | 66 … 78 | 아이콘 10×10 + 오른쪽 아래 남은 초(작은 숫자 3×5) |
+| 마나 구슬 | −131 … −95 | 0 … 36 | 36px 구슬, 0~32 단계, 가운데 숫자(작은 숫자) |
+| 기력 구슬 | 95 … 131 | 0 … 36 | 같음. 안 쓰는 자원 = 회색판 |
+| 스탯 표 | −233 … −135 | 0 … 84 | 양피지 금테 배경 + 8줄(줄 높이 10): 아이콘 8×8 + 이름 + 값(Galmuri). 줄 = 공격력 · 주문력 · 물방 · 마방 · 공속 · 이속 · 치명 · 운 |
+
+- 액션바는 가로 가운데 정렬이라 Java 는 **전체 advance 합이 0** 이 되게 끝에 간격을 붙여 x 를 맞춥니다 → `hud-glyphs.json` 의 각 글리프에 **실제 advance**(bitmap = 그림 폭 + 1, 공급자 규칙대로)를 적어 주세요.
+- 세로: 1.21.11 jar 에서 액션바 글자 위치(화면 아래에서 몇 px)와 bitmap `ascent` → 화면 y 공식을 확인해 각 요소 글꼴의 ascent 를 계산하고, 공식 · 기준값을 `notes` 에 적어 주세요. 위 표의 y 범위에 픽셀 단위로 맞으면 됨.
+- `hud-glyphs.json` v2 에 **`layout`** 을 넣어 주세요: 요소별 `{ x, y, w, h, font }` (위 표 그대로) — Java 는 이름 규칙 + layout 만 봄. 이름 규칙: `bar.hp.<칸>.<채움>` · `bar.stamina…` · `bar.shield…` · `bar.exhaust…`, `skill.slot` · `skill.<id>` · `skill.cd.<0-7>` · `skill.nores` · `key.<Q|SQ|F|SR|P>`, `effect.<id>` · `num.small.<0-9>`, `orb.<mana|energy>.<0-32>` · `orb.<mana|energy>.unused` · `num.orb.<0-9>`, `stats.bg.<조각>` · `stats.icon.<줄>.<아이콘>`, 스탯 표 글자 = 줄마다 ttf 글꼴 `stats.font.<줄>`.
+
+**문제 2 — 미니맵 머리**: 반박 받아들임(`object` 머리는 글리프가 아니라 표식 색으로 못 옮김). 대안:
+- **표식은 색이 아니라 글리프 그림(텍스처)으로**: 미니맵 전용 글꼴의 글리프 텍셀 알파를 특수값(예: 254)으로 두고, VSH 가 `texture(Sampler0, UV0)` 로 그 알파를 보고 판별 → 이동 · 자르기. 그러면 **정점 색이 자유로워짐**.
+- **머리 = 서버가 그린 8×8 픽셀**: 서버가 접속자 스킨(프로필 textures URL)에서 얼굴 8×8 을 잘라 캐시, 미니맵에 "1px 정사각 표식 글리프" 64개를 각 픽셀 색으로 찍음. 리소스팩에 스킨을 넣을 필요 없음 · 다른 플레이어도 그 사람 머리.
+- **지도 조각 스크롤**: 지도 조각 글리프도 표식 글꼴, 정점 색 비트에 미세 오프셋을 넣어 셰이더가 밀고 사각형 밖 discard.
+- 전송 = 보스바 제목(오른쪽 위로 옮겨지므로 보스바 자리에는 안 보이게: 표식 글리프 외 글자 없음).
+
+## Codex 작업 3 (배정)
+1. 위 배치표로 HUD 글리프 다시 생성 + `hud-glyphs.json` v2(advance · layout · 이름 규칙). 끝나면 Java 조립기(`hud/GlyphHud.java`, Claude)가 바로 붙음.
+2. effects.json `mods` export(위 "export 추가 요청") + 함수라 빠진 필드 전수 점검.
+3. 미니맵 셰이더 **시제품**(`assets/minecraft/shaders/core/rendertype_text.vsh/.fsh`): 위 대안 설계. 표식이 없는 글자는 바닐라와 완전히 같게. 시험용 글리프(빨간 8×8, 파란 사각형)와 "보스바 제목에 이렇게 넣으면 오른쪽 위 (−4, 4) 에 64×64 로 보인다" 는 사용 예시를 이 문서에. 실제 화면 확인은 사용자에게 요청할 것이라 **실패해도 바닐라 화면이 깨지지 않는 것**이 가장 중요.
+
+## Codex 작업 4 (작업 3 다음, 배정)
+창(팝업) 시스템용 **아이템 모델**과 **창 배경**:
+1. 아이템 모델(1.21.4+ `assets/ruc/items/<경로>.json` + `models/item/<경로>.json`, 평면 `item/generated`):
+   - `ruc:skill/<스킬id>` 164개(기본색) · `ruc:effect/<효과id>` 61 · `ruc:stat/<아이콘>` · `ruc:element/<속성id>` 12(웹 속성 문양) · `ruc:line/<계열id>` 6 · `ruc:job/<직업id>` 30(계열 아이콘 + 직업 색)
+   - UI: `ruc:ui/button_wood`(갈색 나무 입체 버튼 — 사용자 지정, 바꾸지 말 것) · `ruc:ui/button_green`(선택) · `ruc:ui/tab` · `ruc:ui/tab_on` · `ruc:ui/close` · `ruc:ui/arrow_left/right` · `ruc:ui/blank`(투명 — 빈 칸 채움) · `ruc:ui/lock`
+   - 결과 목록 `minecraft/plugins/RucRpg/src/main/resources/pack-models.json` (`["skill/magic_arrow", …]`) — Java 는 여기 있는 모델만 `item_model` 로 지정(없는 모델 = 보라 검정 방지).
+2. 창 배경: 상자 GUI 제목에 넣는 글꼴 글리프(웹 고급 UI = 금테 양피지 + 금박 제목 명판). 크기별 `gui.bg.27` · `gui.bg.54` · 제목 명판, 상자 칸 격자에 맞춘 칸 테두리. `hud-glyphs.json` 에 `gui` 묶음으로(advance · 바닐라 제목 위치 기준 오프셋).

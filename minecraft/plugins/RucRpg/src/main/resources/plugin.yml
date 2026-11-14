@@ -13,8 +13,17 @@ commands:
     permission: rucrpg.admin
   rpgmenu:
     description: RPG 메뉴 (인벤토리 · 스킬 · 퀘스트 · 파티 · 지도 · 창고 · 설정)
-    usage: /메뉴
-    aliases: [메뉴, rpg]
+    usage: /창
+    aliases: [창, rpg]   # /메뉴 는 RucCore(러크 네트워크 메뉴)가 씀 — 기존 그대로
+  rpgskill:
+    description: 스킬창 (배운 스킬 · 슬롯 장착)
+    aliases: [스킬, skill]
+  rpgstats:
+    description: 스탯창
+    aliases: [스탯, stats]
+  rpgjob:
+    description: 전직
+    aliases: [전직, job]
 
 permissions:
   rucrpg.admin:
