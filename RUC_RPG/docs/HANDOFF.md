@@ -6,7 +6,7 @@
 
 > 0장은 공개 절차 기록 · 문제 해결용으로 남겨 둠. 공개 중 겪은 것(2026-11-10):
 > - 이 PC 는 `.ps1` 실행 연결이 없음 → `setup-pc.cmd` 더블클릭
-> - `/rpg` 가 "게임 서버가 꺼져 있어요" — Vercel 함수(iad1)에서 상태 확인 2.5초가 모자람 → 5초로 (`web/app/rpg/page.tsx`)
+> - `/rpg` 가 서버가 켜져 있는데도 "게임 서버가 꺼져 있어요" — Vercel 함수(미국 iad1)에서 한국 PC 까지 Funnel 왕복이 몇 초씩 걸림. 2.5 → 5초로 늘려도 다시 막힘(11-14) → **서버 쪽 상태 확인을 없앰**, 브라우저가 직접 접속해 보고 실패하면 안내(`client/net.ts`)
 > - "입장 확인에 실패했습니다" = Vercel `RPG_TICKET_SECRET` 이 `live.env` 와 다름(클립보드가 wss 주소로 덮였음) → 다시 붙여 넣고 Redeploy
 > - Vercel 빌드 로그의 `npm warn Unknown env config "cache-dir"` 은 무시해도 됨
 > - Vercel 에서 `NEXT_PUBLIC_RPG_WS_URL` 은 Config(공개 값), `RPG_TICKET_SECRET` 은 Sensitive
@@ -34,7 +34,7 @@
 | 사이트 상태 | 로그인 없이 `curl -s https://ruc-server.vercel.app/rpg` 에서 문구 확인 | **"오픈 준비 중"** = Vercel 환경 변수가 아직 없음 |
 | 운영 서버 | `curl -s http://127.0.0.1:2580/` | 꺼져 있음 (켜면 `{"ok":true,…}`) |
 
-`/rpg` 화면 규칙(`web/app/rpg/page.tsx` · `web/lib/rpg.ts`): 환경 변수 2개 중 하나라도 없으면 "오픈 준비 중" → 둘 다 있으면 "디스코드로 로그인" → 로그인한 사람에게는 게임 서버 상태를 2.5초 확인해서 켜져 있으면 게임, 꺼져 있으면 "게임 서버가 꺼져 있어요".
+`/rpg` 화면 규칙(`web/app/rpg/page.tsx` · `web/lib/rpg.ts`): 환경 변수 2개 중 하나라도 없으면 "오픈 준비 중" → 둘 다 있으면 "디스코드로 로그인" → 로그인하면 게임 화면, 브라우저가 게임 서버에 못 붙으면 "게임 서버가 꺼져 있어요" + 다시 접속 버튼.
 
 ### 0-3. 사용자가 할 일 (계정 · 비밀값이라 Claude 가 대신하면 안 됨)
 1. **Tailscale 로그인 + Funnel 허용** — `RUC_RPG\deploy\pc\setup-pc.cmd` 를 더블클릭
