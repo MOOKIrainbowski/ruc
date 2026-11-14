@@ -217,6 +217,7 @@ public final class ItemRuntime implements Listener {
         if (t.has("heal")) {
             long now = System.currentTimeMillis();
             if (now < potionAt.getOrDefault(p.getUniqueId(), 0L)) return "포션 재사용 대기 중입니다";
+            if (!plugin.dungeons().potion(p)) return "이번 스테이지에서는 포션을 더 쓸 수 없습니다 (던전 회복 제한)";
             boolean alc = "alchemist".equals(u.job);   // 연금술사 「촉매」
             double cd = plugin.data().get("items.POTION_CD_MS") != null ? plugin.data().get("items.POTION_CD_MS").getAsDouble() : 8000;
             potionAt.put(p.getUniqueId(), now + (long) (cd * (alc ? 0.8 : 1)));

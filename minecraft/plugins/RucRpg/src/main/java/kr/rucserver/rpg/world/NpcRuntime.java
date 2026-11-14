@@ -92,9 +92,24 @@ public final class NpcRuntime implements Listener {
             case "owen" -> plugin.menus().skills(p);
             case "lumi" -> plugin.menus().main(p);
             case "volt" -> plugin.econGui().smith(p);
+            case "dario" -> dungeonGate(p);
             case "pip" -> { plugin.core().getMailbox().open(p, 0); plugin.quests().quest(p, "claim", null); }
             default -> {}   // 볼트(강화 M5) · 미르(제조 M8) · 핍(우편: RucCore /우편함) · 다리오(던전 M7)
         }
+    }
+
+    /** 다리오: 고목의 유적 입장 창 */
+    private void dungeonGate(Player p) {
+        JsonObject r = plugin.data().get("dungeons.RUINS").getAsJsonObject();
+        var g = new kr.rucserver.rpg.ui.Gui(3, Component.text("고목의 유적", NamedTextColor.DARK_GRAY));
+        for (int i = 0; i < 27; i++) g.set(i, kr.rucserver.rpg.ui.Gui.filler(), null);
+        var party = plugin.parties().of(p);
+        g.set(13, kr.rucserver.rpg.ui.Gui.button("입장하기", true, java.util.List.of(
+                kr.rucserver.rpg.ui.Gui.gray(r.get("recommend").getAsString()),
+                kr.rucserver.rpg.ui.Gui.gray("10단계 · 보스 2 · 공용 부활 3 · 15분"),
+                kr.rucserver.rpg.ui.Gui.gray(party == null ? "혼자 입장 (파티는 /파티 초대)" : "파티 " + party.members.size() + "명 — 파티장만 입장시킬 수 있음"))),
+                (pl, t) -> { pl.closeInventory(); plugin.dungeons().enter(pl); });
+        g.open(p);
     }
 
     @EventHandler

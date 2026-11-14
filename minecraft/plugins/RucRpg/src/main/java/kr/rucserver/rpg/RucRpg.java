@@ -46,6 +46,9 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.econ.Economy economy;
     private kr.rucserver.rpg.econ.EconGui econGui;
     private kr.rucserver.rpg.quest.QuestEngine quests;
+    private kr.rucserver.rpg.party.PartyService parties;
+    private kr.rucserver.rpg.party.DuelService duels;
+    private kr.rucserver.rpg.party.DungeonService dungeons;
     private kr.rucserver.rpg.skill.SkillDefs skillDefs;
     private kr.rucserver.rpg.skill.Progression progression;
     private kr.rucserver.rpg.skill.SkillEngine skills;
@@ -145,6 +148,9 @@ public final class RucRpg extends JavaPlugin {
             economy.createSchema();
         } catch (Exception e) { getLogger().log(Level.SEVERE, "경제 테이블 만들기 실패", e); }
         econGui = new kr.rucserver.rpg.econ.EconGui(this, economy, items);
+        parties = new kr.rucserver.rpg.party.PartyService(this);
+        duels = new kr.rucserver.rpg.party.DuelService(this);
+        dungeons = new kr.rucserver.rpg.party.DungeonService(this);
         quests = new kr.rucserver.rpg.quest.QuestEngine(this, core.getDatabase());
         try { quests.createSchema(); } catch (Exception e) { getLogger().log(Level.SEVERE, "퀘스트 테이블 만들기 실패", e); }
         npcs.talked = (p, id) -> quests.quest(p, "talk", id);
@@ -246,6 +252,11 @@ public final class RucRpg extends JavaPlugin {
                 case "rpgstats" -> menus.stats(p);
                 case "rpgjob" -> menus.job(p);
                 case "rpgquest" -> quests.journal(p);
+                case "rpgparty" -> partyCmd(p, args);
+                case "rpgpc" -> parties.chat(p, String.join(" ", args));
+                case "rpgping" -> parties.ping(p, args.length > 0 ? args[0] : "gather");
+                case "rpgduel" -> { if (args.length > 0 && args[0].equals("수락")) duels.accept(p); else if (args.length > 0) duels.ask(p, Bukkit.getPlayerExact(args[0])); else return false; }
+                case "rpgdungeon" -> { if (args.length > 0 && args[0].equals("나가기")) dungeons.left(p); else if (args.length > 0 && args[0].equals("skip") && p.hasPermission("rucrpg.admin")) dungeons.skip(p); else dungeons.enter(p); }
                 default -> { return false; }
             }
             return true;
@@ -275,8 +286,29 @@ public final class RucRpg extends JavaPlugin {
     public kr.rucserver.rpg.econ.EconGui econGui() { return econGui; }
     public kr.rucserver.rpg.quest.QuestEngine quests() { return quests; }
 
-    /** 파티 중인가 (M7 파티가 붙으면 그쪽에서) */
-    public boolean inParty(Player p) { return false; }
+    private void partyCmd(Player p, String[] a) {
+        String sub = a.length > 0 ? a[0] : "";
+        String arg = a.length > 1 ? a[1] : null;
+        switch (sub) {
+            case "초대", "invite" -> parties.invite(p, arg == null ? null : Bukkit.getPlayerExact(arg));
+            case "수락", "accept" -> parties.accept(p);
+            case "거절", "decline" -> parties.decline(p);
+            case "나가기", "leave" -> parties.leave(p);
+            case "추방", "kick" -> { if (arg != null) parties.kick(p, arg); }
+            case "위임", "promote" -> { if (arg != null) parties.promote(p, arg); }
+            case "해산", "disband" -> parties.disband(p);
+            default -> {
+                var party = parties.of(p);
+                p.sendMessage(Component.text(party == null ? "파티 없음 — /파티 초대 <이름>" : "파티 " + party.members.size() + "명 · 파티장 " + Bukkit.getOfflinePlayer(party.leader).getName(), NamedTextColor.AQUA));
+                p.sendMessage(Component.text("/파티 초대·수락·거절·나가기·추방·위임·해산 · /ㅍ <말> 파티 채팅 · /핑 [attack|omw|help|gather|back|enemy|danger] · /결투 <이름> · /던전 입장·나가기", NamedTextColor.GRAY));
+            }
+        }
+    }
+
+    public boolean inParty(Player p) { return parties != null && parties.of(p) != null; }
+    public kr.rucserver.rpg.party.PartyService parties() { return parties; }
+    public kr.rucserver.rpg.party.DuelService duels() { return duels; }
+    public kr.rucserver.rpg.party.DungeonService dungeons() { return dungeons; }
     public kr.rucserver.rpg.skill.SkillEngine skills() { return skills; }
     public kr.rucserver.rpg.skill.Progression progression() { return progression; }
 

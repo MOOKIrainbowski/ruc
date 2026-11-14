@@ -605,14 +605,21 @@ public final class MobRuntime implements Listener {
         for (Map.Entry<Integer, Double> e : m.dmgBy.entrySet())
             if (w.unit(e.getKey()) instanceof PlayerUnit p && e.getValue() > bv) { bv = e.getValue(); best = p; }
         if (best == null) return;
-        // 경험치 · Gold (파티 분배 · 드롭 · 퀘스트는 M4 · M6 · M7)
-        plugin.runtime().gainExp(best.player, defs.mobExp(m.def, m.lv, m.grade, best.ch.level));
+        // 파티 분배 (§21-2): 경험치 = 20칸 안 파티원 균등 + 인원당 5%, Gold = 파티장 1.5 : 1
+        List<Player> near = plugin.parties().expShare(best.player, m.x, m.y);
+        for (Player q : near) {
+            PlayerUnit qu = plugin.runtime().unit(q);
+            if (qu == null) continue;
+            plugin.runtime().gainExp(q, plugin.parties().partyExp(defs.mobExp(m.def, m.lv, m.grade, qu.ch.level), near.size()));
+            if (q != best.player) plugin.quests().quest(q, "kill", m.key);
+        }
         JsonArray ruc = m.def.getAsJsonArray("ruc");
         int lo = ruc.get(0).getAsInt(), hi = ruc.get(1).getAsInt();
         long gold = (lo + (long) Math.floor(c.rand() * (hi - lo + 1))) * (1 + defs.gradeIndex(m.grade));
-        if (gold > 0) {
-            plugin.core().getEconomy().deposit(best.player.getUniqueId(), gold);
-            best.player.sendActionBar(Component.text("+" + gold + " " + plugin.core().getEconomy().symbol(), TextColor.color(0xF2C94C)));
+        if (gold > 0) for (var e : plugin.parties().goldShare(best.player, gold).entrySet()) {
+            if (e.getValue() <= 0) continue;
+            plugin.core().getEconomy().deposit(e.getKey().getUniqueId(), e.getValue());
+            plugin.hud().toast(e.getKey(), "+" + e.getValue() + " " + plugin.core().getEconomy().symbol());
         }
         plugin.mobKilled(m, best);
     }

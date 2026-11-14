@@ -24,6 +24,21 @@ commands:
   rpgquest:
     description: 퀘스트 일지
     aliases: [퀘스트, quest]
+  rpgparty:
+    description: 파티 (초대 · 수락 · 거절 · 나가기 · 추방 · 위임 · 해산)
+    aliases: [파티, party]
+  rpgpc:
+    description: 파티 채팅
+    aliases: [ㅍ, pc]
+  rpgping:
+    description: 핑 (바라보는 곳)
+    aliases: [핑, ping]
+  rpgduel:
+    description: 결투 신청 · 수락
+    aliases: [결투, duel]
+  rpgdungeon:
+    description: 던전 입장 · 나가기
+    aliases: [던전, dungeon]
   rpgjob:
     description: 전직
     aliases: [전직, job]

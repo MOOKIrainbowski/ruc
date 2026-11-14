@@ -85,9 +85,16 @@ public final class RpgWorld implements World {
         return out;
     }
 
-    /** 몹 ↔ 플레이어만 적 (결투 · 결투장은 M7) */
+    /** 몹 ↔ 플레이어는 늘 적, 플레이어끼리는 결투 상대 · 결투장의 다른 파티만 (M7) */
     @Override
-    public boolean hostile(Unit a, Unit b) { return !a.kind.equals(b.kind); }
+    public boolean hostile(Unit a, Unit b) {
+        if (!a.kind.equals(b.kind)) return true;
+        if (a instanceof PlayerUnit pa && b instanceof PlayerUnit pb && plugin.duels() != null) return plugin.duels().hostile(pa, pb);
+        return false;
+    }
+
+    @Override
+    public boolean spare(Unit src, Unit u) { return plugin.duels() != null && plugin.duels().spare(src, u); }
 
     @Override
     public void damaged(Unit src, Unit tgt, double amount, double threat, Combat.HitSpec h) { onDamaged.on(src, tgt, amount, threat, h); }

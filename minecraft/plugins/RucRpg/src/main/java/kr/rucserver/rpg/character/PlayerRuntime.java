@@ -228,7 +228,11 @@ public final class PlayerRuntime implements Listener {
         if (u == null) return;
         EntityDamageEvent.DamageCause c = e.getCause();
         if (e instanceof org.bukkit.event.entity.EntityDamageByEntityEvent be && (be.getDamager() instanceof Player
-                || be.getDamager() instanceof org.bukkit.entity.Projectile pr && pr.getShooter() instanceof Player)) { e.setCancelled(true); return; }   // PvP = 결투만 (M7)
+                || be.getDamager() instanceof org.bukkit.entity.Projectile pr && pr.getShooter() instanceof Player)) {
+            e.setCancelled(true);   // 바닐라 PvP 피해 없음 — 결투 · 결투장 상대면 RPG 평타(스킬 엔진이 적인지 봄)
+            if (be.getDamager() instanceof Player attacker && units.containsKey(attacker.getUniqueId())) plugin.skills().basicFromHit(attacker);
+            return;
+        }
         if (COMBAT_CAUSES.contains(c)) { e.setCancelled(true); return; }   // 바닐라 몹 공격 등 — RPG 몹은 전투 엔진으로만 때림
         if (c == EntityDamageEvent.DamageCause.VOID || c == EntityDamageEvent.DamageCause.KILL) {
             u.hp = 0;
@@ -265,6 +269,17 @@ public final class PlayerRuntime implements Listener {
 
     /** 전투 엔진이 플레이어를 쓰러뜨림 (combat.die → world.killed). 현재 레벨 필요 경험치의 3% 손실 (PvP 제외, §13-4) */
     public void killed(PlayerUnit u, kr.rucserver.rpg.engine.Unit by) {
+        if (plugin.dungeons().down(u)) return;   // 던전: 관전 → 공용 부활
+        org.bukkit.World arena = plugin.worlds().world("arena");
+        if (arena != null && u.player.getWorld().equals(arena)) {   // 결투장: 페널티 없이 결투장에서 다시
+            plugin.duels().arenaKill(u, by);
+            u.dead = false;
+            u.hp = u.st.get("hp");
+            u.mp = u.st.get("mana");
+            u.en = u.st.get("energy");
+            u.player.teleport(plugin.worlds().spawn("arena"));
+            return;
+        }
         boolean pvp = by != null && by.isPlayer() && by != u;
         if (!pvp) {
             long loss = Math.min(u.ch.exp, (long) Math.floor(Formulas.expToNext(u.ch.level) * f.combat("deathExpLoss")));
