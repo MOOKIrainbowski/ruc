@@ -1,14 +1,14 @@
 /** Create textured 3D box rigs for RPG mobs, pets and plaza NPCs. */
-import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, unlinkSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-import { deflateSync } from "node:zlib";
+import { deflateSync, inflateSync } from "node:zlib";
 import { registerHooks } from "node:module";
 
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const assetRoot=join(root,"minecraft/resourcepack/assets/ruc");
 const resourceRoot=join(root,"minecraft/plugins/RucRpg/src/main/resources");
-const previewRoot=join(root,".scratch/codex/mc-models/v2");
+const previewRoot=join(root,".scratch/codex/mc-models/v3");
 registerHooks({resolve(specifier,context,nextResolve){
   if(specifier.startsWith(".")&&!/\.(?:[cm]?js|json|node|ts)$/.test(specifier)){try{return nextResolve(`${specifier}.ts`,context);}catch{}}
   return nextResolve(specifier,context);
@@ -29,11 +29,12 @@ type Part={offset:V3;size:V3;tone?:keyof Palette;role?:string};
 type Bone={name:string;parent:string|null;pivot:V3;size:V3;tone:keyof Palette;role:string;parts?:Part[];motion?:string};
 type Actor={id:string;kind:"mob"|"pet"|"npc";name:string;role:string;source?:string;height:number;scale:number;palette?:Palette;bones:Bone[];style?:string};
 type CanvasLike={width:number;height:number;image?:ImageDataShim};
-type Face={texture:string;uv:number[]};
+type Face={texture:string;uv:number[];tintindex?:number};
 type BoxElement={from:number[];to:number[];faces:Record<string,Face>;shade:boolean};
 type ModelJson={textures:Record<string,string>;elements:BoxElement[]};
 type EntityModel={name:string;parent:string|null;pivot:V3;model:string;hurtModel:string;origin:[8,8,8];role:string};
 type Sprite={width:number;height:number;pixels:Uint8Array};
+type Texture={width:number;height:number;pixels:Uint8Array};
 const rgba=(w:number,h:number)=>new Uint8Array(w*h*4);
 function set(p:Uint8Array,w:number,h:number,x:number,y:number,c:RGB,a=255){if(x<0||y<0||x>=w||y>=h)return;const i=(y*w+x)*4;p[i]=c[0];p[i+1]=c[1];p[i+2]=c[2];p[i+3]=a;}
 function get(p:Uint8Array,w:number,x:number,y:number):RGB{const i=(y*w+x)*4;return [p[i],p[i+1],p[i+2]];}
@@ -44,6 +45,16 @@ function light(c:string,t=.25){return mix(c,"#ffffff",t);}function dark(c:string
 function pngChunk(type:string,body:Uint8Array){const n=Buffer.from(type,"ascii"),len=Buffer.alloc(4);len.writeUInt32BE(body.length);const all=Buffer.concat([n,Buffer.from(body)]);let crc=0xffffffff;for(const b of all){crc^=b;for(let i=0;i<8;i++)crc=(crc>>>1)^((crc&1)?0xedb88320:0);}const c=Buffer.alloc(4);c.writeUInt32BE((crc^0xffffffff)>>>0);return Buffer.concat([len,n,Buffer.from(body),c]);}
 function encodePng(w:number,h:number,p:Uint8Array){const scan=Buffer.alloc((w*4+1)*h);for(let y=0;y<h;y++)scan.set(p.subarray(y*w*4,(y+1)*w*4),y*(w*4+1)+1);const ih=Buffer.alloc(13);ih.writeUInt32BE(w,0);ih.writeUInt32BE(h,4);ih[8]=8;ih[9]=6;return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),pngChunk("IHDR",ih),pngChunk("IDAT",deflateSync(scan,{level:9})),pngChunk("IEND",new Uint8Array())]);}
 function writePng(path:string,w:number,h:number,p:Uint8Array){mkdirSync(dirname(path),{recursive:true});writeFileSync(path,encodePng(w,h,p));}
+function vanillaWolfTexture():Sprite{
+  const path=join(root,".scratch/vanilla-1.21.11/assets/minecraft/textures/entity/wolf/wolf.png"),b=readFileSync(path),chunks:Buffer[]=[];let palette:Buffer|undefined,transparency:Buffer|undefined,w=0,h=0,depth=0,colorType=0;
+  for(let off=8;off<b.length;){const len=b.readUInt32BE(off),type=b.toString("ascii",off+4,off+8),body=b.subarray(off+8,off+8+len);if(type==="IHDR"){w=body.readUInt32BE(0);h=body.readUInt32BE(4);depth=body[8];colorType=body[9];}else if(type==="PLTE")palette=body;else if(type==="tRNS")transparency=body;else if(type==="IDAT")chunks.push(body);off+=len+12;}
+  if(!palette||depth!==8||colorType!==3||w!==64||h!==32)throw new Error("expected local 64x32 indexed vanilla wolf texture");
+  const raw=inflateSync(Buffer.concat(chunks)),stride=w,rgbaPixels=new Uint8Array(w*h*4);let prev=new Uint8Array(stride),at=0;
+  const paeth=(a:number,bb:number,c:number)=>{const p=a+bb-c,da=Math.abs(p-a),db=Math.abs(p-bb),dc=Math.abs(p-c);return da<=db&&da<=dc?a:db<=dc?bb:c;};
+  for(let y=0;y<h;y++){const filter=raw[at++],row=new Uint8Array(stride);for(let x=0;x<stride;x++){const v=raw[at++],a=x?row[x-1]:0,up=prev[x],c=x?prev[x-1]:0;row[x]=(v+(filter===1?a:filter===2?up:filter===3?Math.floor((a+up)/2):filter===4?paeth(a,up,c):0))&255;}
+    for(let x=0;x<w;x++){const pi=row[x]*3,oi=(y*w+x)*4;rgbaPixels.set([palette[pi],palette[pi+1],palette[pi+2],transparency?.[row[x]]??255],oi);}prev=row;}
+  return {width:w,height:h,pixels:rgbaPixels};
+}
 function pixels(c:CanvasLike){if(!c.image)throw new Error("mobFrames returned no ImageData");return new Uint8Array(c.image.data.buffer.slice(0));}
 const spriteCache=new Map<string,Sprite>();
 const spriteBoundsCache=new WeakMap<Sprite,[number,number,number,number]>();
@@ -189,95 +200,108 @@ for(const id of [...Object.keys(MOBS),...Object.keys(PETS),...Object.keys(NPCS)]
 const ids=new Set<string>();for(const a of actors){if(ids.has(a.id))throw new Error(`duplicate actor ${a.id}`);ids.add(a.id);}
 
 function actorPalette(a:Actor):Palette{return a.palette??(a.kind==="npc"?npcPalette[a.id]:undefined)??extractPalette(a.source)??{base:"#7caa55",light:"#b5d985",shade:"#405c39",accent:"#f2c94c",eye:"#fff4b0",dark:OUTLINE,skin:"#d7aa83",metal:"#aab7c2",glow:"#dff7ee"};}
-function fillTile(p:Uint8Array,ox:number,oy:number,base:string,lightC:string,shadeC:string,accent:string,role:string,id:string){
-  for(let y=0;y<16;y++)for(let x=0;x<16;x++){
-    const edge=x===0||y===0||x===15||y===15;let c=base;
-    if(y<3)c=light(base,.23);else if(y>12)c=dark(base,.24);if(x<2)c=light(c,.11);if(x>12)c=shadeC;if(edge)c=dark(base,.48);
-    if((role.includes("wing")||role.includes("feather"))&&((x+y)%5===0))c=lightC;
-    if((role.includes("armor")||role.includes("shield"))&&(x===3||x===12||y===3))c=accent;
-    if((role.includes("leaf")||role.includes("frond")||role.includes("crown"))&&(x===5||x===6||x===7)&&y>2&&y<14)c=lightC;
-    if((role.includes("vine")||role.includes("tendril")||role.includes("tail"))&&(x+y*3)%11===0)c=accent;
-    if((role.includes("stone")||role.includes("golem")||role.includes("rock"))&&(x*7+y*3)%17===0)c=lightC;
-    if((role.includes("robe")||role.includes("cape")||role.includes("tunic"))&&y>9&&((x+y)%6===0))c=shadeC;
-    const hash=(id.charCodeAt((x*7+y*11)%id.length)+x*13+y*17)%29;
-    if(hash===0&&x>2&&x<13&&y>2&&y<13)c=lightC;
-    set(p,32,32,ox+x,oy+y,hex(c));
-  }
+const TEXEL_DENSITY=1,EDGE_PAD=4;
+type Shape={size:V3;offset:V3;tone:keyof Palette;role:string};
+const shapesFor=(b:Bone):Shape[]=>[{size:b.size,offset:[0,0,0],tone:b.tone,role:b.role},...(b.parts??[]).map(p=>({size:p.size,offset:p.offset,tone:p.tone??b.tone,role:p.role??b.role}))];
+const faceNames=["north","south","east","west","up","down"] as const;
+type FaceName=typeof faceNames[number];
+function faceDimensions(face:FaceName,size:V3):[number,number]{
+  if(face==="north"||face==="south")return [Math.max(1,Math.round(size[0]*TEXEL_DENSITY)),Math.max(1,Math.round(size[1]*TEXEL_DENSITY))];
+  if(face==="east"||face==="west")return [Math.max(1,Math.round(size[2]*TEXEL_DENSITY)),Math.max(1,Math.round(size[1]*TEXEL_DENSITY))];
+  return [Math.max(1,Math.round(size[0]*TEXEL_DENSITY)),Math.max(1,Math.round(size[2]*TEXEL_DENSITY))];
 }
-function textureFor(a:Actor,b:Bone,pal:Palette):Uint8Array{
-  const p=rgba(32,32),base=pal[b.tone]??pal.base,hi=pal.light,lo=pal.shade;
-  fillTile(p,0,0,base,hi,lo,pal.accent,b.role,a.id+b.name);
-  fillTile(p,16,0,dark(base,.16),light(base,.18),dark(lo,.1),pal.accent,b.role+"-side",a.id);
-  fillTile(p,0,16,dark(base,.08),light(base,.12),dark(lo,.1),pal.accent,b.role+"-back",a.id);
-  fillTile(p,16,16,light(base,.12),light(hi,.08),base,pal.accent,b.role+"-top",a.id);
-  const sprite=sourceSprite(a.source);
-  if(sprite){
-    const [sx0,sy0,sx1,sy1]=spriteBounds(sprite),[ax0,ay0,ax1,ay1]=actorBounds(a),aw=Math.max(.001,ax1-ax0),ah=Math.max(.001,ay1-ay0);
-    const wx0=b.pivot[0]-b.size[0]*a.scale/32,wx1=b.pivot[0]+b.size[0]*a.scale/32;
-    const wy0=b.pivot[1]-b.size[1]*a.scale/32,wy1=b.pivot[1]+b.size[1]*a.scale/32;
-    const x0=sx0+(wx0-ax0)/aw*(sx1-sx0),x1=sx0+(wx1-ax0)/aw*(sx1-sx0);
-    const y0=sy0+(ay1-wy1)/ah*(sy1-sy0),y1=sy0+(ay1-wy0)/ah*(sy1-sy0);
-    const sample=(x:number,y:number):[RGB,number]=>{x=Math.max(0,Math.min(sprite.width-1,Math.floor(x)));y=Math.max(0,Math.min(sprite.height-1,Math.floor(y)));const i=(y*sprite.width+x)*4;return [[sprite.pixels[i],sprite.pixels[i+1],sprite.pixels[i+2]],sprite.pixels[i+3]];};
-    const tint=(c:RGB,k:number):RGB=>c.map(v=>Math.round(v*k)) as RGB;
-    const edgeAverage=(horizontal:boolean):RGB=>{
-      const sum=[0,0,0];let samples=0;
-      for(let n=0;n<16;n++)for(const side of [0,1]){
-        const x=horizontal?x0+(n+.5)*(x1-x0)/16:x0+(side?.75:.25)*(x1-x0);
-        const y=horizontal?y0+(side?.75:.25)*(y1-y0):y0+(n+.5)*(y1-y0)/16;
-        const [c,alpha]=sample(x,y);if(alpha===0)continue;
-        sum[0]+=c[0];sum[1]+=c[1];sum[2]+=c[2];samples++;
-      }
-      return samples?sum.map(v=>Math.round(v/samples)) as RGB:hex(base);
-    };
-    const sideColor=edgeAverage(false),topColor=edgeAverage(true);
-    const dotShade=(c:RGB,k:number)=>c.map(v=>Math.round(v*k)) as RGB;
-    for(let y=0;y<16;y++)for(let x=0;x<16;x++){
-      const [c,alpha]=sample(x0+(x+.5)*(x1-x0)/16,y0+(y+.5)*(y1-y0)/16);
-      set(p,32,32,x,y,c,alpha);
-      const sideDot=(x===3&&y===4)||(x===11&&y===10);
-      const topDot=(x===5&&y===5)||(x===12&&y===11);
-      set(p,32,32,16+x,y,sideDot?dotShade(sideColor,y===4?1.28:.62):tint(sideColor,y<2?1.12:y>13?.72:1),255);
-      set(p,32,32,x,16+y,topDot?dotShade(topColor,y===5?1.2:.68):tint(topColor,y<2?1.16:y>13?.82:1),255);
-      const [back,backAlpha]=sample(x1-(x+.5)*(x1-x0)/16,y0+(y+.5)*(y1-y0)/16);
-      set(p,32,32,16+x,16+y,tint(back,.62),backAlpha);
+function textureFor(a:Actor,b:Bone,pal:Palette):Texture{
+  const shapes=shapesFor(b),cell=Math.ceil(Math.max(...shapes.flatMap(s=>s.size))*TEXEL_DENSITY)+EDGE_PAD*2,width=cell*3,height=cell*2*shapes.length,p=rgba(width,height);
+  const sprite=sourceSprite(a.source),sb=sprite?spriteBounds(sprite):undefined,[ax0,ay0,ax1,ay1]=actorBounds(a),aw=Math.max(.001,ax1-ax0),ah=Math.max(.001,ay1-ay0);
+  const unit=a.scale/16;
+  const sample=(worldX:number,worldY:number):RGB|undefined=>{
+    if(!sprite||!sb)return;
+    const sx=Math.max(0,Math.min(sprite.width-1,Math.floor(sb[0]+(worldX-ax0)/aw*(sb[2]-sb[0]))));
+    const sy=Math.max(0,Math.min(sprite.height-1,Math.floor(sb[1]+(ay1-worldY)/ah*(sb[3]-sb[1]))));
+    const i=(sy*sprite.width+sx)*4;return sprite.pixels[i+3]>24?[sprite.pixels[i],sprite.pixels[i+1],sprite.pixels[i+2]]:undefined;
+  };
+  const sourceAverage=(shape:Shape,row:number)=>{
+    const centerX=b.pivot[0]+shape.offset[0]*unit,centerY=b.pivot[1]+shape.offset[1]*unit;let sum=[0,0,0],n=0;
+    for(let x=0;x<Math.max(2,Math.ceil(shape.size[0]));x++){
+      const wx=centerX-shape.size[0]*unit/2+x/Math.max(1,Math.ceil(shape.size[0]))*shape.size[0]*unit;
+      const wy=centerY+shape.size[1]*unit/2-row/Math.max(1,Math.ceil(shape.size[1]))*shape.size[1]*unit;
+      const c=sample(wx,wy);if(c){sum=sum.map((v,i)=>v+c[i]);n++;}
     }
-  }
-  const dot=(x:number,y:number,c:string)=>set(p,32,32,x,y,hex(c));
-  if(!sprite&&["head","face","eye-core","mask","muzzle","orb","spirit"].some(k=>b.role.includes(k))){
-    // Front-facing eyes and a tiny glint make every humanoid/creature read from the player view.
-    dot(4,4,pal.dark);dot(11,4,pal.dark);dot(4,5,pal.eye);dot(11,5,pal.eye);
-    if(b.role.includes("muzzle")){for(let x=6;x<=9;x++)dot(x,10,pal.light);dot(7,11,pal.dark);dot(9,11,pal.dark);}
-    else {dot(5,4,pal.light);dot(12,4,pal.light);dot(7,9,dark(base,.42));dot(8,9,dark(base,.42));}
-  }
-  if(b.role.includes("weapon")||b.role.includes("blade")||b.role.includes("staff")||b.role.includes("wand")){for(let y=2;y<14;y++)dot(8,y,y<7?pal.light:pal.metal);for(let x=4;x<13;x++)dot(x,8,pal.accent);}
-  if(b.role.includes("core")||b.role.includes("orb")||b.role.includes("glow")||b.role.includes("gem")){for(let y=5;y<11;y++)for(let x=5;x<11;x++)if(Math.abs(x-8)+Math.abs(y-8)<5)dot(x,y,(x+y)%2?pal.glow:pal.light);}
-  if(b.role.includes("book")){for(let y=3;y<13;y++){dot(7,y,pal.light);dot(8,y,pal.shade);}for(let x=3;x<13;x+=3)dot(x,6,pal.metal);}
-  if(b.role.includes("badge")||b.role.includes("cross")||b.role.includes("rune")){for(let n=4;n<12;n++){dot(8,n,pal.glow);dot(n,8,pal.glow);}}
-  if(b.role.includes("crown")||b.role.includes("hat")){for(let x=3;x<13;x+=3){dot(x,3,pal.glow);dot(x,4,pal.accent);}}
-  return p;
+    return n?sum.map(v=>Math.round(v/n)) as RGB:hex(pal[shape.tone]??pal.base);
+  };
+  const colorFor=(shape:Shape,face:FaceName,x:number,y:number,w:number,h:number):RGB=>{
+    const base=hex(pal[shape.tone]??pal.base),cx=b.pivot[0]+shape.offset[0]*unit,cy=b.pivot[1]+shape.offset[1]*unit;
+    let color:RGB;
+    if(face==="south"||face==="north"){
+      const wx=cx-shape.size[0]*unit/2+(x+.5)*unit/TEXEL_DENSITY,wy=cy+shape.size[1]*unit/2-(y+.5)*unit/TEXEL_DENSITY;
+      color=sample(wx,wy)??base;
+      if(face==="north")color=color.map(v=>Math.round(v*.78)) as RGB;
+    }else if(face==="east"||face==="west"){
+      color=sourceAverage(shape,y).map(v=>Math.round(v*(face==="west"?.82:.72))) as RGB;
+    }else{
+      const sourceRow=face==="up"?0:Math.max(0,Math.ceil(shape.size[1])-1);
+      color=sourceAverage(shape,sourceRow).map(v=>Math.round(v*(face==="up"?1.1:.62))) as RGB;
+      if(!sprite)color=face==="up"?hex(light(pal[shape.tone]??pal.base,.16)):hex(dark(pal[shape.tone]??pal.base,.32));
+    }
+    if(face==="south"&&!sprite&&shape.role.includes("head")&&w>=5&&h>=5){
+      const eyeY=Math.max(1,Math.floor(h*.42)),eyeX=[Math.max(1,Math.floor(w*.28)),Math.min(w-2,Math.floor(w*.72))];
+      if((y===eyeY&&eyeX.includes(x))||(y===eyeY+1&&eyeX.includes(x)))return hex(pal.eye);
+      if(y===eyeY&&eyeX.some(ex=>x===ex-1||x===ex+1))return hex(pal.dark);
+      if(y===Math.min(h-1,Math.floor(h*.7))&&x>=Math.floor(w*.4)&&x<=Math.ceil(w*.6))return hex(dark(pal.skin,.35));
+    }
+    const edge=x===0||y===0||x===w-1||y===h-1;
+    if(edge)color=color.map(v=>Math.round(v*.72)) as RGB;
+    else if(y===1)color=color.map(v=>Math.round(v*.9+255*.1)) as RGB;
+    else if(y===h-2)color=color.map(v=>Math.round(v*.86)) as RGB;
+    if(shape.role.includes("armor")&&((x+y)%7===0))color=hex(pal.accent);
+    if((shape.role.includes("rune")||shape.role.includes("gem")||shape.role.includes("glow"))&&x===Math.floor(w/2)&&y===Math.floor(h/2))color=hex(pal.glow);
+    return color;
+  };
+  shapes.forEach((shape,si)=>faceNames.forEach((face,fi)=>{
+    const [fw,fh]=faceDimensions(face,shape.size),tx=(fi%3)*cell+EDGE_PAD,ty=(Math.floor(fi/3)+si*2)*cell+EDGE_PAD;
+    for(let y=0;y<fh;y++)for(let x=0;x<fw;x++)set(p,width,height,tx+x,ty+y,colorFor(shape,face,x,y,fw,fh),255);
+    for(let y=0;y<fh;y++)for(let g=1;g<=EDGE_PAD;g++){
+      const row=(ty+y)*width*4,srcL=row+tx*4,srcR=row+(tx+fw-1)*4;
+      p.set(p.subarray(srcL,srcL+4),row+(tx-g)*4);p.set(p.subarray(srcR,srcR+4),row+(tx+fw-1+g)*4);
+    }
+    for(let x=-EDGE_PAD;x<fw+EDGE_PAD;x++)for(let g=1;g<=EDGE_PAD;g++){
+      const xx=tx+x,srcTop=(ty*width+xx)*4,srcBottom=((ty+fh-1)*width+xx)*4;
+      p.set(p.subarray(srcTop,srcTop+4),((ty-g)*width+xx)*4);p.set(p.subarray(srcBottom,srcBottom+4),((ty+fh-1+g)*width+xx)*4);
+    }
+  }));
+  return {width,height,pixels:p};
 }
-function hurtTexture(p:Uint8Array){const out=new Uint8Array(p);for(let i=0;i<out.length;i+=4){if(!out[i+3])continue;out[i]=Math.min(255,Math.round(out[i]*.55+255*.45));out[i+1]=Math.round(out[i+1]*.28);out[i+2]=Math.round(out[i+2]*.28);}return out;}
-function centeredElement(size:V3,offset:V3,tone:string):BoxElement{
+function modelLayout(b:Bone){
+  const shapes=shapesFor(b),cell=Math.ceil(Math.max(...shapes.flatMap(s=>s.size))*TEXEL_DENSITY)+EDGE_PAD*2,width=cell*3,height=cell*2*shapes.length;
+  return {shapes,cell,width,height};
+}
+function centeredElement(size:V3,offset:V3,si:number,layout:ReturnType<typeof modelLayout>):BoxElement{
   const from=size.map((v,i)=>8+offset[i]-v/2),to=size.map((v,i)=>8+offset[i]+v/2);
-  const faces:Record<string,Face>={north:{texture:"#layer0",uv:[0,8,8,16]},south:{texture:"#layer0",uv:[0,0,8,8]},east:{texture:"#layer0",uv:[8,0,16,8]},west:{texture:"#layer0",uv:[8,0,16,8]},up:{texture:"#layer0",uv:[8,8,16,16]},down:{texture:"#layer0",uv:[0,8,8,16]}};
+  const uv=(fi:number,face:FaceName)=>{
+    const [w,h]=faceDimensions(face,size),cell=layout.cell,x=(fi%3)*cell+EDGE_PAD,y=(Math.floor(fi/3)+si*2)*cell+EDGE_PAD;
+    return [x*16/layout.width,y*16/layout.height,(x+w)*16/layout.width,(y+h)*16/layout.height];
+  };
+  const faces:Record<string,Face>=Object.fromEntries(faceNames.map((name,fi)=>[name,{texture:"#layer0",uv:uv(fi,name),tintindex:0}]));
   return {from,to,faces,shade:true};
 }
 function modelFor(b:Bone,texture:string):ModelJson{
-  const elements=[centeredElement(b.size,[0,0,0],texture),...(b.parts??[]).map(p=>centeredElement(p.size,p.offset,texture))];
+  const layout=modelLayout(b),elements=layout.shapes.map((s,i)=>centeredElement(s.size,s.offset,i,layout));
   return {textures:{layer0:texture,particle:texture},elements};
 }
 const modelIds=new Set<string>();
 function writeBone(a:Actor,b:Bone,pal:Palette):EntityModel{
   const id=`mob/${a.id}/${b.name}`,hurt=`${id}_hurt`;for(const m of [id,hurt]){if(modelIds.has(m))throw new Error(`duplicate model id ${m}`);modelIds.add(m);}
-  const tex=`entity/mob/${a.id}/${b.name}`,baseP=textureFor(a,b,pal),variants:[[string,Uint8Array],[string,Uint8Array]]=[[id,baseP],[hurt,hurtTexture(baseP)]];
+  const tex=`entity/mob/${a.id}/${b.name}`,baseP=textureFor(a,b,pal),variants=[id,hurt];
   if(!actorTextures.has(a.id))actorTextures.set(a.id,new Map());actorTextures.get(a.id)!.set(b.name,baseP);
-  for(const [modelId,pix] of variants){
+  for(const modelId of variants){
     const itemPath=`items/${modelId}.json`,modelPath=`models/item/${modelId}.json`,modelRef=`ruc:item/${modelId}`;
     mkdirSync(dirname(join(assetRoot,itemPath)),{recursive:true});mkdirSync(dirname(join(assetRoot,modelPath)),{recursive:true});
-    writeFileSync(join(assetRoot,itemPath),JSON.stringify({model:{type:"minecraft:model",model:modelRef}},null,2)+"\n","utf8");
-    writeFileSync(join(assetRoot,modelPath),JSON.stringify(modelFor(b,`ruc:${tex}${modelId===hurt?"_hurt":""}`),null,2)+"\n","utf8");
-    writePng(join(assetRoot,"textures",`${tex}${modelId===hurt?"_hurt":""}.png`),32,32,pix);
+    const tint=modelId===hurt?0xff6666:0xffffff;
+    writeFileSync(join(assetRoot,itemPath),JSON.stringify({model:{type:"minecraft:model",model:modelRef,tints:[{type:"minecraft:custom_model_data",index:0,default:tint}]}},null,2)+"\n","utf8");
+    writeFileSync(join(assetRoot,modelPath),JSON.stringify(modelFor(b,`ruc:${tex}`),null,2)+"\n","utf8");
   }
+  writePng(join(assetRoot,"textures",`${tex}.png`),baseP.width,baseP.height,baseP.pixels);
+  try{unlinkSync(join(assetRoot,"textures",`${tex}_hurt.png`));}catch{}
   return {name:b.name,parent:b.parent,pivot:b.pivot,model:id,hurtModel:hurt,origin:[8,8,8],role:b.role};
 }
 const v=(x:number,y:number,z:number):V3=>[x,y,z];
@@ -327,7 +351,7 @@ function animations(a:Actor):Record<string,unknown>{
 
 type Projected={x:number;y:number;depth:number};
 type View="front"|"side"|"three-quarter";
-const actorTextures=new Map<string,Map<string,Uint8Array>>();
+const actorTextures=new Map<string,Map<string,Texture>>();
 function renderCompare(a:Actor,source:Sprite|undefined){
   const w=720,h=280,p=rgba(w,h),bg=[245,239,222] as RGB;
   for(let y=0;y<h;y++)for(let x=0;x<w;x++)set(p,w,h,x,y,bg);
@@ -337,10 +361,8 @@ function renderCompare(a:Actor,source:Sprite|undefined){
     if(source.pixels[i+3]>24)set(p,w,h,4+x,38+y,[source.pixels[i],source.pixels[i+1],source.pixels[i+2]]);
   }
   const views:View[]=["front","side","three-quarter"],panelX=[130,325,520],panelW=190;
-  const faces:Record<string,{corners:number[];uv:number[]}>= {
-    south:{corners:[1,3,7,5],uv:[0,0,0,8,8,8,8,0]}, north:{corners:[4,6,2,0],uv:[0,8,0,16,8,16,8,8]},
-    east:{corners:[5,7,6,4],uv:[8,0,8,8,16,8,16,0]}, west:{corners:[0,2,3,1],uv:[8,0,8,8,16,8,16,0]},
-    up:{corners:[3,2,6,7],uv:[8,8,8,16,16,16,16,8]}, down:{corners:[0,1,5,4],uv:[0,8,0,16,8,16,8,8]},
+  const faces:Record<FaceName,{corners:number[]}>= {
+    south:{corners:[1,3,7,5]}, north:{corners:[4,6,2,0]}, east:{corners:[5,7,6,4]}, west:{corners:[0,2,3,1]}, up:{corners:[3,2,6,7]}, down:{corners:[0,1,5,4]},
   };
   const actorBox=(b:Bone)=>{
     const add=(size:V3,offset:V3)=>({from:size.map((n,i)=>8+offset[i]-n/2),to:size.map((n,i)=>8+offset[i]+n/2)});
@@ -357,7 +379,7 @@ function renderCompare(a:Actor,source:Sprite|undefined){
     const bounds=allCorners.map(project),minX=Math.min(...bounds.map(q=>q.x)),maxX=Math.max(...bounds.map(q=>q.x)),minY=Math.min(...bounds.map(q=>q.y)),maxY=Math.max(...bounds.map(q=>q.y));
     const scale=Math.min((panelW-20)/Math.max(.1,maxX-minX),205/Math.max(.1,maxY-minY)),originX=(left+right)/2-(minX+maxX)*scale/2,groundY=250-maxY*scale;
     const zbuf=new Float32Array(w*h);zbuf.fill(-Infinity);
-    const triangle=(pts:Projected[],uvs:number[][],tex:Uint8Array)=>{
+    const triangle=(pts:Projected[],uvs:number[][],tex:Texture)=>{
       const area=(pts[1].x-pts[0].x)*(pts[2].y-pts[0].y)-(pts[1].y-pts[0].y)*(pts[2].x-pts[0].x);if(Math.abs(area)<1e-5)return;
       const x0=Math.max(left,Math.floor(Math.min(...pts.map(q=>q.x)))),x1=Math.min(right-1,Math.ceil(Math.max(...pts.map(q=>q.x))));
       const y0=Math.max(26,Math.floor(Math.min(...pts.map(q=>q.y)))),y1=Math.min(251,Math.ceil(Math.max(...pts.map(q=>q.y))));
@@ -365,14 +387,16 @@ function renderCompare(a:Actor,source:Sprite|undefined){
         const px=x+.5,py=y+.5,w0=((pts[1].x-px)*(pts[2].y-py)-(pts[1].y-py)*(pts[2].x-px))/area,w1=((pts[2].x-px)*(pts[0].y-py)-(pts[2].y-py)*(pts[0].x-px))/area,w2=1-w0-w1;
         if(w0<0||w1<0||w2<0)continue;
         const depth=w0*pts[0].depth+w1*pts[1].depth+w2*pts[2].depth,index=y*w+x;if(depth<=zbuf[index])continue;
-        const u=w0*uvs[0][0]+w1*uvs[1][0]+w2*uvs[2][0],v=w0*uvs[0][1]+w1*uvs[1][1]+w2*uvs[2][1],tx=Math.max(0,Math.min(31,Math.floor(u*2))),ty=Math.max(0,Math.min(31,Math.floor(v*2))),ti=(ty*32+tx)*4;
-        if(tex[ti+3]<24)continue;zbuf[index]=depth;set(p,w,h,x,y,[tex[ti],tex[ti+1],tex[ti+2]]);
+        const u=w0*uvs[0][0]+w1*uvs[1][0]+w2*uvs[2][0],v=w0*uvs[0][1]+w1*uvs[1][1]+w2*uvs[2][1],tx=Math.max(0,Math.min(tex.width-1,Math.floor(u*tex.width/16))),ty=Math.max(0,Math.min(tex.height-1,Math.floor(v*tex.height/16))),ti=(ty*tex.width+tx)*4;
+        if(tex.pixels[ti+3]<24)continue;zbuf[index]=depth;set(p,w,h,x,y,[tex.pixels[ti],tex.pixels[ti+1],tex.pixels[ti+2]]);
       }
     };
-    for(const b of a.bones){const texture=actorTextures.get(a.id)?.get(b.name);if(!texture)throw new Error(`missing render texture ${a.id}/${b.name}`);
-      for(const corners of actorBox(b))for(const face of Object.values(faces)){
+    for(const b of a.bones){const texture=actorTextures.get(a.id)?.get(b.name);if(!texture)throw new Error(`missing render texture ${a.id}/${b.name}`);const layout=modelLayout(b);
+      for(const [si,corners] of actorBox(b).entries())for(const [faceName,face] of Object.entries(faces) as [FaceName,{corners:number[]}][]){
+        const shape=layout.shapes[si],[fw,fh]=faceDimensions(faceName,shape.size),cell=layout.cell,ox=(faceNames.indexOf(faceName)%3)*cell+EDGE_PAD,oy=(Math.floor(faceNames.indexOf(faceName)/3)+si*2)*cell+EDGE_PAD;
+        const uvRect=[ox*16/texture.width,oy*16/texture.height,(ox+fw)*16/texture.width,(oy+fh)*16/texture.height];
+        const uv=[[uvRect[0],uvRect[1]],[uvRect[0],uvRect[3]],[uvRect[2],uvRect[3]],[uvRect[2],uvRect[1]]];
         const pts=face.corners.map(i=>{const q=project(corners[i]);return {x:originX+q.x*scale,y:groundY+q.y*scale,depth:q.depth};});
-        const uv=Array.from({length:4},(_,i)=>[face.uv[i*2],face.uv[i*2+1]]);
         triangle([pts[0],pts[1],pts[2]],[uv[0],uv[1],uv[2]],texture);triangle([pts[0],pts[2],pts[3]],[uv[0],uv[2],uv[3]],texture);
       }
     }
@@ -382,6 +406,14 @@ function renderCompare(a:Actor,source:Sprite|undefined){
   for(let y=27;y<256;y++)set(p,w,h,120,y,[196,180,150]);
   return p;
 }
+function writeWolfSourceComparison(){
+  const web=sourceSprite("wolf");if(!web)throw new Error("web wolf source sprite missing");
+  const vanilla=vanillaWolfTexture(),w=216,h=80,p=rgba(w,h);
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)set(p,w,h,x,y,[245,239,222]);
+  for(let y=0;y<web.height;y++)for(let x=0;x<web.width;x++){const i=(y*web.width+x)*4;if(web.pixels[i+3]>24)for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++)set(p,w,h,8+x*2+dx,8+y*2+dy,[web.pixels[i],web.pixels[i+1],web.pixels[i+2]]);}
+  for(let y=0;y<vanilla.height;y++)for(let x=0;x<vanilla.width;x++){const i=(y*vanilla.width+x)*4;if(vanilla.pixels[i+3]>24)for(let dy=0;dy<2;dy++)for(let dx=0;dx<2;dx++)set(p,w,h,80+x*2+dx,24+y*2+dy,[vanilla.pixels[i],vanilla.pixels[i+1],vanilla.pixels[i+2]]);}
+  writePng(join(previewRoot,"wolf_source_web_vanilla.png"),w,h,p);
+}
 const packFile=join(resourceRoot,"pack-models.json");let prior:string[]=[];try{const j=JSON.parse(readFileSync(packFile,"utf8"));if(Array.isArray(j))prior=j.filter((v:any)=>typeof v==="string");}catch{}
 const manifest:Record<string,unknown>={version:1};let boneCount=0;
 for(const actor of actors){
@@ -389,8 +421,9 @@ for(const actor of actors){
   manifest[actor.id]={kind:actor.kind,name:actor.name,role:actor.role,source:actor.source??null,scale:actor.scale,height:actor.height,bones,anims:animations(actor)};
   if(actor.kind!=="pet")writePng(join(previewRoot,`${actor.id}_front-side-45.png`),720,280,renderCompare(actor,sourceSprite(actor.source)));
 }
+writeWolfSourceComparison();
 const models=[...new Set([...prior,...modelIds])].sort();writeFileSync(packFile,JSON.stringify(models,null,2)+"\n","utf8");
 writeFileSync(join(resourceRoot,"models.json"),JSON.stringify(manifest,null,2)+"\n","utf8");
-const report={actors:actors.length,mobs:Object.keys(MOBS).length,pets:Object.keys(PETS).length,npcs:Object.keys(NPCS).length,bones:boneCount,baseAndHurtModels:modelIds.size,uniquePackModels:models.length,previewDir:join(".scratch","codex","mc-models","v2"),previewIds:actors.filter(a=>a.kind!=="pet").map(a=>a.id),textureSize:[32,32],textureDensity:"32 pixels per 16-model-unit block; four 16x16 face tiles",notes:"Front-face texture pixels project from the corresponding web mob frame; NPCs use role-specific generated textures because the web shares player-character artwork.",};
+const report={actors:actors.length,mobs:Object.keys(MOBS).length,pets:Object.keys(PETS).length,npcs:Object.keys(NPCS).length,bones:boneCount,baseAndHurtModels:modelIds.size,uniquePackModels:models.length,previewDir:join(".scratch","codex","mc-models","v3"),previewIds:actors.filter(a=>a.kind!=="pet").map(a=>a.id),textureSize:"per-part atlas; face texel dimensions match model-unit dimensions",textureDensity:"1 texel per model unit, separate padded UV rectangle for each face/part",hurtTexture:"shared base texture; _hurt item model applies custom_model_data color tint",notes:"Web mob pixels are projected from the corresponding bone bounds; NPC faces/clothing use fixed pixel details and role palettes.",};
 writeFileSync(join(resourceRoot,"model-build.json"),JSON.stringify(report,null,2)+"\n","utf8");
 console.log(`RPG models: ${actors.length} actors, ${boneCount} bones, ${modelIds.size} base/hurt item models, ${models.length} pack ids.`);

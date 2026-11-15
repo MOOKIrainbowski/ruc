@@ -1,7 +1,7 @@
 {
   "textures": {
-    "layer0": "ruc:entity/mob/shadow_vine/tendril_back_hurt",
-    "particle": "ruc:entity/mob/shadow_vine/tendril_back_hurt"
+    "layer0": "ruc:entity/mob/shadow_vine/tendril_back",
+    "particle": "ruc:entity/mob/shadow_vine/tendril_back"
   },
   "elements": [
     {
@@ -19,56 +19,62 @@
         "north": {
           "texture": "#layer0",
           "uv": [
-            0,
-            8,
-            8,
-            16
-          ]
+            0.8205128205128205,
+            1.2307692307692308,
+            1.435897435897436,
+            6.769230769230769
+          ],
+          "tintindex": 0
         },
         "south": {
           "texture": "#layer0",
           "uv": [
-            0,
-            0,
-            8,
-            8
-          ]
+            6.153846153846154,
+            1.2307692307692308,
+            6.769230769230769,
+            6.769230769230769
+          ],
+          "tintindex": 0
         },
         "east": {
           "texture": "#layer0",
           "uv": [
-            8,
-            0,
-            16,
-            8
-          ]
+            11.487179487179487,
+            1.2307692307692308,
+            12.102564102564102,
+            6.769230769230769
+          ],
+          "tintindex": 0
         },
         "west": {
           "texture": "#layer0",
           "uv": [
-            8,
-            0,
-            16,
-            8
-          ]
+            0.8205128205128205,
+            9.23076923076923,
+            1.435897435897436,
+            14.76923076923077
+          ],
+          "tintindex": 0
         },
         "up": {
           "texture": "#layer0",
           "uv": [
-            8,
-            8,
-            16,
-            16
-          ]
+            6.153846153846154,
+            9.23076923076923,
+            6.769230769230769,
+            10.153846153846153
+          ],
+          "tintindex": 0
         },
         "down": {
           "texture": "#layer0",
           "uv": [
-            0,
-            8,
-            8,
-            16
-          ]
+            11.487179487179487,
+            9.23076923076923,
+            12.102564102564102,
+            10.153846153846153
+          ],
+          "tintindex": 0
         }
       },
       "shade": true

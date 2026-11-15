@@ -1,6 +1,13 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "ruc:item/mob/tree_knight/greatsword"
+    "model": "ruc:item/mob/tree_knight/greatsword",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": 16777215
+      }
+    ]
   }
 }

@@ -1,6 +1,13 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "ruc:item/mob/totem_heal/post"
+    "model": "ruc:item/mob/totem_heal/post",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": 16777215
+      }
+    ]
   }
 }

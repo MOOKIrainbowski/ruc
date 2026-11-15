@@ -1,6 +1,13 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "ruc:item/mob/pet_golem/leg_r"
+    "model": "ruc:item/mob/pet_golem/leg_r",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": 16777215
+      }
+    ]
   }
 }

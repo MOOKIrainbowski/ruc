@@ -435,3 +435,13 @@ E 인벤토리의 제작 2×2 칸 + 왼손 칸이 장신구 칸이 됐습니다(
 **C. 체력바 스프라이트** `fx/hpbar_frame`(테두리) · `fx/hpbar_fill`(흰색, 물들임) · `fx/hpbar_back` — 링크 이미지처럼 바닐라 느낌 픽셀 아트, 가로로 늘려도 깨지지 않게(9-slice 대신 채움은 1px 단위 가로 막대 권장). items 정의는 작업 13 과 같은 tints 방식.
 **D. 장신구 빈 칸 아이콘** `ui/slot_ring1` · `ui/slot_necklace` 두 개만(사용자: 반지 · 목걸이만), 바닐라 `empty_armor_slot_*` 와 **같은 색 · 같은 반투명도**(바닐라 원본 PNG 를 열어 색을 재서 맞추기 — 클라이언트 jar 원본은 `.scratch/vanilla-1.21.11/` 에 꺼내 둘 수 있음, 필요하면 말해 주세요).
 검사: `pack-validate.py` 0 오류, 비교 렌더(웹 · 바닐라 몹과 나란히). 끝나면 `## Codex 작업 14 완료 보고`(A 결론 요약 포함). Java · 모드 · 커밋 · pack.py 는 Claude.
+
+## Codex 작업 14 완료 보고
+
+- 먼저 `docs/15-MC-TEXTURE-RESEARCH.md`를 작성하고 리소스팩 모델 규칙, Blockbench 텍셀 밀도, Mojang tint 데이터, 바닐라 hurt overlay, 참고 체력바 레이어링을 대조했습니다. 결론은 면 크기별 UV/픽셀 텍셀을 고정하고, 같은 텍스처에 item tint를 적용하며, 체력바는 배경·프레임·채움으로 분리하는 것입니다.
+- `RUC_RPG/scripts/mc-models.ts`를 고쳐 액터 34종·뼈 339개의 기본/피격 모델 678개를 재생성했습니다. 면과 part별 독립 아틀라스에서 1 texel/model unit으로 UV를 산출하고 가장자리 패딩을 넣었습니다. 기본·피격 아이템 정의는 같은 base PNG/geometry를 참조하며 모든 면에 `tintindex: 0`이 있습니다. 기존 `_hurt` model/item ID는 유지했습니다.
+- Claude의 Java 연결 계약: 기본 ID는 흰색 기본 tint, 피격 시 기존 `*_hurt` ID를 선택합니다. 필요하면 `minecraft:custom_model_data.colors[0]`에 `0xFF6666`(RGB 빨강)을 넣습니다. `_hurt` 정의의 기본 tint도 `0xFF6666`이며 별도 `_hurt.png`를 읽지 않습니다. 서버/클라이언트에서 ID 선택과 색 전달은 Java 변경 후 확인해야 합니다.
+- `RUC_RPG/scripts/mc-fx-art.ts`가 `fx/hpbar_back`·`hpbar_frame`(각 64×12)·`hpbar_fill`(1×6)을 만들고, 기존 이펙트와 같은 모델/item tint 정의 및 `pack-models.json` 항목을 생성합니다. `.scratch/codex/fx/hpbar-preview.png`에서 어두운 바탕·초록 채움의 합성 예시를 확인했습니다.
+- `RUC_RPG/scripts/mc-slot-art.ts`는 제공된 1.21.11 `helmet.png`에서 잉크 RGB `#555555`, alpha `255`를 샘플해 `ui/slot_ring1`과 `ui/slot_necklace`만 재생성했습니다. 비교 그림은 `.scratch/codex/accessory/preview.png`입니다. 늑대 원화와 바닐라 wolf UV 비교는 `.scratch/codex/mc-models/v3/wolf_source_web_vanilla.png`, 모델 렌더는 `.scratch/codex/mc-models/v3/wolf_front-side-45.png`에 있습니다.
+- 확인: 세 생성기 실행 성공(액터 34, 뼈 339, 기본/피격 모델 678, pack ID 1,248; FX 17), `python minecraft/scripts/pack-validate.py` **오류 0개**, 소유 스크립트와 pack 목록의 `git diff --check` 통과.
+- 실제 Minecraft 클라이언트에서 피격 tint, ItemDisplay 크기/위치, 체력바 길이·높이·가림은 확인하지 못했습니다. Java·모드 코드·`pack.py`·커밋은 건드리지 않았습니다.

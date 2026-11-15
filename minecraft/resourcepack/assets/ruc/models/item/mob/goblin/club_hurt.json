@@ -1,7 +1,7 @@
 {
   "textures": {
-    "layer0": "ruc:entity/mob/goblin/club_hurt",
-    "particle": "ruc:entity/mob/goblin/club_hurt"
+    "layer0": "ruc:entity/mob/goblin/club",
+    "particle": "ruc:entity/mob/goblin/club"
   },
   "elements": [
     {
@@ -19,56 +19,62 @@
         "north": {
           "texture": "#layer0",
           "uv": [
-            0,
-            8,
-            8,
-            16
-          ]
+            1.0666666666666667,
+            0.8,
+            2.1333333333333333,
+            3.2
+          ],
+          "tintindex": 0
         },
         "south": {
           "texture": "#layer0",
           "uv": [
-            0,
-            0,
-            8,
-            8
-          ]
+            6.4,
+            0.8,
+            7.466666666666667,
+            3.2
+          ],
+          "tintindex": 0
         },
         "east": {
           "texture": "#layer0",
           "uv": [
-            8,
-            0,
-            16,
-            8
-          ]
+            11.733333333333333,
+            0.8,
+            12.8,
+            3.2
+          ],
+          "tintindex": 0
         },
         "west": {
           "texture": "#layer0",
           "uv": [
-            8,
-            0,
-            16,
-            8
-          ]
+            1.0666666666666667,
+            4.8,
+            2.1333333333333333,
+            7.2
+          ],
+          "tintindex": 0
         },
         "up": {
           "texture": "#layer0",
           "uv": [
-            8,
-            8,
-            16,
-            16
-          ]
+            6.4,
+            4.8,
+            7.466666666666667,
+            5.6
+          ],
+          "tintindex": 0
         },
         "down": {
           "texture": "#layer0",
           "uv": [
-            0,
-            8,
-            8,
-            16
-          ]
+            11.733333333333333,
+            4.8,
+            12.8,
+            5.6
+          ],
+          "tintindex": 0
         }
       },
       "shade": true
@@ -88,56 +94,62 @@
         "north": {
           "texture": "#layer0",
           "uv": [
-            0,
-            8,
-            8,
-            16
-          ]
+            1.0666666666666667,
+            8.8,
+            2.6666666666666665,
+            9.6
+          ],
+          "tintindex": 0
         },
         "south": {
           "texture": "#layer0",
           "uv": [
-            0,
-            0,
+            6.4,
+            8.8,
             8,
-            8
-          ]
+            9.6
+          ],
+          "tintindex": 0
         },
         "east": {
           "texture": "#layer0",
           "uv": [
-            8,
-            0,
-            16,
-            8
-          ]
+            11.733333333333333,
+            8.8,
+            13.066666666666666,
+            9.6
+          ],
+          "tintindex": 0
         },
         "west": {
           "texture": "#layer0",
           "uv": [
-            8,
-            0,
-            16,
-            8
-          ]
+            1.0666666666666667,
+            12.8,
+            2.4,
+            13.6
+          ],
+          "tintindex": 0
         },
         "up": {
           "texture": "#layer0",
           "uv": [
+            6.4,
+            12.8,
             8,
-            8,
-            16,
-            16
-          ]
+            13.8
+          ],
+          "tintindex": 0
         },
         "down": {
           "texture": "#layer0",
           "uv": [
-            0,
-            8,
-            8,
-            16
-          ]
+            11.733333333333333,
+            12.8,
+            13.333333333333334,
+            13.8
+          ],
+          "tintindex": 0
         }
       },
       "shade": true

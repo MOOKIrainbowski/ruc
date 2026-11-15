@@ -67,10 +67,10 @@ public final class ModelEngine {
         }
 
         /**
-         * 피격 표시. 예전엔 뼈마다 '온통 빨간' 텍스처로 바꿔서 사용자 화면에 텍스처가 깨진 것처럼 보였음(2026-11-16) →
-         * 바닐라처럼 원래 텍스처 위에 옅은 빨강을 곱하는 방식(Codex 작업 14 의 모델 tint)이 올 때까지 바꾸지 않음.
+         * 피격 표시. 예전엔 뼈마다 '온통 빨간' 텍스처로 바꿔서 텍스처가 깨진 것처럼 보였음(사용자 지시 2026-11-16) →
+         * Codex 작업 14: *_hurt 모델 = 같은 텍스처 + tint 0xFF6666 곱하기(바닐라 피격 붉은빛과 같은 방식).
          */
-        public void hurt() { hurtUntil = System.currentTimeMillis() + 150; }
+        public void hurt() { hurtUntil = System.currentTimeMillis() + 150; swapHurt(true); }
 
         public void die(Runnable after) {
             if (!def.anims.containsKey("death")) { remove(); after.run(); return; }

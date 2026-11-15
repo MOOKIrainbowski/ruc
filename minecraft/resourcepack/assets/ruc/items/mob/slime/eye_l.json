@@ -1,6 +1,13 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "ruc:item/mob/slime/eye_l"
+    "model": "ruc:item/mob/slime/eye_l",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": 16777215
+      }
+    ]
   }
 }

@@ -109,10 +109,20 @@ make("shield", 32, 32, (s) => {
   circle(s, cx, cy, 8, 1, 215, 135, -Math.PI * 0.9, Math.PI * 0.35);
   dot(s, 10, 8, 1.2, 255, 210); dot(s, 22, 22, 1.2, 255, 210);
 });
+make("hpbar_back", 64, 12, (s) => {
+  for (let y = 0; y < 12; y++) for (let x = 0; x < 64; x++) put(s, x, y, y < 2 ? 92 : y > 9 ? 32 : 52, 255);
+  for (let x = 2; x < 62; x++) { put(s,x,2,78); put(s,x,9,40); }
+});
+make("hpbar_frame", 64, 12, (s) => {
+  for (let x = 0; x < 64; x++) { put(s,x,0,38); put(s,x,1,210); put(s,x,2,130); put(s,x,9,96); put(s,x,10,225); put(s,x,11,34); }
+  for (let y = 1; y < 11; y++) { put(s,0,y,38); put(s,1,y,210); put(s,2,y,130); put(s,61,y,130); put(s,62,y,210); put(s,63,y,34); }
+  for (let x = 4; x < 60; x += 8) { put(s,x,1,255); put(s,x+1,1,255); }
+});
+make("hpbar_fill", 1, 6, (s) => { put(s,0,0,190); put(s,0,1,238); for (let y=2;y<5;y++)put(s,0,y,255); put(s,0,5,205); });
 
 const expected: Record<string, [number, number]> = {
   slash_arc: [64,32], slash_cross: [32,32], ring: [64,64], shock: [64,64], spark: [16,16], orb: [16,16], arrow: [16,16],
-  burst_0: [32,32], burst_1: [32,32], burst_2: [32,32], burst_3: [32,32], beam: [16,64], heal: [16,16], shield: [32,32],
+  burst_0: [32,32], burst_1: [32,32], burst_2: [32,32], burst_3: [32,32], beam: [16,64], heal: [16,16], shield: [32,32], hpbar_back: [64,12], hpbar_frame: [64,12], hpbar_fill: [1,6],
 };
 for (const [name, s] of Object.entries(art)) {
   if (!expected[name] || s.w !== expected[name][0] || s.h !== expected[name][1]) throw new Error(`unexpected sprite size: ${name} ${s.w}x${s.h}`);
@@ -135,17 +145,34 @@ writeFileSync(listPath, `${JSON.stringify(ids, null, 2)}\n`);
 const cols = 4, cell = 80, rows = Math.ceil(Object.keys(art).length / cols), sheet = sprite(cols * cell, rows * cell);
 const tint = [[74, 158, 255], [255, 91, 105], [80, 218, 131], [191, 115, 255]];
 Object.entries(art).forEach(([name, src], i) => {
-  const ox = (i % cols) * cell + Math.floor((cell - src.w) / 2), oy = Math.floor(i / cols) * cell + 6;
+  const scale = Math.max(1, Math.min(4, Math.floor((cell - 12) / Math.max(src.w, src.h))));
+  const ox = (i % cols) * cell + Math.floor((cell - src.w * scale) / 2), oy = Math.floor(i / cols) * cell + 6 + Math.floor((cell - 12 - src.h * scale) / 2);
   for (let y = 0; y < cell - 14; y++) for (let x = 0; x < cell; x++) put(sheet, (i % cols) * cell + x, Math.floor(i / cols) * cell + y + 6, ((x >> 2) + (y >> 2)) % 2 ? 48 : 34, 255);
   const [tr, tg, tb] = tint[i % tint.length];
   for (let y = 0; y < src.h; y++) for (let x = 0; x < src.w; x++) {
-    const si = (y * src.w + x) * 4, di = ((oy + y) * sheet.w + ox + x) * 4, lum = src.p[si];
-    const oldA = sheet.p[di + 3], a = src.p[si + 3] / 255;
+    const si = (y * src.w + x) * 4, lum = src.p[si], a = src.p[si + 3] / 255;
     const srcRgb = [Math.round(tr * lum / 255), Math.round(tg * lum / 255), Math.round(tb * lum / 255)];
-    const dstRgb = oldA ? [sheet.p[di], sheet.p[di + 1], sheet.p[di + 2]] : [0, 0, 0];
-    const outA = a + oldA / 255 * (1 - a);
-    sheet.p.set(srcRgb.map((c, n) => Math.round((c * a + dstRgb[n] * (oldA / 255) * (1 - a)) / outA)).concat(Math.round(outA * 255)), di);
+    for (let dy=0;dy<scale;dy++)for(let dx=0;dx<scale;dx++){
+      const di = ((oy + y * scale + dy) * sheet.w + ox + x * scale + dx) * 4, oldA = sheet.p[di + 3];
+      const dstRgb = oldA ? [sheet.p[di], sheet.p[di + 1], sheet.p[di + 2]] : [0, 0, 0];
+      const outA = a + oldA / 255 * (1 - a);
+      sheet.p.set(srcRgb.map((c, n) => Math.round((c * a + dstRgb[n] * (oldA / 255) * (1 - a)) / outA)).concat(Math.round(outA * 255)), di);
+    }
   }
 });
 mkdirSync(dirname(preview), { recursive: true }); writeFileSync(preview, png(sheet));
+const barPreview=sprite(208,56);
+for(let y=0;y<barPreview.h;y++)for(let x=0;x<barPreview.w;x++){const shade=(x>>2)+(y>>2)%2?35:24;put(barPreview,x,y,shade,255);}
+function barLayer(src:Sprite,ox:number,oy:number,scale:number,tint:[number,number,number],stretchW=src.w*scale){
+  for(let y=0;y<src.h*scale;y++)for(let x=0;x<stretchW;x++){
+    const sx=Math.min(src.w-1,Math.floor(x/scale)),sy=Math.floor(y/scale),i=(sy*src.w+sx)*4,a=src.p[i+3]/255;
+    const dx=ox+x,dy=oy+y,di=(dy*barPreview.w+dx)*4;if(dx<0||dy<0||dx>=barPreview.w||dy>=barPreview.h||!a)continue;
+    const old=barPreview.p[di+3]/255,outA=a+old*(1-a),rgb=[0,1,2].map(c=>Math.round((tint[c]*src.p[i]/255*a+barPreview.p[di+c]*old*(1-a))/outA));
+    barPreview.p.set([...rgb,Math.round(outA*255)],di);
+  }
+}
+barLayer(art.hpbar_back,8,10,3,[255,255,255]);
+barLayer(art.hpbar_fill,17,19,3,[76,199,100],111);
+barLayer(art.hpbar_frame,8,10,3,[255,255,255]);
+writeFileSync(resolve(dirname(preview), "hpbar-preview.png"), png(barPreview));
 console.log(`Generated ${Object.keys(art).length} white-shaded FX sprites and ${sheet.w}x${sheet.h} tinted preview.`);

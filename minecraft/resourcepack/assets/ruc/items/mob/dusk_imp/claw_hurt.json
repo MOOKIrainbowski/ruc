@@ -1,6 +1,13 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "ruc:item/mob/dusk_imp/claw_hurt"
+    "model": "ruc:item/mob/dusk_imp/claw_hurt",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": 16737894
+      }
+    ]
   }
 }

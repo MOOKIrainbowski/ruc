@@ -17,6 +17,9 @@ import net.kyori.adventure.text.format.NamedTextColor;
 import net.kyori.adventure.text.format.TextColor;
 import org.bukkit.Bukkit;
 import org.bukkit.Color;
+import org.bukkit.Material;
+import org.bukkit.inventory.ItemStack;
+import kr.rucserver.rpg.ui.Gui;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.Particle;
@@ -128,14 +131,8 @@ public final class MobRuntime implements Listener {
             m.body.addPassenger(m.plate);
             if (plugin.models() != null) m.model = plugin.models().attach(m.key, m.body);
             // 체력바를 모델 머리 바로 위로 (몸은 늘 허스크 1.95 블록이라 작은 몹은 바가 한참 위에 떴음 — 사용자 지시 2026-11-16)
-            // 몸 크기(SCALE)는 다음 틱에야 반영되므로, 2틱 뒤 실제 탄 높이를 재서 그만큼 내림
-            double mh = m.model != null ? plugin.models().heightOf(m.key) : -1;
-            if (mh > 0) Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                if (m.plate == null || !m.plate.isValid() || m.body == null || !m.body.isValid()) return;
-                double ride = m.plate.getLocation().getY() - m.body.getLocation().getY();
-                m.plate.setTransformation(new org.bukkit.util.Transformation(new org.joml.Vector3f(0, (float) (mh + 0.12 - ride), 0),
-                        new org.joml.AxisAngle4f(), new org.joml.Vector3f(0.8f, 0.8f, 0.8f), new org.joml.AxisAngle4f()));
-            }, 2L);
+            // 몸 크기(SCALE)는 다음 틱에야 반영되므로, 2틱 뒤 실제 탄 높이를 재서 체력바 · 이름을 모델 머리 바로 위로
+            Bukkit.getScheduler().runTaskLater(plugin, () -> placePlate(m), 2L);
             byEntity.put(m.body.getUniqueId(), m);
             w.add(m);
             z.alive++;
@@ -179,6 +176,54 @@ public final class MobRuntime implements Listener {
         return null;
     }
 
+    private static final float BAR_W = 1.0f, BAR_W_BOSS = 1.6f;
+
+    private float barW(MobUnit m) { return m.boss() ? BAR_W_BOSS : BAR_W; }
+
+    /** 이름판 + 픽셀 체력바를 모델 머리 위에 (바닐라 느낌 체력바 — 사용자 지시 2026-11-16, 참고 이미지와 비슷하게) */
+    private void placePlate(MobUnit m) {
+        if (m.plate == null || !m.plate.isValid() || m.body == null || !m.body.isValid()) return;
+        double mh = m.model != null && plugin.models().heightOf(m.key) > 0 ? plugin.models().heightOf(m.key) : m.body.getHeight();
+        double ride = m.plate.getLocation().getY() - m.body.getLocation().getY();
+        float bw = barW(m), bh = bw * 12 / 64f;
+        float barY = (float) (mh + 0.12 - ride + bh / 2);   // 체력바 가운데
+        m.plate.setTransformation(new org.bukkit.util.Transformation(new org.joml.Vector3f(0, barY + bh / 2 + 0.02f, 0),
+                new org.joml.AxisAngle4f(), new org.joml.Vector3f(0.7f, 0.7f, 0.7f), new org.joml.AxisAngle4f()));
+        if (!Gui.hasModel("fx/hpbar_frame")) return;
+        m.bar = new org.bukkit.entity.ItemDisplay[3];
+        String[] ids = {"fx/hpbar_back", "fx/hpbar_fill", "fx/hpbar_frame"};
+        for (int i = 0; i < 3; i++) {
+            String id = ids[i];
+            float z = i * 0.004f;   // 같은 면에서 깜빡이지 않게 카메라 쪽으로 조금씩
+            m.bar[i] = m.body.getWorld().spawn(m.body.getLocation(), org.bukkit.entity.ItemDisplay.class, d -> {
+                d.setPersistent(false);
+                d.setBillboard(Display.Billboard.CENTER);
+                d.setItemStack(barItem(id, 0xFFFFFF));
+                d.setTransformation(new org.bukkit.util.Transformation(new org.joml.Vector3f(0, barY, z), new org.joml.AxisAngle4f(),
+                        new org.joml.Vector3f(bw, bh, 0.01f), new org.joml.AxisAngle4f()));
+            });
+            m.body.addPassenger(m.bar[i]);
+        }
+        m.plateHp = -1;
+        updatePlate(m);
+    }
+
+    private static ItemStack barItem(String id, int rgb) {
+        ItemStack it = new ItemStack(Material.PAPER);
+        var meta = it.getItemMeta();
+        meta.setItemModel(new org.bukkit.NamespacedKey("ruc", Gui.id(id)));
+        var cmd = meta.getCustomModelDataComponent();
+        cmd.setColors(java.util.List.of(Color.fromRGB(rgb)));
+        meta.setCustomModelDataComponent(cmd);
+        it.setItemMeta(meta);
+        return it;
+    }
+
+    private static void removeBar(MobUnit m) {
+        if (m.bar != null) for (var d : m.bar) if (d != null) d.remove();
+        m.bar = null;
+    }
+
     private void updatePlate(MobUnit m) {
         if (m.plate == null || !m.plate.isValid()) return;
         if (Math.abs(m.plateHp - m.hp) < 0.5 && m.plateHp >= 0) return;
@@ -189,6 +234,19 @@ public final class MobRuntime implements Listener {
         b.append(Component.text("Lv." + m.lv + " ", NamedTextColor.GRAY));
         if (!"normal".equals(m.grade)) b.append(Component.text("[" + g.get("name").getAsString() + "] ", gc));
         b.append(Component.text(m.name, m.boss() ? TextColor.color(0xFF5A5A) : NamedTextColor.WHITE));
+        double frac = Math.max(0, Math.min(1, m.hp / m.st.get("hp")));
+        if (m.bar != null && m.bar[1] != null && m.bar[1].isValid()) {   // 픽셀 체력바: 채움을 왼쪽 기준으로 줄이고 색은 초록 → 노랑 → 빨강
+            float bw = barW(m), bh = bw * 12 / 64f, inner = bw * 58 / 64f, left = -bw / 2 + bw * 3 / 64f;
+            float fw = (float) (inner * frac);
+            var t = m.bar[1].getTransformation();
+            m.bar[1].setItemStack(barItem("fx/hpbar_fill", frac > 0.5 ? 0x4CC764 : frac > 0.25 ? 0xE8C547 : 0xE5484D));
+            m.bar[1].setInterpolationDelay(0);
+            m.bar[1].setInterpolationDuration(3);
+            m.bar[1].setTransformation(new org.bukkit.util.Transformation(new org.joml.Vector3f(left + fw / 2, t.getTranslation().y(), 0.004f),
+                    new org.joml.AxisAngle4f(), new org.joml.Vector3f(Math.max(0.0001f, fw), bh * 6 / 12f, 0.01f), new org.joml.AxisAngle4f()));
+            m.plate.text(b.build());
+            return;
+        }
         b.append(Component.newline());
         int cells = m.boss() ? 30 : 20;
         int full = (int) Math.ceil(cells * Math.max(0, m.hp) / m.st.get("hp"));
@@ -252,6 +310,7 @@ public final class MobRuntime implements Listener {
         if (m.model != null) m.model.remove();
         byEntity.remove(m.body == null ? null : m.body.getUniqueId());
         w.remove(m);
+        removeBar(m);
         if (m.plate != null) m.plate.remove();
         if (m.body != null) m.body.remove();
     }
@@ -622,6 +681,7 @@ public final class MobRuntime implements Listener {
             l.getWorld().playSound(l, Sound.ENTITY_GENERIC_DEATH, 0.6f, 1.2f);
             m.body.setAI(false);
         }
+        removeBar(m);
         if (m.plate != null) m.plate.remove();
         if (m.model != null) { var model = m.model; m.model = null; model.die(() -> {}); }
         PlayerUnit best = null;

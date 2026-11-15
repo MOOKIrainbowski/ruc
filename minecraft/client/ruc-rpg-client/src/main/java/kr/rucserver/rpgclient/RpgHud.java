@@ -193,15 +193,20 @@ public final class RpgHud {
     private static void stats(GuiGraphics g, Minecraft mc, int w, int h) {
         if (RpgState.stats.size() < 8) return;
         int pw = 86, ph = 84, x = w / 2 - 91 - 29 - 4 - pw, y = h - ph - 1;   // 왼손 칸(핫바 왼쪽 29px)과 겹치지 않게 (사용자 지시)
-        g.fill(x, y, x + pw, y + ph, 0xB0281C14);
-        g.fill(x, y, x + pw, y + 1, 0xFFC8A06A);
+        // 바닐라 툴팁 모양(짙은 남색 + 보라 테두리) — 바닐라와 이질감 없게 (사용자 지시 2026-11-16)
+        g.fill(x + 1, y, x + pw - 1, y + ph, 0xD0100010);
+        g.fill(x, y + 1, x + pw, y + ph - 1, 0xD0100010);
+        g.fillGradient(x + 1, y + 1, x + 2, y + ph - 1, 0x505000FF, 0x5028007F);
+        g.fillGradient(x + pw - 2, y + 1, x + pw - 1, y + ph - 1, 0x505000FF, 0x5028007F);
+        g.fill(x + 1, y + 1, x + pw - 1, y + 2, 0x505000FF);
+        g.fill(x + 1, y + ph - 2, x + pw - 1, y + ph - 1, 0x5028007F);
         for (int i = 0; i < 8; i++) {
             int ry = y + 3 + i * 10;
             g.blit(RenderPipelines.GUI_TEXTURED, tex("hud/stat_" + STAT_ICON[i]), x + 3, ry, 0, 0, 8, 8, 8, 8);
             g.pose().pushMatrix();
             g.pose().translate(x + 13, ry + 1);
             g.pose().scale(0.75f, 0.75f);
-            g.drawString(mc.font, STAT_NAME[i], 0, 0, 0xFFE8D8C0, false);
+            g.drawString(mc.font, STAT_NAME[i], 0, 0, 0xFFAAAAAA, false);
             g.pose().popMatrix();
             String v = RpgState.stats.get(i);
             g.drawString(mc.font, v, x + pw - 3 - mc.font.width(v), ry, 0xFFFFFFFF, true);

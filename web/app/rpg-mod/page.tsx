@@ -3,7 +3,7 @@ import PageShell from "@/components/PageShell";
 export const metadata = { title: "러크 RPG 클라이언트 모드" };
 
 /** 러크 RPG 마인크래프트 서버 전용 모드 설치 안내 (사용자 결정 K1, 2026-11-15) */
-const MOD = "/rpg-mod/ruc-rpg-client-0.2.1.jar";
+const MOD = "/rpg-mod/ruc-rpg-client-0.2.2.jar";
 
 export default function Page() {
   const steps: [string, React.ReactNode][] = [
@@ -14,7 +14,7 @@ export default function Page() {
   ];
   return (
     <PageShell eyebrow="RUC RPG" title="러크 RPG 클라이언트 모드" lead="RPG 서버는 이 모드가 있어야 들어갈 수 있어요 — 웹 RPG 와 같은 키(Q · C · Z · R 스킬, M 지도 …) · HUD · 미니맵을 그대로 씁니다.">
-      <a href={MOD} download className="glass glass-hover mb-6 inline-block rounded-xl px-6 py-3 text-white">러크 RPG 모드 받기 (0.2.1)</a>
+      <a href={MOD} download className="glass glass-hover mb-6 inline-block rounded-xl px-6 py-3 text-white">러크 RPG 모드 받기 (0.2.2)</a>
       <ol className="grid gap-3">
         {steps.map(([t, d], i) => (
           <li key={t} className="glass rounded-xl p-5">

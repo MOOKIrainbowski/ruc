@@ -1,7 +1,7 @@
 {
   "textures": {
-    "layer0": "ruc:entity/mob/sprout_slime/body_top_hurt",
-    "particle": "ruc:entity/mob/sprout_slime/body_top_hurt"
+    "layer0": "ruc:entity/mob/sprout_slime/body_top",
+    "particle": "ruc:entity/mob/sprout_slime/body_top"
   },
   "elements": [
     {
@@ -19,56 +19,62 @@
         "north": {
           "texture": "#layer0",
           "uv": [
-            0,
-            8,
-            8,
-            16
-          ]
+            1.0666666666666667,
+            1.6,
+            4.266666666666667,
+            3.2
+          ],
+          "tintindex": 0
         },
         "south": {
           "texture": "#layer0",
           "uv": [
-            0,
-            0,
-            8,
-            8
-          ]
+            6.4,
+            1.6,
+            9.6,
+            3.2
+          ],
+          "tintindex": 0
         },
         "east": {
           "texture": "#layer0",
           "uv": [
-            8,
-            0,
-            16,
-            8
-          ]
+            11.733333333333333,
+            1.6,
+            14.4,
+            3.2
+          ],
+          "tintindex": 0
         },
         "west": {
           "texture": "#layer0",
           "uv": [
-            8,
-            0,
-            16,
-            8
-          ]
+            1.0666666666666667,
+            9.6,
+            3.7333333333333334,
+            11.2
+          ],
+          "tintindex": 0
         },
         "up": {
           "texture": "#layer0",
           "uv": [
-            8,
-            8,
-            16,
-            16
-          ]
+            6.4,
+            9.6,
+            9.6,
+            13.6
+          ],
+          "tintindex": 0
         },
         "down": {
           "texture": "#layer0",
           "uv": [
-            0,
-            8,
-            8,
-            16
-          ]
+            11.733333333333333,
+            9.6,
+            14.933333333333334,
+            13.6
+          ],
+          "tintindex": 0
         }
       },
       "shade": true

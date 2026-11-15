@@ -1,7 +1,7 @@
 {
   "textures": {
-    "layer0": "ruc:entity/mob/stone_boar/tusk_l_hurt",
-    "particle": "ruc:entity/mob/stone_boar/tusk_l_hurt"
+    "layer0": "ruc:entity/mob/stone_boar/tusk_l",
+    "particle": "ruc:entity/mob/stone_boar/tusk_l"
   },
   "elements": [
     {
@@ -19,56 +19,62 @@
         "north": {
           "texture": "#layer0",
           "uv": [
-            0,
-            8,
-            8,
-            16
-          ]
+            1.7777777777777777,
+            2.6666666666666665,
+            2.6666666666666665,
+            5.333333333333333
+          ],
+          "tintindex": 0
         },
         "south": {
           "texture": "#layer0",
           "uv": [
-            0,
-            0,
+            7.111111111111111,
+            2.6666666666666665,
             8,
-            8
-          ]
+            5.333333333333333
+          ],
+          "tintindex": 0
         },
         "east": {
           "texture": "#layer0",
           "uv": [
-            8,
-            0,
-            16,
-            8
-          ]
+            12.444444444444445,
+            2.6666666666666665,
+            13.333333333333334,
+            5.333333333333333
+          ],
+          "tintindex": 0
         },
         "west": {
           "texture": "#layer0",
           "uv": [
-            8,
-            0,
-            16,
-            8
-          ]
+            1.7777777777777777,
+            10.666666666666666,
+            2.6666666666666665,
+            13.333333333333334
+          ],
+          "tintindex": 0
         },
         "up": {
           "texture": "#layer0",
           "uv": [
+            7.111111111111111,
+            10.666666666666666,
             8,
-            8,
-            16,
-            16
-          ]
+            12
+          ],
+          "tintindex": 0
         },
         "down": {
           "texture": "#layer0",
           "uv": [
-            0,
-            8,
-            8,
-            16
-          ]
+            12.444444444444445,
+            10.666666666666666,
+            13.333333333333334,
+            12
+          ],
+          "tintindex": 0
         }
       },
       "shade": true

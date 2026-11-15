@@ -1,6 +1,13 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "ruc:item/mob/pip/hair_hurt"
+    "model": "ruc:item/mob/pip/hair_hurt",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": 16737894
+      }
+    ]
   }
 }

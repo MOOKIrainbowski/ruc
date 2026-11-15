@@ -5,8 +5,8 @@
   "npcs": 7,
   "bones": 339,
   "baseAndHurtModels": 678,
-  "uniquePackModels": 1226,
-  "previewDir": ".scratch\\codex\\mc-models\\v2",
+  "uniquePackModels": 1248,
+  "previewDir": ".scratch\\codex\\mc-models\\v3",
   "previewIds": [
     "slime",
     "rabbit",
@@ -35,10 +35,8 @@
     "pip",
     "dario"
   ],
-  "textureSize": [
-    32,
-    32
-  ],
-  "textureDensity": "32 pixels per 16-model-unit block; four 16x16 face tiles",
-  "notes": "Front-face texture pixels project from the corresponding web mob frame; NPCs use role-specific generated textures because the web shares player-character artwork."
+  "textureSize": "per-part atlas; face texel dimensions match model-unit dimensions",
+  "textureDensity": "1 texel per model unit, separate padded UV rectangle for each face/part",
+  "hurtTexture": "shared base texture; _hurt item model applies custom_model_data color tint",
+  "notes": "Web mob pixels are projected from the corresponding bone bounds; NPC faces/clothing use fixed pixel details and role palettes."
 }

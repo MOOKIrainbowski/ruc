@@ -2,7 +2,7 @@
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { deflateSync } from "node:zlib";
+import { deflateSync, inflateSync } from "node:zlib";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "../..");
 const out = resolve(root, "minecraft/resourcepack/assets/ruc/textures/item/ui");
@@ -28,15 +28,42 @@ function png(pixels: Uint8Array): Buffer {
   const ihdr = Buffer.alloc(13); ihdr.writeUInt32BE(16, 0); ihdr.writeUInt32BE(16, 4); ihdr[8] = 8; ihdr[9] = 6;
   return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]), chunk("IHDR", ihdr), chunk("IDAT", deflateSync(rows, { level: 9 })), chunk("IEND", new Uint8Array())]);
 }
+function vanillaSlotInk(): [number, number, number, number] {
+  const bytes = readFileSync(resolve(root, ".scratch/vanilla-1.21.11/assets/minecraft/textures/gui/sprites/container/slot/helmet.png"));
+  let width = 0, height = 0, depth = 0, type = 0, transparent = -1; const data: Buffer[] = [];
+  for (let at = 8; at < bytes.length;) {
+    const len = bytes.readUInt32BE(at), name = bytes.toString("ascii", at + 4, at + 8), body = bytes.subarray(at + 8, at + 8 + len);
+    if (name === "IHDR") { width = body.readUInt32BE(0); height = body.readUInt32BE(4); depth = body[8]; type = body[9]; }
+    else if (name === "tRNS") transparent = body.readUInt16BE(0);
+    else if (name === "IDAT") data.push(body);
+    at += len + 12;
+  }
+  if (width !== 16 || height !== 16 || depth !== 2 || type !== 0 || transparent < 0) throw new Error("expected vanilla 16x16 2-bit grayscale empty armor slot PNG");
+  const packed = inflateSync(Buffer.concat(data)), stride = Math.ceil(width * depth / 8), prev = new Uint8Array(stride), counts = new Map<number, number>(); let offset = 0;
+  let last = prev;
+  const paeth = (a: number, b: number, c: number) => { const p = a + b - c, da = Math.abs(p - a), db = Math.abs(p - b), dc = Math.abs(p - c); return da <= db && da <= dc ? a : db <= dc ? b : c; };
+  for (let y = 0; y < height; y++) {
+    const filter = packed[offset++], row = new Uint8Array(stride);
+    for (let x = 0; x < stride; x++) { const v = packed[offset++], a = x ? row[x - 1] : 0, b = last[x], c = x ? last[x - 1] : 0; row[x] = (v + (filter === 1 ? a : filter === 2 ? b : filter === 3 ? Math.floor((a + b) / 2) : filter === 4 ? paeth(a, b, c) : 0)) & 255; }
+    for (let x = 0; x < width; x++) { const sample = row[x >> 2] >> (6 - (x & 3) * 2) & 3; if (sample !== transparent) counts.set(sample, (counts.get(sample) ?? 0) + 1); }
+    last = row;
+  }
+  const dominant = [...counts].sort((a, b) => b[1] - a[1])[0]?.[0];
+  if (dominant === undefined) throw new Error("vanilla empty slot has no visible gray pixels");
+  const gray = dominant * 85;
+  return [gray, gray, gray, 255];
+}
 mkdirSync(out, { recursive: true });
 const thumbs: Uint8Array[] = [];
+const vanillaInk = vanillaSlotInk();
+console.log(`Vanilla slot ink sampled from helmet.png: #${vanillaInk[0].toString(16).padStart(2,"0")} alpha ${vanillaInk[3]}.`);
 for (const [name, rows] of Object.entries(art)) {
   if (rows.length !== 16 || rows.some((row) => row.length !== 16)) throw new Error(`invalid shape: ${name}`);
   const pixels = new Uint8Array(16 * 16 * 4);
   rows.forEach((row, y) => [...row].forEach((ch, x) => {
     if (ch === ".") return;
     const at = (y * 16 + x) * 4;
-    pixels.set(ch === "#" ? [154, 163, 173, 150] : [225, 230, 235, 175], at);
+    pixels.set((name === "ring1" || name === "necklace") ? vanillaInk : ch === "#" ? [154, 163, 173, 150] : [225, 230, 235, 175], at);
   }));
   writeFileSync(resolve(out, `slot_${name}.png`), png(pixels));
   const id = `ui/slot_${name}`;

@@ -1,6 +1,13 @@
 {
   "model": {
     "type": "minecraft:model",
-    "model": "ruc:item/mob/fern/frond_r0_hurt"
+    "model": "ruc:item/mob/fern/frond_r0_hurt",
+    "tints": [
+      {
+        "type": "minecraft:custom_model_data",
+        "index": 0,
+        "default": 16737894
+      }
+    ]
   }
 }

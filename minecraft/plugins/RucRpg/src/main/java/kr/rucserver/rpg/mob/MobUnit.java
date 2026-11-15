@@ -36,6 +36,8 @@ public final class MobUnit extends Unit {
     public final double homeX, homeY;
     public Mob body;
     public TextDisplay plate;
+    /** 머리 위 픽셀 체력바 (뒤판 · 채움 · 테두리, Codex 작업 14 fx/hpbar_*) — 없으면 글자 막대 */
+    public org.bukkit.entity.ItemDisplay[] bar;
     /** 3D 모델 (사용자 결정 Q3) — 없으면 바닐라 몸이 보임 */
     public kr.rucserver.rpg.model.ModelEngine.Instance model;
     /** idle · patrol · leash */
