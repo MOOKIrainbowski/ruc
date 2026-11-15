@@ -420,3 +420,10 @@ E 인벤토리의 제작 2×2 칸 + 왼손 칸이 장신구 칸이 됐습니다(
 | `fx/heal` | 16×16 | 회복 + 표시 |
 | `fx/shield` | 32×32 | 보호막 거품 테두리 |
 파일: `minecraft/resourcepack/assets/ruc/textures/item/fx/<이름>.png` + `models/item/fx/<이름>.json`(parent `minecraft:item/generated`, `layer0`, 그리고 **tintindex 0 이 되도록** generated 그대로) + `items/fx/<이름>.json` = `{"model":{"type":"minecraft:model","model":"ruc:item/fx/<이름>","tints":[{"type":"minecraft:custom_model_data","index":0,"default":16777215}]}}`. `pack-models.json` 에 `fx/<이름>` 추가. 생성기 `RUC_RPG/scripts/mc-fx-art.ts`, 미리보기 `.scratch/codex/fx/preview.png`(흰 배경 말고 어두운 배경에 몇 가지 색으로 물들인 예시). `pack-validate.py` 0 오류. 끝나면 `## Codex 작업 13 완료 보고`.
+
+## Codex 작업 13 완료 보고
+
+- `RUC_RPG/scripts/mc-fx-art.ts`로 흰색 명암·반투명 가장자리의 아이템 스프라이트 14개를 생성했습니다: `slash_arc`, `slash_cross`, `ring`, `shock`, `spark`, `orb`, `arrow`, `burst_0`~`burst_3`, `beam`, `heal`, `shield`. 웹 `fx.ts`의 휘두르기·고리·충격파·불꽃·투사체·궁극기 연출 형태를 참고했습니다.
+- 각 PNG에 `assets/ruc/models/item/fx/<name>.json`(item/generated)과 `assets/ruc/items/fx/<name>.json`을 추가했습니다. 아이템 정의는 배정 명세의 `custom_model_data` index 0 tint와 흰색 기본값을 사용합니다. `pack-models.json`에 `fx/<name>` 14개를 등록했습니다.
+- `.scratch/codex/fx/preview.png`에 어두운 바탕의 속성 색상 미리보기를 만들었습니다. 확인: `node RUC_RPG/scripts/mc-fx-art.ts` 성공, 기대 크기·회색조·RGBA 길이·중복 모델 ID를 생성기에서 검사, `python minecraft/scripts/pack-validate.py` 결과 **오류 0개**, `git diff --check` 통과.
+- 실제 모드 ItemDisplay에서의 빌보드·보간·custom model data 색 적용은 확인하지 못했습니다. Java·모드 코드·`pack.py`·커밋은 건드리지 않았습니다.

@@ -11,6 +11,17 @@ for f in "${CHANGED[@]}"; do mkdir -p "$TMP/$(dirname "$f")"; cp "$f" "$TMP/$f";
 for f in "${CHANGED[@]}"; do cp "$TMP/$f" "$f"; done
 rm -rf "$TMP"
 [ -z "${BUILD_FAIL:-}" ] || { echo "빌드 실패"; exit 1; }
+# 플러그인이 쓰는 모델(pack-models.json)이 운영 팩 zip 에 다 있는지 — 없으면 클라이언트에 보라 · 검정 네모 (2026-11-15 사용자 확인 사고)
+python - <<'PY'
+import json, zipfile, sys
+sys.stdout.reconfigure(encoding="utf-8")
+ids = json.loads(open("minecraft/plugins/RucRpg/src/main/resources/pack-models.json", encoding="utf-8").read())
+names = set(zipfile.ZipFile("web/public/pack/ruc-war.zip").namelist())
+miss = [i for i in ids if f"assets/ruc/items/{i}.json" not in names]
+if miss:
+    print("팩에 없는 모델 %d개 (예: %s) — pack.py 로 팩을 먼저 다시 묶고 커밋하세요" % (len(miss), ", ".join(miss[:5])))
+    sys.exit(1)
+PY
 cp minecraft/servers/war/plugins/RucRpg.jar "minecraft/servers/war/plugins/RucRpg.jar.bak-$(date +%Y%m%d-%H%M)" 2>/dev/null || true
 cp minecraft/plugins/RucRpg/build/libs/RucRpg-0.1.0.jar minecraft/servers/war/plugins/RucRpg.jar
 echo "배포 jar (작업 중 리소스 제외: ${#CHANGED[@]}개)"
