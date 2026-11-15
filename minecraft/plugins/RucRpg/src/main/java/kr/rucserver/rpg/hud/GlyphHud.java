@@ -274,7 +274,7 @@ public final class GlyphHud extends Hud {
     }
 
     /** 웹 CombatHud statRows 와 같은 모양: 소수 한 자리(.0 은 뺌), 치명은 % */
-    static String statText(PlayerUnit u, String row) {
+    public static String statText(PlayerUnit u, String row) {
         String k = switch (row) { case "attack" -> "atk"; case "spell" -> "ap"; case "attack_speed" -> "atkSpeed"; case "move_speed" -> "moveSpeed"; default -> row; };
         double v = u.st.get(k);
         if (row.equals("crit")) return Math.round(v * 100) + "%";

@@ -34,7 +34,11 @@ public class Hud {
         return t.key;
     }
 
+    /** 모드 사용자는 액션바 대신 모드 HUD 로 (ClientBridge) */
+    public kr.rucserver.rpg.client.ClientBridge bridge;
+
     public final void draw(PlayerUnit u, long now) {
+        if (bridge != null && bridge.modded(u.player)) { bridge.sendHud(u, now, toastOf(u.player.getUniqueId(), now)); return; }
         Component c = compose(u, now);
         String key = c.toString();
         Sent s = last.get(u.player.getUniqueId());

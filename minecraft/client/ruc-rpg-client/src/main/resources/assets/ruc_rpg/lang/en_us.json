@@ -1,0 +1,16 @@
+{
+  "key.ruc_rpg.skill_q": "Ruc RPG: Q 스킬",
+  "key.ruc_rpg.skill_c": "Ruc RPG: C 스킬 (웹 W)",
+  "key.ruc_rpg.skill_z": "Ruc RPG: Z 스킬 (웹 E)",
+  "key.ruc_rpg.skill_r": "Ruc RPG: 궁극기",
+  "key.ruc_rpg.map": "Ruc RPG: 전체 지도",
+  "key.ruc_rpg.equip": "Ruc RPG: 장비",
+  "key.ruc_rpg.skills": "Ruc RPG: 스킬창",
+  "key.ruc_rpg.journal": "Ruc RPG: 퀘스트 일지",
+  "key.ruc_rpg.party": "Ruc RPG: 파티",
+  "key.ruc_rpg.storage": "Ruc RPG: 창고",
+  "key.ruc_rpg.social": "Ruc RPG: 영지 · 국가",
+  "key.ruc_rpg.ping": "Ruc RPG: 핑",
+  "key.ruc_rpg.gm": "Ruc RPG: GM 창",
+  "key.ruc_rpg.menu": "Ruc RPG: 메뉴"
+}

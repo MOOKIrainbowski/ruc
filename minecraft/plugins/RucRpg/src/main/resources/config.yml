@@ -2,3 +2,9 @@
 
 # 안전 구역(광장) — 스태미나 소모 없음 · PvP 없음 (웹 RPG 광장과 같은 규칙). M6 에서 월드를 지은 뒤 좌표가 채워집니다.
 safe-zones: []
+
+# 러크 RPG 클라이언트 모드 (사용자 결정 K1): 모드가 없으면 grace-seconds 뒤 안내하고 내보냄. 시험 서버(봇)는 false.
+client:
+  require: true
+  grace-seconds: 20
+  url: "https://ruc-server.vercel.app/rpg-mod"

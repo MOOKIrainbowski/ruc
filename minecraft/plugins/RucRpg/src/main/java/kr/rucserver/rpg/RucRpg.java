@@ -54,6 +54,8 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.realm.Realm realm;
     private kr.rucserver.rpg.hud.MinimapHud minimap;
     private kr.rucserver.rpg.ui.Windows windows;
+    private kr.rucserver.rpg.client.ClientBridge bridge;
+    public kr.rucserver.rpg.client.ClientBridge bridge() { return bridge; }
     private kr.rucserver.rpg.ui.FullMap fullMap;
     public kr.rucserver.rpg.ui.FullMap fullMap() { return fullMap; }
     public kr.rucserver.rpg.ui.Windows windows() { return windows; }
@@ -123,6 +125,9 @@ public final class RucRpg extends JavaPlugin {
             hud = glyph != null ? glyph : new Hud();
             getLogger().info(glyph != null ? "HUD: 리소스팩 글리프" : "HUD: 글자판 (hud-glyphs.json v2 없음)");
             runtime.hud(hud);
+            bridge = new kr.rucserver.rpg.client.ClientBridge(this);
+            hud.bridge = bridge;
+            getServer().getPluginManager().registerEvents(bridge, this);
         } catch (Exception e) {
             getLogger().log(Level.SEVERE, "RPG 를 켜지 못했습니다", e);
             getServer().getPluginManager().disablePlugin(this);

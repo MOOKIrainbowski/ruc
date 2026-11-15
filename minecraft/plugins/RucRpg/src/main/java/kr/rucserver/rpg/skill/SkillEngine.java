@@ -533,6 +533,24 @@ public final class SkillEngine implements Listener {
 
     // ── 입력 ────────────────────────────────────────────────────────
 
+    private SkillDefs.Nums numsOf(PlayerUnit p, String id) {
+        RpgChar.Learned l = Progression.learned(p.ch, id);
+        return defs.nums(defs.get(id), l == null ? "low" : l.grade(), l == null ? 1 : l.lv(), p.st.get("cdr"));
+    }
+
+    /** 모드 HUD: 지금 자원으로 쓸 수 있나 (자원 부족 덮개) */
+    public boolean affordable(PlayerUnit p, String id) {
+        if (p.gmNoCost || defs.get(id) == null) return true;
+        SkillDefs.Nums n = numsOf(p, id);
+        return p.mp >= n.mana() && p.en >= n.energy();
+    }
+
+    /** 모드 HUD: 쿨타임 전체 길이 (덮개 비율) */
+    public double cooldownOf(PlayerUnit p, String id) { return defs.get(id) == null ? 0 : numsOf(p, id).cooldownMs(); }
+
+    /** 모드 키(Q · C · Z · R → 웹 슬롯 Q · W · E · R) */
+    public void castFromKey(Player pl, String slot) { tryCast(pl, slot); }
+
     private void tryCast(Player pl, String slot) {
         PlayerUnit p = plugin.runtime().unit(pl);
         if (p == null) return;
@@ -546,6 +564,7 @@ public final class SkillEngine implements Listener {
         Player pl = e.getPlayer();
         if (plugin.runtime().unit(pl) == null || pl.getGameMode() == GameMode.SPECTATOR) return;
         ItemStack it = e.getItemDrop().getItemStack();
+        if (plugin.bridge() != null && plugin.bridge().modded(pl)) return;   // 모드 사용자는 Q 키가 모드에서 옴(버리기는 모드가 막음)
         if (!(plugin.items() != null && plugin.items().isWeapon(it)) && "punch".equals(basicFor(it))) return;
         e.setCancelled(true);
         tryCast(pl, pl.isSneaking() ? "W" : "Q");
@@ -566,6 +585,7 @@ public final class SkillEngine implements Listener {
         Player pl = e.getPlayer();
         if (pl.isSneaking() || plugin.runtime().unit(pl) == null) return;
         e.setCancelled(true);
+        if (plugin.bridge() != null && plugin.bridge().modded(pl)) return;   // 모드 사용자: F 는 아무것도 안 함(왼손 = 장신구 칸)
         tryCast(pl, "E");
     }
 
@@ -579,7 +599,7 @@ public final class SkillEngine implements Listener {
             tryCast(pl, "A");
             return;
         }
-        if ((a == Action.RIGHT_CLICK_AIR || a == Action.RIGHT_CLICK_BLOCK) && pl.isSneaking() && holdsWeapon(pl)) {
+        if ((a == Action.RIGHT_CLICK_AIR || a == Action.RIGHT_CLICK_BLOCK) && pl.isSneaking() && holdsWeapon(pl) && !(plugin.bridge() != null && plugin.bridge().modded(pl))) {
             e.setCancelled(true);
             tryCast(pl, "R");
         }
