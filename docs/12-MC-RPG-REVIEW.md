@@ -402,3 +402,21 @@ E 인벤토리의 제작 2×2 칸 + 왼손 칸이 장신구 칸이 됐습니다(
 - 각 아이콘에 `assets/ruc/models/item/ui/slot_<이름>.json`(item/generated)과 `assets/ruc/items/ui/slot_<이름>.json` 정의를 추가했고, `pack-models.json` 목록에 `ui/slot_*` 5개를 등록했습니다.
 - 확인: `node RUC_RPG/scripts/mc-slot-art.ts` 성공, 미리보기 확인, `python minecraft/scripts/pack-validate.py` 결과 **오류 0개**. 생성기에서 아이콘별 16×16 격자와 RGBA 데이터 길이도 검사합니다.
 - 실제 인벤토리 화면에서 아이콘 표시 확인은 모드/클라이언트 담당 단계라 여기서는 하지 않았습니다. Java·모드 코드·`pack.py`·커밋은 건드리지 않았습니다.
+
+## Codex 작업 13 — 스킬 이펙트 스프라이트 (그림 + 아이템 정의만)
+사용자 지시: "모든 스킬 이펙트 텍스처 디자인을 확인 … 제대로 다시 구현". 지금 마크 스킬 이펙트는 파티클뿐 → 웹(`web/rpg/client/fx.ts` 의 swing · ring · shock · spark · projectile · ultImpact · speedLines)처럼 **스프라이트**를 더합니다. Claude 가 서버에서 ItemDisplay(빌보드 · 크기/회전 보간)로 띄우고, 색은 속성마다 **custom_model_data 색으로 물들임**.
+그림(모두 **흰색 바탕 명암** — 색은 물들임으로, 웹 픽셀 아트 느낌, 반투명 가장자리 OK):
+| 이름 | 크기 | 내용(웹 원본) |
+|---|---|---|
+| `fx/slash_arc` | 64×32 | 칼 휘두르기 반달(fx.ts swing) |
+| `fx/slash_cross` | 32×32 | X 자 베기 |
+| `fx/ring` | 64×64 | 바닥 원 테(ring · telegraph 테두리) |
+| `fx/shock` | 64×64 | 충격파 원(shock — 안쪽이 빈 굵은 원) |
+| `fx/spark` | 16×16 | 별 모양 불꽃(spark) |
+| `fx/orb` | 16×16 | 마법 구슬 투사체(가운데 밝고 가장자리 번짐) |
+| `fx/arrow` | 16×16 | 화살 투사체(옆모습) |
+| `fx/burst_0`~`fx/burst_3` | 32×32 | 터짐 4프레임(ultImpact · burst) |
+| `fx/beam` | 16×64 | 세로 광선(신성 · 번개 기둥) |
+| `fx/heal` | 16×16 | 회복 + 표시 |
+| `fx/shield` | 32×32 | 보호막 거품 테두리 |
+파일: `minecraft/resourcepack/assets/ruc/textures/item/fx/<이름>.png` + `models/item/fx/<이름>.json`(parent `minecraft:item/generated`, `layer0`, 그리고 **tintindex 0 이 되도록** generated 그대로) + `items/fx/<이름>.json` = `{"model":{"type":"minecraft:model","model":"ruc:item/fx/<이름>","tints":[{"type":"minecraft:custom_model_data","index":0,"default":16777215}]}}`. `pack-models.json` 에 `fx/<이름>` 추가. 생성기 `RUC_RPG/scripts/mc-fx-art.ts`, 미리보기 `.scratch/codex/fx/preview.png`(흰 배경 말고 어두운 배경에 몇 가지 색으로 물들인 예시). `pack-validate.py` 0 오류. 끝나면 `## Codex 작업 13 완료 보고`.
