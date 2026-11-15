@@ -158,3 +158,5 @@ minecraft/client/ruc-rpg-client/.gradle/
 minecraft/client/ruc-rpg-client/run/
 minecraft/client/build.log
 minecraft/client/runclient.log
+minecraft/servers/war/rpg_*/
+minecraft/servers/war/map-color-cache.dat
