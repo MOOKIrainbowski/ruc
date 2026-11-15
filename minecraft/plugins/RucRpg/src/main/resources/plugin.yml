@@ -42,6 +42,15 @@ commands:
   rpgjob:
     description: 전직
     aliases: [전직, job]
+  rpgrealm:
+    description: 영지 · 국가 창
+    aliases: [영지, realm]
+  rpgnation:
+    description: 국가 (세우기 · 초대 · 수락 · 나가기 · 추방 · 공지 · 해산)
+    aliases: [나라, rnation]   # /국가 는 RucCore 길드 명령 별칭(기존 그대로)
+  rpgnc:
+    description: 국가 채팅
+    aliases: [ㄴ, nc]
 
 permissions:
   rucrpg.admin:

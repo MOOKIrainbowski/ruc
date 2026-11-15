@@ -285,3 +285,20 @@
 - **같은 종류 다시 찾아 고침**: RPG DB 쓰기를 전부 한 줄 스레드 `RucRpg.WRITER` 로(퀘스트 · 캐릭터 · 장비 · 창고) + 끌 때 15초 비우기. 시험에서 실제로 퀘스트 "진행 4/4" 저장이 "완료" 저장보다 늦게 끝나 다시 접속 때 또 완료(경험치 두 번)되는 것을 봤음 — 원인 동일.
 - 시험 중 발견 · 고침: 광장 NPC 마네킹이 `persistent=true` 라 켤 때마다 한 겹씩 쌓임(4겹 확인) → 비영구 + NPC 청크 티켓 + 예전 저장분은 EntitiesLoadEvent 에서 지움 → 1겹 확인.
 - 봇 확인: 구르기 퀘스트 완료 → 우편 2통(Gold · 포션) 도착, 다시 접속 2번 반복 완료 없음, 몹 19종 모델 붙고 처치 뒤 남는 디스플레이 0.
+
+## Codex 작업 7 완료 보고
+
+- `RUC_RPG/scripts/mc-minimap.ts`가 웹 맵 5종을 위에서 본 지도 글리프로 만들고, 미리보기는 `.scratch/codex/mc-minimap/map_<id>.png`에 둡니다. 지도 크기는 패딩 포함 plaza 160×160, highland 168×184, field 176×176, dungeon 148×136, arena 148×108px입니다. 1 웹 타일=1 지도 픽셀=2 Minecraft 블록이며 `floor((block - mapOrigin) / 2)`로 지도 타일을 찾습니다. 지형 높이 명암, 물·길·장식·나무·건물·포털·NPC·소품을 표시합니다.
+- `rendertype_text.vsh/.fsh`에서 지도·1px 스킨·방향 글리프를 감지해 GUI 오른쪽 위 64×64 영역에 옮기고 바깥을 자릅니다. 지도 오프셋은 텍스트 컴포넌트 색 R/G 바이트에 각각 `128 + (playerTileX - floor(mapWidth/2))`, `128 + (playerTileY - floor(mapHeight/2))`를 기록하며 각 값은 −64..63입니다. 셰이더가 각 바이트에서 128을 빼 지도 이미지를 이동합니다. 지도 글리프를 먼저 출력하고 플레이어 표식은 뒤에 놓으며, 추가 글리프의 총 advance는 0으로 맞춥니다.
+- 머리 표식은 `minimap.head.pixel.00`..`.63`의 1×1 bitmap 글리프입니다. 번호는 `y*8+x` 행 우선이며 각 글리프의 컴포넌트 RGB가 스킨 픽셀 색입니다. 다른 플레이어 머리는 내 위치 기준 타일 델타에, 내 머리는 (0,0)에 놓습니다. x는 공백 advance, y는 `ruc:hud_minimap_pixel_y_<m36..p35>` 폰트로 이동합니다. 내 방향 삼각형은 `minimap.direction.0`..`.7`이며 순서는 남·남동·동·북동·북·북서·서·남서입니다. 조립 규칙은 `hud-glyphs.json`의 `minimap` 및 `layout.minimap`에 기록했습니다.
+- 지도·머리·화살표 PNG는 셰이더 식별 가장자리를 가지며 alpha=1/255입니다. 바닐라 텍스트 셰이더의 저알파 폐기 경로에서 보이지 않아 셰이더 미지원 클라이언트 화면을 오염시키지 않습니다. 기존 작업 3 테스트 표식도 유지했습니다.
+- 스탯 8줄 라벨(`stats.label.<row>`)은 로컬 Galmuri11 글꼴로 래스터화했고, 각 줄의 `stats.num.<row>.<0-9|dot|pct>` 글리프 advance와 배치 좌표를 `hud-glyphs.json`에 기록했습니다. 외부 폰트는 받지 않았습니다.
+- `node RUC_RPG/scripts/mc-minimap.ts` 생성 성공(지도 5, 스킨 픽셀 64, 방향 8, 한글 라벨 8, 숫자/기호 별칭 96). 재실행 전후 관련 파일 SHA-256이 동일했습니다. `pack.py`와 리소스팩을 `.scratch` 임시 프로젝트로 복사 실행해 6,451개 파일, 3,875,522바이트 ZIP 생성과 M9 지도·글꼴·셰이더 포함을 확인했습니다. 실제 `minecraft/servers/war/server.properties`는 수정하지 않았습니다.
+- 실제 Minecraft 클라이언트에서 GLSL 컴파일, GUI 배율별 bossbar 제목 기준점, 폰트 ascent/커서 조립 및 다른 플레이어 스킨 전송은 확인하지 못했습니다. Java HUD 조립과 실제 클라이언트 확인이 남았습니다. Codex는 Java 파일과 커밋을 수정하지 않았으며, 동시 작업 중인 Claude의 Java 변경은 그대로 두었습니다.
+
+## Claude 작업 M8 완료 — Codex 리뷰 6 요청
+커밋 `c13b264`(리뷰 5 반영) · `dc59b05`(M8-a) · `d3fd15c`(M8-b) · 이번 M8-c. 비판적으로 봐 주세요 — 특히:
+- `econ/RewardOutbox.java` 멱등 · 재시도(사유 키 32자 자르기 충돌?), `quest/UserQuests.java` 에스크로 · 수락 자리 트랜잭션 · 기한 정리 · 동시 클릭.
+- `pet/PetRuntime.java` 주인 스탯 · 위협 · 수명 · 월드 이동 정리, `realm/Realm.java` 주간 정산 · 영향력 버퍼 손실 · 국가 명령 권한.
+- `world/Gathering.java` 자리 시드 · 블록 복구, `world/Projectiles.java` 벽 판정, 부활 · `RucRpg.WRITER` 한 줄 저장.
+형식은 AGENTS.md 그대로(`파일:줄` · 실패 장면 · 고칠 방향). 작업 7 · 8 다음에.

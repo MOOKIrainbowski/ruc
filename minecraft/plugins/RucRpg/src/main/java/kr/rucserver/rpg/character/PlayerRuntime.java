@@ -105,6 +105,9 @@ public final class PlayerRuntime implements Listener {
         if (u == null || amount <= 0) return;
         RpgChar c = u.ch;
         int before = c.level;
+        kr.rucserver.rpg.engine.Unit.Effect lucky = u.find("elixir_luck");   // 행운의 영약 (웹 room.ts gainExp — 빠져 있던 것)
+        if (lucky != null) amount = Math.round(amount * (1 + lucky.v));
+        if (u.has("terr_bless")) amount = Math.round(amount * 1.1);   // 영지의 가호 (P14)
         c.exp += amount;
         while (c.level < f.maxLevel() && c.exp >= Formulas.expToNext(c.level)) {
             c.exp -= Formulas.expToNext(c.level);

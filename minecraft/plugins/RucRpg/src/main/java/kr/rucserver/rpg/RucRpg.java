@@ -51,6 +51,8 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.world.Gathering gathering;
     private kr.rucserver.rpg.pet.PetRuntime pets;
     private kr.rucserver.rpg.quest.UserQuests uquests;
+    private kr.rucserver.rpg.realm.Realm realm;
+    public kr.rucserver.rpg.realm.Realm realm() { return realm; }
     public kr.rucserver.rpg.quest.UserQuests uquests() { return uquests; }
     public kr.rucserver.rpg.pet.PetRuntime pets() { return pets; }
     private kr.rucserver.rpg.item.ItemGuard itemGuard;
@@ -174,6 +176,8 @@ public final class RucRpg extends JavaPlugin {
         if (economy != null) getServer().getScheduler().runTaskAsynchronously(this, economy::reportPending);
         quests = new kr.rucserver.rpg.quest.QuestEngine(this, core.getDatabase());
         try { quests.createSchema(); } catch (Exception e) { getLogger().log(Level.SEVERE, "퀘스트 테이블 만들기 실패", e); }
+        realm = new kr.rucserver.rpg.realm.Realm(this, core.getDatabase());
+        try { realm.start(); } catch (Exception e) { getLogger().log(Level.SEVERE, "영지 테이블 만들기 실패", e); }
         uquests = new kr.rucserver.rpg.quest.UserQuests(this, core.getDatabase());
         try { uquests.createSchema(); } catch (Exception e) { getLogger().log(Level.SEVERE, "유저 퀘스트 테이블 만들기 실패", e); }
         getServer().getPluginManager().registerEvents(uquests, this);
@@ -295,6 +299,9 @@ public final class RucRpg extends JavaPlugin {
                 case "rpgskill" -> menus.skills(p);
                 case "rpgstats" -> menus.stats(p);
                 case "rpgjob" -> menus.job(p);
+                case "rpgrealm" -> realm.open(p);
+                case "rpgnation" -> { String err = realm.command(p, args); if (err != null) p.sendMessage(Component.text(err, NamedTextColor.RED)); }
+                case "rpgnc" -> { String err = args.length == 0 ? "/ㄴ <말>" : realm.chat(p, String.join(" ", args)); if (err != null) p.sendMessage(Component.text(err, NamedTextColor.RED)); }
                 case "rpgquest" -> { if (args.length > 0 && args[0].equals("게시판")) uquests.board(p); else quests.journal(p); }
                 case "rpgparty" -> partyCmd(p, args);
                 case "rpgpc" -> parties.chat(p, String.join(" ", args));
@@ -363,6 +370,7 @@ public final class RucRpg extends JavaPlugin {
         itemRuntime.mobDrops(m, by);
         quests.quest(by.player, "kill", m.key);
         itemRuntime.onKill(by);
+        realm.kill(m, by);
     }
 
     /** 광장 부활 · 귀환 위치 (M6 에서 광장을 지으면 config plaza.*) */
