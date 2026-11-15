@@ -177,7 +177,8 @@ public final class MinimapHud implements Listener {
         for (Player p : Bukkit.getOnlinePlayers()) {
             BossBar bar = bars.get(p.getUniqueId());
             if (bar == null) continue;
-            String key = plugin.runtime().unit(p) == null ? null : mapKey(p.getWorld());
+            boolean on = plugin.windows() == null || plugin.windows().prefs(p.getUniqueId()).minimap();
+            String key = !on || plugin.runtime().unit(p) == null ? null : mapKey(p.getWorld());
             if (key == null) {
                 if (!Objects.equals(lastHash.put(p.getUniqueId(), 0), 0)) bar.name(Component.empty());
                 continue;

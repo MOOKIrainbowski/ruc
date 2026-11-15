@@ -42,6 +42,13 @@ commands:
   rpgjob:
     description: 전직
     aliases: [전직, job]
+  rpgsettings:
+    description: 설정 (피해 숫자 · 미니맵 · 스탯 표)
+    aliases: [설정, rpgset]
+  rpggm:
+    description: GM 창
+    aliases: [gm]
+    permission: rucrpg.admin
   rpgrealm:
     description: 영지 · 국가 창
     aliases: [영지, realm]

@@ -53,6 +53,8 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.quest.UserQuests uquests;
     private kr.rucserver.rpg.realm.Realm realm;
     private kr.rucserver.rpg.hud.MinimapHud minimap;
+    private kr.rucserver.rpg.ui.Windows windows;
+    public kr.rucserver.rpg.ui.Windows windows() { return windows; }
     public kr.rucserver.rpg.realm.Realm realm() { return realm; }
     public kr.rucserver.rpg.quest.UserQuests uquests() { return uquests; }
     public kr.rucserver.rpg.pet.PetRuntime pets() { return pets; }
@@ -179,6 +181,8 @@ public final class RucRpg extends JavaPlugin {
         if (economy != null) getServer().getScheduler().runTaskAsynchronously(this, economy::reportPending);
         quests = new kr.rucserver.rpg.quest.QuestEngine(this, core.getDatabase());
         try { quests.createSchema(); } catch (Exception e) { getLogger().log(Level.SEVERE, "퀘스트 테이블 만들기 실패", e); }
+        try { windows = new kr.rucserver.rpg.ui.Windows(this, core.getDatabase()); getServer().getPluginManager().registerEvents(windows, this); }
+        catch (Exception e) { getLogger().log(Level.SEVERE, "설정 테이블 만들기 실패", e); }
         realm = new kr.rucserver.rpg.realm.Realm(this, core.getDatabase());
         try { realm.start(); } catch (Exception e) { getLogger().log(Level.SEVERE, "영지 테이블 만들기 실패", e); }
         uquests = new kr.rucserver.rpg.quest.UserQuests(this, core.getDatabase());
@@ -303,6 +307,8 @@ public final class RucRpg extends JavaPlugin {
                 case "rpgstats" -> menus.stats(p);
                 case "rpgjob" -> menus.job(p);
                 case "rpgrealm" -> realm.open(p);
+                case "rpgsettings" -> windows.settings(p);
+                case "rpggm" -> windows.gm(p);
                 case "rpgnation" -> { String err = realm.command(p, args); if (err != null) p.sendMessage(Component.text(err, NamedTextColor.RED)); }
                 case "rpgnc" -> { String err = args.length == 0 ? "/ㄴ <말>" : realm.chat(p, String.join(" ", args)); if (err != null) p.sendMessage(Component.text(err, NamedTextColor.RED)); }
                 case "rpgquest" -> { if (args.length > 0 && args[0].equals("게시판")) uquests.board(p); else quests.journal(p); }
@@ -353,9 +359,8 @@ public final class RucRpg extends JavaPlugin {
             case "추방", "kick" -> { if (arg != null) parties.kick(p, arg); }
             case "위임", "promote" -> { if (arg != null) parties.promote(p, arg); }
             case "해산", "disband" -> parties.disband(p);
+            case "" -> windows.party(p);
             default -> {
-                var party = parties.of(p);
-                p.sendMessage(Component.text(party == null ? "파티 없음 — /파티 초대 <이름>" : "파티 " + party.members.size() + "명 · 파티장 " + Bukkit.getOfflinePlayer(party.leader).getName(), NamedTextColor.AQUA));
                 p.sendMessage(Component.text("/파티 초대·수락·거절·나가기·추방·위임·해산 · /ㅍ <말> 파티 채팅 · /핑 [attack|omw|help|gather|back|enemy|danger] · /결투 <이름> · /던전 입장·나가기", NamedTextColor.GRAY));
             }
         }

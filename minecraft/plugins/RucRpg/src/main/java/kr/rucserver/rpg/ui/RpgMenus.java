@@ -74,7 +74,9 @@ public final class RpgMenus {
         g.set(19, Gui.button("창고 (B)", false, List.of(Gui.gray("광장에서만"))), (pl, t) -> plugin.econGui().storage(pl));
         g.set(20, Gui.button("대장간", false, List.of(Gui.gray("강화 · 마법부여 · 수리 · 분해 · 재조합"), Gui.gray("광장 강화대 · 볼트에게서도"))), (pl, t) -> plugin.econGui().smith(pl));
         g.set(21, Gui.button("우편함", false, List.of(Gui.gray("러크 우편함 (기존)"))), (pl, t) -> { plugin.core().getMailbox().open(pl, 0); plugin.quests().quest(pl, "claim", null); });
-        g.set(15, Gui.button("파티 (P)", false, List.of(Gui.gray("파티원 · 초대 · 던전 (/파티)"))), (pl, t) -> { pl.closeInventory(); pl.performCommand("파티"); });
+        g.set(15, Gui.button("파티 (P)", false, List.of(Gui.gray("파티원 · 초대 · 던전 (/파티)"))), (pl, t) -> plugin.windows().party(pl));
+        g.set(24, Gui.button("설정", false, List.of(Gui.gray("피해 숫자 · 미니맵 · 스탯 표 (/설정)"))), (pl, t) -> plugin.windows().settings(pl));
+        if (p.hasPermission("rucrpg.admin")) g.set(26, Gui.button("GM 창", false, List.of(Gui.gray("/gm"))), (pl, t) -> plugin.windows().gm(pl));
         g.set(23, Gui.button("영지 · 국가", false, List.of(Gui.gray("이번 주 영지 영향력 · 영주 · 길드 레벨 · 국가"))), (pl, t) -> plugin.realm().open(pl));
         g.set(16, Gui.button("지도 (M)", false, List.of(Gui.gray("준비 중 (M9)"))), null);
         g.set(22, Gui.button("조작법", false, List.of(

@@ -153,6 +153,8 @@ public final class RpgWorld implements World {
             t.setTransformation(new Transformation(new Vector3f(), new AxisAngle4f(), new Vector3f(scale, scale, scale), new AxisAngle4f()));
             t.setTeleportDuration(14);
         });
+        if (plugin.windows() != null) for (org.bukkit.entity.Player v : at.getWorld().getPlayers())   // 설정: 피해 숫자 끔
+            if (!plugin.windows().prefs(v.getUniqueId()).damageNumbers()) v.hideEntity(plugin, d);
         Bukkit.getScheduler().runTaskLater(plugin, () -> { if (d.isValid()) d.teleport(d.getLocation().add(0, 0.9, 0)); }, 1L);
         Bukkit.getScheduler().runTaskLater(plugin, d::remove, 16L);
     }
