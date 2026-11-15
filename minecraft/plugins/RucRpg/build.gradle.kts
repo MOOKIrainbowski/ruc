@@ -20,7 +20,6 @@ tasks.shadowJar {
 
 tasks.processResources {
     from("../../../web/rpg/shared/data/maps") { into("maps") }
-    from("../../resourcepack/assets/ruc/textures/font/hud/minimap") { include("map_*.png"); into("minimap") }   // 전체 지도(바닐라 지도 아이템) 그림
 }
 
 tasks.test {

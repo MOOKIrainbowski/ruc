@@ -36,6 +36,10 @@ public final class NpcRuntime implements Listener {
     private final RucRpg plugin;
     private final NamespacedKey tag;
     private final Map<UUID, String> byEntity = new HashMap<>();
+    /** npc id → 보이는 몸(모델 뼈 또는 마네킹) UUID — 퀘스트 강조 */
+    private final Map<String, java.util.List<UUID>> visible = new HashMap<>();
+
+    public java.util.List<UUID> visibleOf(String npcId) { return visible.getOrDefault(npcId, java.util.List.of()); }
     /** 퀘스트 엔진 훅 (npc id) */
     public java.util.function.BiConsumer<Player, String> talked = (p, id) -> {};
 
@@ -72,7 +76,9 @@ public final class NpcRuntime implements Listener {
                 if (plugin.models() != null && plugin.models().has(id)) {   // NPC 모델이 있으면 마네킹은 클릭 판정만
                     var inst = plugin.models().attach(id, m);
                     if (inst != null) m.setInvisible(true);
+                    if (inst != null) visible.put(id, inst.displays().stream().map(Entity::getUniqueId).toList());
                 }
+                visible.putIfAbsent(id, java.util.List.of(m.getUniqueId()));
             }
         }
     }

@@ -5,7 +5,6 @@ import kr.rucserver.rpg.RucRpg;
 import kr.rucserver.rpg.character.PlayerUnit;
 import kr.rucserver.rpg.engine.EffectDefs;
 import kr.rucserver.rpg.engine.Unit;
-import kr.rucserver.rpg.hud.GlyphHud;
 import kr.rucserver.rpg.skill.Progression;
 import net.kyori.adventure.text.Component;
 import net.kyori.adventure.text.format.NamedTextColor;
@@ -50,6 +49,7 @@ public final class ClientBridge implements Listener, PluginMessageListener {
         this.plugin = plugin;
         Bukkit.getMessenger().registerIncomingPluginChannel(plugin, CHANNEL, this);
         Bukkit.getMessenger().registerOutgoingPluginChannel(plugin, CHANNEL);
+        Bukkit.getScheduler().runTaskTimer(plugin, this::partyTick, 40L, 40L);
     }
 
     public boolean modded(Player p) { return modded.contains(p.getUniqueId()); }
@@ -129,6 +129,18 @@ public final class ClientBridge implements Listener, PluginMessageListener {
         send(p, out -> { out.writeByte(4); out.writeByte(names.size()); for (String s : names) out.writeUTF(s); });
     }
 
+    private final Map<UUID, Integer> lastMarks = new ConcurrentHashMap<>();
+
+    /** 바뀐 때만 (월드를 옮기면 다시 — 모드 쪽 가짜 블록이 월드와 함께 사라지므로) */
+    public void sendMarksIfChanged(Player p, java.util.List<int[]> blocks, java.util.List<UUID> entities) {
+        StringBuilder sb = new StringBuilder(p.getWorld().getName());
+        for (int[] b : blocks) sb.append(b[0]).append(',').append(b[1]).append(',').append(b[2]).append(';');
+        for (UUID id : entities) sb.append(id);
+        int h = sb.toString().hashCode();
+        Integer prev = lastMarks.put(p.getUniqueId(), h);
+        if (prev == null || prev != h) sendMarks(p, blocks, entities);
+    }
+
     /** 퀘스트 강조 (F6): 블록 좌표 · 엔티티 UUID 목록 */
     public void sendMarks(Player p, java.util.List<int[]> blocks, java.util.List<UUID> entities) {
         if (!modded(p)) return;
@@ -181,8 +193,9 @@ public final class ClientBridge implements Listener, PluginMessageListener {
                 sig.append(e.id).append((e.until - now) / 1000).append(e.stacks);
             }
             out.writeByte(STAT_ROWS.length);
-            for (String r : STAT_ROWS) { String v = GlyphHud.statText(u, r); out.writeUTF(v); sig.append(v); }
+            for (String r : STAT_ROWS) { String v = statText(u, r); out.writeUTF(v); sig.append(v); }
             out.writeBoolean(u.showStats);
+            out.writeBoolean(plugin.windows() == null || plugin.windows().prefs(p.getUniqueId()).minimap());
             out.writeUTF(toast == null ? "" : toast);
             sig.append(u.showStats).append(toast);
         } catch (IOException e) { return; }
@@ -190,6 +203,30 @@ public final class ClientBridge implements Listener, PluginMessageListener {
         Integer prev = lastHud.put(p.getUniqueId(), h);
         if (prev != null && prev == h) return;
         p.sendPluginMessage(plugin, CHANNEL, buf.toByteArray());
+    }
+
+    /** 웹 CombatHud statRows 와 같은 모양: 소수 한 자리(.0 은 뺌), 치명은 % */
+    static String statText(PlayerUnit u, String row) {
+        String k = switch (row) { case "attack" -> "atk"; case "spell" -> "ap"; case "attack_speed" -> "atkSpeed"; case "move_speed" -> "moveSpeed"; default -> row; };
+        double v = u.st.get(k);
+        if (row.equals("crit")) return Math.round(v * 100) + "%";
+        double r = Math.round(v * 10) / 10.0;
+        return r == Math.floor(r) ? String.valueOf((long) r) : String.valueOf(r);
+    }
+
+    /** 파티원 이름을 2초마다 (바뀐 때만) — 미니맵 · 지도에서 초록 */
+    private final Map<UUID, String> lastParty = new ConcurrentHashMap<>();
+
+    private void partyTick() {
+        for (Player p : Bukkit.getOnlinePlayers()) {
+            if (!modded(p)) continue;
+            var party = plugin.parties().of(p);
+            java.util.List<String> names = new java.util.ArrayList<>();
+            if (party != null) for (UUID id : party.members) { Player m = Bukkit.getPlayer(id); if (m != null && m != p) names.add(m.getName()); }
+            String key = String.join(",", names);
+            if (key.equals(lastParty.put(p.getUniqueId(), key))) continue;
+            sendParty(p, names);
+        }
     }
 
     /** 이 직업이 쓰는 자원 (웹: 안 쓰는 구슬은 회색) — mana · energy · both */
@@ -217,9 +254,9 @@ public final class ClientBridge implements Listener, PluginMessageListener {
     }
 
     @EventHandler
-    public void onWorld(PlayerChangedWorldEvent e) { if (modded(e.getPlayer())) sendMap(e.getPlayer()); }
+    public void onWorld(PlayerChangedWorldEvent e) { if (modded(e.getPlayer())) { sendMap(e.getPlayer()); lastMarks.remove(e.getPlayer().getUniqueId()); } }
 
     @EventHandler
-    public void onQuit(PlayerQuitEvent e) { modded.remove(e.getPlayer().getUniqueId()); lastHud.remove(e.getPlayer().getUniqueId()); }
+    public void onQuit(PlayerQuitEvent e) { modded.remove(e.getPlayer().getUniqueId()); lastHud.remove(e.getPlayer().getUniqueId()); lastParty.remove(e.getPlayer().getUniqueId()); lastMarks.remove(e.getPlayer().getUniqueId()); }
 
 }

@@ -19,7 +19,7 @@ public final class RpgState {
     public static String map = "";
     public static String res = "both";
     public static float mana, manaMax, energy, energyMax, stamina, staminaMax;
-    public static boolean exhausted, showStats = true;
+    public static boolean exhausted, showStats = true, showMinimap = true;
     public static final List<Skill> skills = new ArrayList<>();
     public static final List<Effect> effects = new ArrayList<>();
     public static final List<String> stats = new ArrayList<>();
@@ -50,6 +50,7 @@ public final class RpgState {
                 stats.clear();
                 for (int i = 0, n = in.readByte(); i < n; i++) stats.add(in.readUTF());
                 showStats = in.readBoolean();
+                showMinimap = in.readBoolean();
                 toast = in.readUTF();
             }
             case 3 -> map = in.readUTF();
@@ -59,6 +60,7 @@ public final class RpgState {
                 for (int i = 0, n = in.readShort(); i < n; i++) markBlocks.add(new int[]{in.readInt(), in.readInt(), in.readInt()});
                 markEntities.clear();
                 for (int i = 0, n = in.readShort(); i < n; i++) markEntities.add(new UUID(in.readLong(), in.readLong()));
+                Marks.refresh();
             }
             default -> {}
         }

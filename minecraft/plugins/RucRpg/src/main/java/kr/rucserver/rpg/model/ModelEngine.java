@@ -48,6 +48,8 @@ public final class ModelEngine {
         final Entity body;
         final ItemDisplay anchor;
         final Map<String, ItemDisplay> parts = new LinkedHashMap<>();
+        /** 퀘스트 강조(모드가 발광 테두리) — 모델이 보이는 몸이므로 뼈 디스플레이들을 표시 */
+        public java.util.Collection<ItemDisplay> displays() { return parts.values(); }
         String anim = "idle";
         long animAt = System.currentTimeMillis();
         long hurtUntil;

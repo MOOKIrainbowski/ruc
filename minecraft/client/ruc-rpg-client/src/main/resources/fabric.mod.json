@@ -4,8 +4,21 @@
   "version": "${version}",
   "name": "Ruc RPG Client",
   "description": "러크 RPG 마인크래프트 서버용 클라이언트 모드 — 키 · HUD · 미니맵 · 지도",
-  "authors": ["Ruc Server"],
+  "authors": [
+    "Ruc Server"
+  ],
   "environment": "client",
-  "entrypoints": { "client": ["kr.rucserver.rpgclient.RucRpgClient"] },
-  "depends": { "fabricloader": ">=0.20.0", "minecraft": "~1.21.11", "fabric-api": "*" }
+  "entrypoints": {
+    "client": [
+      "kr.rucserver.rpgclient.RucRpgClient"
+    ]
+  },
+  "depends": {
+    "fabricloader": ">=0.20.0",
+    "minecraft": "~1.21.11",
+    "fabric-api": "*"
+  },
+  "mixins": [
+    "ruc_rpg.mixins.json"
+  ]
 }

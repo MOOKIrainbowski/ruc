@@ -250,6 +250,45 @@ public final class QuestEngine {
                 p.showBossBar(bar);
             } else bar.name(title);
             bar.progress(progressOf(q));
+            marks(p, q);
+        }
+    }
+
+    /**
+     * 퀘스트 강조 (사용자 지시: 수행할 곳의 블록 · 테두리가 발광) — 모드가 그 사람에게만 노란 발광 윤곽.
+     * NPC · 몹 = 보이는 몸(모델 뼈), 장소(분수 지점 · 상점 · 강화대 · 우편함 · 포털) = 그 블록들.
+     */
+    private void marks(Player p, Q q) {
+        if (plugin.bridge() == null || !plugin.bridge().modded(p)) return;
+        java.util.List<int[]> blocks = new java.util.ArrayList<>();
+        java.util.List<java.util.UUID> ents = new java.util.ArrayList<>();
+        JsonArray obj = def(q.id).getAsJsonArray("obj");
+        for (int i = 0; i < obj.size(); i++) {
+            JsonObject o = obj.get(i).getAsJsonObject();
+            if (q.prog[i] >= o.get("n").getAsInt()) continue;
+            String type = o.get("type").getAsString(), target = o.has("target") ? o.get("target").getAsString() : null;
+            switch (type) {
+                case "talk" -> ents.addAll(plugin.npcs().visibleOf(target));
+                case "equip" -> ents.addAll(plugin.npcs().visibleOf("owen"));
+                case "party", "stage" -> ents.addAll(plugin.npcs().visibleOf("dario"));
+                case "kill" -> {
+                    if (plugin.worlds().isPlaza(p.getLocation())) area(blocks, objAt("plaza", "portal", "field"), 2);
+                    else ents.addAll(plugin.mobs().visibleOf(target, p.getLocation(), 48, 6));
+                }
+                case "reach", "buy", "enhance", "claim" -> { Location g = goal(p, q); if (g != null && g.getWorld() == p.getWorld()) area(blocks, g, 1); }
+                default -> {}
+            }
+            break;   // 지금 할 목표 하나만
+        }
+        plugin.bridge().sendMarksIfChanged(p, blocks, ents);
+    }
+
+    /** 목표 자리 둘레의 단단한 블록(바닥 · 시설) — 반지름 r 안, 높이 −1 ~ +2 */
+    private static void area(java.util.List<int[]> out, Location c, int r) {
+        if (c == null) return;
+        for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) for (int dy = -1; dy <= 2; dy++) {
+            var b = c.getBlock().getRelative(dx, dy, dz);
+            if (!b.getType().isAir() && b.getType() != org.bukkit.Material.BARRIER && !b.isLiquid() && out.size() < 40) out.add(new int[]{b.getX(), b.getY(), b.getZ()});
         }
     }
 

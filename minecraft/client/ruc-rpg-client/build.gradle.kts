@@ -19,8 +19,8 @@ dependencies {
 loom {
     runs {
         named("client") {
-            programArgs("--username", "RpgBot1", "--quickPlayMultiplayer", "127.0.0.1:25599")
-            vmArgs("-Druc.selftest=1", "-Druc.selftest.cmds=" + (findProperty("selftestCmds") ?: "rpgadmin goto field"))
+            programArgs("--username", (findProperty("devUser") ?: "RpgBot1").toString(), "--quickPlayMultiplayer", "127.0.0.1:25599")
+            vmArgs("-Druc.selftest=" + (findProperty("selftest") ?: "cmd rpgadmin goto field;wait 60;shot hud;key skill:Q;wait 6;shot skill;map;shot map;close;key open:skills;wait 20;shot window"))
         }
     }
 }

@@ -5,36 +5,41 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.Screenshot;
 
 /**
- * 개발 시험 (-Druc.selftest=1 일 때만): 서버와 악수 → 스크린샷(HUD) → 스킬 Q → 스크린샷 → M 지도 → 스크린샷 → 종료.
- * Claude 가 실제 클라이언트 화면을 직접 확인하려고 둠 (사람 없이). 일반 플레이에는 꺼져 있음.
+ * 개발 시험 (-Druc.selftest=단계들 일 때만): 서버와 악수한 뒤 단계를 차례로 실행하고 끝나면 종료. 일반 플레이에는 꺼져 있음.
+ * 단계(';' 로 구분): "cmd 명령" · "wait 틱" · "shot 이름" · "key 동작"(예: key skill:Q) · "map" · "close" · "look 요 피치".
+ * Claude 가 실제 클라이언트 화면을 직접 확인하려고 둠 (사람 없이).
  */
 final class SelfTest {
 
-    private static int t = -1;
+    private static String[] steps;
+    private static int i = -1, wait, joinTicks;
 
     static void register() {
-        if (System.getProperty("ruc.selftest") == null) return;
+        String s = System.getProperty("ruc.selftest");
+        if (s == null || s.isBlank()) return;
+        steps = s.split(";");
         ClientTickEvents.END_CLIENT_TICK.register(SelfTest::tick);
-    }
-
-    private static void shot(Minecraft mc, String name) {
-        Screenshot.grab(mc.gameDirectory, "selftest_" + name + ".png", mc.getMainRenderTarget(), 1, c -> System.out.println("[RUC SELFTEST] " + c.getString()));
     }
 
     private static void tick(Minecraft mc) {
         if (mc.player == null) return;
-        if (t < 0) { if (!RpgState.active) return; t = 0; System.out.println("[RUC SELFTEST] 악수 완료, 맵 = " + RpgState.map); }
-        t++;
-        String steps = System.getProperty("ruc.selftest.cmds", "");
-        if (t == 20 && !steps.isEmpty()) for (String c : steps.split(";")) mc.player.connection.sendCommand(c.trim());
-        if (t == 100) shot(mc, "hud");
-        if (t == 110) RucRpgClient.send(out -> { out.writeByte(2); out.writeUTF("skill:Q"); });
-        if (t == 116) shot(mc, "skill");
-        if (t == 140) mc.setScreen(new MapScreen());
-        if (t == 160) shot(mc, "map");
-        if (t == 170) mc.setScreen(null);
-        if (t == 180) RucRpgClient.send(out -> { out.writeByte(2); out.writeUTF("open:skills"); });
-        if (t == 210) shot(mc, "window");
-        if (t == 230) { System.out.println("[RUC SELFTEST] 끝"); mc.stop(); }
+        if (i < 0) { if (!RpgState.active && joinTicks++ < 100) return; i = 0; wait = 40; log("시작 (악수 " + RpgState.active + "), 맵 = " + RpgState.map); }
+        if (wait-- > 0) return;
+        if (i >= steps.length) { log("끝"); mc.stop(); return; }
+        String[] st = steps[i++].trim().split(" ", 2);
+        String arg = st.length > 1 ? st[1] : "";
+        switch (st[0]) {
+            case "cmd" -> { mc.player.connection.sendCommand(arg); wait = 20; }
+            case "wait" -> wait = Integer.parseInt(arg);
+            case "shot" -> { Screenshot.grab(mc.gameDirectory, "selftest_" + arg + ".png", mc.getMainRenderTarget(), 1, c -> log(c.getString())); wait = 5; }
+            case "key" -> { RucRpgClient.send(out -> { out.writeByte(2); out.writeUTF(arg); }); wait = 4; }
+            case "map" -> { mc.setScreen(new MapScreen()); wait = 10; }
+            case "close" -> { mc.setScreen(null); wait = 5; }
+            case "click" -> { if (mc.player.containerMenu != null) mc.gameMode.handleInventoryMouseClick(mc.player.containerMenu.containerId, Integer.parseInt(arg), 0, net.minecraft.world.inventory.ClickType.PICKUP, mc.player); wait = 10; }
+            case "look" -> { String[] a = arg.split(" "); mc.player.setYRot(Float.parseFloat(a[0])); mc.player.setXRot(Float.parseFloat(a[1])); wait = 5; }
+            default -> log("모르는 단계: " + st[0]);
+        }
     }
+
+    private static void log(String s) { System.out.println("[RUC SELFTEST] " + s); }
 }

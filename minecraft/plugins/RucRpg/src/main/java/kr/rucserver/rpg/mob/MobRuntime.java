@@ -60,6 +60,15 @@ public final class MobRuntime implements Listener {
     private final Projectiles shots;
     private final NamespacedKey tag;
     private final Map<java.util.UUID, MobUnit> byEntity = new ConcurrentHashMap<>();
+
+    /** 퀘스트 강조: 이 종류의 살아 있는 몹(가까운 것부터 max 마리)의 보이는 몸 UUID */
+    public java.util.List<java.util.UUID> visibleOf(String key, Location near, double radius, int max) {
+        java.util.List<java.util.UUID> out = new ArrayList<>();
+        byEntity.values().stream().filter(m -> !m.dead && m.key.equals(key) && m.body != null && m.body.getWorld().equals(near.getWorld()) && m.body.getLocation().distanceSquared(near) < radius * radius)
+                .sorted(java.util.Comparator.comparingDouble(m -> m.body.getLocation().distanceSquared(near))).limit(max)
+                .forEach(m -> { if (m.model != null) m.model.displays().forEach(d -> out.add(d.getUniqueId())); else out.add(m.body.getUniqueId()); });
+        return out;
+    }
     private final List<MobUnit.Zone> zones = new ArrayList<>();
 
     public MobRuntime(RucRpg plugin, RpgWorld w, Combat c, MobDefs defs, Projectiles shots) {

@@ -96,7 +96,7 @@ public final class Windows implements Listener {
         for (int i = 0; i < 27; i++) g.set(i, Gui.filler(), null);
         g.set(11, Gui.button("피해 숫자: " + (v.damageNumbers() ? "켬" : "끔"), v.damageNumbers(), List.of(Gui.gray("때리고 맞을 때 떠오르는 숫자"))),
                 (pl, t) -> { save(pl.getUniqueId(), new Prefs(!v.damageNumbers(), v.minimap(), v.stats())); settings(pl); });
-        g.set(13, Gui.button("미니맵: " + (v.minimap() ? "켬" : "끔"), v.minimap(), List.of(Gui.gray("오른쪽 위 지도"))),
+        g.set(13, Gui.button("미니맵: " + (v.minimap() ? "켬" : "끔"), v.minimap(), List.of(Gui.gray("왼쪽 위 지도"))),
                 (pl, t) -> { save(pl.getUniqueId(), new Prefs(v.damageNumbers(), !v.minimap(), v.stats())); settings(pl); });
         g.set(15, Gui.button("스탯 표: " + (v.stats() ? "켬" : "끔"), v.stats(), List.of(Gui.gray("마나 구슬 왼쪽 8줄"))),
                 (pl, t) -> { save(pl.getUniqueId(), new Prefs(v.damageNumbers(), v.minimap(), !v.stats())); settings(pl); });

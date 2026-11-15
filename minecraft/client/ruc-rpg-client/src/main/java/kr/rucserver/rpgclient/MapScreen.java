@@ -38,4 +38,10 @@ public final class MapScreen extends Screen {
 
     @Override
     public boolean isPauseScreen() { return false; }
+
+    @Override
+    public boolean keyPressed(net.minecraft.client.input.KeyEvent e) {
+        if (RucRpgClient.mapKey().matches(e)) { onClose(); return true; }
+        return super.keyPressed(e);
+    }
 }

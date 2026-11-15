@@ -42,9 +42,6 @@ commands:
   rpgjob:
     description: 전직
     aliases: [전직, job]
-  rpgmap:
-    description: 전체 지도 (왼손)
-    aliases: [지도, rmap]
   rpgsettings:
     description: 설정 (피해 숫자 · 미니맵 · 스탯 표)
     aliases: [설정, rpgset]

@@ -29,6 +29,8 @@ public final class RucRpgClient implements ClientModInitializer {
     private static KeyMapping mapKey;
     private static int helloWait;
 
+    static KeyMapping mapKey() { return mapKey; }
+
     private static KeyMapping key(String id, int glfw, String action) {
         KeyMapping k = KeyBindingHelper.registerKeyBinding(new KeyMapping("key.ruc_rpg." + id, InputConstants.Type.KEYSYM, glfw, KeyMapping.Category.GAMEPLAY));
         if (action != null) KEYS.put(k, action);

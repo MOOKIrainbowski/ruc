@@ -63,7 +63,7 @@ public final class RpgHud {
         skills(g, mc, w, skillY);
         effects(g, mc, w, skillY - 20);
         if (RpgState.showStats) stats(g, mc, w, h);
-        minimap(g, mc);
+        if (RpgState.showMinimap) minimap(g, mc);
         if (!RpgState.toast.isEmpty()) g.drawCenteredString(mc.font, RpgState.toast, w / 2, skillY - 32, 0xFFFFD27A);
     }
 

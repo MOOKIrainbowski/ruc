@@ -78,7 +78,7 @@ public final class RpgMenus {
         g.set(24, Gui.button("설정", false, List.of(Gui.gray("피해 숫자 · 미니맵 · 스탯 표 (/설정)"))), (pl, t) -> plugin.windows().settings(pl));
         if (p.hasPermission("rucrpg.admin")) g.set(26, Gui.button("GM 창", false, List.of(Gui.gray("/gm"))), (pl, t) -> plugin.windows().gm(pl));
         g.set(23, Gui.button("영지 · 국가", false, List.of(Gui.gray("이번 주 영지 영향력 · 영주 · 길드 레벨 · 국가"))), (pl, t) -> plugin.realm().open(pl));
-        g.set(16, Gui.button("지도 (M)", false, List.of(Gui.gray("왼손에 지도 들기 · 다시 누르면 넣기 (/지도)"))), (pl, t) -> { pl.closeInventory(); plugin.fullMap().toggle(pl); });
+        g.set(16, Gui.button("지도 (M 키)", false, List.of(Gui.gray("M 키 = 전체 지도 · 미니맵은 왼쪽 위 (러크 RPG 모드)"))), null);
         g.set(22, Gui.button("조작법", false, List.of(
                 Gui.gray("좌클릭 = 평타"), Gui.gray("Q = Q 스킬 · 웅크리고 Q = C 스킬"), Gui.gray("F = E 스킬 · 웅크리고 우클릭 = 궁극기"),
                 Gui.gray("공중에서 Space = 구르기 · 달리기 = 스태미나"), Gui.gray("웅크리고 F = 러크 메뉴 (기존)"))), null);
