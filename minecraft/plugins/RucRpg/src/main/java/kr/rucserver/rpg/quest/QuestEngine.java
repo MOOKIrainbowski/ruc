@@ -123,7 +123,8 @@ public final class QuestEngine {
         for (int i = 0; i < q.prog.length; i++) { if (i > 0) sb.append(','); sb.append(q.prog[i]); }
         String prog = sb.toString(), state = q.state;
         boolean tracked = q.tracked;
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+        // 한 줄 저장 스레드: 같은 퀘스트를 연달아 저장(진행 4/4 → 완료)할 때 옛 값이 나중에 끝나 덮으면 다시 접속 때 또 완료돼 경험치가 두 번 들어왔음
+        kr.rucserver.rpg.RucRpg.WRITER.execute(() -> {
             try (Connection c = db.getConnection()) {
                 try (PreparedStatement d = c.prepareStatement("DELETE FROM rpg_quests WHERE uuid = ? AND quest_id = ?")) { d.setString(1, id.toString()); d.setString(2, q.id); d.executeUpdate(); }
                 try (PreparedStatement ps = c.prepareStatement("INSERT INTO rpg_quests (uuid, quest_id, state, prog, tracked) VALUES (?,?,?,?,?)")) {
@@ -215,22 +216,13 @@ public final class QuestEngine {
             JsonArray it = e.getAsJsonArray();
             if (plugin.items().tpl(it.get(0).getAsString()) != null) got.add(plugin.items().tpl(it.get(0).getAsString()).get("name").getAsString() + " ×" + it.get(1).getAsInt());
         }
-        UUID id = p.getUniqueId();
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {   // 우편 보상 (블로킹 API — 비동기에서, 사유로 한 번만)
-            var mail = plugin.core().getMailbox();
-            if (gold > 0) mail.sendRucOnce(id, gold, sender, "rpgq:" + q.id + ":g");
-            if (r.has("items")) {
-                int k = 0;
-                for (JsonElement e : r.getAsJsonArray("items")) {
-                    JsonArray it = e.getAsJsonArray();
-                    String tpl = it.get(0).getAsString();
-                    if (plugin.items().tpl(tpl) == null) continue;
-                    int qty = it.get(1).getAsInt();
-                    var stack = Bukkit.getScheduler().callSyncMethod(plugin, () -> plugin.items().create(tpl, null, qty));
-                    try { mail.sendItemOnce(id, stack.get(), sender, "rpgq:" + q.id + ":" + k++); } catch (Exception ex) { plugin.getLogger().warning("퀘스트 보상 우편 실패: " + ex.getMessage()); }
-                }
-            }
-        });
+        // 보상은 outbox 에 먼저 적고(멱등 사유 키) 보내는 쪽이 재시도 (Codex 리뷰 5)
+        List<kr.rucserver.rpg.econ.RewardOutbox.Item> rewardItems = new ArrayList<>();
+        if (r.has("items")) for (JsonElement e : r.getAsJsonArray("items")) {
+            JsonArray it = e.getAsJsonArray();
+            rewardItems.add(new kr.rucserver.rpg.econ.RewardOutbox.Item(it.get(0).getAsString(), null, it.get(1).getAsInt()));
+        }
+        if (gold > 0 || !rewardItems.isEmpty()) plugin.outbox().enqueue(p.getUniqueId(), "rpgq:" + q.id, sender, gold, rewardItems);
         p.showTitle(Title.title(Component.text("퀘스트 완료!", TextColor.color(0x7CFC7C), TextDecoration.BOLD), Component.text(d.get("title").getAsString(), NamedTextColor.WHITE)));
         p.sendMessage(Component.text("[퀘스트 완료] ", TextColor.color(0x7CFC7C)).append(Component.text(d.get("title").getAsString()
                 + (got.isEmpty() ? "" : " — 보상: " + String.join(", ", got) + (gold > 0 || r.has("items") ? " (우편함)" : "")), NamedTextColor.WHITE)));

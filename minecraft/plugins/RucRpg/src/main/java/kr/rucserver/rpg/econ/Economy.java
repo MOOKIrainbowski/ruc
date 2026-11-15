@@ -51,6 +51,7 @@ public final class Economy {
     public void createSchema() throws SQLException {
         try (Connection c = db.getConnection(); Statement s = c.createStatement()) {
             s.execute("CREATE TABLE IF NOT EXISTS rpg_ledger (id BIGINT AUTO_INCREMENT PRIMARY KEY, uuid VARCHAR(36) NOT NULL, op VARCHAR(24) NOT NULL, gold BIGINT NOT NULL, detail VARCHAR(512), at BIGINT NOT NULL)");
+            try { s.execute("ALTER TABLE rpg_ledger ADD COLUMN state VARCHAR(8) DEFAULT 'done'"); } catch (SQLException ignored) {}   // 이미 있음
             s.execute("CREATE TABLE IF NOT EXISTS rpg_shop (uuid VARCHAR(36) NOT NULL, cycle BIGINT NOT NULL, purchased VARCHAR(512) NOT NULL, PRIMARY KEY (uuid, cycle))");
             s.execute("CREATE TABLE IF NOT EXISTS rpg_storage (uuid VARCHAR(36) NOT NULL, slot INT NOT NULL, item BLOB NOT NULL, PRIMARY KEY (uuid, slot))");
             s.execute("CREATE TABLE IF NOT EXISTS rpg_storage_tabs (uuid VARCHAR(36) PRIMARY KEY, tabs INT NOT NULL)");
@@ -75,21 +76,59 @@ public final class Economy {
     }
 
     /** Gold 차감 → 작업 → 실패하면 환불. 실패 사유 문자열 또는 null */
+    /**
+     * Gold 차감 → 작업 → 실패하면 환불 (Codex 리뷰 5):
+     * 조작마다 op id 를 원장에 pending 으로 먼저 적고(주 스레드, 짧은 INSERT), 성공하면 done.
+     * 성공 직후 Player#saveData() 로 인벤토리를 바로 디스크에 — Gold(RucCore 즉시 저장)와 아이템이 어긋나는 창을 ms 단위로 줄임.
+     * 서버가 그 사이에 죽으면 pending 이 남아 켤 때 로그로 알림(사람이 확인) — 마크 인벤토리는 DB 가 아니라 한 트랜잭션은 불가.
+     */
     public String charge(Player p, long cost, String op, String detail, Runnable work) {
-        if (cost > 0 && !gold().withdraw(p.getUniqueId(), cost))
+        if (cost > 0 && !gold().has(p.getUniqueId(), cost))
             return symbol() + "가 부족합니다 (필요 " + EconomyService.format(cost) + ", 보유 " + EconomyService.format(gold().balance(p.getUniqueId())) + ")";
+        long opId = pending(p, op, -cost, detail);
+        if (cost > 0 && !gold().withdraw(p.getUniqueId(), cost)) { finish(opId, "fail"); return symbol() + "가 부족합니다"; }
         try {
             work.run();
         } catch (Fail f) {
             if (cost > 0) gold().deposit(p.getUniqueId(), cost);
+            finish(opId, "refund");
             return f.getMessage();
         } catch (RuntimeException e) {
             if (cost > 0) gold().deposit(p.getUniqueId(), cost);
+            finish(opId, "refund");
             plugin.getLogger().log(java.util.logging.Level.SEVERE, "경제 처리 실패 (" + op + ")", e);
             return "처리 중 문제가 생겼습니다. 다시 시도해 주세요";
         }
-        ledger(p, op, -cost, detail);
+        p.saveData();
+        finish(opId, "done");
         return null;
+    }
+
+    /** op 원장 한 줄 (pending) — 실패하면 -1 (조작은 그대로 진행, 로그만) */
+    private long pending(Player p, String op, long gold, String detail) {
+        try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement(
+                "INSERT INTO rpg_ledger (uuid, op, gold, detail, at, state) VALUES (?,?,?,?,?,'pending')", Statement.RETURN_GENERATED_KEYS)) {
+            ps.setString(1, p.getUniqueId().toString()); ps.setString(2, op); ps.setLong(3, gold);
+            ps.setString(4, detail == null ? null : detail.length() > 500 ? detail.substring(0, 500) : detail); ps.setLong(5, System.currentTimeMillis());
+            ps.executeUpdate();
+            try (ResultSet k = ps.getGeneratedKeys()) { return k.next() ? k.getLong(1) : -1; }
+        } catch (SQLException e) { plugin.getLogger().warning("원장 pending 실패: " + e.getMessage()); return -1; }
+    }
+
+    private void finish(long opId, String state) {
+        if (opId < 0) return;
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+            try (Connection c = db.getConnection(); PreparedStatement ps = c.prepareStatement("UPDATE rpg_ledger SET state = ? WHERE id = ?")) {
+                ps.setString(1, state); ps.setLong(2, opId); ps.executeUpdate();
+            } catch (SQLException e) { plugin.getLogger().warning("원장 상태 기록 실패: " + e.getMessage()); }
+        });
+    }
+
+    /** 켤 때: 끝나지 않은 조작(서버가 중간에 꺼짐) 알림 */
+    public void reportPending() {
+        try (Connection c = db.getConnection(); Statement s = c.createStatement(); ResultSet rs = s.executeQuery("SELECT id, uuid, op, gold, detail FROM rpg_ledger WHERE state = 'pending'")) {
+            while (rs.next()) plugin.getLogger().warning("[경제 확인 필요] 끝나지 않은 조작 #" + rs.getLong(1) + " " + rs.getString(2) + " " + rs.getString(3) + " " + rs.getLong(4) + " " + rs.getString(5));
+        } catch (SQLException e) { plugin.getLogger().warning("원장 확인 실패: " + e.getMessage()); }
     }
 
     // ── 공식 (economy.ts) ───────────────────────────────────────────
@@ -280,7 +319,8 @@ public final class Economy {
         if (i == null) return "RPG 아이템이 아닙니다";
         if (uidOrNull != null && !uidOrNull.equals(i.uid())) return "아이템이 바뀌었습니다";
         long refund = disassembleGold(i) * it.getAmount();
-        p.getInventory().setItem(slot, null);
+        p.getInventory().setItem(slot, null);   // 아이템 먼저 없애고 바로 저장 → 그다음 입금 (복사 쪽으로는 어긋나지 않게)
+        p.saveData();
         gold().deposit(p.getUniqueId(), refund);
         ledger(p, "disassemble", refund, i.tpl() + " ×" + it.getAmount());
         return null;

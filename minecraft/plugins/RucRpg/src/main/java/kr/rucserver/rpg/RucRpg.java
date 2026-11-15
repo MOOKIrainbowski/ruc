@@ -47,6 +47,7 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.econ.Economy economy;
     private kr.rucserver.rpg.econ.EconGui econGui;
     private kr.rucserver.rpg.quest.QuestEngine quests;
+    private kr.rucserver.rpg.econ.RewardOutbox outbox;
     private kr.rucserver.rpg.item.ItemGuard itemGuard;
     private kr.rucserver.rpg.party.PartyService parties;
     private kr.rucserver.rpg.party.DuelService duels;
@@ -158,12 +159,21 @@ public final class RucRpg extends JavaPlugin {
         parties = new kr.rucserver.rpg.party.PartyService(this);
         duels = new kr.rucserver.rpg.party.DuelService(this);
         dungeons = new kr.rucserver.rpg.party.DungeonService(this);
+        outbox = new kr.rucserver.rpg.econ.RewardOutbox(this, core.getDatabase());
+        try { outbox.createSchema(); } catch (Exception e) { getLogger().log(Level.SEVERE, "보상 outbox 만들기 실패", e); }
+        if (economy != null) getServer().getScheduler().runTaskAsynchronously(this, economy::reportPending);
         quests = new kr.rucserver.rpg.quest.QuestEngine(this, core.getDatabase());
         try { quests.createSchema(); } catch (Exception e) { getLogger().log(Level.SEVERE, "퀘스트 테이블 만들기 실패", e); }
         npcs.talked = (p, id) -> quests.quest(p, "talk", id);
         getServer().getPluginManager().registerEvents(new org.bukkit.event.Listener() {
             @org.bukkit.event.EventHandler
-            public void onQuit(org.bukkit.event.player.PlayerQuitEvent e) { quests.forget(e.getPlayer()); }
+            public void onQuit(org.bukkit.event.player.PlayerQuitEvent e) { quests.forget(e.getPlayer()); dungeons.quit(e.getPlayer().getUniqueId()); }
+
+            @org.bukkit.event.EventHandler
+            public void onJoinOutbox(org.bukkit.event.player.PlayerJoinEvent e) {
+                java.util.UUID id = e.getPlayer().getUniqueId();
+                getServer().getScheduler().runTaskLaterAsynchronously(RucRpg.this, () -> outbox.flush(id), 100L);
+            }
         }, this);
         getServer().getPluginManager().registerEvents(econGui, this);
         getServer().getPluginManager().registerEvents(new org.bukkit.event.Listener() {
@@ -196,7 +206,12 @@ public final class RucRpg extends JavaPlugin {
         if (mobs != null) mobs.despawnAll();
         if (runtime != null) runtime.writeBackAll();
         if (chars != null) chars.saveAllNow();
+        WRITER.shutdown();   // 줄 선 저장(퀘스트 · 장비 · 창고 · 캐릭터)을 다 쓰고 끔 — 비동기 작업은 끌 때 버려지므로
+        try { if (!WRITER.awaitTermination(15, java.util.concurrent.TimeUnit.SECONDS)) getLogger().severe("저장 줄이 15초 안에 안 끝남 — 일부 저장이 빠졌을 수 있음"); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
     }
+
+    /** RPG DB 쓰기는 모두 이 한 줄 스레드로 (순서 보장 · 끌 때 비우기). 읽기는 아무 스레드나 */
+    public static final java.util.concurrent.ExecutorService WRITER = java.util.concurrent.Executors.newSingleThreadExecutor(r -> { Thread t = new Thread(r, "RucRpg-writer"); t.setDaemon(true); return t; });
 
     @Override
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
@@ -293,6 +308,7 @@ public final class RucRpg extends JavaPlugin {
     public kr.rucserver.rpg.econ.Economy economy() { return economy; }
     public kr.rucserver.rpg.econ.EconGui econGui() { return econGui; }
     public kr.rucserver.rpg.quest.QuestEngine quests() { return quests; }
+    public kr.rucserver.rpg.econ.RewardOutbox outbox() { return outbox; }
 
     private void partyCmd(Player p, String[] a) {
         String sub = a.length > 0 ? a[0] : "";

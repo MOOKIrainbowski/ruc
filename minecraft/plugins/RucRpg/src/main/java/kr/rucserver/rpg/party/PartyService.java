@@ -90,7 +90,9 @@ public final class PartyService {
         Long at = inviteAt.remove(p.getUniqueId());
         if (from == null || at == null || System.currentTimeMillis() - at > cfg.get("askMs").getAsLong()) { p.sendMessage(Component.text("받은 초대가 없습니다", NamedTextColor.RED)); return; }
         if (of(p) != null) return;
+        if (Bukkit.getPlayer(from) == null) { p.sendMessage(Component.text("초대한 사람이 접속해 있지 않습니다", NamedTextColor.RED)); return; }   // 오프라인 파티 부활 막기 (Codex 리뷰 5)
         Party party = byMember.get(from);
+        if (party != null && !party.leader.equals(from)) { p.sendMessage(Component.text("초대한 사람이 더는 파티장이 아닙니다", NamedTextColor.RED)); return; }
         if (party == null) {
             party = new Party(from);
             byMember.put(from, party);
@@ -149,6 +151,7 @@ public final class PartyService {
     }
 
     private void drop(Party party, UUID id) {
+        invites.values().removeIf(from -> from.equals(id));   // 이 사람이 보낸 초대는 무효
         party.members.remove(id);
         byMember.remove(id);
         Player p = Bukkit.getPlayer(id);

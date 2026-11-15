@@ -51,6 +51,7 @@ public final class NpcRuntime implements Listener {
             World w = ws.world(kind);
             if (w == null) continue;
             for (Entity e : w.getEntities()) if (e.getPersistentDataContainer().has(tag)) e.remove();
+            byEntity.keySet().removeIf(u -> Bukkit.getEntity(u) == null || Bukkit.getEntity(u).getWorld() == w);
             for (RpgMap.Obj o : ws.npcs.getOrDefault(kind, java.util.List.of())) {
                 Location at = ws.at(kind, o.cx(), o.cy());
                 if (at == null || at.getBlock().getRelative(0, -1, 0).isPassable()) continue;   // 아직 안 지은 맵
@@ -59,7 +60,7 @@ public final class NpcRuntime implements Listener {
                 Mannequin m = w.spawn(at, Mannequin.class, e -> {
                     e.setImmovable(true);
                     e.setInvulnerable(true);
-                    e.setPersistent(true);
+                    e.setPersistent(false);   // 켤 때마다 새로 세움 — 저장되면 켤 때마다 하나씩 겹쳐 쌓였음(시험 서버에서 4겹 확인)
                     e.setSilent(true);
                     e.customName(Component.text(o.name(), NamedTextColor.WHITE, TextDecoration.BOLD));
                     e.setCustomNameVisible(true);
@@ -67,12 +68,19 @@ public final class NpcRuntime implements Listener {
                     e.getPersistentDataContainer().set(tag, PersistentDataType.STRING, id);
                 });
                 byEntity.put(m.getUniqueId(), id);
+                at.getChunk().addPluginChunkTicket(plugin);   // NPC · 모델 디스플레이가 청크 내려가며 사라지지 않게
                 if (plugin.models() != null && plugin.models().has(id)) {   // NPC 모델이 있으면 마네킹은 클릭 판정만
                     var inst = plugin.models().attach(id, m);
                     if (inst != null) m.setInvisible(true);
                 }
             }
         }
+    }
+
+    /** 예전 버전이 저장해 둔 NPC(persistent) 가 청크와 함께 늦게 올라오면 지움 */
+    @EventHandler
+    public void onEntitiesLoad(org.bukkit.event.world.EntitiesLoadEvent e) {
+        for (Entity x : e.getEntities()) if (x.getPersistentDataContainer().has(tag) && !byEntity.containsKey(x.getUniqueId())) x.remove();
     }
 
     @EventHandler

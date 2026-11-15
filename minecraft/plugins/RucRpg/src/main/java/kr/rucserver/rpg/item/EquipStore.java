@@ -56,7 +56,7 @@ public final class EquipStore {
     }
 
     /** 저장은 한 줄로 세운 스레드에서 차례대로 — 늦게 끝난 옛 저장이 새 값을 덮지 않게 (Codex 리뷰 4) */
-    private final java.util.concurrent.ExecutorService writer = java.util.concurrent.Executors.newSingleThreadExecutor(r -> { Thread t = new Thread(r, "RucRpg-equip"); t.setDaemon(true); return t; });
+    private final java.util.concurrent.ExecutorService writer = kr.rucserver.rpg.RucRpg.WRITER;
 
     /** 지금 메모리 값을 찍어 두고(주 스레드) 순서대로 한 트랜잭션에 씀 */
     public void saveQueued(UUID id, String slot, java.util.logging.Logger log) {

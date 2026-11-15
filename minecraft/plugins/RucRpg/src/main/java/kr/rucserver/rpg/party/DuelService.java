@@ -77,6 +77,10 @@ public final class DuelService {
         Long at = askAt.remove(p.getUniqueId());
         Player f = from == null ? null : Bukkit.getPlayer(from);
         if (f == null || at == null || System.currentTimeMillis() - at > cfg.get("askMs").getAsLong()) { p.sendMessage(Component.text("받은 결투 신청이 없습니다", NamedTextColor.RED)); return; }
+        // 신청과 수락 사이에 바뀌었을 수 있는 조건 다시 (Codex 리뷰 5)
+        if (duels.containsKey(from) || duels.containsKey(p.getUniqueId())) { p.sendMessage(Component.text("이미 결투 중입니다", NamedTextColor.RED)); return; }
+        if (f.getWorld() != p.getWorld() || f.getLocation().distance(p.getLocation()) > cfg.get("range").getAsDouble() / 16) { p.sendMessage(Component.text("20칸 안에 있어야 합니다", NamedTextColor.RED)); return; }
+        if (plugin.worlds().isPlaza(p.getLocation()) || plugin.dungeons().in(p) || plugin.dungeons().in(f)) { p.sendMessage(Component.text("여기서는 결투할 수 없습니다", NamedTextColor.RED)); return; }
         long now = System.currentTimeMillis(), cd = cfg.get("countdownMs").getAsLong();
         Duel d = new Duel(from, p.getUniqueId(), now + cd, now + cd + cfg.get("maxMs").getAsLong());
         duels.put(from, d);

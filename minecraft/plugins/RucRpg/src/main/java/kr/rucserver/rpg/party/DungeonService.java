@@ -121,6 +121,15 @@ public final class DungeonService {
         });
     }
 
+    /** 접속 끊김: UUID 기준으로 모든 색인에서 뺌 (Codex 리뷰 5) */
+    public void quit(UUID id) {
+        Run r = byPlayer.remove(id);
+        if (r == null) return;
+        r.members.remove(id);
+        r.downAt.remove(id);
+        if (r.members.isEmpty()) close(r);
+    }
+
     /** 나가기 · 파티에서 빠짐 */
     public void left(Player p) {
         Run r = byPlayer.remove(p.getUniqueId());
@@ -140,6 +149,8 @@ public final class DungeonService {
         for (MobUnit m : r.mobs) if (!m.dead) plugin.combat().die(plugin.world(), m, null);
         r.mobs.clear();
         for (UUID id : new ArrayList<>(r.members)) { Player p = Bukkit.getPlayer(id); if (p != null) left(p); }
+        byPlayer.values().removeIf(x -> x == r);   // 오프라인 멤버 색인까지 — 월드를 다시 빌려줄 때 옛 멤버가 남지 않게
+        r.members.clear();
         runs.remove(r.id);
         if (!free.contains(r.world)) free.add(r.world);
     }
@@ -148,7 +159,7 @@ public final class DungeonService {
 
     private List<Player> players(Run r) {
         List<Player> out = new ArrayList<>();
-        for (UUID id : r.members) { Player p = Bukkit.getPlayer(id); if (p != null && p.getWorld().equals(r.world)) out.add(p); }
+        for (UUID id : r.members) { Player p = Bukkit.getPlayer(id); if (p != null && byPlayer.get(id) == r && p.getWorld().equals(r.world)) out.add(p); }
         return out;
     }
 
@@ -276,16 +287,10 @@ public final class DungeonService {
             String tpl = gear.get((int) Math.floor(Math.random() * gear.size())).getAsString();
             PlayerUnit u = plugin.runtime().unit(p);
             String rar = Math.random() < c.get("legendary").getAsDouble() ? "legendary" : plugin.items().rollRarity(0.1 + (u == null ? 0 : u.st.get("luck")) / 400);
-            List<ItemStack> rewards = new ArrayList<>();
-            rewards.add(plugin.items().create(tpl, rar, 1));
-            for (JsonElement e : c.getAsJsonArray("items")) rewards.add(plugin.items().create(e.getAsJsonArray().get(0).getAsString(), null, e.getAsJsonArray().get(1).getAsInt()));
-            long gold = c.get("ruc").getAsLong();
-            String key = "rpgdg:" + r.id + ":" + id.toString().substring(0, 8);
-            Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
-                var mail = plugin.core().getMailbox();
-                mail.sendRucOnce(id, gold, "고목의 유적", key + ":g");
-                for (int k = 0; k < rewards.size(); k++) mail.sendItemOnce(id, rewards.get(k), "고목의 유적", key + ":" + k);
-            });
+            List<kr.rucserver.rpg.econ.RewardOutbox.Item> rewards = new ArrayList<>();
+            rewards.add(new kr.rucserver.rpg.econ.RewardOutbox.Item(tpl, rar, 1));
+            for (JsonElement e : c.getAsJsonArray("items")) rewards.add(new kr.rucserver.rpg.econ.RewardOutbox.Item(e.getAsJsonArray().get(0).getAsString(), null, e.getAsJsonArray().get(1).getAsInt()));
+            plugin.outbox().enqueue(id, "rpgdg:" + r.id, "고목의 유적", c.get("ruc").getAsLong(), rewards);
             p.showTitle(Title.title(Component.text("유적 정화 완료!", TextColor.color(0xF2C94C), TextDecoration.BOLD), Component.text("보상은 우편함으로", NamedTextColor.WHITE)));
             p.playSound(p.getLocation(), Sound.UI_TOAST_CHALLENGE_COMPLETE, 1f, 1f);
         }

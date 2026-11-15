@@ -77,7 +77,7 @@ public final class CharService implements Listener {
     }
 
     public void saveAsync(RpgChar ch) {
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> saveNow(ch));
+        kr.rucserver.rpg.RucRpg.WRITER.execute(() -> saveNow(ch));
     }
 
     private void saveNow(RpgChar ch) {

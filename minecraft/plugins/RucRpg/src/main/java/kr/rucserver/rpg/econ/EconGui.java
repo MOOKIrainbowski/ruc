@@ -328,7 +328,15 @@ public final class EconGui implements Listener {
         ItemStack[] snap = new ItemStack[54];
         for (int i = 0; i < 54; i++) { ItemStack it = e.getInventory().getItem(i); snap[i] = it == null ? null : it.clone(); }
         storageCache.put(h.owner, snap.clone());
-        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> {
+        saveStorage(h.owner, snap, 0);
+    }
+
+    /** 창고 저장은 한 줄로 차례대로 (늦게 끝난 옛 저장이 새 내용을 덮지 않게) · 실패하면 3번까지 다시 (Codex 리뷰 5) */
+    private final java.util.concurrent.ExecutorService storageWriter = kr.rucserver.rpg.RucRpg.WRITER;
+
+    private void saveStorage(UUID owner, ItemStack[] snap, int attempt) {
+        storageWriter.execute(() -> {
+            StorageHolder h = new StorageHolder(owner);
             try (Connection c = eco.db().getConnection()) {
                 c.setAutoCommit(false);
                 try (PreparedStatement d = c.prepareStatement("DELETE FROM rpg_storage WHERE uuid = ?")) { d.setString(1, h.owner.toString()); d.executeUpdate(); }
@@ -340,7 +348,10 @@ public final class EconGui implements Listener {
                     ins.executeBatch();
                 }
                 c.commit();
-            } catch (Exception ex) { plugin.getLogger().severe("창고 저장 실패 (" + h.owner + "): " + ex.getMessage()); }
+            } catch (Exception ex) {
+                plugin.getLogger().severe("창고 저장 실패 (" + h.owner + ", " + (attempt + 1) + "번째): " + ex.getMessage());
+                if (attempt < 3) Bukkit.getScheduler().runTaskLaterAsynchronously(plugin, () -> saveStorage(owner, snap, attempt + 1), 40L * (attempt + 1));
+            }
         });
     }
 }
