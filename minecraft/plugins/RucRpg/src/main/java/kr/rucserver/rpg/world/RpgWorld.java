@@ -117,7 +117,9 @@ public final class RpgWorld implements World {
     public void show(Unit src, Unit tgt, double amount, int flag, String el) {
         Entity e = entityOf(tgt);
         if (e == null) return;
-        Location at = e.getLocation().add((Math.random() - 0.5) * 0.6, e.getHeight() + 0.25, (Math.random() - 0.5) * 0.6);
+        double top = e.getHeight();   // 모델이 있으면 모델 키 (몸 허스크보다 작은 몹이 많음)
+        if (tgt instanceof MobUnit mu && mu.model != null && plugin.models().heightOf(mu.key) > 0) top = plugin.models().heightOf(mu.key);
+        Location at = e.getLocation().add((Math.random() - 0.5) * 0.6, top * 0.75, (Math.random() - 0.5) * 0.6);
         String text;
         TextColor color;
         float scale = 1f;

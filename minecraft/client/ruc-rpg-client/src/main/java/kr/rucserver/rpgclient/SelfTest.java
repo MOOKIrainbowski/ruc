@@ -42,6 +42,8 @@ final class SelfTest {
                 wait = 5;
             }
             case "use" -> { mc.options.keyUse.setDown(true); useLeft = Integer.parseInt(arg); wait = 0; }
+            case "respawn" -> { if (mc.player.isDeadOrDying()) { mc.player.respawn(); mc.setScreen(null); } wait = 40; }
+            case "nohud" -> { mc.options.hideGui = !mc.options.hideGui; wait = 2; }
             case "inv" -> { mc.setScreen(new net.minecraft.client.gui.screens.inventory.InventoryScreen(mc.player)); wait = 10; }
             case "pick" -> {   // 이름에 arg 가 들어간 칸을 클릭 (지금 열린 화면)
                 var menu = mc.player.containerMenu;

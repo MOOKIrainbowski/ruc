@@ -41,6 +41,8 @@ public final class RpgHud {
     private static final Map<String, ItemStack> ICONS = new HashMap<>();
 
     static void register() {
+        // 기력 줄이 체력 위(바닐라 방어 자리)에 오므로 RPG 안에선 방어 줄을 숨김 — RPG 방어는 스탯 판에 (사용자 지시 2026-11-16)
+        HudElementRegistry.replaceElement(VanillaHudElements.ARMOR_BAR, old -> (g, dt) -> { if (!RpgState.active) old.render(g, dt); });
         HudElementRegistry.replaceElement(VanillaHudElements.FOOD_BAR, old -> (g, dt) -> { if (RpgState.active) stamina(g); else old.render(g, dt); });
         HudElementRegistry.attachElementAfter(VanillaHudElements.HOTBAR, Identifier.fromNamespaceAndPath(NS, "hud"), RpgHud::render);
     }
@@ -59,14 +61,14 @@ public final class RpgHud {
         if (!RpgState.active || mc.player == null || mc.options.hideGui) return;
         int w = g.guiWidth(), h = g.guiHeight();
         int top = resources(g, w, h);
-        int skillY = top - 26;
+        int skillY = top - 25;
         skills(g, mc, w, skillY);
-        effects(g, mc, w, skillY - 20);
+        effects(g, mc, w, skillY - 13);
         if (RpgState.showStats) stats(g, mc, w, h);
         if (RpgState.showMinimap) minimap(g, mc);
         if (!RpgState.toast.isEmpty()) {   // 스킬 사용 · 습득 알림: HUD 위에 작게 (사용자 지시)
             g.pose().pushMatrix();
-            g.pose().translate(w / 2f, skillY - 30);
+            g.pose().translate(w / 2f, skillY - 24);
             g.pose().scale(0.75f, 0.75f);
             g.drawCenteredString(mc.font, RpgState.toast, 0, 0, 0xFFFFD27A);
             g.pose().popMatrix();
@@ -103,29 +105,23 @@ public final class RpgHud {
 
     /** 반환 = 맨 위 줄의 y (그 위에 스킬 칸) */
     private static int resources(GuiGraphics g, int w, int h) {
-        int y = h - 49;
+        // 마나 = 배고픔 위(오른쪽), 기력 = 체력 위(왼쪽, 바닐라 방어 자리) → 두 줄이 같은 높이라 스킬 칸이 한 줄 내려옴 (사용자 지시 2026-11-16)
         boolean mana = !RpgState.res.equals("energy"), energy = !RpgState.res.equals("mana");
-        if (mana) {
-            bottles(g, w / 2 + 91, y, pts(RpgState.mana, RpgState.manaMax));
-            y -= 10;
-        }
-        if (energy) {
-            row(g, w / 2 + 91, y, pts(RpgState.energy, RpgState.energyMax), tex("hud/energy_full"), tex("hud/energy_half"), tex("hud/energy_empty"), false);
-            y -= 10;
-        }
-        return Math.min(y + 10, h - 49 - 10);   // 왼쪽 방어구 줄(h-49)보다 위
+        if (mana) bottles(g, w / 2 + 91, h - 49, pts(RpgState.mana, RpgState.manaMax), WATER, BOTTLE, true);
+        if (energy) bottles(g, w / 2 - 91, h - 49, pts(RpgState.energy, RpgState.energyMax), XP, BOTTLE, false);
+        return h - 49;
     }
 
     private static final ItemStack WATER = net.minecraft.world.item.alchemy.PotionContents.createItemStack(Items.POTION, net.minecraft.world.item.alchemy.Potions.WATER);
-    private static final ItemStack BOTTLE = new ItemStack(Items.GLASS_BOTTLE);
+    private static final ItemStack BOTTLE = new ItemStack(Items.GLASS_BOTTLE), XP = new ItemStack(Items.EXPERIENCE_BOTTLE);
 
-    /** 마나 = 바닐라 물병 아이콘 10개 (사용자 지시: 물 병 텍스처). 반 칸 = 빈 병 위에 물병 왼쪽 절반 */
-    private static void bottles(GuiGraphics g, int right, int y, int pts) {
+    /** 병 아이콘 10개 — 마나 = 물병(오른쪽에서 왼쪽, 배고픔처럼) · 기력 = 경험치 병(왼쪽에서 오른쪽, 하트처럼). 반 칸 = 빈 병 위에 찬 병 절반 */
+    private static void bottles(GuiGraphics g, int edge, int y, int pts, ItemStack fill, ItemStack empty, boolean fromRight) {
         for (int i = 0; i < 10; i++) {
-            int x = right - i * 8 - 9;
+            int x = fromRight ? edge - i * 8 - 9 : edge + i * 8;
             boolean full = i * 2 + 1 < pts, half = i * 2 + 1 == pts;
-            item(g, full ? WATER : BOTTLE, x, y);
-            if (half) { g.enableScissor(x, y - 1, x + 5, y + 10); item(g, WATER, x, y); g.disableScissor(); }
+            item(g, full ? fill : empty, x, y);
+            if (half) { g.enableScissor(x, y - 1, x + 5, y + 10); item(g, fill, x, y); g.disableScissor(); }
         }
     }
 
@@ -167,16 +163,28 @@ public final class RpgHud {
     private static void effects(GuiGraphics g, Minecraft mc, int w, int y) {
         int n = RpgState.effects.size();
         if (n == 0) return;
-        int x0 = w / 2 - (n * 18 - 2) / 2;
+        // 효과 아이콘 = 스킬 칸(22px)의 넓이 25% → 한 변 11px (사용자 지시 2026-11-16 "스킬 아이콘의 25% 크기")
+        int s = 11, gap = 12;
+        int x0 = w / 2 - (n * gap - 1) / 2;
         long now = System.currentTimeMillis();
         for (int i = 0; i < n; i++) {
             RpgState.Effect e = RpgState.effects.get(i);
-            int x = x0 + i * 18;
-            g.fill(x - 1, y - 1, x + 17, y + 17, e.buff() ? 0x6038A04A : 0x60A03838);
-            g.renderItem(icon(e.model()), x, y);
+            int x = x0 + i * gap;
+            g.fill(x - 1, y - 1, x + s, y + s, e.buff() ? 0x6038A04A : 0x60A03838);
+            g.pose().pushMatrix();
+            g.pose().translate(x - 0.5f, y - 0.5f);
+            g.pose().scale(s / 16f, s / 16f);
+            g.renderItem(icon(e.model()), 0, 0);
+            g.pose().popMatrix();
             long left = e.left() - (now - e.at());
-            if (left > 0 && left < 100000) g.drawString(mc.font, String.valueOf(left / 1000 + 1), x + 9, y + 9, 0xFFFFFFFF, true);
-            if (e.stacks() > 1) g.drawString(mc.font, "×" + e.stacks(), x, y - 7, 0xFFFFE08A, true);
+            String t = left > 0 && left < 100000 ? String.valueOf(left / 1000 + 1) : e.stacks() > 1 ? "×" + e.stacks() : "";
+            if (!t.isEmpty()) {   // 남은 초(없으면 겹침) — 작은 글씨로 아이콘 오른쪽 아래
+                g.pose().pushMatrix();
+                g.pose().translate(x + s - mc.font.width(t) * 0.5f, y + s - 4);
+                g.pose().scale(0.5f, 0.5f);
+                g.drawString(mc.font, t, 0, 0, 0xFFFFFFFF, true);
+                g.pose().popMatrix();
+            }
         }
     }
 
@@ -217,7 +225,7 @@ public final class RpgHud {
             int px = (int) Math.round(vx + vw / 2.0 + (o.getX() / 2 + PAD - tx) * scale), pz = (int) Math.round(vy + vw / 2.0 + (o.getZ() / 2 + PAD - tz) * scale);
             head(g, mc, o, px - 3, pz - 3, 6, RpgState.party.contains(o.getGameProfile().name()) ? 0xFF55E05A : 0xFF3A6FD8);
         }
-        arrow(g, vx + vw / 2, vy + vw / 2, mc.player.getYRot());
+        me(g, mc, vx + vw / 2, vy + vw / 2, 7);
         g.disableScissor();
     }
 
@@ -228,13 +236,12 @@ public final class RpgHud {
         else g.fill(x, y, x + s, y + s, 0xFFC8956C);
     }
 
-    /** 내 위치 삼각형 (그림은 위쪽 = 북쪽을 가리킴, 마크 yaw 0 = 남쪽) */
-    static void arrow(GuiGraphics g, int cx, int cy, float yaw) {
-        g.pose().pushMatrix();
-        g.pose().translate(cx, cy);
-        g.pose().rotate((float) Math.toRadians(yaw + 180));
-        g.blit(RenderPipelines.GUI_TEXTURED, tex("hud/minimap_me"), -3, -3, 0, 0, 7, 7, 7, 7);
-        g.pose().popMatrix();
+    /** 내 위치 = 내 머리(흰 테두리, 사용자 지시 2026-11-16 '화살표 말고 머리') + 바라보는 쪽 작은 점 (마크 yaw 0 = 남쪽 = 그림 아래) */
+    static void me(GuiGraphics g, Minecraft mc, int cx, int cy, int s) {
+        double a = Math.toRadians(mc.player.getYRot());
+        int dx = (int) Math.round(-Math.sin(a) * (s / 2.0 + 3)), dz = (int) Math.round(Math.cos(a) * (s / 2.0 + 3));
+        g.fill(cx + dx - 1, cy + dz - 1, cx + dx + 1, cy + dz + 1, 0xFFFFFFFF);
+        head(g, mc, mc.player, cx - s / 2, cy - s / 2, s, 0xFFFFFFFF);
     }
 
     static Identifier mapTex(String kind) { return tex("map/" + kind); }

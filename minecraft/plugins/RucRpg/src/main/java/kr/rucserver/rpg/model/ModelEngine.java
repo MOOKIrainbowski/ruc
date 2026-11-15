@@ -66,7 +66,11 @@ public final class ModelEngine {
             animAt = System.currentTimeMillis();
         }
 
-        public void hurt() { hurtUntil = System.currentTimeMillis() + 150; swapHurt(true); }
+        /**
+         * 피격 표시. 예전엔 뼈마다 '온통 빨간' 텍스처로 바꿔서 사용자 화면에 텍스처가 깨진 것처럼 보였음(2026-11-16) →
+         * 바닐라처럼 원래 텍스처 위에 옅은 빨강을 곱하는 방식(Codex 작업 14 의 모델 tint)이 올 때까지 바꾸지 않음.
+         */
+        public void hurt() { hurtUntil = System.currentTimeMillis() + 150; }
 
         public void die(Runnable after) {
             if (!def.anims.containsKey("death")) { remove(); after.run(); return; }
@@ -112,6 +116,9 @@ public final class ModelEngine {
     }
 
     public boolean has(String id) { return defs.containsKey(id); }
+
+    /** 모델 키(블록) — 머리 위 체력바 · 피해 숫자 높이. 없으면 -1 */
+    public double heightOf(String id) { Def d = defs.get(id); return d == null ? -1 : d.height(); }
     public int count() { return defs.size(); }
 
     private static float[] f3(JsonElement e) {

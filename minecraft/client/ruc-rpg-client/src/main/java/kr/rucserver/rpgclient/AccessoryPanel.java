@@ -32,8 +32,9 @@ final class AccessoryPanel {
     record Slot(String key, String model, String name, List<String> lore) {}
 
     static final List<Slot> slots = new ArrayList<>();
-    private static final String[] ORDER = {"necklace", "earring", "ring1", "gloves", "cape"};
-    private static final String[] NAMES = {"목걸이", "귀걸이", "반지", "장갑", "망토"};
+    // 사용자 지시 2026-11-16: 반지 · 목걸이 하나씩만 — 2칸이면 창 안(플레이어 그림과 제작 칸 사이)에 들어가 창이 튀어나오지 않음
+    private static final String[] ORDER = {"necklace", "ring1"};
+    private static final String[] NAMES = {"목걸이", "반지"};
     private static final Map<String, ItemStack> ICONS = new HashMap<>();
 
     static void register() {

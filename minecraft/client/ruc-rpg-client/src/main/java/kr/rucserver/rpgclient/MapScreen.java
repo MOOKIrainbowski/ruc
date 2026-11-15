@@ -32,7 +32,7 @@ public final class MapScreen extends Screen {
             int px = Math.round(x0 + (float) (o.getX() / 2) * scale), pz = Math.round(y0 + (float) (o.getZ() / 2) * scale);
             RpgHud.head(g, mc, o, px - 4, pz - 4, 8, RpgState.party.contains(o.getGameProfile().name()) ? 0xFF55E05A : 0xFF3A6FD8);
         }
-        RpgHud.arrow(g, Math.round(x0 + (float) (mc.player.getX() / 2) * scale), Math.round(y0 + (float) (mc.player.getZ() / 2) * scale), mc.player.getYRot());
+        RpgHud.me(g, mc, Math.round(x0 + (float) (mc.player.getX() / 2) * scale), Math.round(y0 + (float) (mc.player.getZ() / 2) * scale), 9);
         g.drawCenteredString(font, "M / Esc 닫기", width / 2, y0 + dh + 8, 0xFFB0A090);
     }
 

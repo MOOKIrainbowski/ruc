@@ -276,6 +276,18 @@ public final class RucRpg extends JavaPlugin {
                 new kr.rucserver.rpg.skill.SkillTest(this).run(p, ids);
                 return true;
             }
+            if (args.length >= 1 && args[0].equalsIgnoreCase("hurtshow") && sender instanceof Player p) {   // 시험: 가까운 몹을 3초 동안 피격 모습으로
+                var near = p.getNearbyEntities(12, 6, 12);
+                for (var en : near) {
+                    var mu = mobs.of(en);
+                    if (mu == null || mu.model == null) continue;
+                    for (int t = 0; t < 60; t += 2) getServer().getScheduler().runTaskLater(this, () -> world.hurtFlash(mu), t);
+                    sender.sendMessage(Component.text("피격 모습: " + mu.key + " h=" + models().heightOf(mu.key) + " body=" + en.getHeight() + " plateDy=" + (mu.plate.getLocation().getY() - en.getLocation().getY()) + " tr=" + mu.plate.getTransformation().getTranslation(), NamedTextColor.YELLOW));
+                    getLogger().info("plate " + mu.key + " h=" + models().heightOf(mu.key) + " body=" + en.getHeight() + " plateDy=" + (mu.plate.getLocation().getY() - en.getLocation().getY()) + " tr=" + mu.plate.getTransformation().getTranslation() + " model=" + (mu.model != null));
+                    break;
+                }
+                return true;
+            }
             if (args.length >= 2 && args[0].equalsIgnoreCase("pet") && sender instanceof Player p && runtime.unit(p) != null) {   // 소환수 시험 · GM
                 com.google.gson.JsonObject s = new com.google.gson.JsonObject();
                 s.addProperty("pet", args[1]); s.addProperty("ms", 30000); s.addProperty("max", 3);

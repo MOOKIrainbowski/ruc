@@ -27,8 +27,10 @@ import java.util.Map;
  */
 public final class AccessorySlots implements Listener {
 
-    public static final List<String> ORDER = List.of("necklace", "earring", "ring1", "gloves", "cape");
-    private static final Map<String, String> NAME = Map.of("necklace", "목걸이", "earring", "귀걸이", "ring1", "반지", "gloves", "장갑", "cape", "망토");
+    // 사용자 지시 2026-11-16: 반지 · 목걸이 하나씩만. 예전 칸(귀걸이 · 장갑 · 망토 · 두 번째 반지)은 접속 때 인벤토리로
+    public static final List<String> ORDER = List.of("necklace", "ring1");
+    private static final List<String> RETIRED = List.of("ring2", "earring", "gloves", "cape");
+    private static final Map<String, String> NAME = Map.of("necklace", "목걸이", "ring1", "반지");
 
     private final RucRpg plugin;
     private final NamespacedKey ghost;
@@ -111,12 +113,13 @@ public final class AccessorySlots implements Listener {
                 for (int raw = 1; raw <= 4; raw++) if (isGhost(c.getItem(raw)) || copyOfStore(p, c.getItem(raw))) c.setItem(raw, null);
             ItemStack off = p.getInventory().getItemInOffHand();
             if (isGhost(off) || copyOfStore(p, off)) p.getInventory().setItemInOffHand(null);
-            ItemStack ring2 = store().of(p.getUniqueId()).get("ring2");
-            if (ring2 != null) {
-                store().set(p.getUniqueId(), "ring2", null);
-                store().saveQueued(p.getUniqueId(), "ring2", plugin.getLogger());
-                p.getInventory().addItem(ring2).values().forEach(x -> p.getWorld().dropItem(p.getLocation(), x));
-                p.sendMessage(Component.text("반지는 이제 하나만 낄 수 있어 두 번째 반지를 인벤토리로 옮겼습니다", NamedTextColor.YELLOW));
+            for (String slot : RETIRED) {
+                ItemStack old = store().of(p.getUniqueId()).get(slot);
+                if (old == null) continue;
+                store().set(p.getUniqueId(), slot, null);
+                store().saveQueued(p.getUniqueId(), slot, plugin.getLogger());
+                p.getInventory().addItem(old).values().forEach(x -> p.getWorld().dropItem(p.getLocation(), x));
+                p.sendMessage(Component.text("장신구 칸이 반지 · 목걸이 둘로 줄어 ", NamedTextColor.YELLOW).append(old.effectiveName()).append(Component.text(" 을(를) 인벤토리로 옮겼습니다", NamedTextColor.YELLOW)));
             }
             plugin.itemRuntime().refresh(p);
             send(p);

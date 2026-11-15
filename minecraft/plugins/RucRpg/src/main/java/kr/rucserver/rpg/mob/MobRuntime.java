@@ -127,6 +127,15 @@ public final class MobRuntime implements Listener {
             });
             m.body.addPassenger(m.plate);
             if (plugin.models() != null) m.model = plugin.models().attach(m.key, m.body);
+            // 체력바를 모델 머리 바로 위로 (몸은 늘 허스크 1.95 블록이라 작은 몹은 바가 한참 위에 떴음 — 사용자 지시 2026-11-16)
+            // 몸 크기(SCALE)는 다음 틱에야 반영되므로, 2틱 뒤 실제 탄 높이를 재서 그만큼 내림
+            double mh = m.model != null ? plugin.models().heightOf(m.key) : -1;
+            if (mh > 0) Bukkit.getScheduler().runTaskLater(plugin, () -> {
+                if (m.plate == null || !m.plate.isValid() || m.body == null || !m.body.isValid()) return;
+                double ride = m.plate.getLocation().getY() - m.body.getLocation().getY();
+                m.plate.setTransformation(new org.bukkit.util.Transformation(new org.joml.Vector3f(0, (float) (mh + 0.12 - ride), 0),
+                        new org.joml.AxisAngle4f(), new org.joml.Vector3f(0.8f, 0.8f, 0.8f), new org.joml.AxisAngle4f()));
+            }, 2L);
             byEntity.put(m.body.getUniqueId(), m);
             w.add(m);
             z.alive++;
