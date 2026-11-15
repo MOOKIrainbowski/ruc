@@ -37,6 +37,7 @@ public final class RewardOutbox {
         try (Connection c = db.getConnection(); Statement s = c.createStatement()) {
             s.execute("CREATE TABLE IF NOT EXISTS rpg_reward_outbox (id BIGINT AUTO_INCREMENT PRIMARY KEY, uuid VARCHAR(36) NOT NULL, reason VARCHAR(32) NOT NULL, sender VARCHAR(32) NOT NULL, "
                     + "gold BIGINT NOT NULL, tpl VARCHAR(48), rarity VARCHAR(16), qty INT NOT NULL, done BOOLEAN NOT NULL, created BIGINT NOT NULL, UNIQUE (uuid, reason))");
+            s.execute("ALTER TABLE rpg_reward_outbox ADD COLUMN IF NOT EXISTS item BLOB");   // 그 아이템 그대로(유저 퀘스트 에스크로 · 전달 물품)
         }
     }
 
@@ -61,6 +62,20 @@ public final class RewardOutbox {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> flush(who));
     }
 
+    /** 아이템 하나를 그대로(강화 · 옵션 유지) 보내기 — 유저 퀘스트 에스크로 · 전달 물품. 같은 (사람, 사유)는 한 번만 */
+    public void enqueueStack(UUID who, String reason, String sender, ItemStack stack) {
+        try (Connection c = db.getConnection(); PreparedStatement ins = c.prepareStatement(
+                "INSERT INTO rpg_reward_outbox (uuid, reason, sender, gold, tpl, rarity, qty, done, created, item) SELECT ?,?,?,0,NULL,NULL,?,FALSE,?,? FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM rpg_reward_outbox WHERE uuid = ? AND reason = ?)")) {
+            String r = trunc(reason);
+            ins.setString(1, who.toString()); ins.setString(2, r); ins.setString(3, trunc(sender)); ins.setInt(4, stack.getAmount());
+            ins.setLong(5, System.currentTimeMillis()); ins.setBytes(6, stack.serializeAsBytes()); ins.setString(7, who.toString()); ins.setString(8, r);
+            ins.executeUpdate();
+        } catch (SQLException e) {
+            plugin.getLogger().severe("보상 outbox 아이템 기록 실패 (" + who + " " + reason + "): " + e.getMessage());
+        }
+        Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> flush(who));
+    }
+
     private static String trunc(String s) { return s.length() > 32 ? s.substring(0, 32) : s; }
 
     /** 남은 보상 보내기 (비동기에서 부름). who = null 이면 전부 */
@@ -69,10 +84,10 @@ public final class RewardOutbox {
         flushing = true;
         try (Connection c = db.getConnection()) {
             List<Object[]> todo = new ArrayList<>();
-            try (PreparedStatement q = c.prepareStatement("SELECT id, uuid, reason, sender, gold, tpl, rarity, qty FROM rpg_reward_outbox WHERE done = FALSE" + (who == null ? "" : " AND uuid = ?"))) {
+            try (PreparedStatement q = c.prepareStatement("SELECT id, uuid, reason, sender, gold, tpl, rarity, qty, item FROM rpg_reward_outbox WHERE done = FALSE" + (who == null ? "" : " AND uuid = ?"))) {
                 if (who != null) q.setString(1, who.toString());
                 try (ResultSet rs = q.executeQuery()) {
-                    while (rs.next()) todo.add(new Object[]{rs.getLong(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getLong(5), rs.getString(6), rs.getString(7), rs.getInt(8)});
+                    while (rs.next()) todo.add(new Object[]{rs.getLong(1), rs.getString(2), rs.getString(3), rs.getString(4), rs.getLong(5), rs.getString(6), rs.getString(7), rs.getInt(8), rs.getBytes(9)});
                 }
             }
             var mail = plugin.core().getMailbox();
@@ -81,6 +96,7 @@ public final class RewardOutbox {
                 String reason = (String) r[2], sender = (String) r[3];
                 kr.rucserver.core.service.MailboxService.Result res;
                 if ((Long) r[4] > 0) res = mail.sendRucOnce(id, (Long) r[4], sender, reason);
+                else if (r[8] != null) res = mail.sendItemOnce(id, ItemStack.deserializeBytes((byte[]) r[8]), sender, reason);
                 else {
                     String tpl = (String) r[5], rar = (String) r[6];
                     int qty = (Integer) r[7];

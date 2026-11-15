@@ -50,6 +50,8 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.econ.RewardOutbox outbox;
     private kr.rucserver.rpg.world.Gathering gathering;
     private kr.rucserver.rpg.pet.PetRuntime pets;
+    private kr.rucserver.rpg.quest.UserQuests uquests;
+    public kr.rucserver.rpg.quest.UserQuests uquests() { return uquests; }
     public kr.rucserver.rpg.pet.PetRuntime pets() { return pets; }
     private kr.rucserver.rpg.item.ItemGuard itemGuard;
     private kr.rucserver.rpg.party.PartyService parties;
@@ -172,6 +174,9 @@ public final class RucRpg extends JavaPlugin {
         if (economy != null) getServer().getScheduler().runTaskAsynchronously(this, economy::reportPending);
         quests = new kr.rucserver.rpg.quest.QuestEngine(this, core.getDatabase());
         try { quests.createSchema(); } catch (Exception e) { getLogger().log(Level.SEVERE, "퀘스트 테이블 만들기 실패", e); }
+        uquests = new kr.rucserver.rpg.quest.UserQuests(this, core.getDatabase());
+        try { uquests.createSchema(); } catch (Exception e) { getLogger().log(Level.SEVERE, "유저 퀘스트 테이블 만들기 실패", e); }
+        getServer().getPluginManager().registerEvents(uquests, this);
         npcs.talked = (p, id) -> quests.quest(p, "talk", id);
         getServer().getPluginManager().registerEvents(new org.bukkit.event.Listener() {
             @org.bukkit.event.EventHandler
@@ -290,7 +295,7 @@ public final class RucRpg extends JavaPlugin {
                 case "rpgskill" -> menus.skills(p);
                 case "rpgstats" -> menus.stats(p);
                 case "rpgjob" -> menus.job(p);
-                case "rpgquest" -> quests.journal(p);
+                case "rpgquest" -> { if (args.length > 0 && args[0].equals("게시판")) uquests.board(p); else quests.journal(p); }
                 case "rpgparty" -> partyCmd(p, args);
                 case "rpgpc" -> parties.chat(p, String.join(" ", args));
                 case "rpgping" -> parties.ping(p, args.length > 0 ? args[0] : "gather");

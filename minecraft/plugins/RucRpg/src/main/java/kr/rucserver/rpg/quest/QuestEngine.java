@@ -178,6 +178,7 @@ public final class QuestEngine {
 
     /** 서버가 본 일 (talk · reach · roll · claim · buy · cast · kill · enhance · equip · party · stage · level · collect) */
     public void quest(Player p, String type, String target, int n) {
+        if (type.equals("kill") || type.equals("stage") || type.equals("duel") || type.equals("collect")) plugin.uquests().progress(p, type, target == null ? "" : target, n);
         for (Q q : new ArrayList<>(of(p).values())) {
             if (!"active".equals(q.state)) continue;
             JsonArray obj = def(q.id).getAsJsonArray("obj");
@@ -366,8 +367,9 @@ public final class QuestEngine {
         g.onBack = () -> plugin.menus().main(p);
         for (int i = 0; i < 27; i++) g.set(i, kr.rucserver.rpg.ui.Gui.filler(), null);
         int pos = 0;
+        g.set(26, kr.rucserver.rpg.ui.Gui.button("유저 퀘스트 게시판", false, List.of(kr.rucserver.rpg.ui.Gui.gray("다른 사람이 올린 의뢰 받기 · 내 의뢰 올리기"))), (pl, t) -> plugin.uquests().board(pl));
         for (Q q : of(p).values()) {
-            if (pos >= 27) break;
+            if (pos >= 26) break;
             JsonObject d = def(q.id);
             boolean done = "done".equals(q.state);
             List<Component> lore = new ArrayList<>();

@@ -103,6 +103,7 @@ public final class DuelService {
             String r = winner == null ? "무승부" : winner.equals(id) ? "승리!" : "패배";
             p.showTitle(Title.title(Component.text(r, winner != null && winner.equals(id) ? TextColor.color(0xF2C94C) : NamedTextColor.GRAY, TextDecoration.BOLD), Component.text(why, NamedTextColor.WHITE)));
         }
+        if (winner != null && Bukkit.getPlayer(winner) != null) plugin.quests().quest(Bukkit.getPlayer(winner), "duel", "duel");   // 유저 퀘스트 결투 승리
         if (winner != null) {   // K/D = RucCore 스코어보드 줄
             UUID loser = winner.equals(d.a()) ? d.b() : d.a();
             var w = plugin.core().getPlayerData().get(winner);
