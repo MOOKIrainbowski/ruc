@@ -5,6 +5,11 @@
 텍스처를 바꾸면 다시 돌리고, 웹을 배포한 뒤 국가전 서버를 재시작하세요 (sha1 이 바뀌어야 클라이언트가 새로 받습니다).
 """
 import hashlib, json, pathlib, re, zipfile
+import subprocess, sys
+
+# 묶기 전에 검사 — 클라이언트가 거부할 파일이 있으면 묶지 않음 (2026-11-15 사고)
+if subprocess.run([sys.executable, str(pathlib.Path(__file__).with_name('pack-validate.py'))]).returncode != 0:
+    sys.exit('리소스팩 검사 실패 — 묶지 않습니다')
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SRC = ROOT / "minecraft" / "resourcepack"

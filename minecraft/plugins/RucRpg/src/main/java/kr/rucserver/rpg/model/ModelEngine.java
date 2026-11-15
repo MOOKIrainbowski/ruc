@@ -158,7 +158,7 @@ public final class ModelEngine {
     private static ItemStack item(String model) {
         ItemStack it = new ItemStack(Material.PAPER);
         ItemMeta m = it.getItemMeta();
-        m.setItemModel(new NamespacedKey("ruc", model));
+        m.setItemModel(new NamespacedKey("ruc", kr.rucserver.rpg.ui.Gui.id(model)));
         it.setItemMeta(m);
         return it;
     }

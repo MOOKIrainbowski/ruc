@@ -215,7 +215,7 @@ public class ItemService {
             if (i.name() != null) d.set(kName, PersistentDataType.STRING, i.name());
         }
         String model = modelOf(t, i.tpl(), i.rarity());
-        if (model != null && Gui.hasModel(model)) m.setItemModel(new NamespacedKey("ruc", model));
+        if (model != null && Gui.hasModel(model)) m.setItemModel(new NamespacedKey("ruc", Gui.id(model)));
         JsonObject rd = rarity.getAsJsonObject(i.rarity());
         TextColor rc = TextColor.fromHexString(rd.get("color").getAsString());
         String title = (i.name() != null ? i.name() : t.get("name").getAsString()) + (i.enh() > 0 && i.name() == null ? " +" + i.enh() : "");

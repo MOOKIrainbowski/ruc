@@ -1,0 +1,5 @@
+{
+  "sources": [
+    { "type": "minecraft:directory", "source": "entity/mob", "prefix": "entity/mob/" }
+  ]
+}

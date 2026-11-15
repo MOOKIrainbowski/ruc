@@ -79,9 +79,13 @@ public final class Gui implements InventoryHolder {
         } catch (Exception ignored) {}
     }
 
-    public static boolean hasModel(String path) { return MODELS.contains(path); }
+    public static boolean hasModel(String path) { return path != null && MODELS.contains(id(path)); }
+
+    /** 리소스 경로는 소문자 · 밑줄만 (웹 아이콘 이름 heartPlus → heart_plus) — 대문자 경로는 클라이언트가 버림 */
+    public static String id(String path) { return path == null ? null : path.replaceAll("([a-z0-9])([A-Z])", "$1_$2").toLowerCase(java.util.Locale.ROOT); }
 
     public static ItemStack icon(Material fallback, String model, Component name, List<Component> lore) {
+        model = id(model);
         ItemStack it = new ItemStack(fallback);
         ItemMeta m = it.getItemMeta();
         if (model != null && MODELS.contains(model)) m.setItemModel(new NamespacedKey("ruc", model));
