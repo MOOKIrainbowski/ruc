@@ -42,6 +42,13 @@ final class SelfTest {
                 wait = 5;
             }
             case "use" -> { mc.options.keyUse.setDown(true); useLeft = Integer.parseInt(arg); wait = 0; }
+            case "inv" -> { mc.setScreen(new net.minecraft.client.gui.screens.inventory.InventoryScreen(mc.player)); wait = 10; }
+            case "pick" -> {   // 이름에 arg 가 들어간 칸을 클릭 (지금 열린 화면)
+                var menu = mc.player.containerMenu;
+                for (int k = 0; k < menu.slots.size(); k++)
+                    if (menu.slots.get(k).getItem().getHoverName().getString().contains(arg)) { mc.gameMode.handleInventoryMouseClick(menu.containerId, k, 0, net.minecraft.world.inventory.ClickType.PICKUP, mc.player); break; }
+                wait = 10;
+            }
             case "look" -> { String[] a = arg.split(" "); mc.player.setYRot(Float.parseFloat(a[0])); mc.player.setXRot(Float.parseFloat(a[1])); wait = 5; }
             default -> log("모르는 단계: " + st[0]);
         }

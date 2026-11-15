@@ -53,6 +53,8 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.quest.UserQuests uquests;
     private kr.rucserver.rpg.realm.Realm realm;
     private kr.rucserver.rpg.ui.Windows windows;
+    private kr.rucserver.rpg.item.AccessorySlots accessories;
+    public kr.rucserver.rpg.item.AccessorySlots accessories() { return accessories; }
     private kr.rucserver.rpg.client.ClientBridge bridge;
     public kr.rucserver.rpg.client.ClientBridge bridge() { return bridge; }
     public kr.rucserver.rpg.ui.Windows windows() { return windows; }
@@ -172,6 +174,8 @@ public final class RucRpg extends JavaPlugin {
             economy.createSchema();
         } catch (Exception e) { getLogger().log(Level.SEVERE, "경제 테이블 만들기 실패", e); }
         econGui = new kr.rucserver.rpg.econ.EconGui(this, economy, items);
+        accessories = new kr.rucserver.rpg.item.AccessorySlots(this);
+        getServer().getPluginManager().registerEvents(accessories, this);
         itemGuard = new kr.rucserver.rpg.item.ItemGuard(this, items, itemRuntime.equip(), core.getDatabase());
         try { itemGuard.createSchema(); } catch (Exception e) { getLogger().log(Level.SEVERE, "UID 원장 만들기 실패", e); }
         getServer().getPluginManager().registerEvents(itemGuard, this);

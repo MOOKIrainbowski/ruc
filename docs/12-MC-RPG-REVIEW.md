@@ -380,3 +380,18 @@ v2 는 웹 그림과 훨씬 가까움(하피 날개 줄무늬 · 나무 기사 �
 
 ## Codex 작업 11 — 모드 HUD 픽셀 아트
 명세는 `docs/14-MC-RPG-CODEX-BRIEF.md` 4장.
+
+## Codex 작업 11 완료 보고
+
+- `RUC_RPG/scripts/mc-hud-art.ts`를 추가해 Fabric 모드 HUD 텍스처 24개를 결정적으로 생성합니다. 지정 크기의 마나·기력 구슬, 스킬 슬롯/상태 덮개, Q/C/Z/R 키표, 8줄 스탯 패널과 스탯 아이콘, 미니맵 프레임·플레이어 표식을 만들었습니다. 팔레트는 웹 CSS의 나무 버튼 색과 `CombatHud.tsx`의 스탯 색을 따랐습니다.
+- 생성 경로는 `minecraft/client/ruc-rpg-client/src/main/resources/assets/ruc_rpg/textures/gui/hud/`, 4배 미리보기는 `.scratch/codex/hud/preview.png`입니다. RGB/RGBA PNG 인코더는 Node 표준 라이브러리만 사용합니다.
+- 확인: `node RUC_RPG/scripts/mc-hud-art.ts` 성공(24개 텍스처, 1216×2160 미리보기), `git diff --check` 통과, 미리보기 시각 확인 완료.
+- Java·모드 코드·`pack.py`·커밋은 건드리지 않았습니다. Minecraft 클라이언트에서 실제 HUD 크기와 배치는 확인하지 못했습니다.
+
+## Codex 작업 12 — 장신구 빈 칸 아이콘 (간단한 그림)
+E 인벤토리의 제작 2×2 칸 + 왼손 칸이 장신구 칸이 됐습니다(F5). 비어 있을 때 보일 **바닐라 빈 방어구 칸 아이콘 같은 회색 윤곽 그림** 5개:
+`ui/slot_necklace`(목걸이) · `ui/slot_earring`(귀걸이) · `ui/slot_ring1`(반지) · `ui/slot_gloves`(장갑) · `ui/slot_cape`(망토).
+- 리소스팩: `minecraft/resourcepack/assets/ruc/textures/item/ui/slot_<이름>.png`(16×16, 바닐라 `empty_armor_slot_helmet` 처럼 반투명 회색 윤곽) + `assets/ruc/models/item/ui/slot_<이름>.json`(parent item/generated) + `assets/ruc/items/ui/slot_<이름>.json`.
+- `minecraft/plugins/RucRpg/src/main/resources/pack-models.json` 에 `ui/slot_<이름>` 5줄 추가(Java 가 이 목록에 있는 모델만 씀).
+- 검사: `python minecraft/scripts/pack-validate.py` 0 오류. 경로는 소문자만.
+파일 소유권: 위 그림 · 모델 · items · pack-models.json 추가 줄 = Codex. 끝나면 `## Codex 작업 12 완료 보고`.

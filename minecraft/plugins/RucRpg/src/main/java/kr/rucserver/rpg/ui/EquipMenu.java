@@ -58,7 +58,7 @@ public final class EquipMenu {
         if (t.get("lv").getAsInt() > u.ch.level) { p.sendMessage(Component.text("Lv" + t.get("lv").getAsInt() + " 부터 장착할 수 있습니다", NamedTextColor.RED)); return; }
         EquipStore st = plugin.itemRuntime().equip();
         Map<String, ItemStack> eq = st.of(p.getUniqueId());
-        if (slot.equals("ring")) slot = eq.containsKey("ring1") && !eq.containsKey("ring2") ? "ring2" : "ring1";
+        if (slot.equals("ring")) slot = "ring1";   // 반지는 하나만 (사용자 지시: 종류마다 하나)
         if (!java.util.Arrays.asList(EquipStore.SLOTS).contains(slot)) {
             p.sendMessage(Component.text("이 장비는 바닐라 칸(방어구 칸 · 손)에 입습니다", NamedTextColor.GRAY));
             return;
@@ -68,6 +68,7 @@ public final class EquipMenu {
         st.set(p.getUniqueId(), slot, it);
         persist(p, slot);
         plugin.itemRuntime().refresh(p);
+        if (plugin.accessories() != null) plugin.accessories().draw(p);
         open(p);
     }
 
