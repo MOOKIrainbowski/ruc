@@ -54,6 +54,8 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.realm.Realm realm;
     private kr.rucserver.rpg.hud.MinimapHud minimap;
     private kr.rucserver.rpg.ui.Windows windows;
+    private kr.rucserver.rpg.ui.FullMap fullMap;
+    public kr.rucserver.rpg.ui.FullMap fullMap() { return fullMap; }
     public kr.rucserver.rpg.ui.Windows windows() { return windows; }
     public kr.rucserver.rpg.realm.Realm realm() { return realm; }
     public kr.rucserver.rpg.quest.UserQuests uquests() { return uquests; }
@@ -183,6 +185,8 @@ public final class RucRpg extends JavaPlugin {
         try { quests.createSchema(); } catch (Exception e) { getLogger().log(Level.SEVERE, "퀘스트 테이블 만들기 실패", e); }
         try { windows = new kr.rucserver.rpg.ui.Windows(this, core.getDatabase()); getServer().getPluginManager().registerEvents(windows, this); }
         catch (Exception e) { getLogger().log(Level.SEVERE, "설정 테이블 만들기 실패", e); }
+        fullMap = new kr.rucserver.rpg.ui.FullMap(this);
+        getServer().getPluginManager().registerEvents(fullMap, this);
         realm = new kr.rucserver.rpg.realm.Realm(this, core.getDatabase());
         try { realm.start(); } catch (Exception e) { getLogger().log(Level.SEVERE, "영지 테이블 만들기 실패", e); }
         uquests = new kr.rucserver.rpg.quest.UserQuests(this, core.getDatabase());
@@ -308,6 +312,7 @@ public final class RucRpg extends JavaPlugin {
                 case "rpgjob" -> menus.job(p);
                 case "rpgrealm" -> realm.open(p);
                 case "rpgsettings" -> windows.settings(p);
+                case "rpgmap" -> fullMap.toggle(p);
                 case "rpggm" -> windows.gm(p);
                 case "rpgnation" -> { String err = realm.command(p, args); if (err != null) p.sendMessage(Component.text(err, NamedTextColor.RED)); }
                 case "rpgnc" -> { String err = args.length == 0 ? "/ㄴ <말>" : realm.chat(p, String.join(" ", args)); if (err != null) p.sendMessage(Component.text(err, NamedTextColor.RED)); }
