@@ -78,8 +78,7 @@ public final class ClientBridge implements Listener, PluginMessageListener {
         if (plugin.accessories() != null) plugin.accessories().send(p);
         if (version != VERSION) {   // 통신 모양이 바뀌면 옛 모드는 HUD 를 잘못 읽음 → 안내하고 내보냄
             String url = plugin.getConfig().getString("client.url", "https://ruc-server.vercel.app/rpg-mod");
-            p.kick(Component.text("러크 RPG 모드를 새 판으로 바꿔 주세요 (모드 " + version + " / 서버 " + VERSION + ")
-", NamedTextColor.GOLD).append(Component.text(url, NamedTextColor.AQUA)));
+            p.kick(Component.text("러크 RPG 모드를 새 판으로 바꿔 주세요 (모드 " + version + " / 서버 " + VERSION + ")\n", NamedTextColor.GOLD).append(Component.text(url, NamedTextColor.AQUA)));
             return;
         }
     }
