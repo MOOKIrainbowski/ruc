@@ -55,6 +55,9 @@ public final class PetRuntime {
     private final JsonObject defs, engineer;
     private final List<PetUnit> pets = new ArrayList<>();
 
+    public long countOf(PlayerUnit p) { return pets.stream().filter(q -> q.owner == p).count(); }
+    public void removeOf(PlayerUnit p) { for (PetUnit q : new ArrayList<>(pets)) if (q.owner == p) unsummon(q); }
+
     public PetRuntime(RucRpg plugin) {
         this.plugin = plugin;
         this.w = plugin.world();

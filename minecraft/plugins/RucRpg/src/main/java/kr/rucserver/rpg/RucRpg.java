@@ -268,6 +268,14 @@ public final class RucRpg extends JavaPlugin {
                 sender.sendMessage(Component.text(t.getName() + " ← " + args[2] + " ×" + qty + " " + rar, NamedTextColor.GREEN));
                 return true;
             }
+            if (args.length >= 1 && args[0].equalsIgnoreCase("skilltest") && sender instanceof Player p && runtime.unit(p) != null) {   // 스킬 전수 시험 (시험 서버)
+                java.util.List<String> ids = new java.util.ArrayList<>();
+                if (args.length >= 2 && !args[1].equals("all")) ids.addAll(java.util.Arrays.asList(args).subList(1, args.length));
+                else skillDefs.ids().forEach(ids::add);
+                p.sendMessage(Component.text("스킬 시험 " + ids.size() + "개 시작 (약 " + ids.size() * 55 / 10 + "초)", NamedTextColor.YELLOW));
+                new kr.rucserver.rpg.skill.SkillTest(this).run(p, ids);
+                return true;
+            }
             if (args.length >= 2 && args[0].equalsIgnoreCase("pet") && sender instanceof Player p && runtime.unit(p) != null) {   // 소환수 시험 · GM
                 com.google.gson.JsonObject s = new com.google.gson.JsonObject();
                 s.addProperty("pet", args[1]); s.addProperty("ms", 30000); s.addProperty("max", 3);

@@ -90,6 +90,9 @@ public final class Projectiles {
         return Math.hypot(x - (w.x1() + dx * t), y - (w.y1() + dy * t));
     }
 
+    /** 스킬 시험(SkillTest)용: 마지막으로 끝난 투사체가 왜 끝났나 */
+    public static volatile String lastEnd = "";
+
     public Shot fire(Shot s) {
         shots.add(s);
         return s;
@@ -115,7 +118,7 @@ public final class Projectiles {
             s.y += s.uy * d;
             s.traveled += d;
             Location l = new Location(s.world, s.x / RpgWorld.PX, s.yBlock, s.y / RpgWorld.PX);
-            if (l.getBlock().getType().isSolid()) { s.world.spawnParticle(Particle.SMOKE, l, 4, 0.05, 0.05, 0.05, 0.01); return false; }
+            if (l.getBlock().getType().isSolid()) { s.world.spawnParticle(Particle.SMOKE, l, 4, 0.05, 0.05, 0.05, 0.01); lastEnd = "블록 " + l.getBlock().getType() + " @" + l.getBlockX() + "," + l.getBlockY() + "," + l.getBlockZ() + " (" + Math.round(s.traveled) + "px)"; return false; }
             s.world.spawnParticle(Particle.DUST, l, s.big ? 3 : 1, 0.02, 0.02, 0.02, 0, dust);
             if (s.owner.dead) return false;
             if (!s.owner.isPlayer()) for (Wall wl : walls)
@@ -124,6 +127,7 @@ public final class Projectiles {
             for (Unit u : w.around(s.x, s.y, s.width / 2, foeKind)) {
                 if (!w.hostile(s.owner, u) || s.hit.contains(u.id)) continue;
                 s.hit.add(u.id);
+                lastEnd = "명중 " + u.name + "#" + u.id;
                 combat.hit(w, s.owner, u, s.spec);
                 s.onHit.accept(s, u);
                 if (s.bounce > 0) {   // 튕김: 다음 가까운 적에게
@@ -140,7 +144,7 @@ public final class Projectiles {
                 }
                 if (s.pierce-- <= 0) return false;
             }
-            if (s.traveled >= s.range) return false;
+            if (s.traveled >= s.range) { lastEnd = "사거리 끝 " + Math.round(s.traveled) + "px"; return false; }
         }
         return true;
     }

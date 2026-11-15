@@ -154,9 +154,19 @@ public final class SkillEngine implements Listener {
     }
 
     /** 시전. 실패하면 이유(HUD 토스트), 성공하면 null */
+    public SkillDefs defs() { return defs; }
+
+    /** 스킬 시험(SkillTest): 이 스킬을 슬롯과 상관없이 시전 */
+    private String forceId;
+
+    public String castForced(PlayerUnit p, String id) {
+        forceId = id;
+        try { return cast(p, defs.get(id) == null ? "Q" : defs.get(id).get("slot").getAsString()); } finally { forceId = null; }
+    }
+
     public String cast(PlayerUnit p, String slot) {
         RpgChar ch = p.ch;
-        String id = "A".equals(slot) ? basicOf(p.player) : Progression.slotSkill(ch, slot);
+        String id = forceId != null ? forceId : "A".equals(slot) ? basicOf(p.player) : Progression.slotSkill(ch, slot);
         JsonObject sk = defs.get(id);
         if (sk == null) return "R".equals(slot) ? "궁극기는 1차 전직(Lv10) 후 열립니다" : "스킬이 없는 슬롯입니다";
         if (p.dead) return "쓰러진 상태입니다";

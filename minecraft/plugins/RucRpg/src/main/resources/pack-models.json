@@ -1223,6 +1223,11 @@
   "ui/button_wood",
   "ui/close",
   "ui/lock",
+  "ui/slot_cape",
+  "ui/slot_earring",
+  "ui/slot_gloves",
+  "ui/slot_necklace",
+  "ui/slot_ring1",
   "ui/tab",
   "ui/tab_on"
 ]

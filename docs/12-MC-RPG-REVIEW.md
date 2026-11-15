@@ -395,3 +395,10 @@ E 인벤토리의 제작 2×2 칸 + 왼손 칸이 장신구 칸이 됐습니다(
 - `minecraft/plugins/RucRpg/src/main/resources/pack-models.json` 에 `ui/slot_<이름>` 5줄 추가(Java 가 이 목록에 있는 모델만 씀).
 - 검사: `python minecraft/scripts/pack-validate.py` 0 오류. 경로는 소문자만.
 파일 소유권: 위 그림 · 모델 · items · pack-models.json 추가 줄 = Codex. 끝나면 `## Codex 작업 12 완료 보고`.
+
+## Codex 작업 12 완료 보고
+
+- `RUC_RPG/scripts/mc-slot-art.ts`가 반투명 회색 윤곽의 16×16 RGBA 빈 칸 아이콘 5개를 생성합니다: 목걸이, 귀걸이, 반지, 장갑, 망토. 미리보기는 `.scratch/codex/accessory/preview.png`입니다.
+- 각 아이콘에 `assets/ruc/models/item/ui/slot_<이름>.json`(item/generated)과 `assets/ruc/items/ui/slot_<이름>.json` 정의를 추가했고, `pack-models.json` 목록에 `ui/slot_*` 5개를 등록했습니다.
+- 확인: `node RUC_RPG/scripts/mc-slot-art.ts` 성공, 미리보기 확인, `python minecraft/scripts/pack-validate.py` 결과 **오류 0개**. 생성기에서 아이콘별 16×16 격자와 RGBA 데이터 길이도 검사합니다.
+- 실제 인벤토리 화면에서 아이콘 표시 확인은 모드/클라이언트 담당 단계라 여기서는 하지 않았습니다. Java·모드 코드·`pack.py`·커밋은 건드리지 않았습니다.
