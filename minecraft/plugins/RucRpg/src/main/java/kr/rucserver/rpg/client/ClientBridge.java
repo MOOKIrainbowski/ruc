@@ -75,6 +75,7 @@ public final class ClientBridge implements Listener, PluginMessageListener {
         send(p, out -> { out.writeByte(1); out.writeInt(VERSION); });
         sendMap(p);
         lastHud.remove(p.getUniqueId());
+        if (plugin.accessories() != null) plugin.accessories().send(p);
         if (version != VERSION) p.sendMessage(Component.text("러크 RPG 모드가 최신이 아닙니다 — 새 판을 받아 주세요 (모드 " + version + " / 서버 " + VERSION + ")", NamedTextColor.YELLOW));
     }
 
@@ -86,6 +87,7 @@ public final class ClientBridge implements Listener, PluginMessageListener {
             case "skill" -> { String slot = SLOT.get(arg); if (slot != null) plugin.skills().castFromKey(p, slot); }
             case "open" -> open(p, arg);
             case "ping" -> plugin.parties().ping(p, arg.isEmpty() ? "gather" : arg);
+            case "acc" -> { String[] s = arg.split(":"); if (plugin.accessories() != null) plugin.accessories().click(p, s[0], s.length > 1 && s[1].equals("shift")); }
             default -> {}
         }
     }
@@ -108,9 +110,9 @@ public final class ClientBridge implements Listener, PluginMessageListener {
 
     // ── 보내기 ──────────────────────────────────────────────────────
 
-    private interface Writer { void write(DataOutputStream out) throws IOException; }
+    public interface Writer { void write(DataOutputStream out) throws IOException; }
 
-    private void send(Player p, Writer w) {
+    public void send(Player p, Writer w) {
         ByteArrayOutputStream buf = new ByteArrayOutputStream();
         try (DataOutputStream out = new DataOutputStream(buf)) { w.write(out); } catch (IOException e) { return; }
         p.sendPluginMessage(plugin, CHANNEL, buf.toByteArray());

@@ -43,6 +43,7 @@ public final class SkillTest {
         List<String> rows = new ArrayList<>();
         rows.add("id\t이름\t판정\t대상\t기대\t측정\t오류");
         int[] k = {0}, bad = {0};
+        admin.teleport(base);   // 다른 월드에서 시작하면 첫 측정이 월드 간 거리로 실패했음 → 먼저 옮겨 두고 2초 뒤 시작
         Bukkit.getScheduler().runTaskTimer(plugin, task -> {
             if (k[0] >= ids.size() || !admin.isOnline()) {
                 task.cancel();
@@ -96,7 +97,8 @@ public final class SkillTest {
             long[] petsSeen = {0};
             Bukkit.getScheduler().runTaskLater(plugin, () -> petsSeen[0] = plugin.pets().countOf(u) - pets0, Math.max(6, Math.round((cast + 300) / 50)));
             Bukkit.getScheduler().runTaskLater(plugin, () -> {
-                double dmg = mobHp0 - m.hp, heal = u.hp - hp0, shield = u.shield() - sh0, moved = admin.getLocation().distance(pos0);
+              try {
+                double dmg = mobHp0 - m.hp, heal = u.hp - hp0, shield = u.shield() - sh0, moved = admin.getWorld().equals(pos0.getWorld()) ? admin.getLocation().distance(pos0) : -1;
                 Set<String> mobFx = ids(m); mobFx.removeAll(mobFx0);
                 Set<String> selfFx = ids(u); selfFx.removeAll(selfFx0);
                 long pets = Math.max(petsSeen[0], plugin.pets().countOf(u) - pets0);
@@ -114,11 +116,17 @@ public final class SkillTest {
                 if (!verdict.equals("정상")) bad[0]++;
                 rows.add(id + "\t" + sk.get("name").getAsString() + "\t" + verdict + "\t" + t + "\t" + String.join(",", want) + "\t"
                         + String.format("피해 %.0f · 대상효과 %s · 자기효과 %s · 회복 %.0f · 보호막 %.0f · 이동 %.1f · 소환 %d", dmg, mobFx, selfFx, heal, shield, moved, pets)
-                        + "\t" + (err != null ? err : String.join(",", miss)) + (kr.rucserver.rpg.world.Projectiles.lastEnd.isEmpty() ? "" : " [투사체: " + kr.rucserver.rpg.world.Projectiles.lastEnd + "]"));
+                        + "\t" + (err != null ? err : String.join(",", miss)) + (kr.rucserver.rpg.world.Projectiles.lastEnd.isEmpty() ? "" : " [투사체: " + kr.rucserver.rpg.world.Projectiles.lastEnd + " / 허수아비#" + m.id + (m.dead ? " 죽음" : "") + "]"));
+              } catch (Exception ex) {
+                rows.add(id + "		오류				시험 중 예외: " + ex);
+                bad[0]++;
+              } finally {   // 허수아비는 늘 치움 (안 치우면 보이지 않는 유닛으로 남아 다음 투사체를 막았음)
                 if (!m.dead) plugin.combat().die(plugin.world(), m, null);
+                plugin.world().remove(m);
                 if (m.body != null && m.body.isValid()) m.body.remove();
+              }
             }, waitTicks);
-        }, 5L, 110L);
+        }, 40L, 110L);
     }
 
     private static double num(JsonObject o, String k) { return o.has(k) && !o.get(k).isJsonNull() ? o.get(k).getAsDouble() : 0; }

@@ -62,6 +62,15 @@ public final class RpgState {
                 for (int i = 0, n = in.readShort(); i < n; i++) markEntities.add(new UUID(in.readLong(), in.readLong()));
                 Marks.refresh();
             }
+            case 6 -> {   // 장신구 칸
+                AccessoryPanel.slots.clear();
+                for (int i = 0, n = in.readByte(); i < n; i++) {
+                    String key = in.readUTF(), model = in.readUTF(), name = in.readUTF();
+                    java.util.List<String> lore = new java.util.ArrayList<>();
+                    for (int k = 0, m = in.readByte(); k < m; k++) lore.add(in.readUTF());
+                    AccessoryPanel.slots.add(new AccessoryPanel.Slot(key, model, name, lore));
+                }
+            }
             default -> {}
         }
     }

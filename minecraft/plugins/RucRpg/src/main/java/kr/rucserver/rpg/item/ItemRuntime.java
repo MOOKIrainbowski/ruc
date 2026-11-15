@@ -73,7 +73,7 @@ public final class ItemRuntime implements Listener {
         PlayerInventory inv = u.player.getInventory();
         for (ItemStack it : inv.getArmorContents()) add(u, it, out, null);
         add(u, inv.getItemInMainHand(), out, "weapon");
-        // 왼손 = 망토 칸의 사본(AccessorySlots) — 원본은 equip 에 있으니 세지 않음
+        add(u, inv.getItemInOffHand(), out, "offhand");   // 왼손은 다시 바닐라 칸(장신구 칸은 모드 화면으로 옮김)
         for (ItemStack it : equip.of(u.player.getUniqueId()).values()) add(u, it, out, null);
         return out;
     }

@@ -594,8 +594,8 @@ public final class SkillEngine implements Listener {
     public void onSwap(PlayerSwapHandItemsEvent e) {
         Player pl = e.getPlayer();
         if (pl.isSneaking() || plugin.runtime().unit(pl) == null) return;
+        if (plugin.bridge() != null && plugin.bridge().modded(pl)) return;   // 모드 사용자: F = 바닐라 손 바꾸기 그대로(스킬은 Q · C · Z · R)
         e.setCancelled(true);
-        if (plugin.bridge() != null && plugin.bridge().modded(pl)) return;   // 모드 사용자: F 는 아무것도 안 함(왼손 = 장신구 칸)
         tryCast(pl, "E");
     }
 

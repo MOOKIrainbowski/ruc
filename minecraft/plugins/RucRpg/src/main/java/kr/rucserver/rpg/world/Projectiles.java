@@ -37,6 +37,8 @@ public final class Projectiles {
         public final Set<Integer> hit = new HashSet<>();
         /** 맞힌 뒤 (숙련도 · 스킬 부가 처리) */
         public BiConsumer<Shot, Unit> onHit = (s, u) -> {};
+        /** 그림 (FxSprites — 팩에 있을 때만) */
+        public org.bukkit.entity.ItemDisplay sprite;
 
         public Shot(Unit owner, World world, double x, double y, double yBlock, double dx, double dy, double speed, double range, double width,
                     Combat.HitSpec spec, int pierce, int bounce, Color color, boolean big) {
@@ -94,6 +96,11 @@ public final class Projectiles {
     public static volatile String lastEnd = "";
 
     public Shot fire(Shot s) {
+        Location at = new Location(s.world, s.x / RpgWorld.PX, s.yBlock, s.y / RpgWorld.PX);
+        boolean arrow = s.spec != null && "physical".equals(s.spec.cat);
+        float yaw = (float) Math.toDegrees(Math.atan2(-s.ux, s.uy));
+        s.sprite = plugin.skills() == null ? null : plugin.skills().vfx().sprites().projectile(at, arrow ? "arrow" : "orb",
+                org.bukkit.Color.fromRGB(s.color.asRGB()), s.big ? 1.4f : arrow ? 0.9f : 0.7f, yaw);
         shots.add(s);
         return s;
     }
@@ -104,7 +111,12 @@ public final class Projectiles {
         Iterator<Shot> it = shots.iterator();
         while (it.hasNext()) {
             Shot s = it.next();
-            if (!step(s)) it.remove();
+            boolean alive = step(s);
+            if (s.sprite != null) {
+                if (alive && s.sprite.isValid()) s.sprite.teleport(new Location(s.world, s.x / RpgWorld.PX, s.yBlock, s.y / RpgWorld.PX));
+                else s.sprite.remove();
+            }
+            if (!alive) it.remove();
         }
     }
 

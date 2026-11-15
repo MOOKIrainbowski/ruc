@@ -68,7 +68,7 @@ public final class EquipMenu {
         st.set(p.getUniqueId(), slot, it);
         persist(p, slot);
         plugin.itemRuntime().refresh(p);
-        if (plugin.accessories() != null) plugin.accessories().draw(p);
+        if (plugin.accessories() != null) plugin.accessories().send(p);
         open(p);
     }
 

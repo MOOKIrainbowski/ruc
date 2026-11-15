@@ -111,7 +111,7 @@ public final class RucRpg extends JavaPlugin {
                 String name = skillDefs.get(id).get("name").getAsString();
                 String msg = switch (kind) { case "learn" -> "새 스킬: " + name + " (Lv." + lv + ")"; case "grade" -> name + " 등급이 올랐습니다"; default -> name + " Lv." + lv; };
                 hud.toast(u.player, msg);
-                u.player.sendMessage(Component.text("[스킬] ", NamedTextColor.AQUA).append(Component.text(msg, NamedTextColor.WHITE)));
+                if (bridge == null || !bridge.modded(u.player)) u.player.sendMessage(Component.text("[스킬] ", NamedTextColor.AQUA).append(Component.text(msg, NamedTextColor.WHITE)));   // 모드: HUD 위 작은 알림만
             };
             world.onKilled = (u, by) -> {
                 if (u instanceof kr.rucserver.rpg.mob.MobUnit m) mobs.killed(m, by);

@@ -64,7 +64,13 @@ public final class RpgHud {
         effects(g, mc, w, skillY - 20);
         if (RpgState.showStats) stats(g, mc, w, h);
         if (RpgState.showMinimap) minimap(g, mc);
-        if (!RpgState.toast.isEmpty()) g.drawCenteredString(mc.font, RpgState.toast, w / 2, skillY - 32, 0xFFFFD27A);
+        if (!RpgState.toast.isEmpty()) {   // 스킬 사용 · 습득 알림: HUD 위에 작게 (사용자 지시)
+            g.pose().pushMatrix();
+            g.pose().translate(w / 2f, skillY - 30);
+            g.pose().scale(0.75f, 0.75f);
+            g.drawCenteredString(mc.font, RpgState.toast, 0, 0, 0xFFFFD27A);
+            g.pose().popMatrix();
+        }
     }
 
     // ── 스태미나 (바닐라 배고픔 자리 · 모양) ─────────────────────────
@@ -100,7 +106,7 @@ public final class RpgHud {
         int y = h - 49;
         boolean mana = !RpgState.res.equals("energy"), energy = !RpgState.res.equals("mana");
         if (mana) {
-            row(g, w / 2 + 91, y, pts(RpgState.mana, RpgState.manaMax), tex("hud/mana_full"), tex("hud/mana_half"), tex("hud/mana_empty"), false);
+            bottles(g, w / 2 + 91, y, pts(RpgState.mana, RpgState.manaMax));
             y -= 10;
         }
         if (energy) {
@@ -108,6 +114,28 @@ public final class RpgHud {
             y -= 10;
         }
         return Math.min(y + 10, h - 49 - 10);   // 왼쪽 방어구 줄(h-49)보다 위
+    }
+
+    private static final ItemStack WATER = net.minecraft.world.item.alchemy.PotionContents.createItemStack(Items.POTION, net.minecraft.world.item.alchemy.Potions.WATER);
+    private static final ItemStack BOTTLE = new ItemStack(Items.GLASS_BOTTLE);
+
+    /** 마나 = 바닐라 물병 아이콘 10개 (사용자 지시: 물 병 텍스처). 반 칸 = 빈 병 위에 물병 왼쪽 절반 */
+    private static void bottles(GuiGraphics g, int right, int y, int pts) {
+        for (int i = 0; i < 10; i++) {
+            int x = right - i * 8 - 9;
+            boolean full = i * 2 + 1 < pts, half = i * 2 + 1 == pts;
+            item(g, full ? WATER : BOTTLE, x, y);
+            if (half) { g.enableScissor(x, y - 1, x + 5, y + 10); item(g, WATER, x, y); g.disableScissor(); }
+        }
+    }
+
+    /** 16px 아이템을 9~10px 칸에 */
+    private static void item(GuiGraphics g, ItemStack s, int x, int y) {
+        g.pose().pushMatrix();
+        g.pose().translate(x - 0.5f, y - 0.5f);
+        g.pose().scale(10 / 16f, 10 / 16f);
+        g.renderItem(s, 0, 0);
+        g.pose().popMatrix();
     }
 
     private static int pts(float cur, float max) { return max <= 0 ? 0 : Math.round(20 * cur / max); }
@@ -156,7 +184,7 @@ public final class RpgHud {
 
     private static void stats(GuiGraphics g, Minecraft mc, int w, int h) {
         if (RpgState.stats.size() < 8) return;
-        int pw = 86, ph = 84, x = w / 2 - 91 - 4 - pw, y = h - ph - 1;
+        int pw = 86, ph = 84, x = w / 2 - 91 - 29 - 4 - pw, y = h - ph - 1;   // 왼손 칸(핫바 왼쪽 29px)과 겹치지 않게 (사용자 지시)
         g.fill(x, y, x + pw, y + ph, 0xB0281C14);
         g.fill(x, y, x + pw, y + 1, 0xFFC8A06A);
         for (int i = 0; i < 8; i++) {

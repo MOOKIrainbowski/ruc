@@ -29,7 +29,11 @@ public final class SkillVfx {
 
     private final RucRpg plugin;
 
-    public SkillVfx(RucRpg plugin) { this.plugin = plugin; }
+    public SkillVfx(RucRpg plugin) { this.plugin = plugin; this.sprites = new FxSprites(plugin); }
+
+    /** 스프라이트 이펙트 (Codex 작업 13 그림이 팩에 있을 때만) */
+    private final FxSprites sprites;
+    public FxSprites sprites() { return sprites; }
 
     public Color color(String el) {
         if ("heal".equals(el)) return Color.fromRGB(0x7DFF9A);
@@ -99,6 +103,7 @@ public final class SkillVfx {
         shock(at, Color.WHITE, 2.5, 4);
         w.playSound(at, Sound.ENTITY_WITHER_SPAWN, 0.35f, 1.6f);
         w.playSound(at, Sound.BLOCK_BEACON_ACTIVATE, 1f, 1.2f);
+        if (plugin.bridge() != null && plugin.bridge().modded(pl)) { plugin.hud().toast(pl, "궁극기 — " + name); return; }   // 모드: HUD 위 작은 알림 (사용자 지시)
         pl.showTitle(Title.title(Component.text("궁 극 기", TextColor.color(col.asRGB()), TextDecoration.BOLD),
                 Component.text("— " + name + " —", TextColor.color(0xFFF4B0)),
                 Title.Times.times(Duration.ofMillis(80), Duration.ofMillis(900), Duration.ofMillis(300))));
@@ -131,6 +136,8 @@ public final class SkillVfx {
             w.spawnParticle(basic ? Particle.CRIT : Particle.DUST, eye.clone().add(Math.cos(a) * r * 0.9, 0, Math.sin(a) * r * 0.9), 1, 0, 0, 0, 0, basic ? null : dust(col, 1.2f));
         }
         w.spawnParticle(Particle.SWEEP_ATTACK, eye.clone().add(f.clone().multiply(r * 0.6)), 1);
+        // 웹 swing: 앞쪽에 눕힌 반달 베기 그림이 퍼지며 사라짐
+        sprites.show(eye.clone().add(f.clone().multiply(r * 0.5)).add(0, -0.3, 0), "slash_arc", basic ? Color.WHITE : col, (float) (r * 0.9), (float) (r * 1.4), pl.getLocation().getYaw(), 200, true);
     }
 
     /** 범위 터짐 (self · ground · target) — 궁극기면 3겹 충격파 · 빛살 · 번쩍 · 불씨 */
@@ -138,6 +145,7 @@ public final class SkillVfx {
         Location at = new Location(w, xPx / RpgWorld.PX, baseY + 0.2, yPx / RpgWorld.PX);
         double r = Math.max(0.8, rPx / RpgWorld.PX);
         Color col = color(el);
+        sprites.show(at.clone().add(0, 0.05, 0), "shock", col, (float) (r * 0.6), (float) (r * 2.2), 0, 350, true);   // 웹 shock: 퍼지는 충격파 원
         if (!ult) {
             shock(at, col, r, 0);
             w.spawnParticle(Particle.DUST, at.clone().add(0, 0.5, 0), (int) (r * 12), r * 0.5, 0.4, r * 0.5, 0, dust(col, 1.3f));
@@ -153,6 +161,8 @@ public final class SkillVfx {
                 w.spawnParticle(Particle.END_ROD, at.clone().add(Math.cos(a) * d, 0.3 + d * 0.15, Math.sin(a) * d), 1, 0, 0, 0, 0);
         }
         w.spawnParticle(Particle.FLASH, at.clone().add(0, 1, 0), 2, 0, 0, 0, 0, Color.WHITE);
+        sprites.burst(at.clone().add(0, 1.2, 0), col, (float) Math.max(2.5, r * 1.6));   // 웹 ultImpact 터짐 프레임
+        sprites.show(at.clone().add(0, 0.05, 0), "ring", Color.WHITE, (float) (r * 0.4), (float) (r * 2.8), 0, 500, true);
         w.spawnParticle(Particle.EXPLOSION_EMITTER, at, 1);
         w.spawnParticle(Particle.LAVA, at, 16, r * 0.4, 0.2, r * 0.4, 0);
         w.playSound(at, Sound.ENTITY_GENERIC_EXPLODE, 1f, 0.8f);
@@ -163,6 +173,7 @@ public final class SkillVfx {
         if (e == null) return;
         e.getWorld().spawnParticle(Particle.HEART, e.getLocation().add(0, e.getHeight() + 0.3, 0), 4, 0.4, 0.2, 0.4, 0);
         e.getWorld().spawnParticle(Particle.HAPPY_VILLAGER, e.getLocation().add(0, 1, 0), 10, 0.4, 0.6, 0.4, 0);
+        sprites.show(e.getLocation().add(0, e.getHeight() + 0.4, 0), "heal", Color.fromRGB(0x4CC764), 0.5f, 0.9f, 0, 500, false);
     }
 
     public void shield(Entity e) {
@@ -173,6 +184,7 @@ public final class SkillVfx {
             e.getWorld().spawnParticle(Particle.DUST, c.clone().add(Math.cos(a) * 0.8, Math.sin(a * 2) * 0.5, Math.sin(a) * 0.8), 1, 0, 0, 0, 0, dust(Color.fromRGB(0xF2F2F2), 1f));
         }
         e.getWorld().playSound(c, Sound.ITEM_ARMOR_EQUIP_NETHERITE, 0.6f, 1.4f);
+        sprites.show(c, "shield", Color.fromRGB(0xBFE9FF), 1.4f, 2.2f, 0, 450, false);
     }
 
     public void blink(Location from, Location to) {

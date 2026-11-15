@@ -71,6 +71,7 @@ public final class RucRpgClient implements ClientModInitializer {
 
         RpgHud.register();
         SelfTest.register();
+        AccessoryPanel.register();
     }
 
     private static void tick(Minecraft mc) {
