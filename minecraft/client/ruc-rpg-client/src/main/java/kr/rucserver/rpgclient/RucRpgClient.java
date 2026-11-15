@@ -24,7 +24,7 @@ import java.util.Map;
  */
 public final class RucRpgClient implements ClientModInitializer {
 
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;   // 2 = HUD 미니맵 켬/끔 · 장신구 칸(종류 6)
     private static final Map<KeyMapping, String> KEYS = new LinkedHashMap<>();
     private static KeyMapping mapKey;
     private static int helloWait;

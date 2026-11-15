@@ -49,6 +49,7 @@ final class SelfTest {
                     if (menu.slots.get(k).getItem().getHoverName().getString().contains(arg)) { mc.gameMode.handleInventoryMouseClick(menu.containerId, k, 0, net.minecraft.world.inventory.ClickType.PICKUP, mc.player); break; }
                 wait = 10;
             }
+            case "acc" -> { RucRpgClient.send(out -> { out.writeByte(2); out.writeUTF("acc:" + arg); }); wait = 10; }   // 장신구 칸 누르기와 같음
             case "look" -> { String[] a = arg.split(" "); mc.player.setYRot(Float.parseFloat(a[0])); mc.player.setXRot(Float.parseFloat(a[1])); wait = 5; }
             default -> log("모르는 단계: " + st[0]);
         }

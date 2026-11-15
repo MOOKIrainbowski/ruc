@@ -38,7 +38,7 @@ import java.util.concurrent.ConcurrentHashMap;
 public final class ClientBridge implements Listener, PluginMessageListener {
 
     public static final String CHANNEL = "ruc:rpg";
-    public static final int VERSION = 1;
+    public static final int VERSION = 2;   // 2 = HUD 미니맵 켬/끔 · 장신구 칸(종류 6)
     private static final Map<String, String> SLOT = Map.of("Q", "Q", "C", "W", "Z", "E", "R", "R");
 
     private final RucRpg plugin;
@@ -71,12 +71,17 @@ public final class ClientBridge implements Listener, PluginMessageListener {
     }
 
     private void hello(Player p, int version) {
-        modded.add(p.getUniqueId());
+        if (version == VERSION) modded.add(p.getUniqueId());
         send(p, out -> { out.writeByte(1); out.writeInt(VERSION); });
         sendMap(p);
         lastHud.remove(p.getUniqueId());
         if (plugin.accessories() != null) plugin.accessories().send(p);
-        if (version != VERSION) p.sendMessage(Component.text("러크 RPG 모드가 최신이 아닙니다 — 새 판을 받아 주세요 (모드 " + version + " / 서버 " + VERSION + ")", NamedTextColor.YELLOW));
+        if (version != VERSION) {   // 통신 모양이 바뀌면 옛 모드는 HUD 를 잘못 읽음 → 안내하고 내보냄
+            String url = plugin.getConfig().getString("client.url", "https://ruc-server.vercel.app/rpg-mod");
+            p.kick(Component.text("러크 RPG 모드를 새 판으로 바꿔 주세요 (모드 " + version + " / 서버 " + VERSION + ")
+", NamedTextColor.GOLD).append(Component.text(url, NamedTextColor.AQUA)));
+            return;
+        }
     }
 
     private void key(Player p, String action) {

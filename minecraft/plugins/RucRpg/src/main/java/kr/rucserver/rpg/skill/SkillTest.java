@@ -38,7 +38,8 @@ public final class SkillTest {
         if (u == null) return;
         u.gmNoCost = true;
         u.gmInvuln = true;
-        Location base = plugin.worlds().spawn("field");
+        var fm = plugin.worlds().map("field");   // 맵 가운데 (시작 위치는 포털 옆이라 뒤로 구르는 스킬이 포털로 빠졌음)
+        Location base = fm == null ? null : kr.rucserver.rpg.world.RpgWorlds.safe(plugin.worlds().at("field", fm.w * 8, fm.h * 8));
         if (base == null) { admin.sendMessage(Component.text("초원 맵이 없습니다", NamedTextColor.RED)); return; }
         List<String> rows = new ArrayList<>();
         rows.add("id\t이름\t판정\t대상\t기대\t측정\t오류");
