@@ -91,6 +91,18 @@ public final class ItemRuntime implements Listener {
     /** 장비가 바뀔 수 있는 일 뒤에 (다음 틱) */
     public void refreshLater(Player p) { Bukkit.getScheduler().runTask(plugin, () -> refresh(p)); }
 
+    /** 접속 때: 예전 종이 모양 포션 · 영약을 바닐라 포션 모양(마시는 동작)으로 바꿈 — 템플릿 · 희귀도 · 개수 그대로 (2026-11-15) */
+    @EventHandler
+    public void onJoinConvert(org.bukkit.event.player.PlayerJoinEvent e) {
+        Player p = e.getPlayer();
+        ItemStack[] inv = p.getInventory().getContents();
+        for (int s = 0; s < inv.length; s++) {
+            ItemService.Inst i = items.read(inv[s]);
+            if (i == null || inv[s].getType() == org.bukkit.Material.POTION || ItemService.drinkColor(items.tpl(i.tpl())) == null) continue;
+            p.getInventory().setItem(s, items.create(i.tpl(), i.rarity(), inv[s].getAmount()));
+        }
+    }
+
     public void refresh(Player p) {
         PlayerUnit u = plugin.runtime().unit(p);
         if (u == null) return;
@@ -154,6 +166,7 @@ public final class ItemRuntime implements Listener {
         if (i == null || ItemService.isGear(items.tpl(i.tpl()))) return;
         JsonObject t = items.tpl(i.tpl());
         if (!t.has("use") && !t.has("heal") && !t.has("skill")) return;   // 재료 · 부가석 등: 바닐라 상호작용 그대로 (Codex 리뷰 4)
+        if (it.getType() == org.bukkit.Material.POTION) return;   // 포션 · 영약: 바닐라 마시는 동작 → 다 마시면 onConsume 에서 효과
         PlayerUnit u = plugin.runtime().unit(p);
         if (u == null) return;
         e.setCancelled(true);
@@ -161,9 +174,25 @@ public final class ItemRuntime implements Listener {
         if (err != null) plugin.hud().toast(p, err);
     }
 
-    /** 바닐라 음식 · 포션을 먹는 동작은 RPG 아이템에선 막음 (우클릭 즉시 사용) */
+    /**
+     * 다 마심: 바닐라 소비는 막고(취소) RPG 효과를 씀 — use() 가 한 개를 뺌. 못 쓰는 상황(쿨 · 던전 포션 한도 · 가득 참)이면 안 줄어들고 안내.
+     * 음식 등 바닐라 먹기 동작이 없는 RPG 아이템은 그대로 막음.
+     */
     @EventHandler(priority = EventPriority.HIGH)
-    public void onConsume(PlayerItemConsumeEvent e) { if (items.read(e.getItem()) != null) e.setCancelled(true); }
+    public void onConsume(PlayerItemConsumeEvent e) {
+        ItemService.Inst i = items.read(e.getItem());
+        if (i == null) return;
+        e.setCancelled(true);
+        if (e.getItem().getType() != org.bukkit.Material.POTION) return;
+        Player p = e.getPlayer();
+        PlayerUnit u = plugin.runtime().unit(p);
+        if (u == null) return;
+        boolean main = e.getHand() == EquipmentSlot.HAND;
+        ItemStack held = main ? p.getInventory().getItemInMainHand() : p.getInventory().getItemInOffHand();
+        if (items.read(held) == null || !items.read(held).tpl().equals(i.tpl())) return;
+        String err = use(u, held, i);
+        if (err != null) plugin.hud().toast(p, err);
+    }
 
     private static String bookGrade(String r) {
         return switch (r) { case "legendary" -> "trans"; case "mythic" -> "high"; case "rare", "advanced" -> "mid"; default -> "low"; };

@@ -12,7 +12,7 @@ import net.minecraft.client.Screenshot;
 final class SelfTest {
 
     private static String[] steps;
-    private static int i = -1, wait, joinTicks;
+    private static int i = -1, wait, joinTicks, useLeft;
 
     static void register() {
         String s = System.getProperty("ruc.selftest");
@@ -24,6 +24,7 @@ final class SelfTest {
     private static void tick(Minecraft mc) {
         if (mc.player == null) return;
         if (i < 0) { if (!RpgState.active && joinTicks++ < 100) return; i = 0; wait = 40; log("시작 (악수 " + RpgState.active + "), 맵 = " + RpgState.map); }
+        if (useLeft > 0 && --useLeft == 0) mc.options.keyUse.setDown(false);
         if (wait-- > 0) return;
         if (i >= steps.length) { log("끝"); mc.stop(); return; }
         String[] st = steps[i++].trim().split(" ", 2);
@@ -36,6 +37,11 @@ final class SelfTest {
             case "map" -> { mc.setScreen(new MapScreen()); wait = 10; }
             case "close" -> { mc.setScreen(null); wait = 5; }
             case "click" -> { if (mc.player.containerMenu != null) mc.gameMode.handleInventoryMouseClick(mc.player.containerMenu.containerId, Integer.parseInt(arg), 0, net.minecraft.world.inventory.ClickType.PICKUP, mc.player); wait = 10; }
+            case "hold" -> {   // 단축바에서 이 바닐라 아이템(예: potion)을 든 칸 고르기
+                for (int k = 0; k < 9; k++) if (net.minecraft.core.registries.BuiltInRegistries.ITEM.getKey(mc.player.getInventory().getItem(k).getItem()).getPath().equals(arg)) { mc.player.getInventory().setSelectedSlot(k); break; }
+                wait = 5;
+            }
+            case "use" -> { mc.options.keyUse.setDown(true); useLeft = Integer.parseInt(arg); wait = 0; }
             case "look" -> { String[] a = arg.split(" "); mc.player.setYRot(Float.parseFloat(a[0])); mc.player.setXRot(Float.parseFloat(a[1])); wait = 5; }
             default -> log("모르는 단계: " + st[0]);
         }

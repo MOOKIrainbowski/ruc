@@ -263,7 +263,7 @@ public final class PlayerRuntime implements Listener {
         if (u == null) return;
         u.dead = false;
         // 죽기 전 효과 · 잠금을 비움 — 기절 · 속박 · 빙결 등이 부활 뒤에도 남아 못 움직이던 것 (사용자 확인 2026-11-15, 봇: 부활 뒤 이동 속성이 느려진 채로 남음)
-        u.fx.clear();
+        u.fx.removeIf(x -> { var d = plugin.combat().defs().get(x.id); return d == null || !d.keep(); });   // 영약 등 '쓰러져도 남는' 효과는 둠
         u.dr.clear();
         u.lockUntil = 0;
         u.dashUntil = 0;

@@ -137,6 +137,7 @@ public class ItemService {
         Inst i = new Inst(gear ? UUID.randomUUID().toString() : null, tplId, r, 0, gear ? rollSpecials(t, r) : new JsonArray(),
                 durMax, durMax, new JsonArray(), new JsonArray(), null);
         ItemStack it = new ItemStack(baseMaterial(t), stackable(t) ? Math.max(1, Math.min(qty, 64)) : 1);
+        if (it.getType() == Material.POTION) { drinkable(it, drinkColor(t)); it.setData(io.papermc.paper.datacomponent.DataComponentTypes.MAX_STACK_SIZE, 64); }
         write(it, i);
         return it;
     }
@@ -177,10 +178,42 @@ public class ItemService {
     private static final String[] ARMOR_MAT = {"LEATHER", "CHAINMAIL", "IRON", "DIAMOND", "GOLDEN", "NETHERITE"};
     private static final String[] TOOL_MAT = {"WOODEN", "STONE", "IRON", "DIAMOND", "GOLDEN", "NETHERITE"};
 
+    /**
+     * 마시는 아이템(포션 · 영약)의 물약 색 — 아니면 null. 웹 아이콘 색: 체력 빨강 · 마나 파랑 · 기력 주황, 영약은 효과 색.
+     */
+    public static org.bukkit.Color drinkColor(JsonObject t) {
+        String kind = str(t, "kind"), icon = str(t, "icon");
+        if (icon == null) return null;
+        if ("potion".equals(kind)) return switch (icon) {
+            case "potion_hp" -> org.bukkit.Color.fromRGB(0xE5484D);
+            case "potion_mp" -> org.bukkit.Color.fromRGB(0x2F7BFF);
+            case "potion_en" -> org.bukkit.Color.fromRGB(0xFF8A1F);
+            default -> org.bukkit.Color.fromRGB(0xF2C94C);
+        };
+        if (icon.startsWith("elixir")) return switch (icon) {
+            case "elixir_power" -> org.bukkit.Color.fromRGB(0xD9363E);
+            case "elixir_luck" -> org.bukkit.Color.fromRGB(0x2ECC71);
+            case "elixir_iron" -> org.bukkit.Color.fromRGB(0x9AA3AD);
+            default -> org.bukkit.Color.fromRGB(0xB57EDC);
+        };
+        return null;
+    }
+
+    /** 바닐라 포션 겉모양 + 0.8초 마시기(바닐라 1.6초보다 빠르게 — 웹은 바로 씀) · 빈 병 안 남김 · 바닐라 물약 효과 없음 */
+    @SuppressWarnings("UnstableApiUsage")
+    private static void drinkable(ItemStack it, org.bukkit.Color c) {
+        it.setData(io.papermc.paper.datacomponent.DataComponentTypes.POTION_CONTENTS, io.papermc.paper.datacomponent.item.PotionContents.potionContents().customColor(c).build());
+        it.setData(io.papermc.paper.datacomponent.DataComponentTypes.CONSUMABLE, io.papermc.paper.datacomponent.item.Consumable.consumable()
+                .consumeSeconds(0.8f).animation(io.papermc.paper.datacomponent.item.consumable.ItemUseAnimation.DRINK)
+                .sound(net.kyori.adventure.key.Key.key("minecraft", "entity.generic.drink")).hasConsumeParticles(false).build());
+        it.unsetData(io.papermc.paper.datacomponent.DataComponentTypes.USE_REMAINDER);
+    }
+
     public Material baseMaterial(JsonObject t) {
         String icon = str(t, "icon"), kind = str(t, "kind");
         int tier = tierOf(t.has("lv") ? t.get("lv").getAsInt() : 1);
         if (str(t, "enchant") != null) return Material.ENCHANTED_BOOK;   // 부가석 = 바닐라 마법부여 책 (사용자 지정)
+        if (drinkColor(t) != null) return Material.POTION;   // 포션 · 영약 = 바닐라 포션 모양 + 마시는 동작 (사용자 지시 2026-11-15)
         if ("weapon".equals(kind) && "sword".equals(icon)) return Material.valueOf(TOOL_MAT[tier] + "_SWORD");
         if ("weapon".equals(kind) && "axe".equals(icon)) return Material.valueOf(TOOL_MAT[tier] + "_AXE");
         if ("armor".equals(kind)) {
@@ -215,7 +248,7 @@ public class ItemService {
             if (i.name() != null) d.set(kName, PersistentDataType.STRING, i.name());
         }
         String model = modelOf(t, i.tpl(), i.rarity());
-        if (model != null && Gui.hasModel(model)) m.setItemModel(new NamespacedKey("ruc", Gui.id(model)));
+        if (model != null && Gui.hasModel(model) && it.getType() != Material.POTION) m.setItemModel(new NamespacedKey("ruc", Gui.id(model)));
         JsonObject rd = rarity.getAsJsonObject(i.rarity());
         TextColor rc = TextColor.fromHexString(rd.get("color").getAsString());
         String title = (i.name() != null ? i.name() : t.get("name").getAsString()) + (i.enh() > 0 && i.name() == null ? " +" + i.enh() : "");
