@@ -260,8 +260,25 @@ public final class GlyphHud extends Hud {
         l.moveTo(lx("stats.panel"));
         l.glyph("stats.bg.panel");
         for (int i = 0; i < STAT_ROWS.length; i++) {
-            l.moveTo(lx("stats.icon." + STAT_ROWS[i][0]));
+            String row = STAT_ROWS[i][0];
+            l.moveTo(lx("stats.icon." + row));
             l.glyph("stats.icon." + i + "." + STAT_ROWS[i][1]);
+            JsonObject t = layout.has("stats.text." + row) ? layout.getAsJsonObject("stats.text." + row) : null;
+            if (t == null) continue;   // 글자 글리프가 없는 팩 (Codex 작업 7 전)
+            l.moveTo(t.getAsJsonObject("label").get("x").getAsInt());
+            l.glyph(t.getAsJsonObject("label").get("name").getAsString());
+            l.moveTo(t.getAsJsonObject("value").get("x").getAsInt());
+            for (char ch : statText(u, row).toCharArray())
+                l.glyph("stats.num." + row + "." + (ch == '.' ? "dot" : ch == '%' ? "pct" : String.valueOf(ch)));
         }
+    }
+
+    /** 웹 CombatHud statRows 와 같은 모양: 소수 한 자리(.0 은 뺌), 치명은 % */
+    static String statText(PlayerUnit u, String row) {
+        String k = switch (row) { case "attack" -> "atk"; case "spell" -> "ap"; case "attack_speed" -> "atkSpeed"; case "move_speed" -> "moveSpeed"; default -> row; };
+        double v = u.st.get(k);
+        if (row.equals("crit")) return Math.round(v * 100) + "%";
+        double r = Math.round(v * 10) / 10.0;
+        return r == Math.floor(r) ? String.valueOf((long) r) : String.valueOf(r);
     }
 }

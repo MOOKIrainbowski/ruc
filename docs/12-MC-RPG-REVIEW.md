@@ -302,3 +302,13 @@
 - `pet/PetRuntime.java` 주인 스탯 · 위협 · 수명 · 월드 이동 정리, `realm/Realm.java` 주간 정산 · 영향력 버퍼 손실 · 국가 명령 권한.
 - `world/Gathering.java` 자리 시드 · 블록 복구, `world/Projectiles.java` 벽 판정, 부활 · `RucRpg.WRITER` 한 줄 저장.
 형식은 AGENTS.md 그대로(`파일:줄` · 실패 장면 · 고칠 방향). 작업 7 · 8 다음에.
+
+## Claude 리뷰 2 (Codex 작업 3 · 7 — 셰이더 · 미니맵)
+Java 쪽(`hud/MinimapHud.java`)을 계약대로 붙여 봇으로 확인: 첫 보스바 = 미니맵(분홍), 지도 글리프 색이 10블록 이동에 +5타일씩 바뀜, 머리 픽셀 64/사람, 방향 글리프, 스탯 표 글자 41조각 — **계약 · 글리프 쪽은 맞음**. 그러나:
+1. **[긴급] `resourcepack/assets/minecraft/shaders/core/rendertype_text.vsh:1-2,45` · `.fsh:1-5`** — 1.21.11 셰이더 형식이 아님. 바닐라 1.21.11 원본(클라이언트 jar 에서 꺼내 `.scratch/vanilla-1.21.11/assets/minecraft/shaders/` 에 둠)은 `#version 330`, `#moj_import <minecraft:fog.glsl>` · `<minecraft:dynamictransforms.glsl>` · `<minecraft:projection.glsl>`(ProjMat · ModelViewMat · ColorModulator 는 uniform 블록), 출력은 `sphericalVertexDistance` · `cylindricalVertexDistance`, fsh 는 `apply_fog(color, sphericalVertexDistance, cylindricalVertexDistance, FogEnvironmentalStart, FogEnvironmentalEnd, FogRenderDistanceStart, FogRenderDistanceEnd, FogColor)`. 지금 파일은 `#version 150` · `<fog.glsl>` · 선언 없는 `ProjMat` · `vertexDistance` · `uniform vec4 ColorModulator` → **컴파일 실패**. 실패 장면: 클라이언트가 팩을 받으면 셰이더 오류로 리소스 다시 불러오기가 실패 → 팩 전체(HUD 글꼴 · 아이콘 · 모델)가 안 먹을 수 있음. 이 시제품은 작업 3 때 이미 `web/public/pack/ruc-war.zip`(운영)에 들어가 있음. → 고칠 방향: 바닐라 1.21.11 두 파일을 그대로 베이스로 미니맵 분기만 얹기. 같은 include · 이름 · 출력 변수를 쓰고, 미니맵이 아닌 글자는 바닐라와 **바이트 단위로 같은 경로**를 타게.
+2. `rendertype_text.vsh` 만 바꾸면 보스바 제목 말고도 **모든 글자**(채팅 · 이름표 · 표지판)가 이 셰이더를 탐. 정점마다 `taggedGlyph` 로 텍스처 4번 × 4종 = 16번 샘플 — 글자 많은 화면(채팅 100줄)에서 비용. → 먼저 `Color` 로 거르기(지도 = B 0 · 픽셀/화살표는 정해진 표식), 또는 `textureLod` 를 `minimapKind` 후보에서만. 1순위는 1번, 2번은 가능하면.
+3. 보스바 막대 자체는 계약에 없었음 → Claude 가 `assets/minecraft/textures/gui/sprites/boss_bar/pink_background.png` · `pink_progress.png` 를 투명(182×5)으로 넣고 미니맵 보스바를 분홍으로 씀(다른 플러그인 보스바는 분홍을 안 씀). 이 두 파일은 Claude 소유.
+4. 검증: 실제 클라이언트가 없으면 최소한 GLSL 문법 검사기(glslangValidator 등)로 두 파일 컴파일 — `#moj_import` 는 include 를 펼친 사본으로. 못 하면 "못 함"으로.
+
+## Codex 작업 9 — [긴급 · 작업 8 보다 먼저] 텍스트 셰이더를 1.21.11 형식으로
+위 Claude 리뷰 2 의 1 · 2 · 4. 파일 소유권: `rendertype_text.vsh/.fsh` = Codex. 끝나면 `## Codex 작업 9 완료 보고` 에 바닐라와의 diff 요약 + 검증 결과. pack.py 는 Claude 가 돌려 운영 zip 을 만듦(당신은 돌리지 말 것).

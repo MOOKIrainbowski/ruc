@@ -52,6 +52,7 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.pet.PetRuntime pets;
     private kr.rucserver.rpg.quest.UserQuests uquests;
     private kr.rucserver.rpg.realm.Realm realm;
+    private kr.rucserver.rpg.hud.MinimapHud minimap;
     public kr.rucserver.rpg.realm.Realm realm() { return realm; }
     public kr.rucserver.rpg.quest.UserQuests uquests() { return uquests; }
     public kr.rucserver.rpg.pet.PetRuntime pets() { return pets; }
@@ -112,6 +113,8 @@ public final class RucRpg extends JavaPlugin {
                 else if (u instanceof kr.rucserver.rpg.pet.PetRuntime.PetUnit q) pets.unsummon(q);
                 else if (u instanceof kr.rucserver.rpg.character.PlayerUnit pu) runtime.killed(pu, by);
             };
+            minimap = kr.rucserver.rpg.hud.MinimapHud.load(this);
+            if (minimap != null) getServer().getPluginManager().registerEvents(minimap, this);
             Hud glyph = kr.rucserver.rpg.hud.GlyphHud.load(this);
             hud = glyph != null ? glyph : new Hud();
             getLogger().info(glyph != null ? "HUD: 리소스팩 글리프" : "HUD: 글자판 (hud-glyphs.json v2 없음)");
