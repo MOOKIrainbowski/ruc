@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/goblin/head"
+    "layer0": "ruc:entity/mob/goblin/head",
+    "particle": "ruc:entity/mob/goblin/head"
   },
   "elements": [
     {

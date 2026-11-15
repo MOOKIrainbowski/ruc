@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/shadow_vine/core"
+    "layer0": "ruc:entity/mob/shadow_vine/core",
+    "particle": "ruc:entity/mob/shadow_vine/core"
   },
   "elements": [
     {

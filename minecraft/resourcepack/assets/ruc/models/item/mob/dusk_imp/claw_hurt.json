@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/dusk_imp/claw_hurt"
+    "layer0": "ruc:entity/mob/dusk_imp/claw_hurt",
+    "particle": "ruc:entity/mob/dusk_imp/claw_hurt"
   },
   "elements": [
     {

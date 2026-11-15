@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/decoy/body"
+    "layer0": "ruc:entity/mob/decoy/body",
+    "particle": "ruc:entity/mob/decoy/body"
   },
   "elements": [
     {

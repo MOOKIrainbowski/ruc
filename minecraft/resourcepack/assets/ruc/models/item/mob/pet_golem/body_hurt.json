@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/pet_golem/body_hurt"
+    "layer0": "ruc:entity/mob/pet_golem/body_hurt",
+    "particle": "ruc:entity/mob/pet_golem/body_hurt"
   },
   "elements": [
     {

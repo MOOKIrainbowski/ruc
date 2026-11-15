@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/tree_knight/leaf_crown_hurt"
+    "layer0": "ruc:entity/mob/tree_knight/leaf_crown_hurt",
+    "particle": "ruc:entity/mob/tree_knight/leaf_crown_hurt"
   },
   "elements": [
     {

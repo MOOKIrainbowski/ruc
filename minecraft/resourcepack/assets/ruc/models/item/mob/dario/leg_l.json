@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/dario/leg_l"
+    "layer0": "ruc:entity/mob/dario/leg_l",
+    "particle": "ruc:entity/mob/dario/leg_l"
   },
   "elements": [
     {

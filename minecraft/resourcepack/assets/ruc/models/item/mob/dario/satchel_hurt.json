@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/dario/satchel_hurt"
+    "layer0": "ruc:entity/mob/dario/satchel_hurt",
+    "particle": "ruc:entity/mob/dario/satchel_hurt"
   },
   "elements": [
     {

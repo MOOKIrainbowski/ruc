@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/eldra/trunk"
+    "layer0": "ruc:entity/mob/eldra/trunk",
+    "particle": "ruc:entity/mob/eldra/trunk"
   },
   "elements": [
     {

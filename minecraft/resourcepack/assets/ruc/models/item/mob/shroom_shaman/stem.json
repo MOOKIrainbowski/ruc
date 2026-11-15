@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/shroom_shaman/stem"
+    "layer0": "ruc:entity/mob/shroom_shaman/stem",
+    "particle": "ruc:entity/mob/shroom_shaman/stem"
   },
   "elements": [
     {

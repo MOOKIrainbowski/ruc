@@ -76,6 +76,21 @@ public final class RewardOutbox {
         Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> flush(who));
     }
 
+    /** 부르는 쪽 트랜잭션 안에서 한 줄 (Codex 리뷰 6: 상태 확정과 보상 기록을 한 번에). gold > 0 이면 Gold 줄, stack 이 있으면 아이템 줄. 커밋 뒤 kick() */
+    public void insertTx(Connection c, UUID who, String reason, String sender, long gold, ItemStack stack) throws SQLException {
+        String r = trunc(reason);
+        try (PreparedStatement ins = c.prepareStatement(
+                "INSERT INTO rpg_reward_outbox (uuid, reason, sender, gold, tpl, rarity, qty, done, created, item) SELECT ?,?,?,?,NULL,NULL,?,FALSE,?,? FROM DUAL WHERE NOT EXISTS (SELECT 1 FROM rpg_reward_outbox WHERE uuid = ? AND reason = ?)")) {
+            ins.setString(1, who.toString()); ins.setString(2, r); ins.setString(3, trunc(sender)); ins.setLong(4, gold);
+            ins.setInt(5, stack == null ? 0 : stack.getAmount()); ins.setLong(6, System.currentTimeMillis()); ins.setBytes(7, stack == null ? null : stack.serializeAsBytes());
+            ins.setString(8, who.toString()); ins.setString(9, r);
+            ins.executeUpdate();
+        }
+    }
+
+    /** 남은 보상 바로 보내 보기 */
+    public void kick(UUID who) { Bukkit.getScheduler().runTaskAsynchronously(plugin, () -> flush(who)); }
+
     private static String trunc(String s) { return s.length() > 32 ? s.substring(0, 32) : s; }
 
     /** 남은 보상 보내기 (비동기에서 부름). who = null 이면 전부 */

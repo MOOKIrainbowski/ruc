@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/shadow_vine/tendril_back"
+    "layer0": "ruc:entity/mob/shadow_vine/tendril_back",
+    "particle": "ruc:entity/mob/shadow_vine/tendril_back"
   },
   "elements": [
     {

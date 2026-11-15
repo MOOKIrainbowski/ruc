@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/pet_spirit/core"
+    "layer0": "ruc:entity/mob/pet_spirit/core",
+    "particle": "ruc:entity/mob/pet_spirit/core"
   },
   "elements": [
     {

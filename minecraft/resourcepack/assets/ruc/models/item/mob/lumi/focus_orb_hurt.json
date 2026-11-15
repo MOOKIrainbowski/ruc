@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/lumi/focus_orb_hurt"
+    "layer0": "ruc:entity/mob/lumi/focus_orb_hurt",
+    "particle": "ruc:entity/mob/lumi/focus_orb_hurt"
   },
   "elements": [
     {

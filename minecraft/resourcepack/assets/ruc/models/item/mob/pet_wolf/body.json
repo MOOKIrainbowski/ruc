@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/pet_wolf/body"
+    "layer0": "ruc:entity/mob/pet_wolf/body",
+    "particle": "ruc:entity/mob/pet_wolf/body"
   },
   "elements": [
     {

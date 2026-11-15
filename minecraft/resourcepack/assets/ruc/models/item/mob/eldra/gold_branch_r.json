@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/eldra/gold_branch_r"
+    "layer0": "ruc:entity/mob/eldra/gold_branch_r",
+    "particle": "ruc:entity/mob/eldra/gold_branch_r"
   },
   "elements": [
     {

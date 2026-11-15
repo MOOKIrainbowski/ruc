@@ -8,7 +8,7 @@ import { registerHooks } from "node:module";
 const root=resolve(dirname(fileURLToPath(import.meta.url)),"../..");
 const assetRoot=join(root,"minecraft/resourcepack/assets/ruc");
 const resourceRoot=join(root,"minecraft/plugins/RucRpg/src/main/resources");
-const previewRoot=join(root,".scratch/codex/mc-models");
+const previewRoot=join(root,".scratch/codex/mc-models/v2");
 registerHooks({resolve(specifier,context,nextResolve){
   if(specifier.startsWith(".")&&!/\.(?:[cm]?js|json|node|ts)$/.test(specifier)){try{return nextResolve(`${specifier}.ts`,context);}catch{}}
   return nextResolve(specifier,context);
@@ -31,8 +31,9 @@ type Actor={id:string;kind:"mob"|"pet"|"npc";name:string;role:string;source?:str
 type CanvasLike={width:number;height:number;image?:ImageDataShim};
 type Face={texture:string;uv:number[]};
 type BoxElement={from:number[];to:number[];faces:Record<string,Face>;shade:boolean};
-type ModelJson={parent:string;textures:Record<string,string>;elements:BoxElement[]};
+type ModelJson={textures:Record<string,string>;elements:BoxElement[]};
 type EntityModel={name:string;parent:string|null;pivot:V3;model:string;hurtModel:string;origin:[8,8,8];role:string};
+type Sprite={width:number;height:number;pixels:Uint8Array};
 const rgba=(w:number,h:number)=>new Uint8Array(w*h*4);
 function set(p:Uint8Array,w:number,h:number,x:number,y:number,c:RGB,a=255){if(x<0||y<0||x>=w||y>=h)return;const i=(y*w+x)*4;p[i]=c[0];p[i+1]=c[1];p[i+2]=c[2];p[i+3]=a;}
 function get(p:Uint8Array,w:number,x:number,y:number):RGB{const i=(y*w+x)*4;return [p[i],p[i+1],p[i+2]];}
@@ -44,6 +45,26 @@ function pngChunk(type:string,body:Uint8Array){const n=Buffer.from(type,"ascii")
 function encodePng(w:number,h:number,p:Uint8Array){const scan=Buffer.alloc((w*4+1)*h);for(let y=0;y<h;y++)scan.set(p.subarray(y*w*4,(y+1)*w*4),y*(w*4+1)+1);const ih=Buffer.alloc(13);ih.writeUInt32BE(w,0);ih.writeUInt32BE(h,4);ih[8]=8;ih[9]=6;return Buffer.concat([Buffer.from([137,80,78,71,13,10,26,10]),pngChunk("IHDR",ih),pngChunk("IDAT",deflateSync(scan,{level:9})),pngChunk("IEND",new Uint8Array())]);}
 function writePng(path:string,w:number,h:number,p:Uint8Array){mkdirSync(dirname(path),{recursive:true});writeFileSync(path,encodePng(w,h,p));}
 function pixels(c:CanvasLike){if(!c.image)throw new Error("mobFrames returned no ImageData");return new Uint8Array(c.image.data.buffer.slice(0));}
+const spriteCache=new Map<string,Sprite>();
+const spriteBoundsCache=new WeakMap<Sprite,[number,number,number,number]>();
+function sourceSprite(source:string|undefined):Sprite|undefined{
+  if(!source)return undefined;
+  let s=spriteCache.get(source);if(!s){const frame=mobFrames(source)[0][0];s={width:frame.width,height:frame.height,pixels:pixels(frame)};spriteCache.set(source,s);}return s;
+}
+function spriteBounds(s:Sprite):[number,number,number,number]{
+  let b=spriteBoundsCache.get(s);if(b)return b;let x0=s.width,y0=s.height,x1=-1,y1=-1;
+  for(let y=0;y<s.height;y++)for(let x=0;x<s.width;x++)if(s.pixels[(y*s.width+x)*4+3]>24){x0=Math.min(x0,x);y0=Math.min(y0,y);x1=Math.max(x1,x);y1=Math.max(y1,y);}
+  if(x1<0)throw new Error("empty web actor sprite");b=[x0,y0,x1+1,y1+1];spriteBoundsCache.set(s,b);return b;
+}
+function actorBounds(a:Actor):[number,number,number,number]{
+  let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;
+  for(const b of a.bones)for(const part of [{offset:[0,0,0] as V3,size:b.size},...(b.parts??[])])for(let i=0;i<2;i++){
+    const x=b.pivot[0]+(part.offset[0]+(i?1:-1)*part.size[0]/2)*a.scale/16;
+    const y=b.pivot[1]+(part.offset[1]+(i?1:-1)*part.size[1]/2)*a.scale/16;
+    x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);
+  }
+  return [x0,y0,x1,y1];
+}
 const OUTLINE="#2b1d2e";
 const npcPalette:Record<string,Palette>={
   lumi:{base:"#dff7ee",light:"#fff9e9",shade:"#84c9bd",accent:"#5bcb4a",eye:"#55a8bd",dark:OUTLINE,skin:"#f0c3a2",metal:"#d8ad54",glow:"#fff4b0"},
@@ -56,7 +77,7 @@ const npcPalette:Record<string,Palette>={
 };
 function extractPalette(source:string|undefined):Palette|undefined{
   if(!source)return undefined;
-  const frame=mobFrames(source)[0][0],p=pixels(frame),counts=new Map<string,number>();
+  const p=sourceSprite(source)!.pixels,counts=new Map<string,number>();
   for(let i=0;i<p.length;i+=4){if(p[i+3]<96)continue;const c=hx([p[i],p[i+1],p[i+2]]);if(c.toLowerCase()===OUTLINE)continue;counts.set(c,(counts.get(c)??0)+1);}
   const colors=[...counts].sort((a,b)=>b[1]-a[1]).map(x=>x[0]);if(colors.length<3)return undefined;
   const lum=(c:string)=>{const [r,g,b]=hex(c);return .2126*r+.7152*g+.0722*b;};
@@ -189,8 +210,28 @@ function textureFor(a:Actor,b:Bone,pal:Palette):Uint8Array{
   fillTile(p,16,0,dark(base,.16),light(base,.18),dark(lo,.1),pal.accent,b.role+"-side",a.id);
   fillTile(p,0,16,dark(base,.08),light(base,.12),dark(lo,.1),pal.accent,b.role+"-back",a.id);
   fillTile(p,16,16,light(base,.12),light(hi,.08),base,pal.accent,b.role+"-top",a.id);
+  const sprite=sourceSprite(a.source);
+  if(sprite){
+    const [sx0,sy0,sx1,sy1]=spriteBounds(sprite),[ax0,ay0,ax1,ay1]=actorBounds(a),aw=Math.max(.001,ax1-ax0),ah=Math.max(.001,ay1-ay0);
+    const wx0=b.pivot[0]-b.size[0]*a.scale/32,wx1=b.pivot[0]+b.size[0]*a.scale/32;
+    const wy0=b.pivot[1]-b.size[1]*a.scale/32,wy1=b.pivot[1]+b.size[1]*a.scale/32;
+    const x0=sx0+(wx0-ax0)/aw*(sx1-sx0),x1=sx0+(wx1-ax0)/aw*(sx1-sx0);
+    const y0=sy0+(ay1-wy1)/ah*(sy1-sy0),y1=sy0+(ay1-wy0)/ah*(sy1-sy0);
+    const sample=(x:number,y:number):[RGB,number]=>{x=Math.max(0,Math.min(sprite.width-1,Math.floor(x)));y=Math.max(0,Math.min(sprite.height-1,Math.floor(y)));const i=(y*sprite.width+x)*4;return [[sprite.pixels[i],sprite.pixels[i+1],sprite.pixels[i+2]],sprite.pixels[i+3]];};
+    const tint=(c:RGB,k:number):RGB=>c.map(v=>Math.round(v*k)) as RGB;
+    for(let y=0;y<16;y++)for(let x=0;x<16;x++){
+      const [c,alpha]=sample(x0+(x+.5)*(x1-x0)/16,y0+(y+.5)*(y1-y0)/16);
+      set(p,32,32,x,y,c,alpha);
+      const [left,la]=sample(x0+.5,y0+(y+.5)*(y1-y0)/16),[right,ra]=sample(x1-.5,y0+(y+.5)*(y1-y0)/16);
+      set(p,32,32,16+x,y,tint(x<8?right:left,.68),x<8?ra:la);
+      const [top,ta]=sample(x0+(x+.5)*(x1-x0)/16,y0+.5),[bottom,ba]=sample(x0+(x+.5)*(x1-x0)/16,y1-.5);
+      set(p,32,32,x,16+y,tint(y<8?bottom:top,y<8?.72:.86),y<8?ba:ta);
+      const [back,backAlpha]=sample(x1-(x+.5)*(x1-x0)/16,y0+(y+.5)*(y1-y0)/16);
+      set(p,32,32,16+x,16+y,tint(back,.62),backAlpha);
+    }
+  }
   const dot=(x:number,y:number,c:string)=>set(p,32,32,x,y,hex(c));
-  if(["head","face","eye-core","mask","muzzle","orb","spirit"].some(k=>b.role.includes(k))){
+  if(!sprite&&["head","face","eye-core","mask","muzzle","orb","spirit"].some(k=>b.role.includes(k))){
     // Front-facing eyes and a tiny glint make every humanoid/creature read from the player view.
     dot(4,4,pal.dark);dot(11,4,pal.dark);dot(4,5,pal.eye);dot(11,5,pal.eye);
     if(b.role.includes("muzzle")){for(let x=6;x<=9;x++)dot(x,10,pal.light);dot(7,11,pal.dark);dot(9,11,pal.dark);}
@@ -211,12 +252,13 @@ function centeredElement(size:V3,offset:V3,tone:string):BoxElement{
 }
 function modelFor(b:Bone,texture:string):ModelJson{
   const elements=[centeredElement(b.size,[0,0,0],texture),...(b.parts??[]).map(p=>centeredElement(p.size,p.offset,texture))];
-  return {parent:"minecraft:item/generated",textures:{layer0:texture},elements};
+  return {textures:{layer0:texture,particle:texture},elements};
 }
 const modelIds=new Set<string>();
 function writeBone(a:Actor,b:Bone,pal:Palette):EntityModel{
   const id=`mob/${a.id}/${b.name}`,hurt=`${id}_hurt`;for(const m of [id,hurt]){if(modelIds.has(m))throw new Error(`duplicate model id ${m}`);modelIds.add(m);}
   const tex=`entity/mob/${a.id}/${b.name}`,baseP=textureFor(a,b,pal),variants:[[string,Uint8Array],[string,Uint8Array]]=[[id,baseP],[hurt,hurtTexture(baseP)]];
+  if(!actorTextures.has(a.id))actorTextures.set(a.id,new Map());actorTextures.get(a.id)!.set(b.name,baseP);
   for(const [modelId,pix] of variants){
     const itemPath=`items/${modelId}.json`,modelPath=`models/item/${modelId}.json`,modelRef=`ruc:item/${modelId}`;
     mkdirSync(dirname(join(assetRoot,itemPath)),{recursive:true});mkdirSync(dirname(join(assetRoot,modelPath)),{recursive:true});
@@ -271,32 +313,61 @@ function animations(a:Actor):Record<string,unknown>{
   return base;
 }
 
-function polyFill(p:Uint8Array,w:number,h:number,pts:[number,number][],c:RGB){
-  const minX=Math.max(0,Math.floor(Math.min(...pts.map(x=>x[0])))),maxX=Math.min(w-1,Math.ceil(Math.max(...pts.map(x=>x[0]))));
-  const minY=Math.max(0,Math.floor(Math.min(...pts.map(x=>x[1])))),maxY=Math.min(h-1,Math.ceil(Math.max(...pts.map(x=>x[1]))));
-  for(let y=minY;y<=maxY;y++)for(let x=minX;x<=maxX;x++){let inside=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const [xi,yi]=pts[i],[xj,yj]=pts[j];if((yi>y)!==(yj>y)&&x<(xj-xi)*(y-yi)/(yj-yi)+xi)inside=!inside;}if(inside)set(p,w,h,x,y,c);}
-}
-function renderCompare(a:Actor,pal:Palette,sourceCanvas?:CanvasLike){
-  const w=360,h=164,p=rgba(w,h),centerY=142,ppb=Math.min(80/a.height,44);
-  const bg=[245,239,222] as RGB;for(let y=0;y<h;y++)for(let x=0;x<w;x++)set(p,w,h,x,y,bg);
-  for(let x=0;x<w;x++)for(let y=145;y<148;y++)set(p,w,h,x,y,[190,170,133]);
-  // Reference sprite at left, nearest-neighbour enlarged for shape comparison.
-  if(sourceCanvas?.image){const s=sourceCanvas.image,side=Math.min(s.width,s.height),size=104,ox=8,oy=29;for(let y=0;y<size;y++)for(let x=0;x<size;x++){const sx=Math.floor(x*side/size),sy=Math.floor(y*side/size),si=(sy*s.width+sx)*4;if(s.data[si+3]>24)set(p,w,h,ox+x,oy+y,[s.data[si],s.data[si+1],s.data[si+2]]);}}
-  const paintBox=(b:Bone,view:"front"|"side",xCenter:number)=>{
-    const all=[{offset:[0,0,0] as V3,size:b.size,tone:b.tone},...(b.parts??[])];
-    for(const part of all){const [sx,sy,sz]=part.size,off=part.offset;const cx=b.pivot[0]+off[0]*a.scale/16,cy=b.pivot[1]+off[1]*a.scale/16,cz=b.pivot[2]+off[2]*a.scale/16,dx=sx*a.scale/16/2,dy=sy*a.scale/16/2,dz=sz*a.scale/16/2;
-      const corners:{x:number;y:number;z:number}[]=[];for(const x of [cx-dx,cx+dx])for(const y of [cy-dy,cy+dy])for(const z of [cz-dz,cz+dz])corners.push({x,y,z});
-      const project=(q:{x:number;y:number;z:number}):[number,number]=>view==="front"?[xCenter+(q.x+q.z*.22)*ppb,centerY-q.y*ppb+q.z*.13*ppb]:[xCenter+(q.z+q.x*.2)*ppb,centerY-q.y*ppb+q.x*.12*ppb];
-      const tone=part.tone?pal[part.tone]:undefined,front=view==="front"?[1,3,7,5]:[4,5,7,6],side=view==="front"?[2,3,7,6]:[1,3,7,5],top=[3,7,6,2];
-      for(const [face,color] of [[side,pal.shade],[top,pal.light],[front,tone??pal.base]] as [number[],string][]){const pts=face.map(i=>project(corners[i]));polyFill(p,w,h,pts,hex(color));}
-      const pts=front.map(i=>project(corners[i]));for(let i=0;i<pts.length;i++){const [x0,y0]=pts[i],[x1,y1]=pts[(i+1)%pts.length],steps=Math.max(Math.abs(x1-x0),Math.abs(y1-y0));for(let q=0;q<=steps;q++)set(p,w,h,Math.round(x0+(x1-x0)*q/Math.max(1,steps)),Math.round(y0+(y1-y0)*q/Math.max(1,steps)),hex(mix(pal.dark,pal.base,.18)));}
-    }
+type Projected={x:number;y:number;depth:number};
+type View="front"|"side"|"three-quarter";
+const actorTextures=new Map<string,Map<string,Uint8Array>>();
+function renderCompare(a:Actor,source:Sprite|undefined){
+  const w=720,h=280,p=rgba(w,h),bg=[245,239,222] as RGB;
+  for(let y=0;y<h;y++)for(let x=0;x<w;x++)set(p,w,h,x,y,bg);
+  const sourceSize=112;
+  if(source)for(let y=0;y<sourceSize;y++)for(let x=0;x<sourceSize;x++){
+    const sx=Math.floor(x*source.width/sourceSize),sy=Math.floor(y*source.height/sourceSize),i=(sy*source.width+sx)*4;
+    if(source.pixels[i+3]>24)set(p,w,h,4+x,38+y,[source.pixels[i],source.pixels[i+1],source.pixels[i+2]]);
+  }
+  const views:View[]=["front","side","three-quarter"],panelX=[130,325,520],panelW=190;
+  const faces:Record<string,{corners:number[];uv:number[]}>= {
+    south:{corners:[1,3,7,5],uv:[0,0,0,8,8,8,8,0]}, north:{corners:[4,6,2,0],uv:[0,8,0,16,8,16,8,8]},
+    east:{corners:[5,7,6,4],uv:[8,0,8,8,16,8,16,0]}, west:{corners:[0,2,3,1],uv:[8,0,8,8,16,8,16,0]},
+    up:{corners:[3,2,6,7],uv:[8,8,8,16,16,16,16,8]}, down:{corners:[0,1,5,4],uv:[0,8,0,16,8,16,8,8]},
   };
-  // Front and side box passes share each actor's declared pivots, dimensions and palette.
-  const views:["front"|"side",number][]=[["front",176],["side",284]];
-  for(const [view,x] of views){const ordered=[...a.bones].sort((u,v)=>view==="front"?u.pivot[2]-v.pivot[2]:u.pivot[0]-v.pivot[0]);for(const bone of ordered)paintBox(bone,view,x);}
-  // Simple panel separators and bottom labels encoded as geometric marks, avoiding external fonts.
-  for(const x of [120,232])for(let y=20;y<148;y++)set(p,w,h,x,y,[196,180,150]);
+  const actorBox=(b:Bone)=>{
+    const add=(size:V3,offset:V3)=>({from:size.map((n,i)=>8+offset[i]-n/2),to:size.map((n,i)=>8+offset[i]+n/2)});
+    const boxes=[add(b.size,[0,0,0]),...(b.parts??[]).map(q=>add(q.size,q.offset))];
+    return boxes.map(box=>Array.from({length:8},(_,i)=>{
+      const model=[i&4?box.to[0]:box.from[0],i&2?box.to[1]:box.from[1],i&1?box.to[2]:box.from[2]];
+      return [b.pivot[0]+(model[0]-8)*a.scale/16,b.pivot[1]+(model[1]-8)*a.scale/16,b.pivot[2]+(model[2]-8)*a.scale/16] as V3;
+    }));
+  };
+  const allCorners=a.bones.flatMap(actorBox).flat();
+  for(let vi=0;vi<views.length;vi++){
+    const view=views[vi],left=panelX[vi],right=left+panelW;
+    const project=(q:V3):Projected=>view==="front"?{x:q[0]+q[2]*.22,y:-q[1]+q[2]*.13,depth:q[2]}:view==="side"?{x:q[2]+q[0]*.22,y:-q[1]+q[0]*.13,depth:q[0]}:{x:(q[0]-q[2])*.7071,y:-q[1]+(q[0]+q[2])*.16,depth:(q[0]+q[2])*.7071};
+    const bounds=allCorners.map(project),minX=Math.min(...bounds.map(q=>q.x)),maxX=Math.max(...bounds.map(q=>q.x)),minY=Math.min(...bounds.map(q=>q.y)),maxY=Math.max(...bounds.map(q=>q.y));
+    const scale=Math.min((panelW-20)/Math.max(.1,maxX-minX),205/Math.max(.1,maxY-minY)),originX=(left+right)/2-(minX+maxX)*scale/2,groundY=250-maxY*scale;
+    const zbuf=new Float32Array(w*h);zbuf.fill(-Infinity);
+    const triangle=(pts:Projected[],uvs:number[][],tex:Uint8Array)=>{
+      const area=(pts[1].x-pts[0].x)*(pts[2].y-pts[0].y)-(pts[1].y-pts[0].y)*(pts[2].x-pts[0].x);if(Math.abs(area)<1e-5)return;
+      const x0=Math.max(left,Math.floor(Math.min(...pts.map(q=>q.x)))),x1=Math.min(right-1,Math.ceil(Math.max(...pts.map(q=>q.x))));
+      const y0=Math.max(26,Math.floor(Math.min(...pts.map(q=>q.y)))),y1=Math.min(251,Math.ceil(Math.max(...pts.map(q=>q.y))));
+      for(let y=y0;y<=y1;y++)for(let x=x0;x<=x1;x++){
+        const px=x+.5,py=y+.5,w0=((pts[1].x-px)*(pts[2].y-py)-(pts[1].y-py)*(pts[2].x-px))/area,w1=((pts[2].x-px)*(pts[0].y-py)-(pts[2].y-py)*(pts[0].x-px))/area,w2=1-w0-w1;
+        if(w0<0||w1<0||w2<0)continue;
+        const depth=w0*pts[0].depth+w1*pts[1].depth+w2*pts[2].depth,index=y*w+x;if(depth<=zbuf[index])continue;
+        const u=w0*uvs[0][0]+w1*uvs[1][0]+w2*uvs[2][0],v=w0*uvs[0][1]+w1*uvs[1][1]+w2*uvs[2][1],tx=Math.max(0,Math.min(31,Math.floor(u*2))),ty=Math.max(0,Math.min(31,Math.floor(v*2))),ti=(ty*32+tx)*4;
+        if(tex[ti+3]<24)continue;zbuf[index]=depth;set(p,w,h,x,y,[tex[ti],tex[ti+1],tex[ti+2]]);
+      }
+    };
+    for(const b of a.bones){const texture=actorTextures.get(a.id)?.get(b.name);if(!texture)throw new Error(`missing render texture ${a.id}/${b.name}`);
+      for(const corners of actorBox(b))for(const face of Object.values(faces)){
+        const pts=face.corners.map(i=>{const q=project(corners[i]);return {x:originX+q.x*scale,y:groundY+q.y*scale,depth:q.depth};});
+        const uv=Array.from({length:4},(_,i)=>[face.uv[i*2],face.uv[i*2+1]]);
+        triangle([pts[0],pts[1],pts[2]],[uv[0],uv[1],uv[2]],texture);triangle([pts[0],pts[2],pts[3]],[uv[0],uv[2],uv[3]],texture);
+      }
+    }
+    for(let x=left;x<right;x++)for(let y=253;y<256;y++)set(p,w,h,x,y,[190,170,133]);
+    for(let y=27;y<256;y++)set(p,w,h,left,y,[196,180,150]);
+  }
+  for(let y=27;y<256;y++)set(p,w,h,120,y,[196,180,150]);
   return p;
 }
 const packFile=join(resourceRoot,"pack-models.json");let prior:string[]=[];try{const j=JSON.parse(readFileSync(packFile,"utf8"));if(Array.isArray(j))prior=j.filter((v:any)=>typeof v==="string");}catch{}
@@ -304,12 +375,10 @@ const manifest:Record<string,unknown>={version:1};let boneCount=0;
 for(const actor of actors){
   const pal=actorPalette(actor);const bones:EntityModel[]=actor.bones.map(b=>writeBone(actor,b,pal));boneCount+=bones.length;
   manifest[actor.id]={kind:actor.kind,name:actor.name,role:actor.role,source:actor.source??null,scale:actor.scale,height:actor.height,bones,anims:animations(actor)};
-  if(["wolf","frost_harpy","tree_knight","fern","eldra","dario"].includes(actor.id)){
-    const source=actor.source?mobFrames(actor.source)[0][0]:undefined;writePng(join(previewRoot,`${actor.id}_front-side.png`),360,164,renderCompare(actor,pal,source));
-  }
+  if(actor.kind!=="pet")writePng(join(previewRoot,`${actor.id}_front-side-45.png`),720,280,renderCompare(actor,sourceSprite(actor.source)));
 }
 const models=[...new Set([...prior,...modelIds])].sort();writeFileSync(packFile,JSON.stringify(models,null,2)+"\n","utf8");
 writeFileSync(join(resourceRoot,"models.json"),JSON.stringify(manifest,null,2)+"\n","utf8");
-const report={actors:actors.length,mobs:Object.keys(MOBS).length,pets:Object.keys(PETS).length,npcs:Object.keys(NPCS).length,bones:boneCount,baseAndHurtModels:modelIds.size,uniquePackModels:models.length,previewDir:join(".scratch","codex","mc-models"),previewIds:["wolf","frost_harpy","tree_knight","fern","eldra","dario"],textureSize:[32,32],textureDensity:"32 pixels per 16-model-unit block; four 16x16 face tiles",notes:"Web mobFrames supplies palette extraction and the left-hand comparison images; NPC palette/wardrobe designs are role-specific from quests.NPCS.",};
+const report={actors:actors.length,mobs:Object.keys(MOBS).length,pets:Object.keys(PETS).length,npcs:Object.keys(NPCS).length,bones:boneCount,baseAndHurtModels:modelIds.size,uniquePackModels:models.length,previewDir:join(".scratch","codex","mc-models","v2"),previewIds:actors.filter(a=>a.kind!=="pet").map(a=>a.id),textureSize:[32,32],textureDensity:"32 pixels per 16-model-unit block; four 16x16 face tiles",notes:"Front-face texture pixels project from the corresponding web mob frame; NPCs use role-specific generated textures because the web shares player-character artwork.",};
 writeFileSync(join(resourceRoot,"model-build.json"),JSON.stringify(report,null,2)+"\n","utf8");
 console.log(`RPG models: ${actors.length} actors, ${boneCount} bones, ${modelIds.size} base/hurt item models, ${models.length} pack ids.`);

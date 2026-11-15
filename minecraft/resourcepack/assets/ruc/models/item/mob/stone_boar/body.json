@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/stone_boar/body"
+    "layer0": "ruc:entity/mob/stone_boar/body",
+    "particle": "ruc:entity/mob/stone_boar/body"
   },
   "elements": [
     {

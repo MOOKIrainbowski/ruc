@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/volt/satchel"
+    "layer0": "ruc:entity/mob/volt/satchel",
+    "particle": "ruc:entity/mob/volt/satchel"
   },
   "elements": [
     {

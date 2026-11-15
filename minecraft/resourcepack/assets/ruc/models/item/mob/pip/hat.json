@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/pip/hat"
+    "layer0": "ruc:entity/mob/pip/hat",
+    "particle": "ruc:entity/mob/pip/hat"
   },
   "elements": [
     {

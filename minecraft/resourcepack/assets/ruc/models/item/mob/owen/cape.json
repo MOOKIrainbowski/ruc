@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/owen/cape"
+    "layer0": "ruc:entity/mob/owen/cape",
+    "particle": "ruc:entity/mob/owen/cape"
   },
   "elements": [
     {

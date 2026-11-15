@@ -78,7 +78,9 @@ public final class Gathering implements Listener {
                     if (!b.getType().isAir() && !LOOK.containsValue(b.getType()) && !b.isPassable()) continue;
                     if (b.getRelative(0, -1, 0).isPassable()) continue;
                     Node n = new Node(pick, b);
-                    b.setType(LOOK.get(pick), false);
+                    // 켤 때는 비어 있다가 0~respawnMs 사이에 하나씩 생김 — 다시 켜서 바로 또 캐는 것 막기 (Codex 리뷰 6, 저장 없이)
+                    n.readyAt = System.currentTimeMillis() + (long) (Math.random() * defs.getAsJsonObject(pick).get("respawnMs").getAsLong());
+                    b.setType(Material.AIR, false);
                     nodes.put(b, n);
                     break;
                 }

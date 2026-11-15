@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/wolf/leg_0_hurt"
+    "layer0": "ruc:entity/mob/wolf/leg_0_hurt",
+    "particle": "ruc:entity/mob/wolf/leg_0_hurt"
   },
   "elements": [
     {

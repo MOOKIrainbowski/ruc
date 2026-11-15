@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/shadow_vine/eye_glint_hurt"
+    "layer0": "ruc:entity/mob/shadow_vine/eye_glint_hurt",
+    "particle": "ruc:entity/mob/shadow_vine/eye_glint_hurt"
   },
   "elements": [
     {

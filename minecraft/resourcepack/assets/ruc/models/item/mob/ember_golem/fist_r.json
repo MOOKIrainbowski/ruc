@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/ember_golem/fist_r"
+    "layer0": "ruc:entity/mob/ember_golem/fist_r",
+    "particle": "ruc:entity/mob/ember_golem/fist_r"
   },
   "elements": [
     {

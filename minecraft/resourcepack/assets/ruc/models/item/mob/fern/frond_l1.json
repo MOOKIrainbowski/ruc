@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/fern/frond_l1"
+    "layer0": "ruc:entity/mob/fern/frond_l1",
+    "particle": "ruc:entity/mob/fern/frond_l1"
   },
   "elements": [
     {

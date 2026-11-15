@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/totem_storm/spirit_hurt"
+    "layer0": "ruc:entity/mob/totem_storm/spirit_hurt",
+    "particle": "ruc:entity/mob/totem_storm/spirit_hurt"
   },
   "elements": [
     {

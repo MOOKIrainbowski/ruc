@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/pet_golem/leg_l"
+    "layer0": "ruc:entity/mob/pet_golem/leg_l",
+    "particle": "ruc:entity/mob/pet_golem/leg_l"
   },
   "elements": [
     {

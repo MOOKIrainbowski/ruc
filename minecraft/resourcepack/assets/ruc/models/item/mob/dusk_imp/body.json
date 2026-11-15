@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/dusk_imp/body"
+    "layer0": "ruc:entity/mob/dusk_imp/body",
+    "particle": "ruc:entity/mob/dusk_imp/body"
   },
   "elements": [
     {

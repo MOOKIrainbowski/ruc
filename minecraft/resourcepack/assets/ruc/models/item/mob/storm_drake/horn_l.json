@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/storm_drake/horn_l"
+    "layer0": "ruc:entity/mob/storm_drake/horn_l",
+    "particle": "ruc:entity/mob/storm_drake/horn_l"
   },
   "elements": [
     {

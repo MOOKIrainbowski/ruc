@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/mir/hair_hurt"
+    "layer0": "ruc:entity/mob/mir/hair_hurt",
+    "particle": "ruc:entity/mob/mir/hair_hurt"
   },
   "elements": [
     {

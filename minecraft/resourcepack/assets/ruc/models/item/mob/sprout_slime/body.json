@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/sprout_slime/body"
+    "layer0": "ruc:entity/mob/sprout_slime/body",
+    "particle": "ruc:entity/mob/sprout_slime/body"
   },
   "elements": [
     {

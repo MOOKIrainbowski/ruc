@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/fern/head_hurt"
+    "layer0": "ruc:entity/mob/fern/head_hurt",
+    "particle": "ruc:entity/mob/fern/head_hurt"
   },
   "elements": [
     {

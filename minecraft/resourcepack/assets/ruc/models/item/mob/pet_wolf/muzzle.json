@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/pet_wolf/muzzle"
+    "layer0": "ruc:entity/mob/pet_wolf/muzzle",
+    "particle": "ruc:entity/mob/pet_wolf/muzzle"
   },
   "elements": [
     {

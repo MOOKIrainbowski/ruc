@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/storm_drake/head_hurt"
+    "layer0": "ruc:entity/mob/storm_drake/head_hurt",
+    "particle": "ruc:entity/mob/storm_drake/head_hurt"
   },
   "elements": [
     {

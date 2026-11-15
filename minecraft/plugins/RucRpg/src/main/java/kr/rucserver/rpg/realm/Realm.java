@@ -201,12 +201,12 @@ public final class Realm {
         }
     }
 
-    /** 영향력 · 길드 경험치를 DB 로 (WRITER 에서) */
-    private void flush() {
+    /** 영향력 · 길드 경험치를 DB 로 (WRITER 에서). 실패하면 버퍼에 되돌리고 false */
+    public boolean flush() {
         Map<String, Long> fi;
         Map<Integer, Long> fg;
         synchronized (this) {
-            if (infl.isEmpty() && gxp.isEmpty()) return;
+            if (infl.isEmpty() && gxp.isEmpty()) return true;
             fi = new HashMap<>(infl); fg = new HashMap<>(gxp);
             infl.clear(); gxp.clear();
         }
@@ -228,9 +228,11 @@ public final class Realm {
                 }
             }
             c.commit();
+            return true;
         } catch (SQLException ex) {
             plugin.getLogger().warning("영지 영향력 저장 실패 — 다음에 다시: " + ex.getMessage());
             synchronized (this) { fi.forEach((k, v) -> infl.merge(k, v, Long::sum)); fg.forEach((k, v) -> gxp.merge(k, v, Long::sum)); }
+            return false;
         }
     }
 
@@ -247,18 +249,18 @@ public final class Realm {
 
     /** 주간 정산 (WRITER 에서): 지난주 영향력 1위가 이번 주 영주 (없으면 그대로). 사라진 길드의 영지 · 국가도 정리. force = 이번 주 영향력으로 바로(GM) */
     public void settle(boolean force) {
-        flush();
+        if (!flush()) return;   // 지난주 점수를 다 못 적었으면 정산하지 않음 — 다음 분에 다시 (Codex 리뷰 6)
         long cur = weekOf(System.currentTimeMillis());
         List<String> notices = new ArrayList<>();
         try (Connection c = db.getConnection(); Statement s = c.createStatement(); ResultSet rs = s.executeQuery("SELECT id, name, owner_guild, week FROM rpg_territories")) {
             while (rs.next()) {
                 int id = rs.getInt(1);
                 Integer was = rs.getObject(3) == null ? null : rs.getInt(3);
-                if (was != null && guild(was) == null) { exec("UPDATE rpg_territories SET owner_guild = NULL WHERE id = ?", id); owner.remove(id); was = null; }
+                if (was != null && guild(was) == null && exec("UPDATE rpg_territories SET owner_guild = NULL WHERE id = ?", id) == 1) { owner.remove(id); was = null; }
                 if (!force && rs.getLong(4) >= cur) continue;
                 List<Top> t = top(id, force ? cur : cur - 1, 1);
                 Integer now = t.isEmpty() || guild(t.get(0).guild()) == null ? was : Integer.valueOf(t.get(0).guild());
-                exec("UPDATE rpg_territories SET owner_guild = ?, week = ? WHERE id = ?", now, cur, id);
+                if (exec("UPDATE rpg_territories SET owner_guild = ?, week = ? WHERE id = ?", now, cur, id) != 1) continue;   // 실패하면 주차도 안 바뀜 → 다음 분에 다시
                 if (now != null) owner.put(id, now); else owner.remove(id);
                 if (now != null && !now.equals(was)) notices.add("‹" + guild(now).getName() + "› 길드가 「" + rs.getString(2) + "」의 새 영주가 되었습니다!");
             }

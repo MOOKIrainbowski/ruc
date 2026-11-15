@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/shroom_shaman/spots"
+    "layer0": "ruc:entity/mob/shroom_shaman/spots",
+    "particle": "ruc:entity/mob/shroom_shaman/spots"
   },
   "elements": [
     {

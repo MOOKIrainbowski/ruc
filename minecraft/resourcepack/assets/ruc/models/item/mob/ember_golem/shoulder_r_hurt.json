@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/ember_golem/shoulder_r_hurt"
+    "layer0": "ruc:entity/mob/ember_golem/shoulder_r_hurt",
+    "particle": "ruc:entity/mob/ember_golem/shoulder_r_hurt"
   },
   "elements": [
     {

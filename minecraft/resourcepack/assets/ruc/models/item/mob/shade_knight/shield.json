@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/shade_knight/shield"
+    "layer0": "ruc:entity/mob/shade_knight/shield",
+    "particle": "ruc:entity/mob/shade_knight/shield"
   },
   "elements": [
     {

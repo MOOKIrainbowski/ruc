@@ -236,6 +236,7 @@ public final class RucRpg extends JavaPlugin {
         if (pets != null) pets.removeAll();
         if (runtime != null) runtime.writeBackAll();
         if (chars != null) chars.saveAllNow();
+        if (realm != null) WRITER.execute(realm::flush);   // 30초 버퍼에 남은 영향력 · 길드 경험치 (Codex 리뷰 6)
         WRITER.shutdown();   // 줄 선 저장(퀘스트 · 장비 · 창고 · 캐릭터)을 다 쓰고 끔 — 비동기 작업은 끌 때 버려지므로
         try { if (!WRITER.awaitTermination(15, java.util.concurrent.TimeUnit.SECONDS)) getLogger().severe("저장 줄이 15초 안에 안 끝남 — 일부 저장이 빠졌을 수 있음"); } catch (InterruptedException ignored) { Thread.currentThread().interrupt(); }
     }

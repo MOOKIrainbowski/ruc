@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/wolf/fang_r"
+    "layer0": "ruc:entity/mob/wolf/fang_r",
+    "particle": "ruc:entity/mob/wolf/fang_r"
   },
   "elements": [
     {

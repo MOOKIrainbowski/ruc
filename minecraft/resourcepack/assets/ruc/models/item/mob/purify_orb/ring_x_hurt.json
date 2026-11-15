@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/purify_orb/ring_x_hurt"
+    "layer0": "ruc:entity/mob/purify_orb/ring_x_hurt",
+    "particle": "ruc:entity/mob/purify_orb/ring_x_hurt"
   },
   "elements": [
     {

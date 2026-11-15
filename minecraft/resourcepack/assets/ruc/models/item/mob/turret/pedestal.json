@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/turret/pedestal"
+    "layer0": "ruc:entity/mob/turret/pedestal",
+    "particle": "ruc:entity/mob/turret/pedestal"
   },
   "elements": [
     {

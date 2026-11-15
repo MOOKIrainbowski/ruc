@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/frost_harpy/feather_l"
+    "layer0": "ruc:entity/mob/frost_harpy/feather_l",
+    "particle": "ruc:entity/mob/frost_harpy/feather_l"
   },
   "elements": [
     {

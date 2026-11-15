@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/volt/hammer_handle_hurt"
+    "layer0": "ruc:entity/mob/volt/hammer_handle_hurt",
+    "particle": "ruc:entity/mob/volt/hammer_handle_hurt"
   },
   "elements": [
     {

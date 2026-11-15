@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/owen/focus_orb"
+    "layer0": "ruc:entity/mob/owen/focus_orb",
+    "particle": "ruc:entity/mob/owen/focus_orb"
   },
   "elements": [
     {

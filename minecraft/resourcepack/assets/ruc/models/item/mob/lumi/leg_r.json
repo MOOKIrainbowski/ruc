@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/lumi/leg_r"
+    "layer0": "ruc:entity/mob/lumi/leg_r",
+    "particle": "ruc:entity/mob/lumi/leg_r"
   },
   "elements": [
     {

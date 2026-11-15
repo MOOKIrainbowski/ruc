@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/totem_heal/mask"
+    "layer0": "ruc:entity/mob/totem_heal/mask",
+    "particle": "ruc:entity/mob/totem_heal/mask"
   },
   "elements": [
     {

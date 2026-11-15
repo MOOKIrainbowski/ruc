@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/totem_storm/crossbar"
+    "layer0": "ruc:entity/mob/totem_storm/crossbar",
+    "particle": "ruc:entity/mob/totem_storm/crossbar"
   },
   "elements": [
     {

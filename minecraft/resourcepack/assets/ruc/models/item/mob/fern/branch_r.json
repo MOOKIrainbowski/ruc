@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/fern/branch_r"
+    "layer0": "ruc:entity/mob/fern/branch_r",
+    "particle": "ruc:entity/mob/fern/branch_r"
   },
   "elements": [
     {

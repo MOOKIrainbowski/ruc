@@ -125,7 +125,10 @@ public final class UserQuests implements Listener {
                 ps.setString(1, id.toString());
                 try (ResultSet rs = ps.executeQuery()) { while (rs.next()) m.put(rs.getLong(1), rs.getInt(2)); }
             } catch (SQLException ex) { plugin.getLogger().warning("유저 퀘스트 받은 목록 실패: " + ex.getMessage()); }
-            takes.put(id, m);
+            Bukkit.getScheduler().runTask(plugin, () -> {   // 주 스레드에서 합침 — 불러오는 사이 수락한 것은 지우지 않음 (Codex 리뷰 6)
+                Map<Long, Integer> cur = takes.computeIfAbsent(id, k -> new LinkedHashMap<>());
+                m.forEach(cur::putIfAbsent);
+            });
         });
     }
 
@@ -353,9 +356,14 @@ public final class UserQuests implements Listener {
     }
 
     private String abandon(Player p, long id) {
-        if (takesOf(p).remove(id) == null) return "받은 퀘스트가 아닙니다";
-        if (update("UPDATE rpg_uquest_takes SET state = 'dropped' WHERE qid = ? AND uuid = ? AND state = 'active'", id, p.getUniqueId().toString()) == 1)
-            update("UPDATE rpg_uquests SET taken = taken - 1 WHERE id = ?", id);
+        if (!takesOf(p).containsKey(id)) return "받은 퀘스트가 아닙니다";
+        boolean ok = tx(c -> {   // DB 가 바뀐 뒤에만 메모리에서 뺌 (Codex 리뷰 6)
+            if (exec(c, "UPDATE rpg_uquest_takes SET state = 'dropped' WHERE qid = ? AND uuid = ? AND state = 'active'", id, p.getUniqueId().toString()) != 1) return false;
+            exec(c, "UPDATE rpg_uquests SET taken = taken - 1 WHERE id = ?", id);
+            return true;
+        });
+        if (!ok) return "처리하지 못했습니다. 잠시 뒤 다시 시도해 주세요";
+        takesOf(p).remove(id);
         return null;
     }
 
@@ -380,21 +388,43 @@ public final class UserQuests implements Listener {
 
     /** 완료 → 지급 (한 번만: take 상태 active → done 이 1행일 때만) */
     private void finish(Player p, Row r) {
-        if (update("UPDATE rpg_uquest_takes SET state = 'done' WHERE qid = ? AND uuid = ? AND state = 'active'", r.id(), p.getUniqueId().toString()) != 1) return;
+        if (!tx(c -> exec(c, "UPDATE rpg_uquest_takes SET state = 'done' WHERE qid = ? AND uuid = ? AND state = 'active'", r.id(), p.getUniqueId().toString()) == 1 && payout(c, r, p.getUniqueId()))) return;
+        plugin.outbox().kick(p.getUniqueId());
         takesOf(p).remove(r.id());
-        payout(r, p.getUniqueId());
         p.sendMessage(Component.text("[퀘스트 완료] 유저 퀘스트 「" + r.title() + "」 — 보상은 우편함으로 보냈어요", TextColor.color(0x7CFC7C)));
         p.playSound(p.getLocation(), org.bukkit.Sound.UI_TOAST_CHALLENGE_COMPLETE, 0.7f, 1.3f);
         Player owner = Bukkit.getPlayer(r.owner());
         if (owner != null) owner.sendMessage(Component.text("[퀘스트] 「" + r.title() + "」을(를) " + p.getName() + " 님이 완수했습니다", TextColor.color(0xF2C94C)));
     }
 
-    private void payout(Row r, UUID to) {
-        update("UPDATE rpg_uquests SET paid = paid + 1 WHERE id = ?", r.id());
+    /** 지급: 같은 트랜잭션 안에서 paid +1 (마지막 자리면 닫음) + outbox 줄 — 어느 하나라도 실패하면 전부 되돌림 (Codex 리뷰 6) */
+    private boolean payout(Connection c, Row r, UUID to) throws SQLException {
+        exec(c, "UPDATE rpg_uquests SET paid = paid + 1, status = CASE WHEN paid + 1 >= slots THEN 'closed' ELSE status END WHERE id = ?", r.id());
         String key = "uq" + r.id() + ":" + to.toString().substring(0, 8);
-        if (r.gold() > 0) plugin.outbox().enqueue(to, key, "유저 퀘스트", r.gold(), List.of());
-        if (r.item() != null) plugin.outbox().enqueueStack(to, key + ":i", "유저 퀘스트", ItemStack.deserializeBytes(r.item()));
-        if (r.paid() + 1 >= r.slots()) update("UPDATE rpg_uquests SET status = 'closed' WHERE id = ?", r.id());
+        if (r.gold() > 0) plugin.outbox().insertTx(c, to, key + ":g", "유저 퀘스트", r.gold(), null);
+        if (r.item() != null) plugin.outbox().insertTx(c, to, key + ":i", "유저 퀘스트", 0, ItemStack.deserializeBytes(r.item()));
+        return true;
+    }
+
+    private interface Work { boolean run(Connection c) throws SQLException; }
+
+    /** 한 트랜잭션 — run 이 false 거나 예외면 되돌림 */
+    private boolean tx(Work w) {
+        try (Connection c = db.getConnection()) {
+            c.setAutoCommit(false);
+            try {
+                if (!w.run(c)) { c.rollback(); return false; }
+                c.commit();
+                return true;
+            } catch (SQLException e) { c.rollback(); throw e; }
+        } catch (SQLException e) { plugin.getLogger().warning("유저 퀘스트 트랜잭션 실패: " + e.getMessage()); return false; }
+    }
+
+    private static int exec(Connection c, String sql, Object... args) throws SQLException {
+        try (PreparedStatement ps = c.prepareStatement(sql)) {
+            for (int i = 0; i < args.length; i++) ps.setObject(i + 1, args[i]);
+            return ps.executeUpdate();
+        }
     }
 
     /** 전달형: 인벤토리에서 n 개를 내면 등록자에게 우편으로, 받은 사람은 보상 */
@@ -403,16 +433,24 @@ public final class UserQuests implements Listener {
         if (r == null || !takesOf(p).containsKey(id) || !r.kind().equals("deliver")) return "받은 전달 퀘스트가 아닙니다";
         if (!r.status().equals("open") || r.expires() <= System.currentTimeMillis()) return "이미 마감된 퀘스트입니다";
         if (plugin.economy().count(p, r.target()) < r.n()) return targetName("deliver", r.target()) + " 이(가) " + (r.n() - plugin.economy().count(p, r.target())) + "개 모자랍니다";
-        if (update("UPDATE rpg_uquest_takes SET state = 'done' WHERE qid = ? AND uuid = ? AND state = 'active'", id, p.getUniqueId().toString()) != 1) return "이미 처리되었습니다";
-        plugin.economy().takeTpl(p, r.target(), r.n());
-        p.saveData();
         JsonObject t = plugin.items().tpl(r.target());
         ItemStack goods = plugin.items().create(r.target(), t.has("rarity") ? t.get("rarity").getAsString() : "common", r.n());
-        plugin.outbox().enqueueStack(r.owner(), "uqd" + id + ":" + p.getUniqueId().toString().substring(0, 8), "유저 퀘스트", goods);
+        // DB(완료 · 지급 · 등록자에게 물품) 를 한 번에 확정한 뒤에만 인벤토리에서 뺌 — DB 가 실패하면 아무것도 안 바뀜
+        boolean ok = tx(c -> exec(c, "UPDATE rpg_uquest_takes SET state = 'done' WHERE qid = ? AND uuid = ? AND state = 'active'", id, p.getUniqueId().toString()) == 1
+                && payout(c, r, p.getUniqueId()) && insertGoods(c, r, p, goods));
+        if (!ok) return "이미 처리되었거나 저장하지 못했습니다";
+        plugin.economy().takeTpl(p, r.target(), r.n());
+        p.saveData();
+        plugin.outbox().kick(r.owner());
+        plugin.outbox().kick(p.getUniqueId());
         takesOf(p).remove(id);
-        payout(r, p.getUniqueId());
         p.sendMessage(Component.text("[퀘스트 완료] 「" + r.title() + "」 전달 완료 — 보상은 우편함으로 보냈어요", TextColor.color(0x7CFC7C)));
         return null;
+    }
+
+    private boolean insertGoods(Connection c, Row r, Player p, ItemStack goods) throws SQLException {
+        plugin.outbox().insertTx(c, r.owner(), "uqd" + r.id() + ":" + p.getUniqueId().toString().substring(0, 8), "유저 퀘스트", 0, goods);
+        return true;
     }
 
     /** 등록자가 내림 — 진행 중인 사람이 있으면 못 내림. 남은 보상은 우편으로 반환 */
@@ -432,12 +470,22 @@ public final class UserQuests implements Listener {
         return out;
     }
 
+    /** 닫기 + 남은 보상 반환을 한 트랜잭션으로 (Codex 리뷰 6) — paid 는 트랜잭션 안에서 다시 읽음 */
     private boolean closeAndRefund(Row r) {
-        if (update("UPDATE rpg_uquests SET status = 'closed' WHERE id = ? AND status = 'open'", r.id()) != 1) return false;
-        int left = r.slots() - r.paid();
-        if (left > 0 && r.gold() > 0) plugin.outbox().enqueue(r.owner(), "uqr" + r.id(), "유저 퀘스트", r.gold() * left, List.of());
-        if (left > 0 && r.item() != null) plugin.outbox().enqueueStack(r.owner(), "uqr" + r.id() + ":i", "유저 퀘스트", ItemStack.deserializeBytes(r.item()));
-        return true;
+        boolean ok = tx(c -> {
+            if (exec(c, "UPDATE rpg_uquests SET status = 'closed' WHERE id = ? AND status = 'open'", r.id()) != 1) return false;
+            int paid;
+            try (PreparedStatement ps = c.prepareStatement("SELECT paid FROM rpg_uquests WHERE id = ?")) {
+                ps.setLong(1, r.id());
+                try (ResultSet rs = ps.executeQuery()) { rs.next(); paid = rs.getInt(1); }
+            }
+            int left = r.slots() - paid;
+            if (left > 0 && r.gold() > 0) plugin.outbox().insertTx(c, r.owner(), "uqr" + r.id() + ":g", "유저 퀘스트", r.gold() * left, null);
+            if (left > 0 && r.item() != null) plugin.outbox().insertTx(c, r.owner(), "uqr" + r.id() + ":i", "유저 퀘스트", 0, ItemStack.deserializeBytes(r.item()));
+            return true;
+        });
+        if (ok) plugin.outbox().kick(r.owner());
+        return ok;
     }
 
     /** 기한 지난 퀘스트 정리 (1분마다): 진행 중인 사람은 포기 처리 → 남은 보상 반환 */

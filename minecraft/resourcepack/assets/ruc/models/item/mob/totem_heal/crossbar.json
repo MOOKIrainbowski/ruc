@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/totem_heal/crossbar"
+    "layer0": "ruc:entity/mob/totem_heal/crossbar",
+    "particle": "ruc:entity/mob/totem_heal/crossbar"
   },
   "elements": [
     {

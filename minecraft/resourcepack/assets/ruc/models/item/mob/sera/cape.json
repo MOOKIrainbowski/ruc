@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/sera/cape"
+    "layer0": "ruc:entity/mob/sera/cape",
+    "particle": "ruc:entity/mob/sera/cape"
   },
   "elements": [
     {

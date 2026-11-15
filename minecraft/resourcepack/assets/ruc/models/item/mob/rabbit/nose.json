@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/rabbit/nose"
+    "layer0": "ruc:entity/mob/rabbit/nose",
+    "particle": "ruc:entity/mob/rabbit/nose"
   },
   "elements": [
     {

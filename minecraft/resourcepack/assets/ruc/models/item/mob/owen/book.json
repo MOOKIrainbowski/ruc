@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/owen/book"
+    "layer0": "ruc:entity/mob/owen/book",
+    "particle": "ruc:entity/mob/owen/book"
   },
   "elements": [
     {

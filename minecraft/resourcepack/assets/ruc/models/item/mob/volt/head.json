@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/volt/head"
+    "layer0": "ruc:entity/mob/volt/head",
+    "particle": "ruc:entity/mob/volt/head"
   },
   "elements": [
     {

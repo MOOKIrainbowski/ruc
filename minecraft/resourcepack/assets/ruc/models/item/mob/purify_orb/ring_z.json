@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/purify_orb/ring_z"
+    "layer0": "ruc:entity/mob/purify_orb/ring_z",
+    "particle": "ruc:entity/mob/purify_orb/ring_z"
   },
   "elements": [
     {

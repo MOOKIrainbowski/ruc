@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/twin_witch/head_r"
+    "layer0": "ruc:entity/mob/twin_witch/head_r",
+    "particle": "ruc:entity/mob/twin_witch/head_r"
   },
   "elements": [
     {

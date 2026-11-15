@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/moss_golem/moss_head"
+    "layer0": "ruc:entity/mob/moss_golem/moss_head",
+    "particle": "ruc:entity/mob/moss_golem/moss_head"
   },
   "elements": [
     {

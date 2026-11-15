@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/rabbit/ear_l"
+    "layer0": "ruc:entity/mob/rabbit/ear_l",
+    "particle": "ruc:entity/mob/rabbit/ear_l"
   },
   "elements": [
     {

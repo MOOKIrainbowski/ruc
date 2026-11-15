@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/mend_station/cross_v_hurt"
+    "layer0": "ruc:entity/mob/mend_station/cross_v_hurt",
+    "particle": "ruc:entity/mob/mend_station/cross_v_hurt"
   },
   "elements": [
     {

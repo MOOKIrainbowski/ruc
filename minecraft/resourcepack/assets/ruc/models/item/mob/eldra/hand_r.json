@@ -1,7 +1,7 @@
 {
-  "parent": "minecraft:item/generated",
   "textures": {
-    "layer0": "ruc:entity/mob/eldra/hand_r"
+    "layer0": "ruc:entity/mob/eldra/hand_r",
+    "particle": "ruc:entity/mob/eldra/hand_r"
   },
   "elements": [
     {
