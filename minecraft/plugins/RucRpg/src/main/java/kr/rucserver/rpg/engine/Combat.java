@@ -39,6 +39,9 @@ public final class Combat {
         public int skillLv = 1;
         public boolean skill, melee, proc, basic, ranged;
         public List<FxSpec> fx = List.of();
+        /** 소환수가 때림: 그 소환수 id · 위협 배율 (웹 HitSpec.pet · taunt) */
+        public int pet;
+        public double taunt;
 
         public Formulas.Hit hit(double extraPower) {
             return new Formulas.Hit(base, atkRatio, apRatio, cat, el, gradeMul, skillLv, skill, melee, power + extraPower);

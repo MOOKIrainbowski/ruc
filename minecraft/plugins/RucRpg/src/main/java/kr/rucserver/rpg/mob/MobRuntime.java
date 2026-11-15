@@ -152,7 +152,7 @@ public final class MobRuntime implements Listener {
     }
 
     /** (x, z) 의 서 있을 수 있는 땅 높이 — baseY 근처 위아래 8칸에서 */
-    private static Location ground(org.bukkit.World world, double x, double baseY, double z) {
+    public static Location ground(org.bukkit.World world, double x, double baseY, double z) {
         for (int dy = 12; dy >= -12; dy--) {
             Location l = new Location(world, x, Math.floor(baseY) + dy, z);
             if (!l.getBlock().isPassable() && l.clone().add(0, 1, 0).getBlock().isPassable() && l.clone().add(0, 2, 0).getBlock().isPassable())
@@ -584,9 +584,10 @@ public final class MobRuntime implements Listener {
     // ── 처치 · 피해 기록 ─────────────────────────────────────────────
 
     /** RpgWorld.onDamaged — 위협 · 기여 기록 */
-    public void damaged(Unit src, Unit tgt, double amount, double threat) {
+    public void damaged(Unit src, Unit tgt, double amount, double threat, kr.rucserver.rpg.engine.Combat.HitSpec h) {
         if (tgt instanceof MobUnit m && src.isPlayer()) {
             m.threat.merge(src.id, amount * Math.max(threat, 0.1), Double::sum);
+            if (h != null && h.pet != 0 && h.taunt > 0) m.threat.merge(h.pet, amount * h.taunt, Double::sum);   // 소환수 위협 (골렘 도발 · 토템 0)
             m.dmgBy.merge(src.id, amount, Double::sum);
         }
     }

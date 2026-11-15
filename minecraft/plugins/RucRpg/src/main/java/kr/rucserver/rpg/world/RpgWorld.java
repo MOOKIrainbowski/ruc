@@ -67,6 +67,7 @@ public final class RpgWorld implements World {
     public Entity entityOf(Unit u) {
         if (u instanceof PlayerUnit p) return p.player;
         if (u instanceof MobUnit m) return m.body;
+        if (u instanceof kr.rucserver.rpg.pet.PetRuntime.PetUnit q) return q.body;
         return null;
     }
 

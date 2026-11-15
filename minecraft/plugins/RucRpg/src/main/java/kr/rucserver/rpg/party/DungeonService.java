@@ -244,6 +244,19 @@ public final class DungeonService {
         return true;
     }
 
+    /** 부활 스킬: 던전에서 쓰러진 사람만 (공용 부활 횟수는 안 씀) */
+    public boolean revive(PlayerUnit u, double pct, Location at) {
+        Run r = byPlayer.get(u.player.getUniqueId());
+        if (r == null || r.downAt.remove(u.player.getUniqueId()) == null) return false;
+        u.dead = false;
+        u.hp = Math.max(1, u.st.get("hp") * pct);
+        u.player.setGameMode(GameMode.ADVENTURE);
+        u.player.teleport(at);
+        plugin.world().revived(u);
+        for (Player p : players(r)) p.sendMessage(Component.text("[던전] " + u.player.getName() + " 님이 부활했습니다", NamedTextColor.GREEN));
+        return true;
+    }
+
     private void revives(Run r, List<Player> ps, long now) {
         for (var it = r.downAt.entrySet().iterator(); it.hasNext(); ) {
             var e = it.next();

@@ -48,6 +48,9 @@ public final class RucRpg extends JavaPlugin {
     private kr.rucserver.rpg.econ.EconGui econGui;
     private kr.rucserver.rpg.quest.QuestEngine quests;
     private kr.rucserver.rpg.econ.RewardOutbox outbox;
+    private kr.rucserver.rpg.world.Gathering gathering;
+    private kr.rucserver.rpg.pet.PetRuntime pets;
+    public kr.rucserver.rpg.pet.PetRuntime pets() { return pets; }
     private kr.rucserver.rpg.item.ItemGuard itemGuard;
     private kr.rucserver.rpg.party.PartyService parties;
     private kr.rucserver.rpg.party.DuelService duels;
@@ -81,7 +84,7 @@ public final class RucRpg extends JavaPlugin {
             kr.rucserver.rpg.ui.Gui.loadModels(getClassLoader());
             models = new kr.rucserver.rpg.model.ModelEngine(this);
             mobs = new kr.rucserver.rpg.mob.MobRuntime(this, world, combat, new kr.rucserver.rpg.mob.MobDefs(data, formulas), projectiles);
-            world.onDamaged = (s, t, a, th, h) -> mobs.damaged(s, t, a, th);
+            world.onDamaged = (s, t, a, th, h) -> mobs.damaged(s, t, a, th, h);
             items = new kr.rucserver.rpg.item.ItemService(this);
             kr.rucserver.rpg.item.EquipStore equipStore = new kr.rucserver.rpg.item.EquipStore(core.getDatabase());
             equipStore.createSchema();
@@ -93,6 +96,7 @@ public final class RucRpg extends JavaPlugin {
             skillDefs = new kr.rucserver.rpg.skill.SkillDefs(data, formulas);
             progression = new kr.rucserver.rpg.skill.Progression(data, skillDefs);
             skills = new kr.rucserver.rpg.skill.SkillEngine(this, world, combat, skillDefs, progression, projectiles);
+            pets = new kr.rucserver.rpg.pet.PetRuntime(this);
             progression.notify = (u, id, lv, kind) -> {
                 String name = skillDefs.get(id).get("name").getAsString();
                 String msg = switch (kind) { case "learn" -> "새 스킬: " + name + " (Lv." + lv + ")"; case "grade" -> name + " 등급이 올랐습니다"; default -> name + " Lv." + lv; };
@@ -101,6 +105,7 @@ public final class RucRpg extends JavaPlugin {
             };
             world.onKilled = (u, by) -> {
                 if (u instanceof kr.rucserver.rpg.mob.MobUnit m) mobs.killed(m, by);
+                else if (u instanceof kr.rucserver.rpg.pet.PetRuntime.PetUnit q) pets.unsummon(q);
                 else if (u instanceof kr.rucserver.rpg.character.PlayerUnit pu) runtime.killed(pu, by);
             };
             Hud glyph = kr.rucserver.rpg.hud.GlyphHud.load(this);
@@ -136,14 +141,17 @@ public final class RucRpg extends JavaPlugin {
         npcs = new kr.rucserver.rpg.world.NpcRuntime(this);
         getServer().getPluginManager().registerEvents(worlds, this);
         getServer().getPluginManager().registerEvents(npcs, this);
+        gathering = new kr.rucserver.rpg.world.Gathering(this);
+        getServer().getPluginManager().registerEvents(gathering, this);
         // 처음 켤 때 안 지은 맵은 알아서 지음 (운영 서버에서 명령을 칠 필요 없게)
         getServer().getScheduler().runTaskLater(this, () -> {
             for (String k : kr.rucserver.rpg.world.RpgWorlds.KINDS)
                 if (!worlds.built(k)) {
                     getLogger().info("맵 " + k + " 이 없어 짓습니다…");
-                    worlds.build(k, () -> { mobs.refill("rpg_" + k); npcs.spawnAll(); getLogger().info("맵 " + k + " 완성"); });
+                    worlds.build(k, () -> { mobs.refill("rpg_" + k); npcs.spawnAll(); gathering.place(k); getLogger().info("맵 " + k + " 완성"); });
                 }
             npcs.spawnAll();
+            for (String k : kr.rucserver.rpg.world.RpgWorlds.KINDS) gathering.place(k);
         }, 40L);
         getServer().getPluginManager().registerEvents(new kr.rucserver.rpg.ui.Gui.Events(this), this);
         getServer().getPluginManager().registerEvents(itemRuntime, this);
@@ -191,7 +199,8 @@ public final class RucRpg extends JavaPlugin {
                     case "tent_market" -> core.getShop().open(p, 0, false);
                     case "storage" -> econGui.storage(p);
                     case "mailbox" -> { core.getMailbox().open(p, 0); quests.quest(p, "claim", null); }
-                    default -> p.sendMessage(Component.text("제조(연금술)는 M8 에서 열립니다", NamedTextColor.GRAY));
+                    case "workbench" -> econGui.brew(p);
+                    default -> {}
                 }
             }
         }, this);
@@ -204,6 +213,7 @@ public final class RucRpg extends JavaPlugin {
     @Override
     public void onDisable() {
         if (mobs != null) mobs.despawnAll();
+        if (pets != null) pets.removeAll();
         if (runtime != null) runtime.writeBackAll();
         if (chars != null) chars.saveAllNow();
         WRITER.shutdown();   // 줄 선 저장(퀘스트 · 장비 · 창고 · 캐릭터)을 다 쓰고 끔 — 비동기 작업은 끌 때 버려지므로
@@ -235,6 +245,12 @@ public final class RucRpg extends JavaPlugin {
                 sender.sendMessage(Component.text(t.getName() + " ← " + args[2] + " ×" + qty + " " + rar, NamedTextColor.GREEN));
                 return true;
             }
+            if (args.length >= 2 && args[0].equalsIgnoreCase("pet") && sender instanceof Player p && runtime.unit(p) != null) {   // 소환수 시험 · GM
+                com.google.gson.JsonObject s = new com.google.gson.JsonObject();
+                s.addProperty("pet", args[1]); s.addProperty("ms", 30000); s.addProperty("max", 3);
+                pets.summon(runtime.unit(p), s);
+                return true;
+            }
             if (args.length >= 2 && args[0].equalsIgnoreCase("spawn") && sender instanceof Player p) {
                 int lv = args.length >= 3 ? Integer.parseInt(args[2]) : 1;
                 String grade = args.length >= 4 ? args[3] : "normal";
@@ -250,6 +266,7 @@ public final class RucRpg extends JavaPlugin {
                 boolean ok = worlds.build(k, () -> {
                     mobs.refill("rpg_" + k);
                     npcs.spawnAll();
+                    gathering.place(k);
                     sender.sendMessage(Component.text("맵 " + k + " 완성 (" + (System.currentTimeMillis() - t0) / 1000.0 + "초)", NamedTextColor.GREEN));
                 });
                 sender.sendMessage(Component.text(ok ? "맵 " + k + " 짓는 중…" : "없는 맵: " + k, ok ? NamedTextColor.YELLOW : NamedTextColor.RED));

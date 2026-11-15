@@ -190,6 +190,7 @@ public final class SkillEngine implements Listener {
             if (SkillDefs.bool(sk, "blinkTo")) to = behind(p, t);
         } else if (targeting.equals("ally")) {
             Unit t = lookTarget(p, n.range(), false, SkillDefs.has(sk, "revive"));
+            if (t == null && SkillDefs.has(sk, "revive")) return "쓰러진 아군을 바라보세요";
             if (t == null) t = p;
             tid = t.id;
             to = new double[]{t.x, t.y};
@@ -367,7 +368,7 @@ public final class SkillEngine implements Listener {
     }
 
     /** 디버프 해제 · 주술사 「조상의 가호」 */
-    private void cleanse(Unit src, Unit a) {
+    public void cleanse(Unit src, Unit a) {
         List<String> bad = new ArrayList<>();
         for (Unit.Effect e : a.fx) { EffectDefs.Def d = c.defs().get(e.id); if (d != null && !d.buff()) bad.add(e.id); }
         for (String id : bad) c.removeEffect(w, a, id);
@@ -404,6 +405,10 @@ public final class SkillEngine implements Listener {
     private void support(Shot s, Unit a) {
         JsonObject sk = s.sk;
         PlayerUnit p = s.p;
+        if (sk.has("revive") && a.dead && a instanceof PlayerUnit pu) {   // 부활의 기적 (웹 room.revive): 던전에서 쓰러진(관전) 아군을 시전자 곁에
+            if (plugin.dungeons().revive(pu, sk.get("revive").getAsDouble(), p.player.getLocation())) vfx.heal(pu.player);
+            return;
+        }
         if (a.dead) return;
         if (sk.has("heal")) {
             JsonObject h = sk.getAsJsonObject("heal");
@@ -517,8 +522,12 @@ public final class SkillEngine implements Listener {
         if (s.rep == 0) {
             for (Combat.FxSpec f : scaleFx(sk, "selfFx", s.n.fx())) c.addEffect(w, p, f, p);
             if (sk.has("selfFx")) credit(s, p);
-            if (sk.has("summon")) p.player.sendMessage(net.kyori.adventure.text.Component.text("소환수는 다음 단계(M8)에서 나옵니다.", net.kyori.adventure.text.format.NamedTextColor.GRAY));
-            // special "wall" = 적 투사체를 막는 벽 — 몹 투사체 판정에 벽 목록을 넣는 것은 M7 (던전)과 같이
+            if (sk.has("summon")) plugin.pets().summon(p, sk.getAsJsonObject("summon"));
+            if ("wall".equals(SkillDefs.str(sk, "special"))) {   // 성역의 방패 · 대지 성벽: 몹 투사체를 막는 벽 5초
+                double yaw = Math.toRadians(p.player.getLocation().getYaw());
+                plugin.projectiles().wall(p, p.player.getWorld(), p.player.getLocation().getY(), -Math.sin(yaw), Math.cos(yaw),
+                        s.id.contains("earth") ? org.bukkit.Material.MUD_BRICKS : org.bukkit.Material.LIGHT_BLUE_STAINED_GLASS);
+            }
         }
     }
 

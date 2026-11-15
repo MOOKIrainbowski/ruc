@@ -65,6 +65,39 @@ public final class EconGui implements Listener {
 
     // ── 대장간 (강화 · 마법부여 · 수리 · 분해 · 재조합) ──────────────────
 
+    /** 연금술 (미르 · 작업대): 레시피 4줄 — 누르면 제조 */
+    public void brew(Player p) {
+        com.google.gson.JsonArray list = plugin.data().file("economy").getAsJsonArray("BREW");
+        Gui g = new Gui(3, Component.text("연금술 — 채집한 재료로 만들기", NamedTextColor.DARK_GRAY));
+        for (int i = 0; i < 27; i++) g.set(i, Gui.filler(), null);
+        for (int i = 0; i < list.size(); i++) {
+            com.google.gson.JsonObject r = list.get(i).getAsJsonObject();
+            String out = r.get("out").getAsString();
+            List<Component> lore = new ArrayList<>();
+            boolean ok = true;
+            for (var n : r.getAsJsonArray("need")) {
+                String tpl = n.getAsJsonObject().get("tpl").getAsString();
+                int need = n.getAsJsonObject().get("qty").getAsInt(), have = eco.count(p, tpl);
+                ok &= have >= need;
+                lore.add(Gui.line("· " + plugin.items().tpl(tpl).get("name").getAsString() + " " + have + "/" + need, have >= need ? NamedTextColor.GREEN : NamedTextColor.RED));
+            }
+            lore.add(Gui.gray(ok ? "누르면 만듭니다" : "재료가 모자랍니다 — 필드 · 고원의 채집 지점을 우클릭"));
+            ItemStack icon = plugin.items().create(out, null, r.get("qty").getAsInt());
+            var meta = icon.getItemMeta();
+            List<Component> l = new ArrayList<>(lore);
+            meta.lore(l);
+            icon.setItemMeta(meta);
+            int idx = i;
+            g.set(10 + i * 2, icon, (pl, c) -> {
+                String err = eco.brew(pl, idx);
+                if (err != null) pl.sendMessage(Component.text(err, NamedTextColor.RED));
+                else { pl.playSound(pl.getLocation(), org.bukkit.Sound.BLOCK_BREWING_STAND_BREW, 0.8f, 1.2f); }
+                brew(pl);
+            });
+        }
+        g.open(p);
+    }
+
     public void smith(Player p) { openSmith(p, smith.computeIfAbsent(p.getUniqueId(), k -> new Smith())); }
 
     private void openSmith(Player p, Smith s) {

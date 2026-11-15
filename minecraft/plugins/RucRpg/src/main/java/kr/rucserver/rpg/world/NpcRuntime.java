@@ -105,6 +105,7 @@ public final class NpcRuntime implements Listener {
             case "lumi" -> plugin.menus().main(p);
             case "volt" -> plugin.econGui().smith(p);
             case "dario" -> dungeonGate(p);
+            case "mir" -> plugin.econGui().brew(p);
             case "pip" -> { plugin.core().getMailbox().open(p, 0); plugin.quests().quest(p, "claim", null); }
             default -> {}   // 볼트(강화 M5) · 미르(제조 M8) · 핍(우편: RucCore /우편함) · 다리오(던전 M7)
         }

@@ -203,6 +203,25 @@ public final class Economy {
         }
     }
 
+    /** 연금술 제조 (웹 economy.ts brew): 재료를 다 확인한 뒤 빼고 결과를 넣음 — 빈 칸이 없으면 시작하지 않음(재료만 사라지는 일 없게) */
+    public String brew(Player p, int idx) {
+        JsonArray list = econ.getAsJsonArray("BREW");
+        if (idx < 0 || idx >= list.size()) return "잘못된 요청입니다";
+        JsonObject r = list.get(idx).getAsJsonObject();
+        String out = r.get("out").getAsString();
+        return charge(p, 0, "brew", out + " ×" + r.get("qty").getAsInt(), () -> {
+            for (JsonElement n : r.getAsJsonArray("need")) {
+                JsonObject o = n.getAsJsonObject();
+                int lack = o.get("qty").getAsInt() - count(p, o.get("tpl").getAsString());
+                if (lack > 0) throw new Fail(items.tpl(o.get("tpl").getAsString()).get("name").getAsString() + " 이(가) " + lack + "개 모자랍니다");
+            }
+            if (p.getInventory().firstEmpty() < 0) throw new Fail("가방에 빈 칸이 한 칸 필요합니다");
+            for (JsonElement n : r.getAsJsonArray("need")) takeTpl(p, n.getAsJsonObject().get("tpl").getAsString(), n.getAsJsonObject().get("qty").getAsInt());
+            JsonObject t = items.tpl(out);
+            p.getInventory().addItem(items.create(out, t.has("rarity") ? t.get("rarity").getAsString() : "common", r.get("qty").getAsInt()));
+        });
+    }
+
     public int count(Player p, String tpl) {
         int have = 0;
         for (ItemStack it : p.getInventory().getStorageContents()) {

@@ -7,6 +7,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.Color;
 import org.bukkit.Location;
 import org.bukkit.Particle;
+import org.bukkit.Sound;
+import org.bukkit.Material;
 import org.bukkit.World;
 
 import java.util.ArrayList;
@@ -59,12 +61,43 @@ public final class Projectiles {
         Bukkit.getScheduler().runTaskTimer(plugin, this::tick, 1L, 1L);
     }
 
+    /** 성역의 방패 · 대지 성벽 (웹 room.ts wall): 몹 투사체만 막는 선분, 5초 */
+    private record Wall(World world, double x1, double y1, double x2, double y2, long until, java.util.List<org.bukkit.entity.BlockDisplay> look) {}
+    private final java.util.List<Wall> walls = new java.util.ArrayList<>();
+
+    /** 시전자가 바라보는 쪽 28px 앞에 길이 56px (ux, uy = 바라보는 단위 벡터) */
+    public void wall(Unit p, World world, double yBlock, double ux, double uy, Material look) {
+        double cx = p.x + ux * 28, cy = p.y + uy * 28;
+        double x1 = cx - uy * 28, y1 = cy + ux * 28, x2 = cx + uy * 28, y2 = cy - ux * 28;
+        java.util.List<org.bukkit.entity.BlockDisplay> parts = new java.util.ArrayList<>();
+        for (int i = 0; i <= 6; i++) {   // 보이는 벽: 얇은 유리 판 7장 (블록을 실제로 놓지 않음 — 플레이어 · 몹 길은 안 막음)
+            double t = i / 6.0;
+            Location l = new Location(world, (x1 + (x2 - x1) * t) / RpgWorld.PX - 0.25, yBlock, (y1 + (y2 - y1) * t) / RpgWorld.PX - 0.25);
+            parts.add(world.spawn(l, org.bukkit.entity.BlockDisplay.class, d -> {
+                d.setBlock(look.createBlockData());
+                d.setPersistent(false);
+                d.setTransformation(new org.bukkit.util.Transformation(new org.joml.Vector3f(), new org.joml.Quaternionf(), new org.joml.Vector3f(0.5f, 2.2f, 0.5f), new org.joml.Quaternionf()));
+                d.setBrightness(new org.bukkit.entity.Display.Brightness(15, 15));
+            }));
+        }
+        world.playSound(new Location(world, cx / RpgWorld.PX, yBlock, cy / RpgWorld.PX), Sound.BLOCK_AMETHYST_BLOCK_PLACE, 1f, 0.8f);
+        walls.add(new Wall(world, x1, y1, x2, y2, System.currentTimeMillis() + 5000, parts));
+    }
+
+    private static double segDist(Wall w, double x, double y) {
+        double dx = w.x2() - w.x1(), dy = w.y2() - w.y1(), len2 = dx * dx + dy * dy;
+        double t = len2 == 0 ? 0 : Math.max(0, Math.min(1, ((x - w.x1()) * dx + (y - w.y1()) * dy) / len2));
+        return Math.hypot(x - (w.x1() + dx * t), y - (w.y1() + dy * t));
+    }
+
     public Shot fire(Shot s) {
         shots.add(s);
         return s;
     }
 
     private void tick() {
+        long now = System.currentTimeMillis();
+        walls.removeIf(wl -> { if (now < wl.until()) return false; wl.look().forEach(org.bukkit.entity.Entity::remove); return true; });
         Iterator<Shot> it = shots.iterator();
         while (it.hasNext()) {
             Shot s = it.next();
@@ -85,6 +118,8 @@ public final class Projectiles {
             if (l.getBlock().getType().isSolid()) { s.world.spawnParticle(Particle.SMOKE, l, 4, 0.05, 0.05, 0.05, 0.01); return false; }
             s.world.spawnParticle(Particle.DUST, l, s.big ? 3 : 1, 0.02, 0.02, 0.02, 0, dust);
             if (s.owner.dead) return false;
+            if (!s.owner.isPlayer()) for (Wall wl : walls)
+                if (wl.world().equals(s.world) && segDist(wl, s.x, s.y) <= s.width / 2 + 3) { s.world.spawnParticle(Particle.END_ROD, l, 6, 0.1, 0.1, 0.1, 0.02); return false; }
             String foeKind = s.owner.isPlayer() ? "m" : "p";
             for (Unit u : w.around(s.x, s.y, s.width / 2, foeKind)) {
                 if (!w.hostile(s.owner, u) || s.hit.contains(u.id)) continue;
