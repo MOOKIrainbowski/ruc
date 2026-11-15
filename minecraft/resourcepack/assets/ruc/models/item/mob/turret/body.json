@@ -1,0 +1,146 @@
+{
+  "parent": "minecraft:item/generated",
+  "textures": {
+    "layer0": "ruc:entity/mob/turret/body"
+  },
+  "elements": [
+    {
+      "from": [
+        2,
+        4,
+        3.5
+      ],
+      "to": [
+        14,
+        12,
+        12.5
+      ],
+      "faces": {
+        "north": {
+          "texture": "#layer0",
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#layer0",
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ]
+        },
+        "east": {
+          "texture": "#layer0",
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ]
+        },
+        "west": {
+          "texture": "#layer0",
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ]
+        },
+        "up": {
+          "texture": "#layer0",
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ]
+        },
+        "down": {
+          "texture": "#layer0",
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ]
+        }
+      },
+      "shade": true
+    },
+    {
+      "from": [
+        6,
+        6,
+        12.3
+      ],
+      "to": [
+        10,
+        10,
+        13.3
+      ],
+      "faces": {
+        "north": {
+          "texture": "#layer0",
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ]
+        },
+        "south": {
+          "texture": "#layer0",
+          "uv": [
+            0,
+            0,
+            8,
+            8
+          ]
+        },
+        "east": {
+          "texture": "#layer0",
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ]
+        },
+        "west": {
+          "texture": "#layer0",
+          "uv": [
+            8,
+            0,
+            16,
+            8
+          ]
+        },
+        "up": {
+          "texture": "#layer0",
+          "uv": [
+            8,
+            8,
+            16,
+            16
+          ]
+        },
+        "down": {
+          "texture": "#layer0",
+          "uv": [
+            0,
+            8,
+            8,
+            16
+          ]
+        }
+      },
+      "shade": true
+    }
+  ]
+}

@@ -1,4 +1,4 @@
-# 마크 RPG 계획 비판 리뷰
+﻿# 마크 RPG 계획 비판 리뷰
 
 ## Codex 리뷰 1
 
@@ -232,3 +232,20 @@
    `{ "<id>": { "scale": 1.0, "height": 블록, "bones": [ { "name", "parent": null|"<뼈>", "pivot": [x,y,z](블록, 몸 바닥 가운데 기준), "model": "mob/<id>/<bone>" } ], "anims": { "idle"|"walk"|"attack"|"cast"|"hurt"|"death": { "ms": 길이, "loop": bool, "keys": { "<뼈>": [ { "t": ms, "rot": [x,y,z]도, "pos": [x,y,z]블록?, "scale": [..]? } ] } } } }`
    보스 5(tree_knight · twin_witch · purify_orb · fern · eldra)는 크고 화려하게(페이즈 · 장판 패턴에 맞는 큰 동작), 슬라임류는 출렁임(scale 키), 날개 달린 것은 날갯짓.
 3. pack-models.json 에 뼈 모델도 추가. 웹 그림과 나란히 볼 수 있게 몹 몇 개를 정면/옆 렌더 PNG(모델 JSON → 간단한 정사영 래스터라이저)로 이 문서에 경로를.
+
+## Codex 리뷰 5
+
+- `econ/Economy.java:78-90,277-287` · 강화/수리 등은 Gold 차감 뒤 인벤토리를 바꾸고 예외 때만 환불하며, 분해도 아이템 제거 후 별도 Gold 입금입니다. 프로세스 종료·저장 실패에서는 화폐와 아이템 변경이 서로 어긋날 수 있으니 operation ID 기반 원장/보상 재시도와 아이템 변경의 멱등 처리를 묶어야 합니다.
+- `econ/EconGui.java:297-339` · 창고 캐시는 재접속 전까지만 최신값을 보장합니다. 연속으로 닫은 두 창의 비동기 DB 저장이 역순으로 끝나면 오래된 스냅샷이 최종 행이 되고, 저장 실패 시 캐시만 최신이라 재시작 때 아이템이 되돌아갑니다. UUID별 직렬 저장과 revision 검증, 저장 실패 복구 경로를 두세요.
+- `quest/QuestEngine.java:206-235` · 퀘스트를 `done`으로 저장한 후 보상을 비동기로 발송합니다. 골드 발송 예외는 처리하지 않고, 아이템 발송 예외를 잡아도 완료 상태라 재시도 진입점이 없습니다. 퀘스트 ID별 보상 outbox를 저장하고 각 항목을 멱등 재시도해야 합니다.
+- `party/PartyService.java:72-103` · 수락 시 초대 발신자가 온라인인지, 여전히 파티장인지 확인하지 않고 `byMember`가 비면 그 UUID를 새 파티장으로 만들어 초대자를 오프라인 파티로 부활시킵니다. 파티 변경 때 초대를 무효화하고 수락 시 발신자·파티·정원·초대 시각을 다시 검증하세요.
+- `party/DungeonService.java:125-145,151` · 퇴장은 온라인 플레이어만 `left()`로 정리합니다. 오프라인 UUID는 `r.members`/`byPlayer`에 남을 수 있고, `players()`는 월드 일치만 확인해 재사용된 인스턴스에서 예전 멤버를 계속 던전 참가자로 취급할 수 있습니다. quit 경로에서 UUID 기준으로 모든 인덱스를 제거하고, 월드 반환 전 `byPlayer`를 전수 정리하세요. `DuelService.java:52-94`도 신청/수락 사이에 상대가 다른 월드로 이동하거나 이미 결투 중이 되어도 시작하므로 수락 때 조건을 재검증해야 합니다.
+
+## Codex 작업 6 완료 보고
+
+- `RUC_RPG/scripts/mc-models.ts`가 웹 RPG의 `MOBS` 19종·`PETS` 8종·`NPCS` 7종을 원본 ID와 연결해 34개 3D 박스 리그로 생성합니다. 몹은 `mobFrames` 팔레트를 추출해 종별 색을 잡고 잎·돌·갑옷·날개·무기·눈과 룬을 파츠/픽셀 텍스처로 분리했습니다. NPC 7명은 역할별 의상·도구·망토·가방, 소환수 8종은 정령·골렘·사냥개·포탑·수리 장치·토템·잔상 실루엣으로 구분했습니다.
+- 출력은 335개 뼈와 뼈마다 기본/피격 버전 670개입니다. `models.json`에는 엔진 계약에 맞춘 절대 피벗·부모·크기·이름·역할, idle/walk/attack/cast/hurt/death 키가 있습니다. 슬라임 점프, 하피/드레이크 날갯짓, 정화 구슬 회전, 쌍둥이 마녀 시전, 페른 휘두르기, 엘드라 광역 시전 동작을 별도로 구성했습니다. 각 기본/피격 item model 및 32×32 텍스처를 리소스팩에 만들고 `pack-models.json`은 기존 548개를 보존하면서 670개를 추가해 고유 ID 1,218개가 됐습니다.
+- 비교 PNG: `.scratch/codex/mc-models/wolf_front-side.png`, `frost_harpy_front-side.png`, `tree_knight_front-side.png`, `fern_front-side.png`, `eldra_front-side.png`, `dario_front-side.png` (몹 5종은 왼쪽 웹 스프라이트, 가운데 정면, 오른쪽 측면이며 `dario`는 NPC 모델 정면/측면 비교입니다. 단순 정사영 박스 미리보기이고 실제 텍스처는 리소스팩 PNG에 있습니다.)
+- `node RUC_RPG/scripts/mc-models.ts` 생성 성공. JSON 대조에서 34 행위자·335 뼈·1,218 팩 ID, 기본/피격 모델·PNG 참조 누락 0, 부모 순서 오류 0, 애니메이션 뼈 키/시간 범위 오류 0을 확인했습니다. 생성 중 Node가 `web/package.json`의 module type 미지정 경고를 출력하지만 생성에는 영향이 없습니다. 실제 Minecraft 클라이언트에서 모델 배율·아이템 UV·애니메이션을 보는 검증은 아직 하지 않았습니다. Java와 커밋은 건드리지 않았습니다.
+
+

@@ -1,0 +1,24 @@
+{
+  "actors": 34,
+  "mobs": 19,
+  "pets": 8,
+  "npcs": 7,
+  "bones": 335,
+  "baseAndHurtModels": 670,
+  "uniquePackModels": 1218,
+  "previewDir": ".scratch\\codex\\mc-models",
+  "previewIds": [
+    "wolf",
+    "frost_harpy",
+    "tree_knight",
+    "fern",
+    "eldra",
+    "dario"
+  ],
+  "textureSize": [
+    32,
+    32
+  ],
+  "textureDensity": "32 pixels per 16-model-unit block; four 16x16 face tiles",
+  "notes": "Web mobFrames supplies palette extraction and the left-hand comparison images; NPC palette/wardrobe designs are role-specific from quests.NPCS."
+}
