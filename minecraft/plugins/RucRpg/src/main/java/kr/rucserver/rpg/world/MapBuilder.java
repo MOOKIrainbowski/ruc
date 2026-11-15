@@ -71,6 +71,8 @@ public final class MapBuilder {
                 border();
                 objects();
                 collision();
+                portals();
+                try { java.nio.file.Files.writeString(w.getWorldFolder().toPath().resolve("rpg-map-version"), String.valueOf(VERSION)); } catch (Exception ignored) {}
                 done.run();
             }
         }, 1L, 1L);
@@ -245,7 +247,6 @@ public final class MapBuilder {
             case "workbench" -> { set(cx, gy, bottomZ, Material.CRAFTING_TABLE); set(cx + 1, gy, bottomZ, Material.BREWING_STAND); }
             case "well" -> well(cx, gy, cz);
             case "fountain" -> fountain(cx, gy, cz, Math.max(4, (int) (o.w() / 8 / 2)));
-            case "portal" -> portal(cx, gy, bottomZ);
             case "building" -> house(x0, z0, x1, z1);
             case "tent_shop" -> tent(x0, z0, x1, z1, DyeColor.RED, DyeColor.WHITE);
             case "tent_market" -> tent(x0, z0, x1, z1, DyeColor.BLUE, DyeColor.LIGHT_BLUE);
@@ -323,14 +324,34 @@ public final class MapBuilder {
         set(x, y + 4, z, Material.WATER);   // 꼭대기에서 흘러내림
     }
 
-    /** 포털: 돌 아치 + 안쪽 보라 유리 (밟으면 RpgWorlds 가 옮김, 입자도 거기서) */
-    private void portal(int x, int y, int z) {
-        for (int dy = 0; dy < 5; dy++) { set(x - 2, y + dy, z, Material.STONE_BRICKS); set(x + 2, y + dy, z, Material.STONE_BRICKS); }
-        for (int dx = -2; dx <= 2; dx++) set(x + dx, y + 5, z, dx == 0 ? Material.CHISELED_STONE_BRICKS : Material.STONE_BRICKS);
-        for (int dx = -1; dx <= 1; dx++) for (int dy = 0; dy < 5; dy++) set(x + dx, y + dy, z, Material.PURPLE_STAINED_GLASS_PANE);
-        for (int dx = -2; dx <= 2; dx++) set(x + dx, y - 1, z, Material.POLISHED_DEEPSLATE);
-        set(x, y, z, Material.AIR);   // 가운데는 걸어 들어갈 수 있게 (유리 아래 두 칸 비움)
-        set(x, y + 1, z, Material.AIR);
+    /** 지은 맵의 판 — 바꾸면 운영 맵도 켤 때 한 번 다시 지음 (2 = 포털 고침) */
+    public static final int VERSION = 2;
+
+    /**
+     * 포털 (사용자 확인 2026-11-15 "포털이 안 생김"): 웹 포털은 맵 가장자리에 걸쳐 있어 아치가 맵 밖(가장자리 벽 너머)에 지어지고
+     * 가장자리 · 충돌 보이지 않는 벽이 앞을 막았음 → 아치를 맵 안쪽에 세우고, 포털 칸의 보이지 않는 벽을 걷어 냄. 충돌 벽 다음에 돌림.
+     */
+    private void portals() {
+        int W = map.w * 2, H = map.h * 2;
+        for (RpgMap.Obj o : map.objects) {
+            if (!o.type().equals("portal")) continue;
+            int x0 = Math.max(-1, bx(o.x()) - 1), z0 = Math.max(-1, bx(o.y()) - 1), x1 = Math.min(W, bx(o.x() + o.w())), z1 = Math.min(H, bx(o.y() + o.h()));
+            for (int x = x0; x <= x1; x++) for (int z = z0; z <= z1; z++) for (int y = BASE_Y - 4; y < BASE_Y + 20; y++)
+                if (w.getBlockAt(x, y, z).getType() == Material.BARRIER) set(x, y, z, Material.AIR);
+            int cx = Math.max(3, Math.min(W - 4, bx(o.cx()))), cz = Math.max(3, Math.min(H - 4, bx(o.cy())));
+            boolean alongX = Math.min(cz, H - 1 - cz) <= Math.min(cx, W - 1 - cx);   // 위/아래 가장자리면 아치가 x 방향으로 놓임
+            portal(cx, groundAt(cx, cz), cz, alongX);
+        }
+    }
+
+    /** 아치: 돌 기둥 · 깎은 돌 꼭대기 · 안쪽 보라 유리(가운데 아래 두 칸은 걸어 들어감), 바닥 심층암 */
+    private void portal(int x, int y, int z, boolean alongX) {
+        for (int a = -2; a <= 2; a++) {
+            int bx = alongX ? x + a : x, bz = alongX ? z : z + a;
+            set(bx, y - 1, bz, Material.POLISHED_DEEPSLATE);
+            set(bx, y + 5, bz, a == 0 ? Material.CHISELED_STONE_BRICKS : Material.STONE_BRICKS);
+            for (int dy = 0; dy < 5; dy++) set(bx, y + dy, bz, Math.abs(a) == 2 ? Material.STONE_BRICKS : (a == 0 && dy < 2) ? Material.AIR : Material.PURPLE_STAINED_GLASS_PANE);
+        }
     }
 
     /** 반목조 집 (웹 buildings.ts): 돌 기단 · 나무 기둥 틀 · 흰 회벽 · 창 · 문 · 박공 지붕 */

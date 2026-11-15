@@ -157,8 +157,8 @@ public final class RucRpg extends JavaPlugin {
         // 처음 켤 때 안 지은 맵은 알아서 지음 (운영 서버에서 명령을 칠 필요 없게)
         getServer().getScheduler().runTaskLater(this, () -> {
             for (String k : kr.rucserver.rpg.world.RpgWorlds.KINDS)
-                if (!worlds.built(k)) {
-                    getLogger().info("맵 " + k + " 이 없어 짓습니다…");
+                if (!worlds.built(k) || worlds.stale(k)) {
+                    getLogger().info("맵 " + k + (worlds.built(k) ? " 이 예전 판이라 다시 짓습니다…" : " 이 없어 짓습니다…"));
                     worlds.build(k, () -> { mobs.refill("rpg_" + k); npcs.spawnAll(); gathering.place(k); getLogger().info("맵 " + k + " 완성"); });
                 }
             npcs.spawnAll();

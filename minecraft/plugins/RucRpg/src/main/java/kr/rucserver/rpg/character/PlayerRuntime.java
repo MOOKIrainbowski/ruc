@@ -262,6 +262,13 @@ public final class PlayerRuntime implements Listener {
         PlayerUnit u = units.get(e.getPlayer().getUniqueId());
         if (u == null) return;
         u.dead = false;
+        // 죽기 전 효과 · 잠금을 비움 — 기절 · 속박 · 빙결 등이 부활 뒤에도 남아 못 움직이던 것 (사용자 확인 2026-11-15, 봇: 부활 뒤 이동 속성이 느려진 채로 남음)
+        u.fx.clear();
+        u.dr.clear();
+        u.lockUntil = 0;
+        u.dashUntil = 0;
+        u.iframes = false;
+        plugin.combat().recalc(u);
         u.hp = u.st.get("hp");
         u.mp = u.st.get("mana");
         u.en = u.st.get("energy");
@@ -277,6 +284,8 @@ public final class PlayerRuntime implements Listener {
         if (arena != null && u.player.getWorld().equals(arena)) {   // 결투장: 페널티 없이 결투장에서 다시
             plugin.duels().arenaKill(u, by);
             u.dead = false;
+            u.fx.clear();
+            plugin.combat().recalc(u);
             u.hp = u.st.get("hp");
             u.mp = u.st.get("mana");
             u.en = u.st.get("energy");

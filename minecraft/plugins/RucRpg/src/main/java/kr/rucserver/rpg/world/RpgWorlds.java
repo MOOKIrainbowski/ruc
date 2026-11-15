@@ -156,6 +156,14 @@ public final class RpgWorlds implements Listener {
 
     public boolean built(String kind) { return spawn(kind) != null; }
 
+    /** 지은 판이 지금 MapBuilder.VERSION 보다 낮으면(예전 코드로 지은 운영 맵) 다시 지어야 함 */
+    public boolean stale(String kind) {
+        World w = worlds.get(kind);
+        if (w == null) return false;
+        try { return Integer.parseInt(java.nio.file.Files.readString(w.getWorldFolder().toPath().resolve("rpg-map-version")).trim()) < MapBuilder.VERSION; }
+        catch (Exception e) { return true; }
+    }
+
     /** 맵 px 좌표 → 그 맵의 서 있을 곳 */
     public Location at(String kind, double px, double py) {
         RpgMap m = maps.get(kind);
@@ -176,20 +184,46 @@ public final class RpgWorlds implements Listener {
                 if (l.getX() < p.x0() || l.getX() > p.x1() || l.getZ() < p.z0() || l.getZ() > p.z1() || l.getY() > MapBuilder.BASE_Y + 12) continue;
                 if (now < portalCd.getOrDefault(pl.getUniqueId(), 0L)) continue;
                 portalCd.put(pl.getUniqueId(), now + 3000);
-                go(pl, p.target(), p.ax(), p.ay());
+                double[] to = arrival(p.target(), kindOf(w));
+                go(pl, p.target(), to[0], to[1]);
             }
         }
+    }
+
+    /** 도착점 (웹 main.ts arrival): 도착 맵에서 **출발 맵으로 돌아가는 포털**의 ax · ay(없으면 그 포털 아래 24px), 그런 포털이 없으면 시작 위치(0,0).
+     *  예전엔 출발 포털의 ax · ay 를 도착 맵에 그대로 써서 결투장 밖 허공 · 장식 안에 떨어졌음 (2026-11-15 봇 확인) */
+    public double[] arrival(String to, String from) {
+        RpgMap m = maps.get(to);
+        if (m != null && from != null) for (RpgMap.Obj o : m.objects)
+            if (o.type().equals("portal") && from.equals(o.prop("target")))
+                return new double[]{o.prop("ax") != null ? Double.parseDouble(o.prop("ax")) : o.x(), o.prop("ay") != null ? Double.parseDouble(o.prop("ay")) : o.y() + 24};
+        return new double[]{0, 0};
     }
 
     /** 다른 맵으로 (던전은 M7 에서 파티 인스턴스로) */
     public void go(Player pl, String kind, double ax, double ay) {
         Location to = ax > 0 || ay > 0 ? at(kind, ax, ay) : spawn(kind);
         if (to == null) { pl.sendMessage(Component.text("아직 지어지지 않은 맵입니다: " + kind, NamedTextColor.RED)); return; }
+        to = safe(to);
         to.setYaw(pl.getLocation().getYaw());
         pl.teleport(to);
         pl.playSound(to, Sound.BLOCK_PORTAL_TRAVEL, 0.25f, 1.6f);
         pl.showTitle(Title.title(Component.text(NAMES.getOrDefault(kind, kind), TextColor.color(0xF2C94C)), Component.empty(),
                 Title.Times.times(Duration.ofMillis(200), Duration.ofMillis(1500), Duration.ofMillis(400))));
+    }
+
+    /** 서 있을 수 있는 가까운 자리 (발 · 머리 비고 발밑 단단) — 포털 도착점이 장식 · 보이지 않는 벽 안이면 끼어 질식했음 (2026-11-15 봇 확인) */
+    public static Location safe(Location l) {
+        for (int r = 0; r <= 6; r++)
+            for (int dx = -r; dx <= r; dx++) for (int dz = -r; dz <= r; dz++) {
+                if (Math.max(Math.abs(dx), Math.abs(dz)) != r) continue;
+                for (int dy = 0; dy <= 4; dy++) for (int sgn : new int[]{1, -1}) {
+                    Location c = l.clone().add(dx, dy * sgn, dz);
+                    if (c.getBlock().isPassable() && c.clone().add(0, 1, 0).getBlock().isPassable() && !c.clone().add(0, -1, 0).getBlock().isPassable()
+                            && c.getBlock().getType() != org.bukkit.Material.WATER) return c.getBlock().getLocation().add(0.5, 0, 0.5).setDirection(l.getDirection());
+                }
+            }
+        return l;
     }
 
     /** RPG 서버에 오면 광장으로 (처음 · 매번 — 웹 RPG 도 접속하면 광장) */
