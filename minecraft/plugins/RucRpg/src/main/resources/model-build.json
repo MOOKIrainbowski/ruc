@@ -3,9 +3,9 @@
   "mobs": 19,
   "pets": 8,
   "npcs": 7,
-  "bones": 335,
-  "baseAndHurtModels": 670,
-  "uniquePackModels": 1218,
+  "bones": 339,
+  "baseAndHurtModels": 678,
+  "uniquePackModels": 1226,
   "previewDir": ".scratch\\codex\\mc-models\\v2",
   "previewIds": [
     "slime",

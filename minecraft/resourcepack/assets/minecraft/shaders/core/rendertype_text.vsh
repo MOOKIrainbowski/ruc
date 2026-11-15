@@ -66,6 +66,17 @@ void main() {
     else if (arrowTag) minimapKind = 3;
     else if (legacyTag) minimapKind = 4;
 
+    // Map RGB stores offsets; direction glyphs are white, so their shadow is detected by darkness.
+    bool dimVertex = Color.a < 0.5;
+    bool badMapOffset = Color.r < 64.0 / 255.0 || Color.r > 191.0 / 255.0 ||
+                        Color.g < 64.0 / 255.0 || Color.g > 191.0 / 255.0;
+    bool dimArrow = max(max(Color.r, Color.g), Color.b) < 0.5;
+    if ((minimapKind == 1 && (dimVertex || badMapOffset)) ||
+        (minimapKind == 3 && (dimVertex || dimArrow))) {
+        // Mark as vanilla text: the low-alpha probe is then discarded by the vanilla fragment path.
+        minimapKind = 0;
+    }
+
     if (minimapKind != 0) {
         float guiWidth = 2.0 / ProjMat[0][0];
         float guiHeight = 2.0 / abs(ProjMat[1][1]);

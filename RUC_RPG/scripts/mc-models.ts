@@ -124,7 +124,7 @@ function personBones(coat:keyof Palette,accessory:keyof Palette,opts:{hat?:strin
 }
 const actors:Actor[]=[];
 actors.push(as("slime","mob","슬라임","풀 슬라임",.85,.9,[
-  B("body",null,[0,.38,0],[15,9,13],"base","slime",[{offset:[0,3,0],size:[12,3,11],tone:"light",role:"cap"},{offset:[0,-3.2,0],size:[12,2,10],tone:"shade",role:"underside"}]),
+  B("body",null,[0,.38,0],[15,7,13],"base","slime"),B("body_top","body",[0,.63,0],[12,4,10],"light","slime-top"),B("body_bottom","body",[0,.12,0],[12,3,10],"shade","slime-bottom"),
   B("eye_l","body",[-.25,.48,.4],[2,2,1],"light","eye",[{offset:[0,0,.8],size:[1,1,1],tone:"dark",role:"pupil"}]),B("eye_r","body",[.25,.48,.4],[2,2,1],"light","eye",[{offset:[0,0,.8],size:[1,1,1],tone:"dark",role:"pupil"}]),B("sprout","body",[0,.84,-.02],[2,3,2],"accent","leaf"),
 ],"slime","slime"));
 actors.push(as("rabbit","mob","토끼 정령","푸른 눈과 긴 분홍 귀의 작은 숲 토끼",.92,.65,[
@@ -153,7 +153,7 @@ actors.push(as("shade_knight","mob","그림자 기사","검은 갑옷·보랏빛
 actors.push(as("storm_drake","mob","폭풍 비룡","긴 비늘 목·번개날개·두 토막 꼬리",2.25,1.22,[
  B("body",null,[0,.86,-.1],[12,10,14],"base","body",[{offset:[0,1,0],size:[10,2,12],tone:"accent",role:"scales"}]),B("neck","body",[0,1.07,.4],[8,9,8],"light","neck"),B("head","neck",[0,1.43,.62],[9,7,8],"base","head"),B("jaw","head",[0,1.22,.87],[7,3,5],"shade","jaw"),B("horn_l","head",[-.26,1.75,.55],[2,5,2],"accent","horn"),B("horn_r","head",[.26,1.75,.55],[2,5,2],"accent","horn"),B("wing_l","body",[-.55,1.02,-.1],[11,3,9],"accent","wing",[{offset:[-4,-1,0],size:[6,2,7],tone:"light",role:"membrane"}]),B("wing_r","body",[.55,1.02,-.1],[11,3,9],"accent","wing",[{offset:[4,-1,0],size:[6,2,7],tone:"light",role:"membrane"}]),B("tail_1","body",[0,.72,-.64],[5,6,8],"base","tail"),B("tail_2","tail_1",[0,.6,-.93],[3,4,7],"accent","tail-fin"),B("leg_l","body",[-.34,.3,.18],[4,6,5],"shade","claw"),B("leg_r","body",[.34,.3,.18],[4,6,5],"shade","claw"),B("spine","body",[0,1.26,-.1],[3,4,12],"glow","spines"),
 ],"storm_drake","drake"));
-actors.push(as("sprout_slime","mob","새싹 슬라임","분홍 꽃을 피운 연두빛 투명 슬라임",1.02,.93,[B("body",null,[0,.43,0],[15,10,13],"base","slime",[{offset:[0,3.5,0],size:[12,3,11],tone:"light",role:"cap"},{offset:[0,-3.4,0],size:[13,2,11],tone:"accent",role:"flower-band"}]),B("eye_l","body",[-.25,.49,.43],[2,2,1],"light","eye"),B("eye_r","body",[.25,.49,.43],[2,2,1],"light","eye"),B("stem","body",[0,.94,-.02],[2,4,2],"shade","stem"),B("flower","stem",[0,1.12,.02],[7,3,6],"accent","flower",[{offset:[0,1.5,0],size:[3,2,3],tone:"glow",role:"pollen"}])],"sprout_slime","sprout"));
+actors.push(as("sprout_slime","mob","새싹 슬라임","분홍 꽃을 피운 연두빛 투명 슬라임",1.02,.93,[B("body",null,[0,.43,0],[15,7,13],"base","slime"),B("body_top","body",[0,.68,0],[12,4,10],"light","slime-top"),B("body_bottom","body",[0,.18,0],[12,3,10],"accent","slime-bottom"),B("eye_l","body",[-.25,.49,.43],[2,2,1],"light","eye"),B("eye_r","body",[.25,.49,.43],[2,2,1],"light","eye"),B("stem","body",[0,.94,-.02],[2,4,2],"shade","stem"),B("flower","stem",[0,1.12,.02],[7,3,6],"accent","flower",[{offset:[0,1.5,0],size:[3,2,3],tone:"glow",role:"pollen"}])],"sprout_slime","sprout"));
 actors.push(as("shroom_shaman","mob","버섯 주술사","보랏빛 점박이 갓과 마력 지팡이",1.68,.98,[B("stem",null,[0,.75,0],[8,9,7],"skin","stem"),B("cap","stem",[0,1.42,.02],[15,6,14],"base","mushroom-cap",[{offset:[0,-3,0],size:[12,2,12],tone:"shade",role:"gills"}]),B("spots","cap",[0,1.67,.04],[11,2,11],"light","spots",[{offset:[-4,0,0],size:[2,1,2],tone:"glow",role:"spot"},{offset:[4,0,0],size:[2,1,2],tone:"glow",role:"spot"}]),B("head","stem",[0,1.08,.05],[5,5,5],"skin","face"),B("arm_l","stem",[-.48,.86,0],[3,7,3],"skin","arm"),B("arm_r","stem",[.48,.86,0],[3,7,3],"skin","arm"),B("staff","arm_r",[.54,.66,.04],[2,15,2],"wood","staff",[{offset:[0,7.5,0],size:[5,4,5],tone:"glow",role:"crystal"}]),B("root_l","stem",[-.18,.22,0],[3,5,3],"shade","root"),B("root_r","stem",[.18,.22,0],[3,5,3],"shade","root")],"shroom_shaman","shroom"));
 actors.push(as("moss_golem","mob","이끼 골렘","회색 돌판과 살아 있는 이끼·초록 눈",2.48,1.12,golem("moss_golem",false),"moss_golem","moss"));
 actors.push(as("shadow_vine","mob","그림자 덩굴","세 갈래 가시덩굴과 보랏빛 외눈",2.12,1.08,[B("core",null,[0,1.14,0],[9,9,7],"shade","eye-core",[{offset:[0,0,3.7],size:[5,5,1],tone:"glow",role:"eye"}]),B("tendril_l","core",[-.42,.95,-.02],[3,17,3],"base","tendril",[{offset:[-3,-2,0],size:[5,3,3],tone:"accent",role:"thorn"}]),B("tendril_r","core",[.42,.95,-.02],[3,17,3],"base","tendril",[{offset:[3,-2,0],size:[5,3,3],tone:"accent",role:"thorn"}]),B("tendril_back","core",[0,1.02,-.38],[3,18,3],"shade","tendril"),B("thorn_l","tendril_l",[-.52,1.14,.02],[3,5,3],"accent","thorn"),B("thorn_r","tendril_r",[.52,1.14,.02],[3,5,3],"accent","thorn"),B("root_l","core",[-.2,.24,0],[4,7,4],"shade","root"),B("root_r","core",[.2,.24,0],[4,7,4],"shade","root"),B("eye_glint","core",[0,1.16,.25],[2,2,1],"light","glint")],"shadow_vine","vine"));
@@ -219,13 +219,25 @@ function textureFor(a:Actor,b:Bone,pal:Palette):Uint8Array{
     const y0=sy0+(ay1-wy1)/ah*(sy1-sy0),y1=sy0+(ay1-wy0)/ah*(sy1-sy0);
     const sample=(x:number,y:number):[RGB,number]=>{x=Math.max(0,Math.min(sprite.width-1,Math.floor(x)));y=Math.max(0,Math.min(sprite.height-1,Math.floor(y)));const i=(y*sprite.width+x)*4;return [[sprite.pixels[i],sprite.pixels[i+1],sprite.pixels[i+2]],sprite.pixels[i+3]];};
     const tint=(c:RGB,k:number):RGB=>c.map(v=>Math.round(v*k)) as RGB;
+    const edgeAverage=(horizontal:boolean):RGB=>{
+      const sum=[0,0,0];let samples=0;
+      for(let n=0;n<16;n++)for(const side of [0,1]){
+        const x=horizontal?x0+(n+.5)*(x1-x0)/16:x0+(side?.75:.25)*(x1-x0);
+        const y=horizontal?y0+(side?.75:.25)*(y1-y0):y0+(n+.5)*(y1-y0)/16;
+        const [c,alpha]=sample(x,y);if(alpha===0)continue;
+        sum[0]+=c[0];sum[1]+=c[1];sum[2]+=c[2];samples++;
+      }
+      return samples?sum.map(v=>Math.round(v/samples)) as RGB:hex(base);
+    };
+    const sideColor=edgeAverage(false),topColor=edgeAverage(true);
+    const dotShade=(c:RGB,k:number)=>c.map(v=>Math.round(v*k)) as RGB;
     for(let y=0;y<16;y++)for(let x=0;x<16;x++){
       const [c,alpha]=sample(x0+(x+.5)*(x1-x0)/16,y0+(y+.5)*(y1-y0)/16);
       set(p,32,32,x,y,c,alpha);
-      const [left,la]=sample(x0+.5,y0+(y+.5)*(y1-y0)/16),[right,ra]=sample(x1-.5,y0+(y+.5)*(y1-y0)/16);
-      set(p,32,32,16+x,y,tint(x<8?right:left,.68),x<8?ra:la);
-      const [top,ta]=sample(x0+(x+.5)*(x1-x0)/16,y0+.5),[bottom,ba]=sample(x0+(x+.5)*(x1-x0)/16,y1-.5);
-      set(p,32,32,x,16+y,tint(y<8?bottom:top,y<8?.72:.86),y<8?ba:ta);
+      const sideDot=(x===3&&y===4)||(x===11&&y===10);
+      const topDot=(x===5&&y===5)||(x===12&&y===11);
+      set(p,32,32,16+x,y,sideDot?dotShade(sideColor,y===4?1.28:.62):tint(sideColor,y<2?1.12:y>13?.72:1),255);
+      set(p,32,32,x,16+y,topDot?dotShade(topColor,y===5?1.2:.68):tint(topColor,y<2?1.16:y>13?.82:1),255);
       const [back,backAlpha]=sample(x1-(x+.5)*(x1-x0)/16,y0+(y+.5)*(y1-y0)/16);
       set(p,32,32,16+x,16+y,tint(back,.62),backAlpha);
     }

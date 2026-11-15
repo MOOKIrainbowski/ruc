@@ -26,6 +26,40 @@
         "role": "slime"
       },
       {
+        "name": "body_top",
+        "parent": "body",
+        "pivot": [
+          0,
+          0.63,
+          0
+        ],
+        "model": "mob/slime/body_top",
+        "hurtModel": "mob/slime/body_top_hurt",
+        "origin": [
+          8,
+          8,
+          8
+        ],
+        "role": "slime-top"
+      },
+      {
+        "name": "body_bottom",
+        "parent": "body",
+        "pivot": [
+          0,
+          0.12,
+          0
+        ],
+        "model": "mob/slime/body_bottom",
+        "hurtModel": "mob/slime/body_bottom_hurt",
+        "origin": [
+          8,
+          8,
+          8
+        ],
+        "role": "slime-bottom"
+      },
+      {
         "name": "eye_l",
         "parent": "body",
         "pivot": [
@@ -315,6 +349,118 @@
         "loop": false,
         "keys": {
           "body": [
+            {
+              "t": 0,
+              "rot": [
+                0,
+                0,
+                0
+              ],
+              "pos": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "t": 700,
+              "rot": [
+                0,
+                0,
+                65
+              ],
+              "pos": [
+                0,
+                -0.18,
+                0
+              ],
+              "scale": [
+                1,
+                0.68,
+                1
+              ]
+            },
+            {
+              "t": 1100,
+              "rot": [
+                0,
+                0,
+                90
+              ],
+              "pos": [
+                0,
+                -0.35,
+                0
+              ],
+              "scale": [
+                0.01,
+                0.01,
+                0.01
+              ]
+            }
+          ],
+          "body_top": [
+            {
+              "t": 0,
+              "rot": [
+                0,
+                0,
+                0
+              ],
+              "pos": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "t": 700,
+              "rot": [
+                0,
+                0,
+                65
+              ],
+              "pos": [
+                0,
+                -0.18,
+                0
+              ],
+              "scale": [
+                1,
+                0.68,
+                1
+              ]
+            },
+            {
+              "t": 1100,
+              "rot": [
+                0,
+                0,
+                90
+              ],
+              "pos": [
+                0,
+                -0.35,
+                0
+              ],
+              "scale": [
+                0.01,
+                0.01,
+                0.01
+              ]
+            }
+          ],
+          "body_bottom": [
             {
               "t": 0,
               "rot": [
@@ -12349,6 +12495,40 @@
         "role": "slime"
       },
       {
+        "name": "body_top",
+        "parent": "body",
+        "pivot": [
+          0,
+          0.68,
+          0
+        ],
+        "model": "mob/sprout_slime/body_top",
+        "hurtModel": "mob/sprout_slime/body_top_hurt",
+        "origin": [
+          8,
+          8,
+          8
+        ],
+        "role": "slime-top"
+      },
+      {
+        "name": "body_bottom",
+        "parent": "body",
+        "pivot": [
+          0,
+          0.18,
+          0
+        ],
+        "model": "mob/sprout_slime/body_bottom",
+        "hurtModel": "mob/sprout_slime/body_bottom_hurt",
+        "origin": [
+          8,
+          8,
+          8
+        ],
+        "role": "slime-bottom"
+      },
+      {
         "name": "eye_l",
         "parent": "body",
         "pivot": [
@@ -12714,6 +12894,118 @@
         "loop": false,
         "keys": {
           "body": [
+            {
+              "t": 0,
+              "rot": [
+                0,
+                0,
+                0
+              ],
+              "pos": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "t": 700,
+              "rot": [
+                0,
+                0,
+                65
+              ],
+              "pos": [
+                0,
+                -0.18,
+                0
+              ],
+              "scale": [
+                1,
+                0.68,
+                1
+              ]
+            },
+            {
+              "t": 1100,
+              "rot": [
+                0,
+                0,
+                90
+              ],
+              "pos": [
+                0,
+                -0.35,
+                0
+              ],
+              "scale": [
+                0.01,
+                0.01,
+                0.01
+              ]
+            }
+          ],
+          "body_top": [
+            {
+              "t": 0,
+              "rot": [
+                0,
+                0,
+                0
+              ],
+              "pos": [
+                0,
+                0,
+                0
+              ],
+              "scale": [
+                1,
+                1,
+                1
+              ]
+            },
+            {
+              "t": 700,
+              "rot": [
+                0,
+                0,
+                65
+              ],
+              "pos": [
+                0,
+                -0.18,
+                0
+              ],
+              "scale": [
+                1,
+                0.68,
+                1
+              ]
+            },
+            {
+              "t": 1100,
+              "rot": [
+                0,
+                0,
+                90
+              ],
+              "pos": [
+                0,
+                -0.35,
+                0
+              ],
+              "scale": [
+                0.01,
+                0.01,
+                0.01
+              ]
+            }
+          ],
+          "body_bottom": [
             {
               "t": 0,
               "rot": [
