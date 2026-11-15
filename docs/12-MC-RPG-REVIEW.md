@@ -427,3 +427,11 @@ E 인벤토리의 제작 2×2 칸 + 왼손 칸이 장신구 칸이 됐습니다(
 - 각 PNG에 `assets/ruc/models/item/fx/<name>.json`(item/generated)과 `assets/ruc/items/fx/<name>.json`을 추가했습니다. 아이템 정의는 배정 명세의 `custom_model_data` index 0 tint와 흰색 기본값을 사용합니다. `pack-models.json`에 `fx/<name>` 14개를 등록했습니다.
 - `.scratch/codex/fx/preview.png`에 어두운 바탕의 속성 색상 미리보기를 만들었습니다. 확인: `node RUC_RPG/scripts/mc-fx-art.ts` 성공, 기대 크기·회색조·RGBA 길이·중복 모델 ID를 생성기에서 검사, `python minecraft/scripts/pack-validate.py` 결과 **오류 0개**, `git diff --check` 통과.
 - 실제 모드 ItemDisplay에서의 빌보드·보간·custom model data 색 적용은 확인하지 못했습니다. Java·모드 코드·`pack.py`·커밋은 건드리지 않았습니다.
+
+## Codex 작업 14 — 텍스처 심층 리서치 + 다시 그리기 (사용자 지시 2026-11-16)
+사용자 원문 요약: "NPC · 몹 텍스처 마감 퀄리티가 현저히 떨어짐. 몹을 때리면 텍스처가 완전히 깨짐. Codex 에게 마인크래프트 텍스처 코딩 · 디자인 심층 리서치를 맡겨 그 결과로 적용 코드를 고치고, 필요하면 디자인을 다시." + "체력바 디자인 강화(참고: https://gall.dcinside.com/mgallery/board/view/?id=steve&no=325777 이미지와 비슷하게)" + "장신구 칸 아이콘 색을 바닐라 보호구 빈 칸 아이콘과 같은 색으로".
+**A. 리서치 문서** `docs/15-MC-TEXTURE-RESEARCH.md`(당신 소유): 웹 · 위키 · 유명 팩(Fresh Animations · ModelEngine · BlockBench 커뮤니티 · 마크 몹 텍스처 관례)을 찾아 — ① ItemDisplay/아이템 모델로 만든 몹 모델에서 좋은 텍스처 해상도 · 면별 UV · 픽셀 밀도 맞추기(뼈마다 32×32 를 늘려 써서 픽셀 크기가 들쭉날쭉한 문제), 바닐라 몹처럼 보이는 명암 · 외곽선 규칙 ② 아이템 모델 `elements` + `display`(우리는 ItemDisplayTransform.NONE) 주의점, mipmap · 반투명 ③ 피격 빨간 표시를 텍스처 교체 대신 하는 방법(예: 아이템 모델 tints / custom_model_data 색 곱하기, 바닐라 몹 hurt overlay 방식) ④ 머리 위 체력바: 바닐라 느낌 픽셀 체력바(링크 이미지) — TextDisplay+글꼴 글리프 vs ItemDisplay 스프라이트 장단점, 몹 키에 맞는 높이. 출처 링크를 적고 결론은 "우리 코드에 이렇게"로.
+**B. 다시 그리기**(당신 소유: `RUC_RPG/scripts/mc-models.ts` · 몹/NPC 텍스처 · 모델 JSON): 리서치 결론대로 픽셀 밀도를 통일(뼈 크기에 비례한 텍스처 크기, 1 텍스처 픽셀 = 모델 단위 고정), 바닐라 몹 같은 명암, 피격 = 같은 텍스처 + tint(색 곱하기) 방식이 되도록 모델 정의에 tint 를 넣기(Claude 가 Java 를 그에 맞춤 — 방식만 정확히 적어 주세요).
+**C. 체력바 스프라이트** `fx/hpbar_frame`(테두리) · `fx/hpbar_fill`(흰색, 물들임) · `fx/hpbar_back` — 링크 이미지처럼 바닐라 느낌 픽셀 아트, 가로로 늘려도 깨지지 않게(9-slice 대신 채움은 1px 단위 가로 막대 권장). items 정의는 작업 13 과 같은 tints 방식.
+**D. 장신구 빈 칸 아이콘** `ui/slot_ring1` · `ui/slot_necklace` 두 개만(사용자: 반지 · 목걸이만), 바닐라 `empty_armor_slot_*` 와 **같은 색 · 같은 반투명도**(바닐라 원본 PNG 를 열어 색을 재서 맞추기 — 클라이언트 jar 원본은 `.scratch/vanilla-1.21.11/` 에 꺼내 둘 수 있음, 필요하면 말해 주세요).
+검사: `pack-validate.py` 0 오류, 비교 렌더(웹 · 바닐라 몹과 나란히). 끝나면 `## Codex 작업 14 완료 보고`(A 결론 요약 포함). Java · 모드 · 커밋 · pack.py 는 Claude.
