@@ -1,0 +1,13 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/minimap/head_pixels.png",
+      "height": 1,
+      "ascent": 25,
+      "chars": [
+        ""
+      ]
+    }
+  ]
+}

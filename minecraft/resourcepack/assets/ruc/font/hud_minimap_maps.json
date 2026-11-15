@@ -1,0 +1,59 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/minimap/map_plaza.png",
+      "height": 160,
+      "ascent": 80,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/minimap/map_highland.png",
+      "height": 184,
+      "ascent": 92,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/minimap/map_field.png",
+      "height": 176,
+      "ascent": 88,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/minimap/map_dungeon.png",
+      "height": 136,
+      "ascent": 68,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/minimap/map_arena.png",
+      "height": 108,
+      "ascent": 54,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    }
+  ]
+}

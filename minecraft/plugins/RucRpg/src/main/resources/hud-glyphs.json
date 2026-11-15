@@ -34,6 +34,19 @@
       "move_speed": "ruc:stats_move_speed",
       "crit": "ruc:stats_crit",
       "luck": "ruc:stats_luck"
+    },
+    "minimapMaps": "ruc:hud_minimap_maps",
+    "minimapPixels": "ruc:hud_minimap_pixels",
+    "minimapArrow": "ruc:hud_minimap_arrow",
+    "statsBitmaps": {
+      "attack": "ruc:hud_stats_attack",
+      "spell": "ruc:hud_stats_spell",
+      "pdef": "ruc:hud_stats_pdef",
+      "mdef": "ruc:hud_stats_mdef",
+      "attack_speed": "ruc:hud_stats_attack_speed",
+      "move_speed": "ruc:hud_stats_move_speed",
+      "crit": "ruc:hud_stats_crit",
+      "luck": "ruc:hud_stats_luck"
     }
   },
   "glyphs": {
@@ -11484,6 +11497,1638 @@
       "inkWidth": 4,
       "width": 5,
       "height": 7
+    },
+    "minimap.map.plaza": {
+      "font": "ruc:hud_minimap_maps",
+      "char": "",
+      "advance": 160,
+      "width": 160,
+      "height": 160,
+      "texture": "ruc:hud/minimap/map_plaza.png"
+    },
+    "minimap.map.highland": {
+      "font": "ruc:hud_minimap_maps",
+      "char": "",
+      "advance": 168,
+      "width": 168,
+      "height": 184,
+      "texture": "ruc:hud/minimap/map_highland.png"
+    },
+    "minimap.map.field": {
+      "font": "ruc:hud_minimap_maps",
+      "char": "",
+      "advance": 176,
+      "width": 176,
+      "height": 176,
+      "texture": "ruc:hud/minimap/map_field.png"
+    },
+    "minimap.map.dungeon": {
+      "font": "ruc:hud_minimap_maps",
+      "char": "",
+      "advance": 148,
+      "width": 148,
+      "height": 136,
+      "texture": "ruc:hud/minimap/map_dungeon.png"
+    },
+    "minimap.map.arena": {
+      "font": "ruc:hud_minimap_maps",
+      "char": "",
+      "advance": 148,
+      "width": 148,
+      "height": 108,
+      "texture": "ruc:hud/minimap/map_arena.png"
+    },
+    "minimap.head.pixel.00": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        0,
+        0
+      ]
+    },
+    "minimap.head.pixel.01": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        1,
+        0
+      ]
+    },
+    "minimap.head.pixel.02": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        2,
+        0
+      ]
+    },
+    "minimap.head.pixel.03": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        3,
+        0
+      ]
+    },
+    "minimap.head.pixel.04": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        4,
+        0
+      ]
+    },
+    "minimap.head.pixel.05": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        5,
+        0
+      ]
+    },
+    "minimap.head.pixel.06": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        6,
+        0
+      ]
+    },
+    "minimap.head.pixel.07": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        7,
+        0
+      ]
+    },
+    "minimap.head.pixel.08": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        0,
+        1
+      ]
+    },
+    "minimap.head.pixel.09": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        1,
+        1
+      ]
+    },
+    "minimap.head.pixel.10": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        2,
+        1
+      ]
+    },
+    "minimap.head.pixel.11": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        3,
+        1
+      ]
+    },
+    "minimap.head.pixel.12": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        4,
+        1
+      ]
+    },
+    "minimap.head.pixel.13": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        5,
+        1
+      ]
+    },
+    "minimap.head.pixel.14": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        6,
+        1
+      ]
+    },
+    "minimap.head.pixel.15": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        7,
+        1
+      ]
+    },
+    "minimap.head.pixel.16": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        0,
+        2
+      ]
+    },
+    "minimap.head.pixel.17": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        1,
+        2
+      ]
+    },
+    "minimap.head.pixel.18": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        2,
+        2
+      ]
+    },
+    "minimap.head.pixel.19": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        3,
+        2
+      ]
+    },
+    "minimap.head.pixel.20": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        4,
+        2
+      ]
+    },
+    "minimap.head.pixel.21": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        5,
+        2
+      ]
+    },
+    "minimap.head.pixel.22": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        6,
+        2
+      ]
+    },
+    "minimap.head.pixel.23": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        7,
+        2
+      ]
+    },
+    "minimap.head.pixel.24": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        0,
+        3
+      ]
+    },
+    "minimap.head.pixel.25": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        1,
+        3
+      ]
+    },
+    "minimap.head.pixel.26": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        2,
+        3
+      ]
+    },
+    "minimap.head.pixel.27": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        3,
+        3
+      ]
+    },
+    "minimap.head.pixel.28": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        4,
+        3
+      ]
+    },
+    "minimap.head.pixel.29": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        5,
+        3
+      ]
+    },
+    "minimap.head.pixel.30": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        6,
+        3
+      ]
+    },
+    "minimap.head.pixel.31": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        7,
+        3
+      ]
+    },
+    "minimap.head.pixel.32": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        0,
+        4
+      ]
+    },
+    "minimap.head.pixel.33": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        1,
+        4
+      ]
+    },
+    "minimap.head.pixel.34": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        2,
+        4
+      ]
+    },
+    "minimap.head.pixel.35": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        3,
+        4
+      ]
+    },
+    "minimap.head.pixel.36": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        4,
+        4
+      ]
+    },
+    "minimap.head.pixel.37": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        5,
+        4
+      ]
+    },
+    "minimap.head.pixel.38": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        6,
+        4
+      ]
+    },
+    "minimap.head.pixel.39": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        7,
+        4
+      ]
+    },
+    "minimap.head.pixel.40": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        0,
+        5
+      ]
+    },
+    "minimap.head.pixel.41": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        1,
+        5
+      ]
+    },
+    "minimap.head.pixel.42": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        2,
+        5
+      ]
+    },
+    "minimap.head.pixel.43": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        3,
+        5
+      ]
+    },
+    "minimap.head.pixel.44": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        4,
+        5
+      ]
+    },
+    "minimap.head.pixel.45": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        5,
+        5
+      ]
+    },
+    "minimap.head.pixel.46": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        6,
+        5
+      ]
+    },
+    "minimap.head.pixel.47": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        7,
+        5
+      ]
+    },
+    "minimap.head.pixel.48": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        0,
+        6
+      ]
+    },
+    "minimap.head.pixel.49": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        1,
+        6
+      ]
+    },
+    "minimap.head.pixel.50": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        2,
+        6
+      ]
+    },
+    "minimap.head.pixel.51": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        3,
+        6
+      ]
+    },
+    "minimap.head.pixel.52": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        4,
+        6
+      ]
+    },
+    "minimap.head.pixel.53": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        5,
+        6
+      ]
+    },
+    "minimap.head.pixel.54": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        6,
+        6
+      ]
+    },
+    "minimap.head.pixel.55": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        7,
+        6
+      ]
+    },
+    "minimap.head.pixel.56": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        0,
+        7
+      ]
+    },
+    "minimap.head.pixel.57": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        1,
+        7
+      ]
+    },
+    "minimap.head.pixel.58": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        2,
+        7
+      ]
+    },
+    "minimap.head.pixel.59": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        3,
+        7
+      ]
+    },
+    "minimap.head.pixel.60": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        4,
+        7
+      ]
+    },
+    "minimap.head.pixel.61": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        5,
+        7
+      ]
+    },
+    "minimap.head.pixel.62": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        6,
+        7
+      ]
+    },
+    "minimap.head.pixel.63": {
+      "font": "ruc:hud_minimap_pixels",
+      "char": "",
+      "advance": 1,
+      "width": 1,
+      "height": 1,
+      "pixel": [
+        7,
+        7
+      ]
+    },
+    "minimap.direction.0": {
+      "font": "ruc:hud_minimap_arrow",
+      "char": "",
+      "advance": 9,
+      "width": 9,
+      "height": 9
+    },
+    "minimap.direction.1": {
+      "font": "ruc:hud_minimap_arrow",
+      "char": "",
+      "advance": 9,
+      "width": 9,
+      "height": 9
+    },
+    "minimap.direction.2": {
+      "font": "ruc:hud_minimap_arrow",
+      "char": "",
+      "advance": 9,
+      "width": 9,
+      "height": 9
+    },
+    "minimap.direction.3": {
+      "font": "ruc:hud_minimap_arrow",
+      "char": "",
+      "advance": 9,
+      "width": 9,
+      "height": 9
+    },
+    "minimap.direction.4": {
+      "font": "ruc:hud_minimap_arrow",
+      "char": "",
+      "advance": 9,
+      "width": 9,
+      "height": 9
+    },
+    "minimap.direction.5": {
+      "font": "ruc:hud_minimap_arrow",
+      "char": "",
+      "advance": 9,
+      "width": 9,
+      "height": 9
+    },
+    "minimap.direction.6": {
+      "font": "ruc:hud_minimap_arrow",
+      "char": "",
+      "advance": 9,
+      "width": 9,
+      "height": 9
+    },
+    "minimap.direction.7": {
+      "font": "ruc:hud_minimap_arrow",
+      "char": "",
+      "advance": 9,
+      "width": 9,
+      "height": 9
+    },
+    "stats.label.attack": {
+      "font": "ruc:hud_stats_attack",
+      "char": "",
+      "advance": 30,
+      "width": 29,
+      "height": 10,
+      "inkWidth": 29
+    },
+    "stats.num.attack.0": {
+      "font": "ruc:hud_stats_attack",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack.1": {
+      "font": "ruc:hud_stats_attack",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack.2": {
+      "font": "ruc:hud_stats_attack",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack.3": {
+      "font": "ruc:hud_stats_attack",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack.4": {
+      "font": "ruc:hud_stats_attack",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack.5": {
+      "font": "ruc:hud_stats_attack",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack.6": {
+      "font": "ruc:hud_stats_attack",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack.7": {
+      "font": "ruc:hud_stats_attack",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack.8": {
+      "font": "ruc:hud_stats_attack",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack.9": {
+      "font": "ruc:hud_stats_attack",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack.dot": {
+      "font": "ruc:hud_stats_attack",
+      "char": "",
+      "advance": 3,
+      "width": 2,
+      "height": 7,
+      "inkWidth": 2
+    },
+    "stats.num.attack.pct": {
+      "font": "ruc:hud_stats_attack",
+      "char": "",
+      "advance": 9,
+      "width": 8,
+      "height": 7,
+      "inkWidth": 8
+    },
+    "stats.label.spell": {
+      "font": "ruc:hud_stats_spell",
+      "char": "",
+      "advance": 30,
+      "width": 29,
+      "height": 10,
+      "inkWidth": 29
+    },
+    "stats.num.spell.0": {
+      "font": "ruc:hud_stats_spell",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.spell.1": {
+      "font": "ruc:hud_stats_spell",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.spell.2": {
+      "font": "ruc:hud_stats_spell",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.spell.3": {
+      "font": "ruc:hud_stats_spell",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.spell.4": {
+      "font": "ruc:hud_stats_spell",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.spell.5": {
+      "font": "ruc:hud_stats_spell",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.spell.6": {
+      "font": "ruc:hud_stats_spell",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.spell.7": {
+      "font": "ruc:hud_stats_spell",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.spell.8": {
+      "font": "ruc:hud_stats_spell",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.spell.9": {
+      "font": "ruc:hud_stats_spell",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.spell.dot": {
+      "font": "ruc:hud_stats_spell",
+      "char": "",
+      "advance": 3,
+      "width": 2,
+      "height": 7,
+      "inkWidth": 2
+    },
+    "stats.num.spell.pct": {
+      "font": "ruc:hud_stats_spell",
+      "char": "",
+      "advance": 9,
+      "width": 8,
+      "height": 7,
+      "inkWidth": 8
+    },
+    "stats.label.pdef": {
+      "font": "ruc:hud_stats_pdef",
+      "char": "",
+      "advance": 21,
+      "width": 20,
+      "height": 10,
+      "inkWidth": 20
+    },
+    "stats.num.pdef.0": {
+      "font": "ruc:hud_stats_pdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.pdef.1": {
+      "font": "ruc:hud_stats_pdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.pdef.2": {
+      "font": "ruc:hud_stats_pdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.pdef.3": {
+      "font": "ruc:hud_stats_pdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.pdef.4": {
+      "font": "ruc:hud_stats_pdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.pdef.5": {
+      "font": "ruc:hud_stats_pdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.pdef.6": {
+      "font": "ruc:hud_stats_pdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.pdef.7": {
+      "font": "ruc:hud_stats_pdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.pdef.8": {
+      "font": "ruc:hud_stats_pdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.pdef.9": {
+      "font": "ruc:hud_stats_pdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.pdef.dot": {
+      "font": "ruc:hud_stats_pdef",
+      "char": "",
+      "advance": 3,
+      "width": 2,
+      "height": 7,
+      "inkWidth": 2
+    },
+    "stats.num.pdef.pct": {
+      "font": "ruc:hud_stats_pdef",
+      "char": "",
+      "advance": 9,
+      "width": 8,
+      "height": 7,
+      "inkWidth": 8
+    },
+    "stats.label.mdef": {
+      "font": "ruc:hud_stats_mdef",
+      "char": "",
+      "advance": 20,
+      "width": 19,
+      "height": 10,
+      "inkWidth": 19
+    },
+    "stats.num.mdef.0": {
+      "font": "ruc:hud_stats_mdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.mdef.1": {
+      "font": "ruc:hud_stats_mdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.mdef.2": {
+      "font": "ruc:hud_stats_mdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.mdef.3": {
+      "font": "ruc:hud_stats_mdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.mdef.4": {
+      "font": "ruc:hud_stats_mdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.mdef.5": {
+      "font": "ruc:hud_stats_mdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.mdef.6": {
+      "font": "ruc:hud_stats_mdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.mdef.7": {
+      "font": "ruc:hud_stats_mdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.mdef.8": {
+      "font": "ruc:hud_stats_mdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.mdef.9": {
+      "font": "ruc:hud_stats_mdef",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.mdef.dot": {
+      "font": "ruc:hud_stats_mdef",
+      "char": "",
+      "advance": 3,
+      "width": 2,
+      "height": 7,
+      "inkWidth": 2
+    },
+    "stats.num.mdef.pct": {
+      "font": "ruc:hud_stats_mdef",
+      "char": "",
+      "advance": 9,
+      "width": 8,
+      "height": 7,
+      "inkWidth": 8
+    },
+    "stats.label.attack_speed": {
+      "font": "ruc:hud_stats_attack_speed",
+      "char": "",
+      "advance": 21,
+      "width": 20,
+      "height": 10,
+      "inkWidth": 20
+    },
+    "stats.num.attack_speed.0": {
+      "font": "ruc:hud_stats_attack_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack_speed.1": {
+      "font": "ruc:hud_stats_attack_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack_speed.2": {
+      "font": "ruc:hud_stats_attack_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack_speed.3": {
+      "font": "ruc:hud_stats_attack_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack_speed.4": {
+      "font": "ruc:hud_stats_attack_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack_speed.5": {
+      "font": "ruc:hud_stats_attack_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack_speed.6": {
+      "font": "ruc:hud_stats_attack_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack_speed.7": {
+      "font": "ruc:hud_stats_attack_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack_speed.8": {
+      "font": "ruc:hud_stats_attack_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack_speed.9": {
+      "font": "ruc:hud_stats_attack_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.attack_speed.dot": {
+      "font": "ruc:hud_stats_attack_speed",
+      "char": "",
+      "advance": 3,
+      "width": 2,
+      "height": 7,
+      "inkWidth": 2
+    },
+    "stats.num.attack_speed.pct": {
+      "font": "ruc:hud_stats_attack_speed",
+      "char": "",
+      "advance": 9,
+      "width": 8,
+      "height": 7,
+      "inkWidth": 8
+    },
+    "stats.label.move_speed": {
+      "font": "ruc:hud_stats_move_speed",
+      "char": "",
+      "advance": 20,
+      "width": 19,
+      "height": 10,
+      "inkWidth": 19
+    },
+    "stats.num.move_speed.0": {
+      "font": "ruc:hud_stats_move_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.move_speed.1": {
+      "font": "ruc:hud_stats_move_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.move_speed.2": {
+      "font": "ruc:hud_stats_move_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.move_speed.3": {
+      "font": "ruc:hud_stats_move_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.move_speed.4": {
+      "font": "ruc:hud_stats_move_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.move_speed.5": {
+      "font": "ruc:hud_stats_move_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.move_speed.6": {
+      "font": "ruc:hud_stats_move_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.move_speed.7": {
+      "font": "ruc:hud_stats_move_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.move_speed.8": {
+      "font": "ruc:hud_stats_move_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.move_speed.9": {
+      "font": "ruc:hud_stats_move_speed",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.move_speed.dot": {
+      "font": "ruc:hud_stats_move_speed",
+      "char": "",
+      "advance": 3,
+      "width": 2,
+      "height": 7,
+      "inkWidth": 2
+    },
+    "stats.num.move_speed.pct": {
+      "font": "ruc:hud_stats_move_speed",
+      "char": "",
+      "advance": 9,
+      "width": 8,
+      "height": 7,
+      "inkWidth": 8
+    },
+    "stats.label.crit": {
+      "font": "ruc:hud_stats_crit",
+      "char": "",
+      "advance": 19,
+      "width": 18,
+      "height": 10,
+      "inkWidth": 18
+    },
+    "stats.num.crit.0": {
+      "font": "ruc:hud_stats_crit",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.crit.1": {
+      "font": "ruc:hud_stats_crit",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.crit.2": {
+      "font": "ruc:hud_stats_crit",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.crit.3": {
+      "font": "ruc:hud_stats_crit",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.crit.4": {
+      "font": "ruc:hud_stats_crit",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.crit.5": {
+      "font": "ruc:hud_stats_crit",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.crit.6": {
+      "font": "ruc:hud_stats_crit",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.crit.7": {
+      "font": "ruc:hud_stats_crit",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.crit.8": {
+      "font": "ruc:hud_stats_crit",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.crit.9": {
+      "font": "ruc:hud_stats_crit",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.crit.dot": {
+      "font": "ruc:hud_stats_crit",
+      "char": "",
+      "advance": 3,
+      "width": 2,
+      "height": 7,
+      "inkWidth": 2
+    },
+    "stats.num.crit.pct": {
+      "font": "ruc:hud_stats_crit",
+      "char": "",
+      "advance": 9,
+      "width": 8,
+      "height": 7,
+      "inkWidth": 8
+    },
+    "stats.label.luck": {
+      "font": "ruc:hud_stats_luck",
+      "char": "",
+      "advance": 11,
+      "width": 10,
+      "height": 10,
+      "inkWidth": 10
+    },
+    "stats.num.luck.0": {
+      "font": "ruc:hud_stats_luck",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.luck.1": {
+      "font": "ruc:hud_stats_luck",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.luck.2": {
+      "font": "ruc:hud_stats_luck",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.luck.3": {
+      "font": "ruc:hud_stats_luck",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.luck.4": {
+      "font": "ruc:hud_stats_luck",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.luck.5": {
+      "font": "ruc:hud_stats_luck",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.luck.6": {
+      "font": "ruc:hud_stats_luck",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.luck.7": {
+      "font": "ruc:hud_stats_luck",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.luck.8": {
+      "font": "ruc:hud_stats_luck",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.luck.9": {
+      "font": "ruc:hud_stats_luck",
+      "char": "",
+      "advance": 4,
+      "width": 3,
+      "height": 5,
+      "inkWidth": 3
+    },
+    "stats.num.luck.dot": {
+      "font": "ruc:hud_stats_luck",
+      "char": "",
+      "advance": 3,
+      "width": 2,
+      "height": 7,
+      "inkWidth": 2
+    },
+    "stats.num.luck.pct": {
+      "font": "ruc:hud_stats_luck",
+      "char": "",
+      "advance": 9,
+      "width": 8,
+      "height": 7,
+      "inkWidth": 8
     }
   },
   "spaces": {
@@ -11838,11 +13483,23 @@
       "y": 73,
       "w": 86,
       "h": 10,
-      "font": "ruc:stats_attack",
+      "font": "ruc:hud_stats_attack",
       "labelX": -221,
       "valueX": -169,
       "name": "stats.font.attack",
-      "valueFont": "ruc:stats_attack"
+      "valueFont": "ruc:stats_attack",
+      "label": {
+        "name": "stats.label.attack",
+        "x": -221,
+        "font": "ruc:hud_stats_attack",
+        "advance": 30
+      },
+      "value": {
+        "x": -169,
+        "font": "ruc:hud_stats_attack",
+        "names": "stats.num.attack.<0-9|dot|pct>",
+        "advanceFromGlyphs": true
+      }
     },
     "stats.icon.spell": {
       "x": -231,
@@ -11857,11 +13514,23 @@
       "y": 63,
       "w": 86,
       "h": 10,
-      "font": "ruc:stats_spell",
+      "font": "ruc:hud_stats_spell",
       "labelX": -221,
       "valueX": -169,
       "name": "stats.font.spell",
-      "valueFont": "ruc:stats_spell"
+      "valueFont": "ruc:stats_spell",
+      "label": {
+        "name": "stats.label.spell",
+        "x": -221,
+        "font": "ruc:hud_stats_spell",
+        "advance": 30
+      },
+      "value": {
+        "x": -169,
+        "font": "ruc:hud_stats_spell",
+        "names": "stats.num.spell.<0-9|dot|pct>",
+        "advanceFromGlyphs": true
+      }
     },
     "stats.icon.pdef": {
       "x": -231,
@@ -11876,11 +13545,23 @@
       "y": 53,
       "w": 86,
       "h": 10,
-      "font": "ruc:stats_pdef",
+      "font": "ruc:hud_stats_pdef",
       "labelX": -221,
       "valueX": -169,
       "name": "stats.font.pdef",
-      "valueFont": "ruc:stats_pdef"
+      "valueFont": "ruc:stats_pdef",
+      "label": {
+        "name": "stats.label.pdef",
+        "x": -221,
+        "font": "ruc:hud_stats_pdef",
+        "advance": 21
+      },
+      "value": {
+        "x": -169,
+        "font": "ruc:hud_stats_pdef",
+        "names": "stats.num.pdef.<0-9|dot|pct>",
+        "advanceFromGlyphs": true
+      }
     },
     "stats.icon.mdef": {
       "x": -231,
@@ -11895,11 +13576,23 @@
       "y": 43,
       "w": 86,
       "h": 10,
-      "font": "ruc:stats_mdef",
+      "font": "ruc:hud_stats_mdef",
       "labelX": -221,
       "valueX": -169,
       "name": "stats.font.mdef",
-      "valueFont": "ruc:stats_mdef"
+      "valueFont": "ruc:stats_mdef",
+      "label": {
+        "name": "stats.label.mdef",
+        "x": -221,
+        "font": "ruc:hud_stats_mdef",
+        "advance": 20
+      },
+      "value": {
+        "x": -169,
+        "font": "ruc:hud_stats_mdef",
+        "names": "stats.num.mdef.<0-9|dot|pct>",
+        "advanceFromGlyphs": true
+      }
     },
     "stats.icon.attack_speed": {
       "x": -231,
@@ -11914,11 +13607,23 @@
       "y": 33,
       "w": 86,
       "h": 10,
-      "font": "ruc:stats_attack_speed",
+      "font": "ruc:hud_stats_attack_speed",
       "labelX": -221,
       "valueX": -169,
       "name": "stats.font.attack_speed",
-      "valueFont": "ruc:stats_attack_speed"
+      "valueFont": "ruc:stats_attack_speed",
+      "label": {
+        "name": "stats.label.attack_speed",
+        "x": -221,
+        "font": "ruc:hud_stats_attack_speed",
+        "advance": 21
+      },
+      "value": {
+        "x": -169,
+        "font": "ruc:hud_stats_attack_speed",
+        "names": "stats.num.attack_speed.<0-9|dot|pct>",
+        "advanceFromGlyphs": true
+      }
     },
     "stats.icon.move_speed": {
       "x": -231,
@@ -11933,11 +13638,23 @@
       "y": 23,
       "w": 86,
       "h": 10,
-      "font": "ruc:stats_move_speed",
+      "font": "ruc:hud_stats_move_speed",
       "labelX": -221,
       "valueX": -169,
       "name": "stats.font.move_speed",
-      "valueFont": "ruc:stats_move_speed"
+      "valueFont": "ruc:stats_move_speed",
+      "label": {
+        "name": "stats.label.move_speed",
+        "x": -221,
+        "font": "ruc:hud_stats_move_speed",
+        "advance": 20
+      },
+      "value": {
+        "x": -169,
+        "font": "ruc:hud_stats_move_speed",
+        "names": "stats.num.move_speed.<0-9|dot|pct>",
+        "advanceFromGlyphs": true
+      }
     },
     "stats.icon.crit": {
       "x": -231,
@@ -11952,11 +13669,23 @@
       "y": 13,
       "w": 86,
       "h": 10,
-      "font": "ruc:stats_crit",
+      "font": "ruc:hud_stats_crit",
       "labelX": -221,
       "valueX": -169,
       "name": "stats.font.crit",
-      "valueFont": "ruc:stats_crit"
+      "valueFont": "ruc:stats_crit",
+      "label": {
+        "name": "stats.label.crit",
+        "x": -221,
+        "font": "ruc:hud_stats_crit",
+        "advance": 19
+      },
+      "value": {
+        "x": -169,
+        "font": "ruc:hud_stats_crit",
+        "names": "stats.num.crit.<0-9|dot|pct>",
+        "advanceFromGlyphs": true
+      }
     },
     "stats.icon.luck": {
       "x": -231,
@@ -11971,11 +13700,135 @@
       "y": 3,
       "w": 86,
       "h": 10,
-      "font": "ruc:stats_luck",
+      "font": "ruc:hud_stats_luck",
       "labelX": -221,
       "valueX": -169,
       "name": "stats.font.luck",
-      "valueFont": "ruc:stats_luck"
+      "valueFont": "ruc:stats_luck",
+      "label": {
+        "name": "stats.label.luck",
+        "x": -221,
+        "font": "ruc:hud_stats_luck",
+        "advance": 11
+      },
+      "value": {
+        "x": -169,
+        "font": "ruc:hud_stats_luck",
+        "names": "stats.num.luck.<0-9|dot|pct>",
+        "advanceFromGlyphs": true
+      }
+    },
+    "minimap": {
+      "x": "screenWidth - 68",
+      "y": 4,
+      "width": 64,
+      "height": 64,
+      "clip": "shader",
+      "mapTilePixels": 1,
+      "mapTileBlocks": 2,
+      "baseTitleCenter": [
+        "screenWidth/2",
+        12
+      ],
+      "map": {
+        "font": "ruc:hud_minimap_maps",
+        "names": "minimap.map.<map-id>",
+        "first": true,
+        "componentColor": "scrollColor",
+        "advance": "map glyph width; all marker additions must have net advance zero"
+      },
+      "players": {
+        "skinOrder": "row-major y*8+x",
+        "glyphs": "minimap.head.pixel.<00-63>",
+        "pixelAdvance": 1,
+        "playerCenterDelta": "other tile coordinate minus own tile coordinate",
+        "xPlacement": "move cursor to map-center-relative x-4; emit 8 pixels; rewind 8 after each row",
+        "yFont": "ruc:hud_minimap_pixel_y_<signed deltaY>; deltaY = playerCenterDeltaY + row - 4",
+        "ownHead": "center at (0,0), same skin pixel order",
+        "ownDirection": "minimap.direction.<DIRS index>, centered at (0,0)"
+      },
+      "scrollColor": {
+        "componentTextColor": "#RRGGBB",
+        "r": "128 + floor(playerTileX - mapWidth/2)",
+        "g": "128 + floor(playerTileY - mapHeight/2)",
+        "b": 0,
+        "shaderDecode": "dx = r - 128; dy = g - 128; each encoded delta is clipped to signed 7-bit range [-64, 63]",
+        "mapTransform": "screenCenter=(screenWidth-36,36); map glyph itself is centered at bossbar title center=(screenWidth/2,12); shader translates by (screenWidth/2-36-dx,24-dy) GUI px"
+      }
+    },
+    "statsBitmaps": {
+      "attack": {
+        "label": "stats.label.attack",
+        "valueNames": "stats.num.attack.<0-9|dot|pct>",
+        "font": "ruc:hud_stats_attack",
+        "x": -221,
+        "y": 73,
+        "labelX": -221,
+        "valueX": -169
+      },
+      "spell": {
+        "label": "stats.label.spell",
+        "valueNames": "stats.num.spell.<0-9|dot|pct>",
+        "font": "ruc:hud_stats_spell",
+        "x": -221,
+        "y": 63,
+        "labelX": -221,
+        "valueX": -169
+      },
+      "pdef": {
+        "label": "stats.label.pdef",
+        "valueNames": "stats.num.pdef.<0-9|dot|pct>",
+        "font": "ruc:hud_stats_pdef",
+        "x": -221,
+        "y": 53,
+        "labelX": -221,
+        "valueX": -169
+      },
+      "mdef": {
+        "label": "stats.label.mdef",
+        "valueNames": "stats.num.mdef.<0-9|dot|pct>",
+        "font": "ruc:hud_stats_mdef",
+        "x": -221,
+        "y": 43,
+        "labelX": -221,
+        "valueX": -169
+      },
+      "attack_speed": {
+        "label": "stats.label.attack_speed",
+        "valueNames": "stats.num.attack_speed.<0-9|dot|pct>",
+        "font": "ruc:hud_stats_attack_speed",
+        "x": -221,
+        "y": 33,
+        "labelX": -221,
+        "valueX": -169
+      },
+      "move_speed": {
+        "label": "stats.label.move_speed",
+        "valueNames": "stats.num.move_speed.<0-9|dot|pct>",
+        "font": "ruc:hud_stats_move_speed",
+        "x": -221,
+        "y": 23,
+        "labelX": -221,
+        "valueX": -169
+      },
+      "crit": {
+        "label": "stats.label.crit",
+        "valueNames": "stats.num.crit.<0-9|dot|pct>",
+        "font": "ruc:hud_stats_crit",
+        "x": -221,
+        "y": 13,
+        "labelX": -221,
+        "valueX": -169
+      },
+      "luck": {
+        "label": "stats.label.luck",
+        "valueNames": "stats.num.luck.<0-9|dot|pct>",
+        "font": "ruc:hud_stats_luck",
+        "x": -221,
+        "y": 3,
+        "labelX": -221,
+        "valueX": -169
+      }
     }
   },
   "statsFonts": {
@@ -12088,5 +13941,228 @@
       "spaces": "compose non-power-of-two advances from hud-glyphs.json spacing entries"
     },
     "layering": "Backdrop interior is transparent; only thin frame and slot rules plus the title plaque are opaque/semitransparent. Verify on an actual container because title glyphs are rendered over slots."
+  },
+  "minimap": {
+    "window": {
+      "anchor": "top-right",
+      "x": "screenWidth - 68",
+      "y": 4,
+      "width": 64,
+      "height": 64,
+      "margin": 4
+    },
+    "mapPixels": {
+      "tile": 1,
+      "tileBlocks": 2,
+      "padding": 32,
+      "mapBlockToPixel": "floor((block - mapOrigin) / 2)",
+      "viewRadiusTiles": 32
+    },
+    "mapGlyph": {
+      "font": "ruc:hud_minimap_maps",
+      "name": "minimap.map.<plaza|highland|field|dungeon|arena>",
+      "order": [
+        "map glyph first; then player pixel/direction glyphs with zero-net advance"
+      ],
+      "hiddenWithoutShader": "PNG alpha 1/255; vanilla rendertype_text discards alpha < 0.1"
+    },
+    "scrollColor": {
+      "componentTextColor": "#RRGGBB",
+      "r": "128 + floor(playerTileX - mapWidth/2)",
+      "g": "128 + floor(playerTileY - mapHeight/2)",
+      "b": 0,
+      "shaderDecode": "dx = r - 128; dy = g - 128; each encoded delta is clipped to signed 7-bit range [-64, 63]",
+      "mapTransform": "screenCenter=(screenWidth-36,36); map glyph itself is centered at bossbar title center=(screenWidth/2,12); shader translates by (screenWidth/2-36-dx,24-dy) GUI px"
+    },
+    "skinPixels": {
+      "font": "ruc:hud_minimap_pixels",
+      "name": "minimap.head.pixel.<00-63>",
+      "order": "row-major y*8+x; each 1x1 glyph is tinted by the original skin pixel RGB",
+      "advance": 1,
+      "yFonts": {
+        "0": "ruc:hud_minimap_pixel_y_p0",
+        "1": "ruc:hud_minimap_pixel_y_p1",
+        "2": "ruc:hud_minimap_pixel_y_p2",
+        "3": "ruc:hud_minimap_pixel_y_p3",
+        "4": "ruc:hud_minimap_pixel_y_p4",
+        "5": "ruc:hud_minimap_pixel_y_p5",
+        "6": "ruc:hud_minimap_pixel_y_p6",
+        "7": "ruc:hud_minimap_pixel_y_p7",
+        "8": "ruc:hud_minimap_pixel_y_p8",
+        "9": "ruc:hud_minimap_pixel_y_p9",
+        "10": "ruc:hud_minimap_pixel_y_p10",
+        "11": "ruc:hud_minimap_pixel_y_p11",
+        "12": "ruc:hud_minimap_pixel_y_p12",
+        "13": "ruc:hud_minimap_pixel_y_p13",
+        "14": "ruc:hud_minimap_pixel_y_p14",
+        "15": "ruc:hud_minimap_pixel_y_p15",
+        "16": "ruc:hud_minimap_pixel_y_p16",
+        "17": "ruc:hud_minimap_pixel_y_p17",
+        "18": "ruc:hud_minimap_pixel_y_p18",
+        "19": "ruc:hud_minimap_pixel_y_p19",
+        "20": "ruc:hud_minimap_pixel_y_p20",
+        "21": "ruc:hud_minimap_pixel_y_p21",
+        "22": "ruc:hud_minimap_pixel_y_p22",
+        "23": "ruc:hud_minimap_pixel_y_p23",
+        "24": "ruc:hud_minimap_pixel_y_p24",
+        "25": "ruc:hud_minimap_pixel_y_p25",
+        "26": "ruc:hud_minimap_pixel_y_p26",
+        "27": "ruc:hud_minimap_pixel_y_p27",
+        "28": "ruc:hud_minimap_pixel_y_p28",
+        "29": "ruc:hud_minimap_pixel_y_p29",
+        "30": "ruc:hud_minimap_pixel_y_p30",
+        "31": "ruc:hud_minimap_pixel_y_p31",
+        "32": "ruc:hud_minimap_pixel_y_p32",
+        "33": "ruc:hud_minimap_pixel_y_p33",
+        "34": "ruc:hud_minimap_pixel_y_p34",
+        "35": "ruc:hud_minimap_pixel_y_p35",
+        "-36": "ruc:hud_minimap_pixel_y_m36",
+        "-35": "ruc:hud_minimap_pixel_y_m35",
+        "-34": "ruc:hud_minimap_pixel_y_m34",
+        "-33": "ruc:hud_minimap_pixel_y_m33",
+        "-32": "ruc:hud_minimap_pixel_y_m32",
+        "-31": "ruc:hud_minimap_pixel_y_m31",
+        "-30": "ruc:hud_minimap_pixel_y_m30",
+        "-29": "ruc:hud_minimap_pixel_y_m29",
+        "-28": "ruc:hud_minimap_pixel_y_m28",
+        "-27": "ruc:hud_minimap_pixel_y_m27",
+        "-26": "ruc:hud_minimap_pixel_y_m26",
+        "-25": "ruc:hud_minimap_pixel_y_m25",
+        "-24": "ruc:hud_minimap_pixel_y_m24",
+        "-23": "ruc:hud_minimap_pixel_y_m23",
+        "-22": "ruc:hud_minimap_pixel_y_m22",
+        "-21": "ruc:hud_minimap_pixel_y_m21",
+        "-20": "ruc:hud_minimap_pixel_y_m20",
+        "-19": "ruc:hud_minimap_pixel_y_m19",
+        "-18": "ruc:hud_minimap_pixel_y_m18",
+        "-17": "ruc:hud_minimap_pixel_y_m17",
+        "-16": "ruc:hud_minimap_pixel_y_m16",
+        "-15": "ruc:hud_minimap_pixel_y_m15",
+        "-14": "ruc:hud_minimap_pixel_y_m14",
+        "-13": "ruc:hud_minimap_pixel_y_m13",
+        "-12": "ruc:hud_minimap_pixel_y_m12",
+        "-11": "ruc:hud_minimap_pixel_y_m11",
+        "-10": "ruc:hud_minimap_pixel_y_m10",
+        "-9": "ruc:hud_minimap_pixel_y_m9",
+        "-8": "ruc:hud_minimap_pixel_y_m8",
+        "-7": "ruc:hud_minimap_pixel_y_m7",
+        "-6": "ruc:hud_minimap_pixel_y_m6",
+        "-5": "ruc:hud_minimap_pixel_y_m5",
+        "-4": "ruc:hud_minimap_pixel_y_m4",
+        "-3": "ruc:hud_minimap_pixel_y_m3",
+        "-2": "ruc:hud_minimap_pixel_y_m2",
+        "-1": "ruc:hud_minimap_pixel_y_m1"
+      },
+      "yPosition": "font offset = target pixel Y relative to marker center; x is placed with space glyphs",
+      "otherPlayerDelta": "(floor(otherBlockX/2)-floor(ownBlockX/2), floor(otherBlockZ/2)-floor(ownBlockZ/2))",
+      "self": "same 8x8 pixels at delta (0,0), centered over the viewport center"
+    },
+    "direction": {
+      "font": "ruc:hud_minimap_arrow",
+      "name": "minimap.direction.<0-7>",
+      "order": [
+        "S",
+        "SE",
+        "E",
+        "NE",
+        "N",
+        "NW",
+        "W",
+        "SW"
+      ],
+      "center": "self map center",
+      "size": [
+        9,
+        9
+      ]
+    },
+    "pixelSentinel": {
+      "map": [
+        17,
+        253,
+        239,
+        1
+      ],
+      "skinPixel": [
+        253,
+        17,
+        239,
+        1
+      ],
+      "direction": [
+        17,
+        239,
+        253,
+        1
+      ],
+      "legacyTest": "alpha=254/255 cyan sentinel from minimap.red/blue"
+    },
+    "maps": {
+      "plaza": {
+        "glyph": "minimap.map.plaza",
+        "char": "",
+        "width": 160,
+        "height": 160,
+        "worldWidth": 96,
+        "worldHeight": 96,
+        "padding": 32,
+        "center": [
+          48,
+          48
+        ]
+      },
+      "highland": {
+        "glyph": "minimap.map.highland",
+        "char": "",
+        "width": 168,
+        "height": 184,
+        "worldWidth": 104,
+        "worldHeight": 120,
+        "padding": 32,
+        "center": [
+          52,
+          60
+        ]
+      },
+      "field": {
+        "glyph": "minimap.map.field",
+        "char": "",
+        "width": 176,
+        "height": 176,
+        "worldWidth": 112,
+        "worldHeight": 112,
+        "padding": 32,
+        "center": [
+          56,
+          56
+        ]
+      },
+      "dungeon": {
+        "glyph": "minimap.map.dungeon",
+        "char": "",
+        "width": 148,
+        "height": 136,
+        "worldWidth": 84,
+        "worldHeight": 72,
+        "padding": 32,
+        "center": [
+          42,
+          36
+        ]
+      },
+      "arena": {
+        "glyph": "minimap.map.arena",
+        "char": "",
+        "width": 148,
+        "height": 108,
+        "worldWidth": 84,
+        "worldHeight": 44,
+        "padding": 32,
+        "center": [
+          42,
+          22
+        ]
+      }
+    }
   }
 }

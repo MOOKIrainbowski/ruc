@@ -38,6 +38,9 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public final class MinimapHud implements Listener {
 
+    /** 보스바 제목은 그림자를 그림 — 그림자 정점 색(¼ 밝기)을 셰이더가 스크롤로 잘못 읽어 지도가 하나 더 어긋나 그려짐 → 그림자 끔 (1.21.4+ shadow_color) */
+    private static final net.kyori.adventure.text.format.ShadowColor NO_SHADOW = net.kyori.adventure.text.format.ShadowColor.shadowColor(0);
+
     private final RucRpg plugin;
     private final JsonObject glyphs, mm, spacing;
     private final Map<UUID, BossBar> bars = new ConcurrentHashMap<>();
@@ -136,7 +139,7 @@ public final class MinimapHud implements Listener {
             JsonObject g = glyphs.getAsJsonObject(name);
             String f = fontOverride != null ? fontOverride : g.get("font").getAsString();
             String[] k = f.split(":");
-            b.append(Component.text(g.get("char").getAsString()).font(Key.key(k[0], k[1])).color(color));
+            b.append(Component.text(g.get("char").getAsString()).font(Key.key(k[0], k[1])).color(color).shadowColor(NO_SHADOW));
             x += g.get("advance").getAsInt();
         }
     }
@@ -164,7 +167,7 @@ public final class MinimapHud implements Listener {
             for (int col = 0; col < 8; col++) {   // 같은 색이 이어지면 한 조각으로 (보스바 패킷 크기 — 머리 하나 64조각 → 보통 20~30)
                 run.append(glyphs.getAsJsonObject(String.format("minimap.head.pixel.%02d", row * 8 + col)).get("char").getAsString());
                 if (col == 7 || face[row * 8 + col + 1] != face[row * 8 + col]) {
-                    l.b.append(Component.text(run.toString()).font(Key.key(k[0], k[1])).color(TextColor.color(face[row * 8 + col])));
+                    l.b.append(Component.text(run.toString()).font(Key.key(k[0], k[1])).color(TextColor.color(face[row * 8 + col])).shadowColor(NO_SHADOW));
                     l.x += run.length();   // 픽셀 글리프 advance = 1
                     run.setLength(0);
                 }

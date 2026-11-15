@@ -1,0 +1,147 @@
+{
+  "providers": [
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/glyphs/stats_label_attack.png",
+      "height": 10,
+      "ascent": 8,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/glyphs/stats_number_0.png",
+      "height": 5,
+      "ascent": 8,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/glyphs/stats_number_1.png",
+      "height": 5,
+      "ascent": 8,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/glyphs/stats_number_2.png",
+      "height": 5,
+      "ascent": 8,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/glyphs/stats_number_3.png",
+      "height": 5,
+      "ascent": 8,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/glyphs/stats_number_4.png",
+      "height": 5,
+      "ascent": 8,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/glyphs/stats_number_5.png",
+      "height": 5,
+      "ascent": 8,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/glyphs/stats_number_6.png",
+      "height": 5,
+      "ascent": 8,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/glyphs/stats_number_7.png",
+      "height": 5,
+      "ascent": 8,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/glyphs/stats_number_8.png",
+      "height": 5,
+      "ascent": 8,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/glyphs/stats_number_9.png",
+      "height": 5,
+      "ascent": 8,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/glyphs/stats_number_dot.png",
+      "height": 7,
+      "ascent": 8,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    },
+    {
+      "type": "bitmap",
+      "file": "ruc:hud/glyphs/stats_number_pct.png",
+      "height": 7,
+      "ascent": 8,
+      "chars": [
+        [
+          ""
+        ]
+      ]
+    }
+  ]
+}

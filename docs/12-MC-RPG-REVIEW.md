@@ -312,3 +312,10 @@ Java 쪽(`hud/MinimapHud.java`)을 계약대로 붙여 봇으로 확인: 첫 보
 
 ## Codex 작업 9 — [긴급 · 작업 8 보다 먼저] 텍스트 셰이더를 1.21.11 형식으로
 위 Claude 리뷰 2 의 1 · 2 · 4. 파일 소유권: `rendertype_text.vsh/.fsh` = Codex. 끝나면 `## Codex 작업 9 완료 보고` 에 바닐라와의 diff 요약 + 검증 결과. pack.py 는 Claude 가 돌려 운영 zip 을 만듦(당신은 돌리지 말 것).
+
+## Codex 작업 9 완료 보고
+
+- `.scratch/vanilla-1.21.11/assets/minecraft/shaders/core/rendertype_text.vsh/.fsh`를 기준으로 두 셰이더를 1.21.11 형식으로 맞췄습니다. `#version 330`, `<minecraft:fog.glsl>`, `<minecraft:dynamictransforms.glsl>`, vertex의 `<minecraft:projection.glsl>`, 바닐라의 uniform 블록 변수와 `sphericalVertexDistance`/`cylindricalVertexDistance`, 8인자 `apply_fog`를 사용합니다. 선언되지 않은 `ProjMat`와 fsh의 `ColorModulator` uniform 선언을 제거하고 바닐라 include에서 받습니다.
+- 미니맵 분기는 기존 이동·클리핑 동작을 보존합니다. 비미니맵 fsh 경로는 1.21.11 원본의 텍스처×vertexColor×ColorModulator, alpha discard, fog 표현식을 그대로 사용합니다. vertex의 기본 변환·fog 거리·조명 계산도 바닐라 식을 유지합니다.
+- 태그 검색은 지도·픽셀·화살표·레거시 표식별로 네 번씩 최대 16회 읽던 구조에서, 네 좌표를 한 번 읽고 네 태그를 판별하도록 바꿔 정점당 텍스처 샘플을 4회로 줄였습니다. 머리 픽셀 RGB가 임의 스킨 색을 그대로 담으므로 안전한 `Color` 사전 필터로 이를 건너뛸 수는 없습니다.
+- 바닐라 셰이더와의 수동 diff에서 버전·include·변수·출력 계약을 대조했고 `git diff --check`는 통과했습니다. 이 환경에는 `glslangValidator`/`glslc`가 없어 include 확장 컴파일 및 실제 클라이언트 검증은 못 했습니다. 운영 ZIP을 바꾸는 `pack.py`는 실행하지 않았습니다.
